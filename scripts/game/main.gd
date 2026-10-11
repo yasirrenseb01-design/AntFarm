@@ -8,11 +8,11 @@ extends Node2D
 ##   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests), optionally fake time away
 
 const Sim := preload("res://scripts/sim/simulation.gd")
-const WorldView := preload("res://scripts/view/world_view.gd")
-const Hud := preload("res://scripts/view/hud.gd")
-const NestView := preload("res://scripts/view/nest_view.gd")
-const OutworldView := preload("res://scripts/view/outworld_view.gd")
-const Store := preload("res://scripts/save_store.gd")
+const WorldView := preload("res://scripts/view/surface2d/world_view.gd")
+const Hud := preload("res://scripts/view/ui/hud.gd")
+const NestView := preload("res://scripts/view/nest/nest_view.gd")
+const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
+const Store := preload("res://scripts/game/save_store.gd")
 
 var sim
 var world

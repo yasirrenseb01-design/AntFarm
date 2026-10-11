@@ -168,14 +168,14 @@ const WORKER_LIMBS := Vector3(1.7, 1.45, 1.25)
 const QUEEN_LIMBS := Vector3(5.6, 4.6, 2.6)
 
 
-## The model sculpted in Blender (tools/blender/build_ant.py -> assets/models/*.antmesh) when present,
+## The model sculpted in Blender (tools/blender/build_ant.py -> assets/models/ants/*.antmesh) when present,
 ## otherwise the procedural one below.
 static func make(swing := 0.0, queen := false, detailed := true) -> ArrayMesh:
 	var key := "%s_%s" % ["queen" if queen else "worker", "hi" if detailed else "lo"]
 	if not _cache.has(key):
-		var m := load_antmesh("res://assets/models/%s.antmesh" % key)
+		var m := load_antmesh("res://assets/models/ants/%s.antmesh" % key)
 		if m == null:
-			var b = load("res://scripts/view/ant_model3d.gd").new()
+			var b = load("res://scripts/view/common/ant_model3d.gd").new()
 			m = b.build(swing, queen, detailed)
 		_cache[key] = m
 	return _cache[key]

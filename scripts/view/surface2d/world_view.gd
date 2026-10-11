@@ -3,8 +3,8 @@ extends Node2D
 ## weather and the day/night light.
 
 const Ant := preload("res://scripts/sim/ant.gd")
-const Kit := preload("res://scripts/view/draw_kit.gd")
-const AntBatch := preload("res://scripts/view/ant_batch.gd")
+const Kit := preload("res://scripts/view/surface2d/draw_kit.gd")
+const AntBatch := preload("res://scripts/view/surface2d/ant_batch.gd")
 
 const PHER_HOME := Color(0.5, 0.66, 1.0)
 const PHER_FOOD := Color(0.98, 0.68, 0.27)
@@ -76,7 +76,7 @@ func setup(s) -> void:
 	_pher.scale = Vector2(sim.CELL, sim.CELL)
 	_pher.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/pheromone.gdshader")
+	mat.shader = load("res://shaders/terrain/pheromone.gdshader")
 	_pher.material = mat
 	add_child(_pher)
 

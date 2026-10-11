@@ -109,16 +109,17 @@ func commit(smooth_normals := false) -> ArrayMesh:
 # ---------------------------------------------------------------- props (1 unit = 1.5 mm)
 
 static func _new():
-	return load("res://scripts/view/mesh_kit.gd").new()
+	return load("res://scripts/view/common/mesh_kit.gd").new()
 
 
 static var _assets := {}
 
 
-## A model built in Blender (tools/blender/build_props.py -> assets/models/<name>.antmesh), or null.
+## A model built in Blender (tools/blender/build_props.py -> assets/models/<folder>/<name>.antmesh), or null.
+## `name` includes the folder, e.g. "prey/aphid_adult".
 static func asset(name: String) -> Mesh:
 	if not _assets.has(name):
-		_assets[name] = load("res://scripts/view/ant_model3d.gd").load_antmesh("res://assets/models/%s.antmesh" % name)
+		_assets[name] = load("res://scripts/view/common/ant_model3d.gd").load_antmesh("res://assets/models/%s.antmesh" % name)
 	return _assets[name]
 
 
@@ -232,7 +233,7 @@ static func blade() -> ArrayMesh:
 ## (local points, base at the origin) shared by the mesh, the aphids and the ants that climb it.
 static func plant_stem(seed_value: int) -> Array:
 	# the Blender shoots carry their own stem line
-	var path := "res://assets/models/plant%d.json" % (absi(seed_value) % PLANT_VARIANTS)
+	var path := "res://assets/models/plants/plant%d.json" % (absi(seed_value) % PLANT_VARIANTS)
 	if FileAccess.file_exists(path):
 		var d = JSON.parse_string(FileAccess.get_file_as_string(path))
 		if d is Dictionary:
@@ -264,7 +265,7 @@ const STEM_R := 0.55
 
 
 static func aphid_plant(seed_value: int) -> Mesh:
-	var m := asset("plant%d" % (absi(seed_value) % PLANT_VARIANTS))
+	var m := asset("plants/plant%d" % (absi(seed_value) % PLANT_VARIANTS))
 	if m != null:
 		return m
 	var k = _new()
@@ -338,7 +339,7 @@ static func aphid_spots(seed_value: int) -> Array:
 ## antennae swept back, pale legs, two black cornicles and a short cauda at the rear. Nymphs are
 ## smaller and greyer with waxy patches; the occasional winged adult has a shiny thorax and wings.
 static func aphid(kind := 0) -> Mesh:
-	var m := asset(["aphid_adult", "aphid_nymph", "aphid_winged"][kind])
+	var m := asset(["prey/aphid_adult", "prey/aphid_nymph", "prey/aphid_winged"][kind])
 	if m != null:
 		return m
 	var k = _new()
@@ -368,7 +369,7 @@ static func aphid(kind := 0) -> Mesh:
 
 
 static func aphid_wings() -> Mesh:
-	var m := asset("aphid_wings")
+	var m := asset("prey/aphid_wings")
 	if m != null:
 		return m
 	var k = _new()

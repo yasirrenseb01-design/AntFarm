@@ -3,9 +3,9 @@ extends Node3D
 ## with diggers from the simulation, resting nestmates, brood piles and the queen.
 
 const Ant := preload("res://scripts/sim/ant.gd")
-const Mesher := preload("res://scripts/view/nest_mesher.gd")
-const AntModel := preload("res://scripts/view/ant_model3d.gd")
-const Props := preload("res://scripts/view/mesh_kit.gd")
+const Mesher := preload("res://scripts/view/nest/nest_mesher.gd")
+const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
+const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const CLUMP := 24                  # eggs stick together in packets of about this many
 const CH := 16
 const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0),
@@ -134,12 +134,12 @@ func setup(s) -> void:
 	gn.fractal_octaves = 4
 	grain.noise = gn
 	_mat = ShaderMaterial.new()
-	_mat.shader = load("res://shaders/soil.gdshader")
+	_mat.shader = load("res://shaders/terrain/soil.gdshader")
 	_mat.set_shader_parameter("grain", grain)
 	_mat.set_shader_parameter("top_y", nest.ny - 0.5)
 	_mat.set_shader_parameter("vol_size", Vector3(nest.nx, nest.ny, nest.nz))
 	_xray_mat = ShaderMaterial.new()
-	_xray_mat.shader = load("res://shaders/xray.gdshader")
+	_xray_mat.shader = load("res://shaders/terrain/xray.gdshader")
 	_xray_mat.set_shader_parameter("box_max", Vector3(nest.nx - 1, nest.ny - 1, nest.nz - 1))
 	_xray_mat.set_shader_parameter("top_y", nest.ny - 0.5)
 	_xray_mat.set_shader_parameter("grain", grain)
@@ -175,7 +175,7 @@ func setup(s) -> void:
 	# Lasius niger: glossy dark body with a fine pubescence that gives the gaster a dull sheen
 	# legs, antennae, head, mandibles and gaster are animated per ant by shaders/ant.gdshader
 	var ant_mat := ShaderMaterial.new()
-	ant_mat.shader = load("res://shaders/ant.gdshader")
+	ant_mat.shader = load("res://shaders/ants/ant.gdshader")
 	_ant_meshes = {"hi": AntModel.make(), "lo": AntModel.make(0.0, false, false)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true)
 	_ant_mm.use_custom_data = true

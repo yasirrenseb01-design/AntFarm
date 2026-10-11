@@ -4,7 +4,7 @@ extends Node2D
 ## sweeping or drumming, head biting); loads (honeydew, prey, a dead nestmate) are overlays.
 
 const Ant := preload("res://scripts/sim/ant.gd")
-const Kit := preload("res://scripts/view/draw_kit.gd")
+const Kit := preload("res://scripts/view/surface2d/draw_kit.gd")
 
 var _shadow: MultiMesh
 var _body: MultiMesh
@@ -16,7 +16,7 @@ var _corpse: MultiMesh
 func _ready() -> void:
 	_shadow = _make(_shadow_mesh())
 	var mat := ShaderMaterial.new()
-	mat.shader = load("res://shaders/ant2d.gdshader")
+	mat.shader = load("res://shaders/ants/ant2d.gdshader")
 	_body = _make(_body_mesh(), mat, true)
 	_replete = _make(_replete_mesh())
 	_prey = _make(_prey_mesh())

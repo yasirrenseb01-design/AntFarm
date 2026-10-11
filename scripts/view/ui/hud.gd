@@ -3,8 +3,8 @@ extends CanvasLayer
 ## nest cross-section, population chart and journal on the right.
 
 const Ant := preload("res://scripts/sim/ant.gd")
-const Kit := preload("res://scripts/view/draw_kit.gd")
-const Store := preload("res://scripts/save_store.gd")
+const Kit := preload("res://scripts/view/surface2d/draw_kit.gd")
+const Store := preload("res://scripts/game/save_store.gd")
 
 signal speed_changed(speed: float)
 signal view_changed(mode: String)

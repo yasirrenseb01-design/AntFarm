@@ -13,7 +13,7 @@ import struct
 from mathutils import Vector, Matrix
 
 WHAT = globals().get("WHAT", "aphid")
-OUT = globals().get("OUT", "E:/AntFarm/assets/models")
+OUT = globals().get("OUT", "E:/AntFarm/assets/models")      # files go to OUT/prey or OUT/plants
 SHOT = globals().get("SHOT", "")
 
 
@@ -437,7 +437,7 @@ def cricket():
 # =============================================================== broad bean shoot (Vicia faba)
 # Square, slightly glaucous stem with nodes, alternate compound leaves (2-3 pairs of oval leaflets),
 # a growing tip of folded young leaves, a few white flowers with the black blotch on the wings.
-# Exported per variant with its stem line (assets/models/plant<k>.json) so aphids and ants sit on it.
+# Exported per variant with its stem line (assets/models/plants/plant<k>.json) so aphids and ants sit on it.
 
 def plant(variant):
     rng = random.Random(1000 + variant)
@@ -542,10 +542,10 @@ if WHAT == "aphid":
     aphid(0, 0.0)
     aphid(1, 0.0)
     aphid(2, 0.0)
-    export(OUT + "/aphid_adult.antmesh", [0])
-    export(OUT + "/aphid_nymph.antmesh", [1])
-    export(OUT + "/aphid_winged.antmesh", [2])
-    export(OUT + "/aphid_wings.antmesh", [3])
+    export(OUT + "/prey/aphid_adult.antmesh", [0])
+    export(OUT + "/prey/aphid_nymph.antmesh", [1])
+    export(OUT + "/prey/aphid_winged.antmesh", [2])
+    export(OUT + "/prey/aphid_wings.antmesh", [3])
     if SHOT:
         # spread them out for the picture
         for o in OBJS:
@@ -555,7 +555,7 @@ if WHAT == "aphid":
 elif WHAT == "cricket":
     cricket()
     for g, name in ((0, "head"), (1, "abdomen"), (2, "hindleg_l"), (4, "hindleg_r"), (3, "legs")):
-        export("%s/cricket_%s.antmesh" % (OUT, name), [g])
+        export("%s/prey/cricket_%s.antmesh" % (OUT, name), [g])
     if SHOT:
         preview_material()
         view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.3, -1.0, 0.9)))
@@ -563,8 +563,8 @@ elif WHAT == "cricket":
 elif WHAT == "plant":
     k = int(globals().get("VARIANT", "0"))
     stem = plant(k)
-    flex_export("%s/plant%d.antmesh" % (OUT, k), stem)
-    with open("%s/plant%d.json" % (OUT, k), "w") as fh:
+    flex_export("%s/plants/plant%d.antmesh" % (OUT, k), stem)
+    with open("%s/plants/plant%d.json" % (OUT, k), "w") as fh:
         json.dump({"stem": stem, "radius": 0.55}, fh)
     if SHOT:
         preview_material()

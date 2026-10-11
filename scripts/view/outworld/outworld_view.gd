@@ -4,8 +4,8 @@ extends Node3D
 ## as the nest view. 1 unit = 1.5 mm (a nest voxel) = 3 px of the simulation's outworld.
 
 const Ant := preload("res://scripts/sim/ant.gd")
-const AntModel := preload("res://scripts/view/ant_model3d.gd")
-const Props := preload("res://scripts/view/mesh_kit.gd")
+const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
+const Props := preload("res://scripts/view/common/mesh_kit.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units
 const ANT_SCALE := 1.1
@@ -116,14 +116,14 @@ func setup(s, w) -> void:
 	add_child(_food_root)
 
 	var ant_mat := ShaderMaterial.new()
-	ant_mat.shader = load("res://shaders/ant.gdshader")
+	ant_mat.shader = load("res://shaders/ants/ant.gdshader")
 	ant_mat.set_shader_parameter("limb_gain", AntModel.WORKER_LIMBS)
 	_ant_meshes = {"hi": AntModel.make(), "lo": AntModel.make(0.0, false, false)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
 	_corpse_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
 	_prey_mm = _multimesh(_blob_mesh(Vector3(0.75, 0.5, 0.6)), _mat(Color(0.5, 0.33, 0.18), 0.7), false)
 	var sp_mat := ShaderMaterial.new()
-	sp_mat.shader = load("res://shaders/spider.gdshader")
+	sp_mat.shader = load("res://shaders/creatures/spider.gdshader")
 	_spider_mm = _multimesh(Props.spider(), sp_mat, false, true)
 
 	var drop := BoxMesh.new()
@@ -258,7 +258,7 @@ func _build_ground() -> void:
 	dn.frequency = 0.06
 	detail.noise = dn
 	_ground_mat = ShaderMaterial.new()
-	_ground_mat.shader = load("res://shaders/outworld_ground.gdshader")
+	_ground_mat.shader = load("res://shaders/terrain/outworld_ground.gdshader")
 	_ground_mat.set_shader_parameter("soil_tex", world._soil.texture)
 	_ground_mat.set_shader_parameter("damp_tex", world._damp.texture)
 	_ground_mat.set_shader_parameter("grain_tex", world._grain.texture)
@@ -420,7 +420,7 @@ func _build_scenery() -> void:
 
 func _sway_mat(srgb: bool, back: Color, rough: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
-	m.shader = load("res://shaders/sway.gdshader")
+	m.shader = load("res://shaders/plants/sway.gdshader")
 	m.set_shader_parameter("srgb_colors", srgb)
 	m.set_shader_parameter("backlight", Vector3(back.r, back.g, back.b))
 	m.set_shader_parameter("roughness_v", rough)
@@ -552,7 +552,7 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 			var body := Node3D.new()
 			body.rotation.x = 0.12        # lying a little on one side
 			root.add_child(body)
-			if Props.asset("cricket_head") != null:
+			if Props.asset("prey/cricket_head") != null:
 				# the Blender carcass comes in pieces: the abdomen shrinks and legs go as the ants cut it up
 				var mat: StandardMaterial3D = _prop_mat
 				if f.rotten:
@@ -565,7 +565,7 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 				var lost := ("cricket_hindleg_l" if f.seed % 2 == 0 else "cricket_hindleg_r") if left < 0.35 else ""
 				for pc in ["cricket_head", "cricket_abdomen", "cricket_hindleg_l", "cricket_hindleg_r", "cricket_legs"]:
 					var mi := MeshInstance3D.new()
-					mi.mesh = Props.asset(pc)
+					mi.mesh = Props.asset("prey/" + pc)
 					mi.material_override = mat
 					body.add_child(mi)
 					if pc == lost:

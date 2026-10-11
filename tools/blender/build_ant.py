@@ -6,7 +6,7 @@
 # joints line up with the pivots in shaders/ant.gdshader; exported scaled by K = 0.34.
 # Every vertex carries colour (a multiplier on the per-ant tint) and in alpha the body-part id / 16:
 # 0 trunk, 1 head, 2/3 left/right antenna, 4-9 legs (FL, FR, ML, MR, HL, HR), 10 gaster, 11 mandibles.
-# "Left" is the -z side in Godot. Output: assets/models/<variant>_<lod>.antmesh (see ant_model3d.gd).
+# "Left" is the -z side in Godot. Output: assets/models/ants/<variant>_<lod>.antmesh (see ant_model3d.gd).
 import bpy
 import bmesh
 import math
@@ -21,7 +21,7 @@ if "--" in sys.argv:
     VARIANT, LOD = (_a + ["worker", "hi"])[:2]
 VARIANT = globals().get("VARIANT", "worker")
 LOD = globals().get("LOD", "hi")
-OUT = globals().get("OUT", "E:/AntFarm/assets/models")
+OUT = globals().get("OUT", "E:/AntFarm/assets/models/ants")
 SHOT = globals().get("SHOT", "")
 QUEEN = VARIANT == "queen"
 HI = LOD == "hi"
