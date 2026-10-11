@@ -18,3 +18,15 @@ try {
     Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile", "-Command", $cmd
     Write-Output "built v$version -> $archived (game is open: the shortcut switches to v$version as soon as it is closed)"
 }
+
+# Old builds: keep the five newest and the first build of every PART (x.y.0); remove the rest.
+$all = Get-ChildItem "$root\build\versions" -Filter "AntFarm-v*.exe" | ForEach-Object {
+    $v = $_.BaseName -replace '^AntFarm-v', ''
+    [pscustomobject]@{ File = $_; Ver = [version]$v; Patch = [int]($v.Split('.')[2]) }
+} | Sort-Object Ver -Descending
+$keep = @($all | Select-Object -First 5) + @($all | Where-Object { $_.Patch -eq 0 })
+foreach ($b in $all) {
+    if ($keep.File.FullName -notcontains $b.File.FullName) {
+        try { Remove-Item $b.File.FullName -ErrorAction Stop; Write-Output "removed old build $($b.File.Name)" } catch {}
+    }
+}
