@@ -9,3 +9,5 @@
 - เวอร์ชัน `0.PART.รอบแก้` อยู่ใน `project.godot` (`config/version`); ทุกครั้งที่ส่งงานให้ผู้ใช้ลอง: เพิ่มเลขเวอร์ชัน, เขียน `CHANGELOG.md`, รัน `tools/build.ps1` (ทางลัดบนเดสก์ท็อปเปิด `build/AntFarm.exe`)
 - รังเริ่มต้นคือราชินีตัวเดียว; การทดสอบที่ต้องการรัง 14 ตัวต้องใส่ `--workers=14`
 - ทดสอบได้ด้วย `--selftest`, `--shot` (ดูหัวไฟล์ `scripts/main.gd`) — สคริปต์ที่มี parse error จะทำให้ Godot ค้าง ให้ใช้ `timeout` และ `--check-only` ก่อน
+- โค้ดอยู่บน GitHub (private): https://github.com/yasirrenseb01-design/AntFarm — branch หลัก `main`; ส่งงานแต่ละเวอร์ชันแล้ว commit + push
+- Cloud session (Linux, ไม่มีการ์ดจอ, ไม่มี Godot ติดมา): ทำงานโค้ด/ระบบจำลองได้ แต่สร้าง `AntFarm.exe` และจับภาพหน้าจอไม่ได้ → ส่งงานเป็น branch/PR แล้วให้ session บนเครื่องผู้ใช้ pull, ทดสอบภาพ และรัน `tools/build.ps1`
