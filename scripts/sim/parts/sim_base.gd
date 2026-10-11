@@ -49,6 +49,7 @@ var larvae: Array = []
 var pupae: Array = []
 var queen := {"alive": true, "starve": 0.0, "reserve": 0.0}   # reserve: fat body + dissolved wing muscle
 var sugar := 6.0
+var fat := 0.0                     # food stored in the workers' fat bodies (what carries a colony through winter)
 var protein := 3.0
 var humidity := 0.7
 var mold := 0.0
@@ -57,6 +58,10 @@ var enemies := true
 var _next_cid := 1                 # next creature id
 var creatures: Array = []          # enemies in the outworld: {"kind", "pos", ...} (see parts/sim_enemies.gd)
 var corpses_inside := 0
+var scenario := "keeper"          # "keeper" (indoor formicarium) or "wild" (a plot of ground; seasons, enemies)
+var start_doy := 205               # day of the year the colony started (a founding queen: late July)
+var fridge_on := false             # keeper: the formicarium is in the fridge for its winter rest
+var cold_days := 0                 # days this winter with the nest below 10 °C (the queen's winter rest)
 var egg_acc := 0.0
 var stats := {"dead": 0, "cannibalized": 0, "born": 0, "sugar_in": 0, "protein_in": 0}
 var history: Array = []
@@ -98,7 +103,7 @@ var _log_alarm := log(ALARM_EVAP)
 
 # ---------------------------------------------------------------- setup
 
-func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false) -> void:
+func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, scen := "keeper") -> void:
 	if seed_value != 0:
 		rng.seed = seed_value
 	else:
@@ -113,9 +118,16 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false) ->
 	food_cell.resize(gw * gh)
 	food_cell.fill(-1)
 	climate = Climate.new(rng)
+	scenario = scen
+	climate.scenario = scen
+	# a lone queen starts just after the summer mating flight; a young colony in spring
+	start_doy = 205 if start_workers == 0 else 105
+	enemies = scen == "wild"         # a keeper's formicarium has no wild predators
+	queen["rested"] = 1.0
 	nest = NestVolume.new()
 	nest.setup(rng, glass_nest, start_workers == 0)
 	tick = int(TPD * 0.29)
+	climate.doy = doy_f()
 	climate.settle(time_of_day(), heater)
 
 	for r in [[160, 150, 34], [820, 330, 26], [858, 372, 18], [660, 650, 28], [300, 540, 15],
@@ -203,8 +215,64 @@ func clock_text() -> String:
 	return "%02d:%02d" % [m / 60, m % 60]
 
 
+## Height of the sun (-1..1 at noon); outdoors the days are longer in summer than in winter.
+func sun_height() -> float:
+	var c := sin(PI * (climate.day_hours() / 24.0 - 0.5))
+	return sin(TAU * (time_of_day() - 0.25)) + c
+
+
 func daylight() -> float:
-	return clampf(sin(TAU * (time_of_day() - 0.25)) * 1.6 + 0.2, 0.0, 1.0)
+	return clampf(sun_height() * 1.6 + 0.2, 0.0, 1.0)
+
+
+# ---------------------------------------------------------------- calendar
+
+const MONTHS := ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+const MONTH_DAYS := [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+
+## Day of the year as a float (0 = 1 January), including the time of day.
+func doy_f() -> float:
+	return fmod(float(start_doy) + float(tick) / TPD - 0.29, 365.0)
+
+
+func year() -> int:
+	return int((float(start_doy) + float(tick) / TPD - 0.29) / 365.0) + 1
+
+
+func date_text() -> String:
+	var d := int(doy_f())
+	var m := 0
+	while m < 11 and d >= MONTH_DAYS[m]:
+		d -= MONTH_DAYS[m]
+		m += 1
+	return "%d %s" % [d + 1, MONTHS[m]]
+
+
+func season_name() -> String:
+	var d := doy_f()
+	if d < 59 or d >= 334:
+		return "ฤดูหนาว"
+	if d < 151:
+		return "ใบไม้ผลิ"
+	if d < 243:
+		return "ฤดูร้อน"
+	return "ใบไม้ร่วง"
+
+
+## How much the outdoors is alive (aphids, flies, wandering predators): 0 in the cold, 1 when warm.
+func season_life() -> float:
+	return clampf((climate.season_mean() - 6.0) / 6.0, 0.0, 1.0)
+
+
+## Ants are cold-blooded: their metabolism changes ~2.5-fold per 10 °C (Q10), 1.0 at a room's 22 °C.
+## Below ~8 °C Lasius niger falls into a chill torpor and barely burns anything, which is how a colony
+## lives through four months of winter on what it stored in autumn.
+func cold_factor(t: float) -> float:
+	var q := pow(2.5, (t - 22.0) / 10.0)
+	if t < 8.0:
+		q *= lerpf(0.15, 1.0, clampf((t - 2.0) / 6.0, 0.0, 1.0))
+	return clampf(q, 0.02, 1.3)
 
 
 func cycle_days() -> float:
@@ -297,6 +365,18 @@ func target_air() -> int:
 	return int(80 + 22 * (workers.size() + (eggs.size() + larvae.size() + pupae.size()) * 0.25))
 
 
+## Outdoors, once the days shorten below ~13½ hours (late August) the colony winds down for winter:
+## the queen stops laying, the last brood is reared out and the workers fatten up.
+func winding_down() -> bool:
+	var d := doy_f()
+	return scenario == "wild" and d > 172.0 and climate.day_hours() < 13.5
+
+
+## How much the workers can lay down as body fat: roughly a winter's worth each.
+func fat_cap() -> float:
+	return workers.size() * 1.2
+
+
 func sugar_cap() -> float:
 	return 10.0 + workers.size() * 2.5
 
@@ -366,6 +446,6 @@ func _log(text: String, kind: String = "") -> void:
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 3              # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 4              # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
 	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt"]

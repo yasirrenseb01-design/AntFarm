@@ -121,7 +121,15 @@ func _build_tools(root: Control) -> void:
 	heat.toggled.connect(func(on):
 		sim.heater = on
 		sim._log("เปิดแผ่นความร้อนใต้รัง อุณหภูมิในรังจะค่อยๆ สูงขึ้น" if on else "ปิดแผ่นความร้อน"))
+	heat.visible = sim.scenario == "keeper"      # outdoors there is no heat mat
 	row.add_child(heat)
+	var cold := _button("จำศีลในตู้เย็น", true)
+	cold.button_pressed = sim.fridge_on
+	cold.toggled.connect(func(on):
+		sim.fridge_on = on
+		sim._log(T.fridge_in if on else T.fridge_out))
+	cold.visible = sim.scenario == "keeper"      # outdoors winter comes by itself
+	row.add_child(cold)
 	var enemy := _button("ศัตรูธรรมชาติ", true)
 	enemy.button_pressed = sim.enemies
 	enemy.toggled.connect(func(on):

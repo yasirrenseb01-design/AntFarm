@@ -11,9 +11,9 @@ func fingerprint(s) -> String:
 	for a in s.workers:
 		px += a.pos.x * 0.37 + a.pos.y
 		age += a.age
-	return "tick %d  workers %d  out %d  eggs %d larvae %d pupae %d  sugar %.4f protein %.4f  hum %.5f  air %d dug %d  pos %.3f age %.4f  log %d  rng %d" % [
+	return "tick %d  workers %d  out %d  eggs %d larvae %d pupae %d  sugar %.4f fat %.4f nest %.3f fridge %.3f protein %.4f  hum %.5f  air %d dug %d  pos %.3f age %.4f  log %d  rng %d" % [
 		s.tick, s.workers.size(), s.outside.size(), s.eggs.size(), s.larvae.size(), s.pupae.size(), s.sugar,
-		s.protein, s.humidity, s.nest.air, s.nest.excavated, px, age, s.log_entries.size(), s.rng.state]
+		s.fat, s.climate.nest, s.climate.fridge, s.protein, s.humidity, s.nest.air, s.nest.excavated, px, age, s.log_entries.size(), s.rng.state]
 
 
 func run(s, days: float) -> void:
@@ -23,9 +23,11 @@ func run(s, days: float) -> void:
 
 func _init() -> void:
 	var ok := true
-	for start in [14, 0]:
+	for case in [[14, "keeper"], [0, "keeper"], [14, "wild"]]:
+		var start: int = case[0]
 		var a := Sim.new()
-		a.setup(11, start)
+		a.setup(11, start, false, case[1])
+		a.fridge_on = start == 0       # a keeper cooling the box down
 		run(a, 3.0)
 		# round-trip through bytes exactly like the save file does
 		var bytes := var_to_bytes(a.to_dict())
@@ -36,7 +38,7 @@ func _init() -> void:
 		run(b, 3.0)
 		var fa := fingerprint(a)
 		var fb := fingerprint(b)
-		print("start=%d  save size %.1f KB" % [start, bytes.size() / 1024.0])
+		print("start=%d %s  save size %.1f KB" % [start, case[1], bytes.size() / 1024.0])
 		print("  original: ", fa)
 		print("  loaded:   ", fb)
 		print("  identical right after load: %s   identical 3 days later: %s" % [same_now, fa == fb])

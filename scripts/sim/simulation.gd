@@ -10,6 +10,8 @@ func step() -> void:
 	tick += 1
 	if tick % TPD == 0:
 		_new_day()
+	climate.doy = doy_f()
+	climate.sun = daylight()
 	climate.update(time_of_day(), heater, TPD)
 	var raining: bool = climate.raining()
 	if raining:
@@ -75,11 +77,11 @@ func to_dict() -> Dictionary:
 	for a in outside:
 		out_ids.append(a.id)
 	return {
-		"version": SAVE_VERSION, "species": sp["id"], "rng_seed": rng.seed, "rng_state": rng.state, "tick": tick,
+		"version": SAVE_VERSION, "species": sp["id"], "scenario": scenario, "start_doy": start_doy, "cold_days": cold_days, "fridge_on": fridge_on, "rng_seed": rng.seed, "rng_state": rng.state, "tick": tick,
 		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(), "alarm": alarm.to_dict(), "next_cid": _next_cid,
 		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
-		"sugar": sugar, "protein": protein, "humidity": humidity, "mold": mold, "heater": heater, "enemies": enemies,
+		"sugar": sugar, "fat": fat, "protein": protein, "humidity": humidity, "mold": mold, "heater": heater, "enemies": enemies,
 		"creatures": creatures, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
 		"history": history, "log": log_entries, "warned": _warned, "next_id": _next_id,
 		"cannibal_cd": _cannibal_cd, "recruits": _recruits,
@@ -95,6 +97,10 @@ func from_dict(d: Dictionary) -> void:
 	rng.seed = d.rng_seed
 	rng.state = d.rng_state
 	tick = d.tick
+	scenario = d.scenario
+	start_doy = d.start_doy
+	cold_days = d.cold_days
+	fridge_on = d.fridge_on
 	climate = Climate.new(rng)
 	climate.from_dict(d.climate)
 	nest = NestVolume.new()
@@ -128,6 +134,7 @@ func from_dict(d: Dictionary) -> void:
 	pupae = d.pupae
 	queen = d.queen
 	sugar = d.sugar
+	fat = d.fat
 	protein = d.protein
 	humidity = d.humidity
 	mold = d.mold
@@ -163,7 +170,7 @@ func summary() -> Dictionary:
 	return {"day": day(), "workers": workers.size(), "eggs": eggs.size(), "larvae": larvae.size(),
 		"pupae": pupae.size(), "born": stats.born, "dead": stats.dead + stats.cannibalized,
 		"chambers": nest.chambers.size(), "volume": nest.volume_cm3(), "humidity": humidity,
-		"queen": queen.alive, "glass": nest.slab, "founding": founding()}
+		"queen": queen.alive, "glass": nest.slab, "scenario": scenario, "founding": founding()}
 
 
 ## The automatic keeper used by tests and, if the player allows it, while the game is closed:

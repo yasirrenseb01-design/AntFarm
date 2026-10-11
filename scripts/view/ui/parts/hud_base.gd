@@ -7,6 +7,7 @@ const Ant := preload("res://scripts/sim/ant.gd")
 const Kit := preload("res://scripts/view/surface2d/draw_kit.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
+const T := preload("res://scripts/sim/text_th.gd")
 
 signal speed_changed(speed: float)
 signal view_changed(mode: String)
@@ -42,9 +43,7 @@ var current_slot := 1
 var settings := {}
 var _colonies: Window
 var _colonies_body: PanelContainer
-var _confirm: ConfirmationDialog
 var _report: AcceptDialog
-var _pending := [1, "soil:queen"]
 var _proj_tex: ImageTexture
 var _proj_air := -1
 var _spots_t := -10.0

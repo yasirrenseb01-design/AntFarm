@@ -22,10 +22,10 @@ func _build_panel(root: Control) -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 3)
 	st.add_child(grid)
-	for key in ["queen", "workers", "out", "nurses", "callow", "eggs", "larvae", "pupae", "sugar", "protein",
+	for key in ["queen", "workers", "out", "nurses", "callow", "eggs", "larvae", "pupae", "sugar", "fat", "protein",
 			"nest_t", "dev", "dead", "cycle", "vol", "depth", "size"]:
 		var names := {"queen": "ราชินี", "workers": "มดงาน", "out": "นอกรัง", "nurses": "พี่เลี้ยง",
-			"callow": "ตัวใหม่", "eggs": "ไข่", "larvae": "ตัวอ่อน", "pupae": "ดักแด้", "sugar": "น้ำตาล",
+			"callow": "ตัวใหม่", "eggs": "ไข่", "larvae": "ตัวอ่อน", "pupae": "ดักแด้", "sugar": "น้ำตาล", "fat": "ไขมันสะสม",
 			"protein": "โปรตีน", "nest_t": "ในรัง", "dev": "พัฒนาการ", "dead": "ตาย", "cycle": "ไข่→มดงาน",
 			"vol": "ปริมาตรรัง", "depth": "ลึก", "size": "ขนาดมดงาน"}
 		var l := _label(names[key], 13, MUTED)

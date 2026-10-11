@@ -32,6 +32,7 @@ var target_t := Vector3(200, 0, 125)
 
 var _cam: Camera3D
 var _sun: DirectionalLight3D
+var _frost := -1.0        # -1 until the first frame (then it starts at the right value)
 var _env: Environment
 var _ground_mat: ShaderMaterial
 var _prop_mat: StandardMaterial3D
@@ -387,3 +388,15 @@ func _honey_mat() -> StandardMaterial3D:
 
 
 var _carried: Array = []
+
+
+## Outdoors the plants wither in the cold months and the ground whitens with frost on freezing nights.
+func _seasons(delta: float) -> void:
+	var wild: bool = sim.scenario == "wild"
+	var wither: float = 1.0 - sim.season_life() if wild else 0.0
+	var frost_to: float = clampf((0.5 - sim.climate.air) / 3.0, 0.0, 1.0) if wild else 0.0
+	_frost = frost_to if _frost < 0.0 else move_toward(_frost, frost_to, delta * 0.2 * maxf(speed, 0.5))
+	for m in [_grass_mat, _plant_mat]:
+		m.set_shader_parameter("wither", wither)
+		m.set_shader_parameter("frost", _frost)
+	_ground_mat.set_shader_parameter("frost", _frost)

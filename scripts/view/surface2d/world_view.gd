@@ -358,7 +358,7 @@ func _update_pheromones(rows: int) -> void:
 
 
 func _sky_color() -> Color:
-	var sun := sin(TAU * (sim.time_of_day() - 0.25))
+	var sun: float = sim.sun_height()       # outdoors the sun rises earlier and sets later in summer
 	var night := Color(0.4, 0.42, 0.56)
 	var dusk := Color(1.0, 0.76, 0.6)
 	var day := Color(1.0, 0.98, 0.95)

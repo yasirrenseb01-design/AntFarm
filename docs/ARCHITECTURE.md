@@ -84,11 +84,13 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 
 ## เซฟ
 - `scripts/game/save_store.gd`: 3 ช่อง (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
-- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_base.gd` (ตอนนี้ 2)
+- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_base.gd` (ตอนนี้ 4)
 - **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
   และ**ไม่บันทึกทับ**; อ่านไม่ได้ → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (บอกผู้เล่นทุกกรณี)
 - รูปแบบ v1→v2 (v0.5.8): มดมี `caste`, แมงมุมตัวเดียว (`spider`) → รายการ `creatures`
 - รูปแบบ v2→v3 (v0.6.0): มดมี `foe`, `hurt`; ศัตรูมี `id`, `hp`, `held`; เพิ่มสนาม `alarm` และ `next_cid`
+- รูปแบบ v3→v4 (v0.7.0): `scenario` ("keeper"/"wild"), `start_doy`, `cold_days`, `fridge_on`, `fat`; climate มี `scenario`, `fridge`;
+  ราชินีมี `rested` — เซฟเก่าทั้งหมดกลายเป็นฉาก "ชุดเลี้ยง"
 - ไฟล์เซฟตัวอย่างของแต่ละรูปแบบอยู่ใน `tests/fixtures/` (สร้างจากโค้ดเวอร์ชันนั้น) — เปลี่ยนรูปแบบครั้งใหม่ให้เพิ่มไฟล์ของรูปแบบล่าสุดก่อนเปลี่ยน
 - ทดสอบโดยไม่แตะเซฟจริง: `--sandbox` ใช้ `user://sandbox/`

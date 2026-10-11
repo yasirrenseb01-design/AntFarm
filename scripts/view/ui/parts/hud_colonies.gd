@@ -18,13 +18,6 @@ func _build_colonies(root: Control) -> void:
 	_colonies_body = PanelContainer.new()
 	_colonies_body.add_theme_stylebox_override("panel", _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 0, 16, 14))
 	_colonies.add_child(_colonies_body)
-	_confirm = ConfirmationDialog.new()
-	_confirm.theme = root.theme
-	_confirm.title = "เริ่มรังใหม่"
-	_confirm.ok_button_text = "เริ่มใหม่"
-	_confirm.cancel_button_text = "ยกเลิก"
-	_confirm.confirmed.connect(func(): colony_new.emit(_pending[0], _pending[1]))
-	root.add_child(_confirm)
 	_report = AcceptDialog.new()
 	_report.theme = root.theme
 	_report.ok_button_text = "ดูรัง"
@@ -38,8 +31,6 @@ func open_colonies() -> void:
 	col.add_theme_constant_override("separation", 12)
 	col.custom_minimum_size = Vector2(560, 0)
 	_colonies_body.add_child(col)
-	var kinds := [["ราชินีตัวเดียว · ก้อนดิน (เริ่มแบบธรรมชาติ)", "soil:queen"], ["ราชินีตัวเดียว · ตู้แอนท์ฟาร์ม", "glass:queen"],
-		["รังอายุ 3 เดือน (14 ตัว) · ก้อนดิน", "soil:young"], ["รังอายุ 3 เดือน (14 ตัว) · ตู้แอนท์ฟาร์ม", "glass:young"]]
 	for s in range(1, Store.SLOTS + 1):
 		var m: Dictionary = Store.meta(s)
 		var row := HBoxContainer.new()
@@ -51,7 +42,8 @@ func open_colonies() -> void:
 		var desc := "ว่าง"
 		if not m.is_empty():
 			var when := Time.get_datetime_string_from_unix_time(int(m.get("saved_unix", 0)) + _tz_offset(), true)
-			desc = "วันที่ %d · มดงาน %d · %s%s · บันทึก %s" % [m.get("day", 1), m.get("workers", 0),
+			desc = "%s · วันที่ %d · มดงาน %d · %s%s · บันทึก %s" % [
+				"ป่า" if m.get("scenario", "keeper") == "wild" else "ชุดเลี้ยง", m.get("day", 1), m.get("workers", 0),
 				"ตู้แอนท์ฟาร์ม" if m.get("glass", false) else "ก้อนดิน",
 				"" if m.get("queen", true) else " · ราชินีตายแล้ว", when.replace("T", " ").left(16)]
 		info.add_child(_label(desc, 12, MUTED))
@@ -63,23 +55,12 @@ func open_colonies() -> void:
 				_colonies.hide()
 				colony_play.emit(slot_n))
 			row.add_child(play)
-		var fresh := MenuButton.new()
-		fresh.text = "เริ่มใหม่ ▾"
-		fresh.flat = false
-		fresh.focus_mode = Control.FOCUS_NONE
-		var pm := fresh.get_popup()
-		for i in kinds.size():
-			pm.add_item(kinds[i][0], i)
+		var fresh := _button("เริ่มใหม่…", false)
 		var slot_k: int = s
 		var occupied: bool = not m.is_empty()
-		pm.id_pressed.connect(func(id):
+		fresh.pressed.connect(func():
 			_colonies.hide()
-			_pending = [slot_k, kinds[id][1]]
-			if occupied:
-				_confirm.dialog_text = "รัง %d ที่มีอยู่จะถูกลบและเริ่มใหม่เป็น\n%s\n\nแน่ใจไหม?" % [slot_k, kinds[id][0]]
-				_confirm.popup_centered()
-			else:
-				colony_new.emit(slot_k, kinds[id][1]))
+			_open_new_colony(slot_k, occupied))
 		row.add_child(fresh)
 		col.add_child(row)
 	col.add_child(HSeparator.new())
@@ -115,6 +96,76 @@ func open_colonies() -> void:
 	col.add_child(foot)
 	_colonies.reset_size()
 	_colonies.popup_centered()
+
+
+## Choices for a new colony: where it lives, what it lives in, and how it starts.
+const NEW_SCENARIOS := [
+	["wild", "ป่า (แปลงดินกลางแจ้ง)", "สี่ฤดูแบบเขตอบอุ่นที่มดดำสวนอาศัยอยู่จริง หน้าหนาวดินเย็นจัด มดต้องสะสมไขมันไว้จำศีล เพลี้ยและแมลงมีแค่ช่วงอากาศอุ่น และมีศัตรูธรรมชาติ (แมงมุม ตะขาบ ด้วงดิน)"],
+	["keeper", "ชุดเลี้ยง (ในห้อง)", "ฟอร์มิคาเรียมบนชั้นในห้อง อุณหภูมิห้องทั้งปี มีแผ่นความร้อน ไม่มีศัตรูธรรมชาติ ราชินีที่ไม่ได้จำศีลจะวางไข่น้อยลงเรื่อยๆ"]]
+const NEW_NESTS := [["soil", "ก้อนดิน", "มดขุดอุโมงค์เองในดินทั้งก้อน"], ["glass", "ตู้แอนท์ฟาร์ม", "ดินแผ่นบางระหว่างกระจกสองแผ่น มองเห็นทุกห้อง"]]
+const NEW_STARTS := [["queen", "ราชินีตัวเดียว", "ราชินีหลังบินผสมพันธุ์ปลายเดือนกรกฎาคม ขังตัวเองเลี้ยงลูกชุดแรกด้วยไขมันในตัว"],
+	["young", "รังอายุ 3 เดือน (14 ตัว)", "ราชินีกับมดงาน 14 ตัว เริ่มกลางเดือนเมษายน"]]
+
+
+## The new-colony window: pick a scenario, a nest and a start, then start it in this slot.
+func _open_new_colony(slot: int, occupied: bool) -> void:
+	var win := Window.new()
+	win.title = "เริ่มรังใหม่ในรัง %d" % slot
+	win.theme = _colonies.theme
+	win.transient = true
+	win.exclusive = true
+	win.unresizable = true
+	win.wrap_controls = true
+	win.close_requested.connect(win.queue_free)
+	_colonies.get_parent().add_child(win)
+	var body := PanelContainer.new()
+	body.add_theme_stylebox_override("panel", _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 0, 16, 14))
+	win.add_child(body)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 8)
+	col.custom_minimum_size = Vector2(540, 0)
+	body.add_child(col)
+	var picked := {}
+	for group in [["scenario", "ฉาก", NEW_SCENARIOS], ["nest", "รัง", NEW_NESTS], ["start", "เริ่มจาก", NEW_STARTS]]:
+		var key: String = group[0]
+		var opts: Array = group[2]
+		col.add_child(_label(group[1], 15, AMBER))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		col.add_child(row)
+		var note := _label(opts[0][2], 12, MUTED)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size = Vector2(540, 0)
+		var bg := ButtonGroup.new()
+		picked[key] = opts[0][0]
+		for o in opts:
+			var b := _button(o[1], true)
+			b.button_group = bg
+			b.button_pressed = o == opts[0]
+			b.pressed.connect(func():
+				picked[key] = o[0]
+				note.text = o[2])
+			row.add_child(b)
+		col.add_child(note)
+	col.add_child(HSeparator.new())
+	var foot := HBoxContainer.new()
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	foot.add_theme_constant_override("separation", 10)
+	if occupied:
+		var warn := _label("รังเดิมในช่องนี้จะถูกลบ", 12, DANGER)
+		warn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		foot.add_child(warn)
+	var cancel := _button("ยกเลิก", false)
+	cancel.pressed.connect(win.queue_free)
+	foot.add_child(cancel)
+	var go := _button("เริ่มรังนี้", false)
+	go.pressed.connect(func():
+		win.queue_free()
+		colony_new.emit(slot, "%s:%s:%s" % [picked.nest, picked.start, picked.scenario]))
+	foot.add_child(go)
+	col.add_child(foot)
+	win.reset_size()
+	win.popup_centered()
 
 
 func show_report(title: String, text: String) -> void:

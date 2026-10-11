@@ -26,9 +26,8 @@ func setup(s, w) -> void:
 
 func refresh(delta: float) -> void:
 	_t += delta
-	_clock.text = "วันที่ %d  %s" % [sim.day(), sim.clock_text()]
-	var m := int(sim.time_of_day() * 1440)
-	var sky := "ฝนตก" if sim.climate.raining() else ("กลางคืน" if m < 360 or m > 1110 else "แจ่มใส")
+	_clock.text = "ปีที่ %d · %s · %s  %s" % [sim.year(), sim.date_text(), sim.season_name(), sim.clock_text()]
+	var sky := "ฝนตก" if sim.climate.raining() else ("กลางคืน" if sim.sun_height() < -0.05 else "แจ่มใส")
 	_weather.text = "อากาศ %.1f°C · %s · มดออกหากิน %d%%" % [sim.climate.air, sky, int(sim.activity * 100)]
 	_frame += 1
 	if _frame % 4 == 0 and _nest.is_visible_in_tree():
@@ -41,6 +40,8 @@ func refresh(delta: float) -> void:
 	var q: Label = _vals["queen"]
 	if not sim.queen.alive:
 		_show(q, "ตายแล้ว", DANGER)
+	elif sim.climate.nest < 10.0:
+		_show(q, "จำศีล", INK)              # winter torpor: no laying until the nest warms
 	elif sim.founding():
 		_show(q, "ไขมัน %d%%" % int(sim.queen.reserve / float(sim.sp["queen_reserve"]) * 100.0), LEAF)   # sealed in, living on her reserves
 	elif sim.starving or sim.queen.starve > 0.5:
@@ -55,7 +56,8 @@ func refresh(delta: float) -> void:
 	_show(_vals["larvae"], str(sim.larvae.size()), DANGER if sim.protein < 0.5 and sim.larvae.size() > 0 else INK)
 	_show(_vals["pupae"], str(sim.pupae.size()))
 	var fnd: bool = sim.founding()      # a founding queen lives on her reserves: empty stores are normal
-	_show(_vals["sugar"], "%.1f" % sim.sugar, DANGER if sim.sugar < 2.0 and not fnd else INK)
+	_show(_vals["sugar"], "%.1f" % sim.sugar, DANGER if sim.sugar < 2.0 and sim.fat < 1.0 and not fnd else INK)
+	_show(_vals["fat"], "%.1f" % sim.fat)
 	_show(_vals["protein"], "%.1f" % sim.protein, DANGER if sim.protein < 1.0 and not fnd else INK)
 	_show(_vals["nest_t"], "%.1f°C" % sim.climate.nest, DANGER if sim.climate.nest > 34.0 else INK)
 	_show(_vals["dev"], "%d%%" % int(sim.dev * 100))

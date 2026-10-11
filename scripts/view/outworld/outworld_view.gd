@@ -150,6 +150,7 @@ func refresh(delta: float) -> void:
 	_grass_mat.set_shader_parameter("wind", 1.3 + 1.8 * _wet)
 	_plant_mat.set_shader_parameter("wind", 0.45 + 0.7 * _wet)
 	_litter_mat.set_shader_parameter("wind", 0.35 + 0.6 * _wet)
+	_seasons(delta)
 	_light()
 	var lod := "hi" if cam_dist < 80.0 else "lo"
 	if lod != _lod:

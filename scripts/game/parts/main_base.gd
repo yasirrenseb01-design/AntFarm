@@ -15,7 +15,7 @@ var hud
 var nest_view
 var outworld
 var mode := "surface"              # "outworld" (3D), "surface" (top-down 2D) or "nest" (3D underground)
-static var next_nest := ""      # "<soil|glass>:<queen|young>": start a fresh colony after the reload
+static var next_nest := ""      # "<soil|glass>:<queen|young>:<wild|keeper>": start a fresh colony after the reload
 static var next_slot := 0       # which save slot to open after the reload (0 = the last one played)
 var slot := 1
 var _persist := false

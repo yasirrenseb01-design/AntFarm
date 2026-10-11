@@ -15,6 +15,7 @@ uniform vec2 nest_xz = vec2(160.0, 133.3);
 uniform float mound_h = 0.5;
 uniform float mound_r = 4.0;
 uniform float wet = 0.0;
+uniform float frost = 0.0;           // white hoarfrost on the soil on freezing mornings (outdoors)
 
 varying vec2 wp;
 varying float gh;
@@ -64,6 +65,9 @@ void fragment() {
 	float puddle = smoothstep(0.45, 1.0, wet) * smoothstep(-0.45, -0.85, gh) * (1.0 - hole);
 	puddle *= 0.75 + 0.25 * texture(detail, wp / 14.0).r;
 	c = mix(c * mix(1.0, 0.62, wet), c * 0.3 + vec3(0.03, 0.035, 0.045), puddle);
+	// frost settles first on the grains and ridges, never in the warm mouth of the nest
+	float fr = frost * smoothstep(0.2, 0.9, det * 0.8 + 0.2 * fine + 0.25 * frost) * smoothstep(1.5, 4.0, dn);
+	c = mix(c, vec3(0.72, 0.74, 0.76), fr * 0.7);
 	ALBEDO = c;
 	ROUGHNESS = mix(mix(0.95, 0.35, wet), 0.03, puddle);
 	SPECULAR = mix(mix(0.25, 0.6, wet), 0.95, puddle);

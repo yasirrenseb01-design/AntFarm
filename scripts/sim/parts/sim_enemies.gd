@@ -27,7 +27,7 @@ func _maybe_spawn(dt: float) -> void:
 		var S: Dictionary = ENEMY_KINDS[kind].STATS
 		if S.get("night", false) and daylight() > 0.15:
 			continue
-		if rng.randf() < S.rate * dt:
+		if rng.randf() < S.rate * dt * season_life():
 			_spawn_creature(kind)
 			return
 

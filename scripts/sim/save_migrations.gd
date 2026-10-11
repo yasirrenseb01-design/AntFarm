@@ -15,6 +15,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				_v1_to_v2(d)
 			2:
 				_v2_to_v3(d)
+			3:
+				_v3_to_v4(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -49,3 +51,16 @@ static func _v2_to_v3(d: Dictionary) -> void:
 		id += 1
 	d["next_cid"] = id
 	d["alarm"] = null
+
+
+## v0.7.0: scenarios and seasons. Colonies saved before then lived in an indoor formicarium, so they
+## become "keeper" colonies (the room climate they always had); their queen counts as rested.
+static func _v3_to_v4(d: Dictionary) -> void:
+	d["scenario"] = "keeper"
+	d["start_doy"] = 205
+	d["cold_days"] = 0
+	d["fridge_on"] = false
+	d["fat"] = 0.0
+	d.climate["scenario"] = "keeper"
+	d.climate["fridge"] = 0.0
+	d.queen["rested"] = 1.0

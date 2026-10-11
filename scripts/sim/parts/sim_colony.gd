@@ -2,8 +2,22 @@ extends "res://scripts/sim/parts/sim_enemies.gd"
 ## Simulation, layer 4 of 5: colony physiology (days, roles, feeding, moisture, the queen, brood, the outworld's food and weather).
 
 
+const QUEEN_KEEP := 20.0     # body reserve a founding queen will not spend on brood
+
 func _new_day() -> void:
 	climate.new_day()
+	# a keeper cools the formicarium down (and warms it back up) over about a week
+	climate.fridge = move_toward(climate.fridge, 1.0 if fridge_on else 0.0, 1.0 / 7.0)
+	# a winter is a stretch of cold days; six weeks of it fully rests the queen for the next year
+	if climate.nest < 10.0:
+		cold_days += 1
+		if cold_days == 42:
+			queen["rested"] = 1.0
+			_log(T.winter_rest_done, "ok")
+	else:
+		if cold_days > 0 and climate.nest > 14.0:
+			cold_days = 0
+		queen["rested"] = maxf(0.0, float(queen.get("rested", 1.0)) - 1.0 / 300.0)
 	match nest.plan_chambers(eggs.size() + larvae.size() + pupae.size(), workers.size()):
 		"planned":
 			_log(T.chamber_planned % nest.chambers.size(), "ok")
@@ -43,19 +57,20 @@ func _activity(t: float) -> float:
 
 func _colony(dt: float) -> void:
 	dev = _dev_rate(climate.nest)
-	activity = _activity(climate.air) * (0.1 if climate.raining() else 1.0)
+	activity = _activity(climate.surface()) * (0.1 if climate.raining() else 1.0)
 	hungry = sugar < workers.size() * 0.4 + 2.0 or protein < larvae.size() * 0.5 + 1.0
 	var forager_age: float = sp["nurse_until_hungry"] if hungry else sp["nurse_until_days"]
 	if workers.size() < 8:
 		forager_age = sp["callow_days"]     # the first nanitics start foraging within days of emerging
 
+	var age_k := clampf(0.35 + 0.65 * (climate.nest - 4.0) / 20.0, 0.35, 1.0)     # cold slows ageing
 	nurses = 0
 	callow = 0
 	out_count = 0
 	var idle: Array = []
 	outside.clear()
 	for a in workers:
-		a.age += dt
+		a.age += dt * age_k
 		if a.state != Ant.IN_NEST:
 			out_count += 1
 			outside.append(a)
@@ -141,26 +156,43 @@ func _colony(dt: float) -> void:
 func _metabolism(dt: float) -> void:
 	protein *= pow(0.92, dt)  # stored prey dries out and spoils
 	# Workers feed the queen first by trophallaxis, then share what is left among themselves.
-	var q_need: float = sp["sugar_queen"] * dt if queen.alive else 0.0
+	var heat := cold_factor(climate.nest)          # little food is burnt in a cold nest
+	var q_need: float = sp["sugar_queen"] * dt * heat if queen.alive else 0.0
+	if sugar < q_need and fat > 0.0:
+		var burn := minf(q_need - sugar, fat)
+		fat -= burn
+		sugar += burn
 	queen_fed = sugar >= q_need
 	if not queen_fed and queen.reserve > 0.0:
 		queen.reserve = maxf(0.0, queen.reserve - q_need)   # living off her own body
 		queen_fed = true
 	else:
 		sugar = maxf(0.0, sugar - q_need)
-	var need: float = (workers.size() * sp["sugar_worker"] + larvae.size() * sp["sugar_larva"]) * dt
-	if sugar < need and queen.reserve > 0.0:
-		# while her reserves last the queen regurgitates food to her first workers
+	# larvae held still by the cold (winter diapause) barely eat
+	var need: float = (workers.size() * sp["sugar_worker"] + larvae.size() * sp["sugar_larva"] * clampf(dev, 0.1, 1.0)) * dt * heat
+	if sugar < need and fat > 0.0:
+		# lean times: the workers live on (and regurgitate) their own body fat
+		var burn := minf(need - sugar, fat)
+		fat -= burn
+		sugar += burn
+	if sugar < need and queen.reserve > 0.0 and workers.size() < 5:
+		# while founding, the queen regurgitates food from her reserves to her first workers
 		var give := minf(need - sugar, queen.reserve)
 		queen.reserve -= give
 		sugar += give
 	var fed := 1.0 if need <= 0.0 else clampf(sugar / need, 0.0, 1.0)
 	starving = fed < 0.999
 	sugar = maxf(0.0, sugar - need)
+	var keep := sugar_cap() * (0.15 if winding_down() else 0.5)
+	if sugar > keep and fat < fat_cap():
+		# a well-fed colony lays down fat (and full crops) for the lean months, above all in autumn
+		var store := minf(minf(sugar - keep, fat_cap() - fat), workers.size() * 0.15 * dt)
+		fat += store
+		sugar -= store
 	var dry := humidity < 0.1
 	for a in workers:
 		if starving:
-			a.energy -= dt * (1.0 - fed) / sp["starve_days_worker"] / a.hardiness
+			a.energy -= dt * heat * (1.0 - fed) / sp["starve_days_worker"] / a.hardiness
 		elif dry:
 			a.energy -= dt / 6.0 / a.hardiness
 		else:
@@ -197,7 +229,7 @@ func _moisture(dt: float) -> void:
 func _queen(dt: float) -> void:
 	if not queen.alive:
 		return
-	queen.starve = (queen.starve + dt) if not queen_fed else maxf(0.0, queen.starve - dt)
+	queen.starve = (queen.starve + dt * cold_factor(climate.nest)) if not queen_fed else maxf(0.0, queen.starve - dt)
 	queen.dry = (queen.get("dry", 0.0) + dt) if humidity < 0.1 else maxf(0.0, queen.get("dry", 0.0) - dt)
 	if queen.starve > sp["starve_days_queen"] or queen.dry > sp["starve_days_queen"] * 1.5:
 		queen.alive = false
@@ -212,10 +244,12 @@ func _queen(dt: float) -> void:
 	var room := clampf(1.0 - float(brood) / (12.0 + workers.size() * 2.5), 0.0, 1.0)
 	room *= clampf(float(nest.air) / target_air(), 0.3, 1.0)   # a cramped nest holds back laying
 	# a founding queen makes her first eggs from her own body reserves
-	var yolk := maxf(protein, 3.0 if (queen.reserve > 8.0 and workers.size() < 5) else 0.0)
-	var rate := cap * dev * clampf(yolk / 3.0, 0.0, 1.0) * room
+	var yolk := maxf(protein, 3.0 if (queen.reserve > QUEEN_KEEP and workers.size() < 5) else 0.0)
+	var rate := cap * dev * clampf(yolk / 3.0, 0.0, 1.0) * room * (0.35 + 0.65 * float(queen.get("rested", 1.0)))
 	if humidity < sp["humidity_ok_min"]:
 		rate *= 0.3
+	if winding_down() and workers.size() >= 5:
+		rate = 0.0
 	egg_acc += rate * dt
 	while egg_acc >= 1.0:
 		egg_acc -= 1.0
@@ -233,10 +267,12 @@ func _brood(dt: float, nurse_cap: float) -> void:
 
 	var n := larvae.size()
 	if n > 0:
-		var need: float = n * sp["protein_larva"] * dt
-		if protein < need and queen.reserve > 0.0 and workers.size() < 5:
-			# the founding queen feeds her larvae from her own reserves (trophic eggs, saliva)
-			var give := minf(need - protein + 0.01, queen.reserve)
+		# larvae eat to grow: one held still by the cold barely feeds
+		var need: float = n * sp["protein_larva"] * dt * clampf(dev, 0.1, 1.0)
+		if protein < need and queen.reserve > QUEEN_KEEP and workers.size() < 5:
+			# the founding queen feeds her larvae from her own reserves (trophic eggs, saliva), but
+			# keeps back enough body fat to see herself through the winter
+			var give := minf(need - protein + 0.01, queen.reserve - QUEEN_KEEP)
 			queen.reserve -= give
 			protein += give
 		var r := minf(1.0, minf(nurse_cap / n, protein / need))
@@ -295,10 +331,12 @@ func _brood(dt: float, nurse_cap: float) -> void:
 
 func _outworld(dt: float) -> void:
 	var light := daylight()
+	var life := season_life()
 	for f in foods:
 		f.age += dt
 		if f.regen > 0.0:
-			f.amt = minf(f.cap, f.amt + f.regen * dt * (0.4 + 0.6 * light))
+			# aphids feed and breed only in the warm months (they overwinter as eggs)
+			f.amt = minf(f.cap, f.amt + f.regen * dt * (0.4 + 0.6 * light) * life)
 		elif FoodKinds.info(f.kind).has("dries"):
 			f.amt *= pow(FoodKinds.info(f.kind).dries, dt)  # a drop dries out and crystallises
 		elif f.age > FoodKinds.info(f.kind).get("rots_after", INF) and not f.rotten:
@@ -309,7 +347,7 @@ func _outworld(dt: float) -> void:
 	if foods.size() != before:
 		_food_dirty = true
 
-	if rng.randf() < 0.8 * dt:
+	if rng.randf() < 0.8 * dt * life:
 		var p := Vector2(rng.randf_range(30, WORLD.x - 30), rng.randf_range(30, WORLD.y - 30))
 		if place_food("fly", p) and not _warned.get("fly_hint", false):
 			_warned["fly_hint"] = true

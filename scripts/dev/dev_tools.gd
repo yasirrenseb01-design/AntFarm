@@ -110,6 +110,8 @@ func _take_shot() -> void:
 			nest_view.snap_camera()
 	if _opts.has("colonies"):
 		hud.open_colonies()
+	if _opts.has("newcolony"):
+		hud._open_new_colony(1, true)
 	var keep := speed
 	if not _opts.has("live"):
 		speed = 0        # hold the clock still; _process keeps rendering
