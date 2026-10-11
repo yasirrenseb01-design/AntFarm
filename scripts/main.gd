@@ -433,6 +433,9 @@ func _take_shot() -> void:
 		for f in sim.foods:
 			if f.kind == "cricket":
 				f.amt = f.cap * float(_opts["food-left"])
+				if _opts.has("food-age"):
+					f.age = float(_opts["food-age"])
+					f.found = true
 	if _opts.has("rain"):
 		sim.climate.rain_ticks = sim.TPD
 	if mode == "outworld":

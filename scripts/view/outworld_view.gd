@@ -64,6 +64,7 @@ var _aphid_meshes: Array = []
 var _aphid_wings: Mesh
 var _dew_mm: MultiMesh              # honeydew droplets an aphid is handing to a milking ant
 var _splash_mm: MultiMesh
+var _soil_mm: MultiMesh             # soil grains in the mandibles of ants burying a carcass
 var _splash: Array = []             # [position, age]
 
 
@@ -144,6 +145,7 @@ func setup(s, w) -> void:
 	sm.albedo_color = Color(0.85, 0.9, 1.0)
 	_splash_mm = _multimesh(ring, sm, true)
 	_dew_mm = _multimesh(_blob_mesh(Vector3(0.15, 0.14, 0.15)), _honey_mat(), false)
+	_soil_mm = _multimesh(_blob_mesh(Vector3(1.0, 0.75, 1.0)), _mat(Color(0.4, 0.29, 0.19), 0.95), false)
 	for i in 320:
 		_rain.append(Vector3(randf() * 400.0, randf() * 60.0, randf() * 250.0))
 
@@ -458,7 +460,7 @@ func _sync_foods() -> void:
 		var key: int = f.seed
 		seen[key] = true
 		var left: float = clampf(f.amt / f.cap, 0.0, 1.0)
-		var sig := "%s:%d:%s" % [f.kind, int(left * 10.0), f.rotten]
+		var sig := "%s:%d:%s:%d" % [f.kind, int(left * 10.0), f.rotten, int(_cover(f) * 20.0)]
 		var e: Dictionary = _foods.get(key, {})
 		if not e.is_empty() and e.sig == sig:
 			continue
@@ -559,11 +561,25 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 				# Lasius eat a big carcass where it lies: they bite in at the soft joints and drink or cut out
 				# the insides, so the hard shell keeps its shape while the abdomen sags and wrinkles flat
 				var gone := 1.0 - left
-				for pc in ["cricket_head", "cricket_abdomen", "cricket_hindlegs", "cricket_legs"]:
+				# once the muscle inside the hip is eaten away, one hind leg comes off and lies beside it
+				var lost := ("cricket_hindleg_l" if f.seed % 2 == 0 else "cricket_hindleg_r") if left < 0.35 else ""
+				for pc in ["cricket_head", "cricket_abdomen", "cricket_hindleg_l", "cricket_hindleg_r", "cricket_legs"]:
 					var mi := MeshInstance3D.new()
 					mi.mesh = Props.asset(pc)
 					mi.material_override = mat
 					body.add_child(mi)
+					if pc == lost:
+						var sd := -1.0 if pc.ends_with("_l") else 1.0
+						# fallen flat on the ground, pulled a little way out from the body
+						# tip it over its foot until the hip end rests on the ground, then shift it clear of the body
+						var piv := Vector3(-7.3, 0.0, 2.8 * sd)
+						var tip := Transform3D(Basis.IDENTITY, piv) * Transform3D(Basis(Vector3.BACK, -0.22), Vector3.ZERO) * Transform3D(Basis.IDENTITY, -piv)
+						mi.transform = Transform3D(Basis(Vector3.UP, -0.3 * sd), Vector3(1.2, 0.15, 2.0 * sd)) * tip
+						var socket := MeshInstance3D.new()
+						socket.mesh = _blob_mesh(Vector3(0.45, 0.3, 0.4))
+						socket.material_override = _flesh_mat()
+						socket.position = Vector3(0.5, 1.75, 1.45 * sd)
+						body.add_child(socket)
 					if pc == "cricket_abdomen":
 						# deflate about the belly, which stays on the ground
 						var sc := Vector3(1.0 - 0.06 * gone, 1.0 - 0.5 * gone, 1.0 - 0.15 * gone)
@@ -598,10 +614,70 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 			wings.material_override = _wing_mat()
 			wings.scale = Vector3.ONE * (0.6 + 0.4 * left)
 			root.add_child(wings)
+	if f.kind in ["cricket", "fly"]:
+		_add_soil_cover(root, f, left)
 	return root
 
 
 var _honey: StandardMaterial3D
+var _flesh: StandardMaterial3D
+var _grain_mesh: Mesh
+var _grain_mat: StandardMaterial3D
+
+
+func _flesh_mat() -> StandardMaterial3D:
+	if _flesh == null:
+		_flesh = _mat(Color(0.78, 0.62, 0.46), 0.5)
+	return _flesh
+
+
+## How far the ants have buried a carcass: Lasius niger carry soil grains onto large food they are
+## exploiting, starting from the ground around it and working up its sides.
+func _cover(f: Dictionary) -> float:
+	return clampf((f.age - 0.15) / 4.0, 0.0, 0.85) if f.found else 0.0
+
+
+func _add_soil_cover(root: Node3D, f: Dictionary, left: float) -> void:
+	var cover := _cover(f)
+	if cover <= 0.0:
+		return
+	if _grain_mesh == null:
+		_grain_mesh = _blob_mesh(Vector3(1.0, 0.75, 1.0))
+		_grain_mat = _vc_mat(0.95, false, false)
+	var big: bool = f.kind == "cricket"
+	var n_all := 220 if big else 60
+	var rng := RandomNumberGenerator.new()
+	rng.seed = f.seed + 51
+	var grains := []
+	for i in n_all:
+		var thr := pow(rng.randf(), 0.8)                  # low thresholds sit on the ground, high ones up on the body
+		var x := rng.randf_range(-7.0, 5.5) if big else rng.randf_range(-2.4, 2.4)
+		var sd := 1.0 if rng.randf() < 0.5 else -1.0
+		var span := 6.6 if big else 2.6
+		var prof := sqrt(maxf(0.0, 1.0 - pow((x + (1.0 if big else 0.0)) / span, 2.0)))
+		var height := (2.8 if big else 1.4) * prof
+		if big and x < 0.5:
+			height *= 1.0 - 0.45 * (1.0 - left)           # the abdomen has sagged
+		var y := 0.15 + thr * height
+		var half := (1.75 if big else 1.0) * prof + 0.35
+		var z := sd * (half * sqrt(maxf(0.0, 1.0 - pow(thr, 2.0) * 0.85)) + (1.0 - thr) * rng.randf_range(0.1, 1.2))
+		var r := rng.randf_range(0.22, 0.48)
+		grains.append([thr, Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * r), Vector3(x, y, z)),
+			Color(0.34, 0.25, 0.16).lerp(Color(0.5, 0.38, 0.25), rng.randf())])
+	grains.sort_custom(func(a, b): return a[0] < b[0])
+	var n := int(cover * n_all)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = _grain_mesh
+	mm.instance_count = n
+	for i in n:
+		mm.set_instance_transform(i, grains[i][1])
+		mm.set_instance_color(i, (grains[i][2] as Color).srgb_to_linear())
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = mm
+	mi.material_override = _grain_mat
+	root.add_child(mi)
 var _wings: StandardMaterial3D
 
 
@@ -691,6 +767,7 @@ func _update_ants(delta: float) -> void:
 	var loads := []
 	var carried := []
 	var dews := []
+	var soil := []
 	for a in sim.outside:
 		if a.state == Ant.IN_NEST or a.dead:
 			continue
@@ -729,6 +806,8 @@ func _update_ants(delta: float) -> void:
 		cus.append(Color(fmod(a.phase, TAU * 64.0), act, fmod(a.anim, 600.0), a.vmv))
 		if a.carry == Ant.PROTEIN:
 			loads.append(tr * CARRY_OFFSET)
+		elif a.carry == Ant.NONE and a.state == Ant.SEARCH and a.busy <= 0 and a.id % 3 == 0 and _burying(a.pos):
+			soil.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * 0.38), Vector3(1.4, 0.45, 0)))
 		elif a.carry == Ant.CORPSE:
 			carried.append(tr * Transform3D(Basis(Vector3.RIGHT, PI).scaled(Vector3.ONE * 0.9), Vector3(2.3, 0.95, 0)))
 	_ant_mm.instance_count = xs.size()
@@ -736,6 +815,9 @@ func _update_ants(delta: float) -> void:
 		_ant_mm.set_instance_transform(i, xs[i])
 		_ant_mm.set_instance_color(i, cols[i])
 		_ant_mm.set_instance_custom_data(i, cus[i])
+	_soil_mm.instance_count = soil.size()
+	for i in soil.size():
+		_soil_mm.set_instance_transform(i, soil[i])
 	_dew_mm.instance_count = dews.size()
 	for i in dews.size():
 		var pulse := 0.6 + 0.4 * sin(_t * 3.0 + i)
@@ -747,6 +829,14 @@ func _update_ants(delta: float) -> void:
 
 
 var _carried: Array = []
+
+
+## True near a carcass the colony is still burying.
+func _burying(p: Vector2) -> bool:
+	for f in sim.foods:
+		if (f.kind == "cricket" or f.kind == "fly") and f.found and _cover(f) < 0.85 and f.pos.distance_squared_to(p) < 2500.0:
+			return true
+	return false
 
 
 ## Where an ant handling food really stands: the simulation only knows it is within reach of the

@@ -361,8 +361,8 @@ def aphid(kind, ox):
 
 # =============================================================== house cricket (Acheta domesticus)
 # A dead female lying slightly on its side, facing +x, ~13 units (20 mm) long. Exported in pieces so
-# the game can shrink the abdomen and drop the legs as the ants cut it up:
-# 0 head + pronotum + antennae, 1 abdomen + wings + cerci + ovipositor, 2 hind legs, 3 fore/mid legs.
+# the game can deflate the abdomen and let a hind leg fall off as the ants hollow it out:
+# 0 head + pronotum + antennae, 1 abdomen + wings + cerci + ovipositor, 2/4 left/right hind leg, 3 fore/mid legs.
 
 TAN = (0.5, 0.39, 0.25)
 DARKB = (0.18, 0.12, 0.07)
@@ -413,17 +413,18 @@ def cricket():
             lambda g, n: (0.42, 0.33, 0.21, 0.0) if abs(math.sin(g.x * 3.2 + g.z * 2.0)) > 0.9 else (0.52, 0.42, 0.28, 0.0), 0.05)
         # hind leg: a massive femur striped with dark chevrons, a spiny tibia, three tarsal segments
         fem = [(0.6, 1.9, 1.5 * side), (-0.6, 2.3, 1.85 * side), (-2.2, 2.0, 2.0 * side), (-3.4, 1.35, 2.05 * side)]
-        tube("hind_femur", fem, [0.42, 0.62, 0.48, 0.25], 2,
+        hg = 2 if side < 0 else 4                                    # each hind leg its own piece: it can come off
+        tube("hind_femur", fem, [0.42, 0.62, 0.48, 0.25], hg,
             lambda g, n: (DARKB + (0.0,)) if (math.sin((g.x + g.y * 0.8) * 4.2) > 0.75 and n.y > -0.3) else (0.58, 0.46, 0.3, 0.0), 8)
         knee = (-3.4, 1.35, 2.05 * side)
         heel = (-5.7, 0.28, 2.35 * side)
-        tube("hind_tibia", [knee, lerp(knee, heel, 0.5), heel], [0.2, 0.17, 0.15], 2, const((0.56, 0.44, 0.29)), 6)
+        tube("hind_tibia", [knee, lerp(knee, heel, 0.5), heel], [0.2, 0.17, 0.15], hg, const((0.56, 0.44, 0.29)), 6)
         for row in (-1, 1):
             for sp in range(5):
                 at = lerp(knee, heel, 0.25 + sp * 0.15)
-                tube("spine", [at, (at[0] - 0.12, at[1] + 0.5, at[2] + 0.18 * side * row)], [0.05, 0.01], 2, const((0.66, 0.55, 0.38)), 4, cap=False)
+                tube("spine", [at, (at[0] - 0.12, at[1] + 0.5, at[2] + 0.18 * side * row)], [0.05, 0.01], hg, const((0.66, 0.55, 0.38)), 4, cap=False)
         tars = [heel, (-6.3, 0.12, 2.6 * side), (-6.9, 0.05, 2.75 * side), (-7.3, 0.0, 2.8 * side)]
-        tube("hind_tarsus", tars, [0.14, 0.12, 0.1, 0.06], 2, const((0.52, 0.41, 0.27)), 5)
+        tube("hind_tarsus", tars, [0.14, 0.12, 0.1, 0.06], hg, const((0.52, 0.41, 0.27)), 5)
         for li, x in enumerate((3.0, 1.4)):
             hip = (x, 1.0, 0.9 * side)
             k_ = (x + 0.6, 0.75, 2.0 * side)
@@ -553,7 +554,7 @@ if WHAT == "aphid":
         render(SHOT, Vector((0, 0, 0.4)), 7.0, Vector((0.6, -0.9, 0.9)))
 elif WHAT == "cricket":
     cricket()
-    for g, name in ((0, "head"), (1, "abdomen"), (2, "hindlegs"), (3, "legs")):
+    for g, name in ((0, "head"), (1, "abdomen"), (2, "hindleg_l"), (4, "hindleg_r"), (3, "legs")):
         export("%s/cricket_%s.antmesh" % (OUT, name), [g])
     if SHOT:
         preview_material()
