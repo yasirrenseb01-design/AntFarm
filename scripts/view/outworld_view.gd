@@ -57,6 +57,14 @@ var _last_paint := Vector2(-999, -999)
 var hover := Vector3.INF
 var _t := 0.0
 var _wet := 0.0
+var _plant_mat: ShaderMaterial      # host plants and fallen leaves move in the air
+var _litter_mat: ShaderMaterial
+var _grass_mat: ShaderMaterial
+var _aphid_meshes: Array = []
+var _aphid_wings: Mesh
+var _dew_mm: MultiMesh              # honeydew droplets an aphid is handing to a milking ant
+var _splash_mm: MultiMesh
+var _splash: Array = []             # [position, age]
 
 
 func setup(s, w) -> void:
@@ -93,6 +101,11 @@ func setup(s, w) -> void:
 	_prop_mat.roughness = 0.8
 	_prop_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 
+	_plant_mat = _sway_mat(true, Color(0.05, 0.07, 0.02), 0.7)
+	_litter_mat = _sway_mat(true, Color(0.08, 0.05, 0.02), 0.8)
+	_grass_mat = _sway_mat(false, Color(0.05, 0.07, 0.02), 0.65)
+	_aphid_meshes = [Props.aphid(0), Props.aphid(1), Props.aphid(2)]
+	_aphid_wings = Props.aphid_wings()
 	_build_ground()
 	_build_box()
 	_build_scenery()
@@ -118,6 +131,18 @@ func setup(s, w) -> void:
 	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	rm.albedo_color = Color(0.8, 0.86, 0.95, 0.35)
 	_rain_mm = _multimesh(drop, rm, false)
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.75
+	ring.outer_radius = 1.0
+	ring.rings = 16
+	ring.ring_segments = 4
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.vertex_color_use_as_albedo = true
+	sm.albedo_color = Color(0.85, 0.9, 1.0)
+	_splash_mm = _multimesh(ring, sm, true)
+	_dew_mm = _multimesh(_blob_mesh(Vector3(0.15, 0.14, 0.15)), _honey_mat(), false)
 	for i in 320:
 		_rain.append(Vector3(randf() * 400.0, randf() * 60.0, randf() * 250.0))
 
@@ -334,7 +359,7 @@ func _build_scenery() -> void:
 			mi.mesh = Props.twig(l.l * 2.0 * U, int(l.p.x * 7 + l.p.y))
 		else:
 			mi.mesh = Props.leaf(l.l * U, l.w * U, l.c, l.curl)
-		mi.material_override = _prop_mat
+		mi.material_override = _litter_mat if not l.twig else _prop_mat
 		mi.position = _on_ground(l.p, 0.05)
 		mi.basis = Basis(Vector3.UP, -ang)
 		add_child(mi)
@@ -356,19 +381,28 @@ func _build_scenery() -> void:
 		var r: float = b[1] * U
 		moss.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(r, r * 0.55, r)), _on_ground(b[0], 0.05)))
 		moss.set_instance_color(i, Color(0.22, 0.33, 0.12).lerp(Color(0.36, 0.48, 0.18), b[2]).srgb_to_linear())
-	var grass := _multimesh(Props.blade(), _vc_mat(0.7, true, false), true)
+	var grass := _multimesh(Props.blade(), _grass_mat, true)
 	var blades := []
+	var gr := RandomNumberGenerator.new()
+	gr.seed = 777
 	for t in world._tufts:
-		for b in t.b:
-			blades.append([t.p, b])
+		var n := gr.randi_range(9, 16)
+		for k in n:
+			var yaw := gr.randf() * TAU
+			var h := gr.randf_range(6.0, 17.0) * (1.25 if k < 3 else 1.0)
+			var lean := gr.randf_range(0.05, 0.5)
+			var at: Vector2 = t.p + Vector2(gr.randfn(0.0, 2.2), gr.randfn(0.0, 2.2))
+			var dry := gr.randf() < 0.14
+			var col := Color(0.24, 0.42, 0.13).lerp(Color(0.5, 0.64, 0.26), gr.randf())
+			if dry:
+				col = Color(0.56, 0.5, 0.32).lerp(Color(0.68, 0.6, 0.4), gr.randf())
+			blades.append([at, yaw, h, lean, col])
 	grass.instance_count = blades.size()
 	for i in blades.size():
-		var p: Vector2 = blades[i][0]
-		var b: Array = blades[i][1]
-		var h: float = b[1] * U * 2.2
-		var basis := Basis(Vector3.UP, -b[0]).scaled(Vector3(h * 0.9, h, 0.9 + h * 0.06))
-		grass.set_instance_transform(i, Transform3D(basis, _on_ground(p, -0.2)))
-		grass.set_instance_color(i, Color(0.3, 0.46, 0.17).lerp(Color(0.52, 0.66, 0.28), b[2]).srgb_to_linear())
+		var b: Array = blades[i]
+		var basis := (Basis(Vector3.UP, b[1]) * Basis(Vector3.BACK, -b[3])).scaled(Vector3(b[2] * 0.8, b[2], 3.2))
+		grass.set_instance_transform(i, Transform3D(basis, _on_ground(b[0], -0.15)))
+		grass.set_instance_color(i, (b[4] as Color).srgb_to_linear())
 	var grains := _multimesh(_blob_mesh(Vector3.ONE), _vc_mat(0.95, false, false), true)
 	var bits := []
 	bits.append_array(world._crater)
@@ -379,6 +413,15 @@ func _build_scenery() -> void:
 		var r: float = g.r * U
 		grains.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(r, r * 0.7, r)), _on_ground(g.p, 0.0)))
 		grains.set_instance_color(i, (g.c as Color).darkened(0.2).srgb_to_linear())
+
+
+func _sway_mat(srgb: bool, back: Color, rough: float) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/sway.gdshader")
+	m.set_shader_parameter("srgb_colors", srgb)
+	m.set_shader_parameter("backlight", Vector3(back.r, back.g, back.b))
+	m.set_shader_parameter("roughness_v", rough)
+	return m
 
 
 func _vc_mat(rough: float, two_sided := false, srgb := true) -> StandardMaterial3D:
@@ -422,7 +465,12 @@ func _sync_foods() -> void:
 			e.node.queue_free()
 		var node := _make_food(f, left)
 		_food_root.add_child(node)
-		_foods[key] = {"node": node, "sig": sig}
+		var low := []
+		if f.kind == "aphids":
+			for s in Props.aphid_spots(f.seed):
+				if s[1] != 2 and (s[0] as Transform3D).origin.y < 10.0:
+					low.append(s[0])
+		_foods[key] = {"node": node, "sig": sig, "low": low}
 	for key in _foods.keys():
 		if not seen.has(key):
 			_foods[key].node.queue_free()
@@ -437,31 +485,36 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 		"aphids":
 			var plant := MeshInstance3D.new()
 			plant.mesh = Props.aphid_plant(f.seed)
-			plant.material_override = _prop_mat
+			plant.material_override = _plant_mat
 			root.add_child(plant)
-			# the colony on the lower stem and the honeydew droplets the ants collect
+			var spots: Array = Props.aphid_spots(f.seed)
+			for kind in 3:
+				var xs := []
+				for s in spots:
+					if s[1] == kind:
+						xs.append(s[0])
+				if xs.is_empty():
+					continue
+				for layer in ([_aphid_meshes[kind], _aphid_wings] if kind == 2 else [_aphid_meshes[kind]]):
+					var mm := MultiMesh.new()
+					mm.transform_format = MultiMesh.TRANSFORM_3D
+					mm.mesh = layer
+					mm.instance_count = xs.size()
+					for i in xs.size():
+						mm.set_instance_transform(i, xs[i])
+					var mi := MultiMeshInstance3D.new()
+					mi.multimesh = mm
+					mi.material_override = _prop_mat if layer != _aphid_wings else _wing_mat()
+					root.add_child(mi)
+			# honeydew waiting on the aphids: as many drops as the colony has to give right now
 			var rng := RandomNumberGenerator.new()
 			rng.seed = f.seed
-			var mm := MultiMesh.new()
-			mm.transform_format = MultiMesh.TRANSFORM_3D
-			mm.mesh = Props.aphid()
-			mm.instance_count = 22
-			for i in 22:
-				var a := rng.randf() * TAU
-				var y := rng.randf_range(0.6, 7.0)
-				var p := Vector3(cos(a) * 0.75, y, sin(a) * 0.75)
-				var b := Basis(Vector3.UP, -a) * Basis(Vector3.BACK, PI * 0.5 + rng.randf_range(-0.3, 0.3))
-				mm.set_instance_transform(i, Transform3D(b.scaled(Vector3.ONE * rng.randf_range(0.7, 1.2)), p))
-			var mi := MultiMeshInstance3D.new()
-			mi.multimesh = mm
-			mi.material_override = _prop_mat
-			root.add_child(mi)
-			for i in int(round(left * 6.0)):
+			for i in int(round(left * 8.0)):
+				var s: Array = spots[rng.randi() % spots.size()]
 				var drop := MeshInstance3D.new()
-				drop.mesh = _blob_mesh(Vector3(0.38, 0.32, 0.38))
+				drop.mesh = _blob_mesh(Vector3(0.24, 0.22, 0.24))
 				drop.material_override = _honey_mat()
-				var a := rng.randf() * TAU
-				drop.position = Vector3(cos(a), 0, sin(a)) * rng.randf_range(1.2, 4.0) + Vector3(0, 0.2, 0)
+				drop.position = (s[0] as Transform3D) * Vector3(-0.95, 0.4, 0)
 				root.add_child(drop)
 		"honey":
 			var r := (3.0 + 7.0 * sqrt(left)) * U
@@ -471,7 +524,7 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 			root.add_child(drop)
 		"cricket":
 			var c := MeshInstance3D.new()
-			c.mesh = Props.cricket(left, f.rotten)
+			c.mesh = Props.cricket(left, f.rotten, f.seed)
 			c.material_override = _prop_mat
 			c.rotation.x = 0.35           # lying slightly on its side
 			c.scale = Vector3.ONE * 0.95
@@ -483,18 +536,24 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 			root.add_child(b)
 			var wings := MeshInstance3D.new()
 			wings.mesh = Props.fly_wings()
-			var wm := StandardMaterial3D.new()
-			wm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			wm.albedo_color = Color(0.85, 0.9, 1.0, 0.3)
-			wm.roughness = 0.1
-			wm.cull_mode = BaseMaterial3D.CULL_DISABLED
-			wings.material_override = wm
+			wings.material_override = _wing_mat()
 			wings.scale = Vector3.ONE * (0.6 + 0.4 * left)
 			root.add_child(wings)
 	return root
 
 
 var _honey: StandardMaterial3D
+var _wings: StandardMaterial3D
+
+
+func _wing_mat() -> StandardMaterial3D:
+	if _wings == null:
+		_wings = StandardMaterial3D.new()
+		_wings.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_wings.albedo_color = Color(0.85, 0.9, 1.0, 0.3)
+		_wings.roughness = 0.1
+		_wings.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return _wings
 
 
 func _honey_mat() -> StandardMaterial3D:
@@ -535,6 +594,9 @@ func refresh(delta: float) -> void:
 	var raining: bool = sim.climate.raining()
 	_wet = move_toward(_wet, 1.0 if raining else 0.0, delta * 0.3 * maxf(speed, 0.5))
 	_ground_mat.set_shader_parameter("wet", _wet)
+	_grass_mat.set_shader_parameter("wind", 1.3 + 1.8 * _wet)
+	_plant_mat.set_shader_parameter("wind", 0.45 + 0.7 * _wet)
+	_litter_mat.set_shader_parameter("wind", 0.35 + 0.6 * _wet)
 	_light()
 	var lod := "hi" if cam_dist < 80.0 else "lo"
 	if lod != _lod:
@@ -551,9 +613,9 @@ func _light() -> void:
 	var sky: Color = world._sky_color()
 	var day: float = sim.daylight()
 	_sun.light_color = sky
-	_sun.light_energy = 0.12 + 0.85 * day
+	_sun.light_energy = 0.25 + 0.72 * day       # a little moonlight at night
 	_env.ambient_light_color = sky
-	_env.ambient_light_energy = 0.35 + 0.25 * day
+	_env.ambient_light_energy = 0.5 + 0.1 * day
 	_sun.directional_shadow_max_distance = maxf(150.0, cam_dist * 2.5)
 
 
@@ -569,6 +631,7 @@ func _update_ants(delta: float) -> void:
 	var cus := []
 	var loads := []
 	var carried := []
+	var dews := []
 	for a in sim.outside:
 		if a.state == Ant.IN_NEST or a.dead:
 			continue
@@ -592,6 +655,14 @@ func _update_ants(delta: float) -> void:
 		var s: float = ANT_SCALE * a.size
 		var tr := Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), Vector3(p.x, ground_h(p.x, p.y), p.y))
 		var act: int = a.act if a.busy > 0 else 0
+		var pose := _feeding_pose(a, act, s) if act in [2, 9, 10] else {}
+		a.vfeed = move_toward(a.vfeed, 1.0 if not pose.is_empty() else 0.0, delta * 2.5)
+		if not pose.is_empty():
+			a.vpose = pose
+		if a.vfeed > 0.0 and a.vpose is Dictionary and not (a.vpose as Dictionary).is_empty():
+			tr = _blend_pose(tr, a.vpose, a.vfeed, s)
+			if a.vfeed > 0.95 and act == 9:
+				dews.append(a.vpose.dew)
 		if a.carry == Ant.SUGAR:
 			act += 100                      # a crop full of honeydew swells the gaster
 		xs.append(tr)
@@ -606,6 +677,10 @@ func _update_ants(delta: float) -> void:
 		_ant_mm.set_instance_transform(i, xs[i])
 		_ant_mm.set_instance_color(i, cols[i])
 		_ant_mm.set_instance_custom_data(i, cus[i])
+	_dew_mm.instance_count = dews.size()
+	for i in dews.size():
+		var pulse := 0.6 + 0.4 * sin(_t * 3.0 + i)
+		_dew_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ONE * pulse), dews[i]))
 	_prey_mm.instance_count = loads.size()
 	for i in loads.size():
 		_prey_mm.set_instance_transform(i, loads[i])
@@ -613,6 +688,87 @@ func _update_ants(delta: float) -> void:
 
 
 var _carried: Array = []
+
+
+## Where an ant handling food really stands: the simulation only knows it is within reach of the
+## food's centre, so the view places it on the food itself. {} if no food is close.
+func _feeding_pose(a, act: int, s: float) -> Dictionary:
+	var best = null
+	var bd := 1e9
+	for f in sim.foods:
+		var d: float = f.pos.distance_squared_to(a.pos)
+		if d < bd:
+			bd = d
+			best = f
+	if best == null or bd > pow(best.r + 14.0, 2.0):
+		return {}
+	var f: Dictionary = best
+	var c := _on_ground(f.pos)
+	var away := Vector3(a.pos.x - f.pos.x, 0, a.pos.y - f.pos.y)
+	if away.length_squared() < 0.01:
+		away = Vector3(1, 0, 0)
+	away = away.normalized()
+	var left: float = clampf(f.amt / f.cap, 0.0, 1.0)
+	match f.kind:
+		"aphids":
+			if act != 9:
+				return {}
+			# climb the stem to one of the low aphids and stroke its abdomen for the drop
+			var e: Dictionary = _foods.get(f.seed, {})
+			if e.is_empty() or e.low.is_empty():
+				return {}
+			var root: Transform3D = e.node.transform
+			var ax: Transform3D = root * (e.low[a.id % e.low.size()] as Transform3D)
+			var out_dir: Vector3 = ax.basis.y.normalized()
+			var stem: Vector3 = ax.origin - out_dir * (Props.STEM_R + 0.35)
+			var on := stem + out_dir * (Props.STEM_R + 0.1) - Vector3(0, 1.9 * s, 0)
+			var base := Vector3(on.x, ground_h(on.x, on.z), on.z) + out_dir * 0.4
+			return {"climb": true, "base": base, "pos": on, "fwd": Vector3.UP, "up": out_dir,
+				"dew": ax * Vector3(-0.95, 0.4, 0)}
+		"honey":
+			if act != 10:
+				return {}
+			var r := (3.0 + 7.0 * sqrt(left)) * U * 1.1
+			var p := c + away * (r + 0.85 * s)
+			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -away, "up": Vector3.UP}
+		"cricket", "fly":
+			if act != 2:
+				return {}
+			# around the carcass outline (an ellipse along its body), head in, cutting
+			var ang: float = f.ang
+			var rot := Basis(Vector3.UP, -ang)
+			var dl: Vector3 = rot.inverse() * away
+			var ea := 6.4 if f.kind == "cricket" else 2.2
+			var eb := 2.4 if f.kind == "cricket" else 1.3
+			var th := atan2(dl.z / eb, dl.x / ea)
+			var n := rot * Vector3(cos(th) / ea, 0, sin(th) / eb).normalized()
+			var p := c + rot * Vector3(ea * cos(th), 0, eb * sin(th)) + n * 1.1 * s
+			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -n, "up": Vector3.UP}
+	return {}
+
+
+func _pose_xf(fwd: Vector3, up: Vector3, pos: Vector3, s: float) -> Transform3D:
+	var f := fwd - up * fwd.dot(up)
+	if f.length_squared() < 1e-4:
+		f = up.cross(Vector3.RIGHT) if absf(up.x) < 0.9 else up.cross(Vector3.BACK)
+	f = f.normalized()
+	return Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), pos)
+
+
+## Blend from the walking pose toward the feeding pose; climbing goes to the stem foot first.
+func _blend_pose(ground: Transform3D, pose: Dictionary, k: float, s: float) -> Transform3D:
+	var fe := _pose_xf(pose.fwd, pose.up, pose.pos, s)
+	if not pose.get("climb", false):
+		var b: Basis = ground.basis.orthonormalized().slerp(fe.basis.orthonormalized(), k)
+		return Transform3D(b.scaled(Vector3.ONE * s), ground.origin.lerp(fe.origin, k))
+	var foot := _pose_xf(pose.base - ground.origin if k < 0.5 else pose.pos - pose.base, Vector3.UP, pose.base, s)
+	if k < 0.5:
+		var u := k * 2.0
+		var b: Basis = ground.basis.orthonormalized().slerp(foot.basis.orthonormalized(), minf(1.0, u * 2.0))
+		return Transform3D(b.scaled(Vector3.ONE * s), ground.origin.lerp(pose.base, u))
+	var u2 := (k - 0.5) * 2.0
+	var b2: Basis = foot.basis.orthonormalized().slerp(fe.basis.orthonormalized(), minf(1.0, u2 * 3.0))
+	return Transform3D(b2.scaled(Vector3.ONE * s), (pose.base as Vector3).lerp(pose.pos, u2))
 
 
 ## Dead workers on the refuse pile (and wherever the spider dropped them), plus those being carried.
@@ -655,6 +811,16 @@ func _update_spider(delta: float) -> void:
 
 
 func _update_rain(delta: float, raining: bool) -> void:
+	var sdt := delta if speed > 0 else 0.0
+	for s in _splash:
+		s[1] += sdt
+	_splash = _splash.filter(func(s): return s[1] < 0.35)
+	_splash_mm.instance_count = _splash.size()
+	for i in _splash.size():
+		var k: float = _splash[i][1] / 0.35
+		var r := 0.25 + 0.9 * k
+		_splash_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(r, 0.4, r)), _splash[i][0]))
+		_splash_mm.set_instance_color(i, Color(1, 1, 1, 0.55 * (1.0 - k)))
 	if not raining:
 		_rain_mm.instance_count = 0
 		return
@@ -665,6 +831,8 @@ func _update_rain(delta: float, raining: bool) -> void:
 		d.y -= 150.0 * dt
 		d.x -= 30.0 * dt
 		if d.y < ground_h(d.x, d.z):
+			if _splash.size() < 160 and randf() < 0.7:
+				_splash.append([Vector3(d.x, ground_h(d.x, d.z) + 0.1, d.z), 0.0])
 			d = Vector3(randf() * 400.0, 60.0, randf() * 250.0)
 		_rain[i] = d
 		_rain_mm.set_instance_transform(i, Transform3D(Basis(Vector3.BACK, 0.2), d))

@@ -39,6 +39,8 @@ var vpos := Vector2(INF, INF)
 var vang := 0.0
 var anim := 0.0
 var vmv := 0.0
+var vfeed := 0.0         # 3D outworld: how far the ant has moved onto the food it is handling
+var vpose = null
 
 
 func is_out() -> bool:

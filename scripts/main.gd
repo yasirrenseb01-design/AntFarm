@@ -429,6 +429,8 @@ func _take_shot() -> void:
 		camera.zoom = Vector2.ONE * _zoom_t
 		var fc: PackedStringArray = _opts.get("focus", "%d,%d" % [sim.nest_pos.x, sim.nest_pos.y]).split(",")
 		_center_on(Vector2(float(fc[0]), float(fc[1])))
+	if _opts.has("rain"):
+		sim.climate.rain_ticks = sim.TPD
 	if mode == "outworld":
 		for k in ["yaw", "pitch", "dist"]:
 			if _opts.has(k):
@@ -436,7 +438,24 @@ func _take_shot() -> void:
 		if _opts.has("target"):
 			var tp: PackedStringArray = String(_opts["target"]).split(",")
 			outworld.target_t = Vector3(float(tp[0]), float(tp[1]), float(tp[2]))
-		if _opts.has("at-ant") and not sim.outside.is_empty():
+		if _opts.get("at-ant", "") == "act9" or _opts.get("at-ant", "") == "act10" or _opts.get("at-ant", "") == "act2":
+			# run on until some forager is busy at that kind of food, then look at it
+			var want := int(String(_opts["at-ant"]).trim_prefix("act"))
+			var found = null
+			for i in sim.TPD * 2:
+				for a in sim.outside:
+					if a.busy > 20 and a.act == want:
+						found = a
+				if found != null:
+					break
+				sim.step()
+			if found != null:
+				var at: Vector2 = found.pos
+				for f in sim.foods:
+					if f.pos.distance_to(found.pos) < f.r + 14.0:
+						at = f.pos
+				outworld.target_t = Vector3(at.x, 0, at.y) * outworld.U + Vector3(0, float(_opts.get("lift", "0")), 0)
+		elif _opts.has("at-ant") and not sim.outside.is_empty():
 			var a = sim.outside[int(_opts["at-ant"]) % sim.outside.size()]
 			outworld.target_t = Vector3(a.pos.x, 0, a.pos.y) * outworld.U
 		outworld.snap_camera()

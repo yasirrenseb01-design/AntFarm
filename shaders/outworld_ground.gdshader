@@ -17,6 +17,7 @@ uniform float mound_r = 4.0;
 uniform float wet = 0.0;
 
 varying vec2 wp;
+varying float gh;
 
 float ground_h(vec2 p) {
 	float h = 0.8 * sin(p.x * 0.021 + 1.3) * cos(p.y * 0.027 + 0.4) + 0.45 * sin(p.x * 0.057 + p.y * 0.043 + 2.0);
@@ -30,6 +31,7 @@ float ground_h(vec2 p) {
 void vertex() {
 	wp = VERTEX.xz;
 	VERTEX.y = ground_h(wp);
+	gh = VERTEX.y;
 	float e = 0.6;
 	float hx = ground_h(wp + vec2(e, 0.0)) - ground_h(wp - vec2(e, 0.0));
 	float hz = ground_h(wp + vec2(0.0, e)) - ground_h(wp - vec2(0.0, e));
@@ -57,7 +59,12 @@ void fragment() {
 	float pa = ph.a * pher_on;
 	c = mix(c, ph.rgb * 0.75, pa * 0.55);
 	c *= mix(0.08, 1.0, smoothstep(0.9, 2.2, dn));     // the dark mouth of the nest
-	ALBEDO = c * mix(1.0, 0.62, wet);
-	ROUGHNESS = mix(0.95, 0.35, wet);
-	SPECULAR = mix(0.25, 0.6, wet);
+	// standing water collects in the hollows after a while of rain
+	float hole = 1.0 - smoothstep(1.5, 4.0, dn);
+	float puddle = smoothstep(0.45, 1.0, wet) * smoothstep(-0.45, -0.85, gh) * (1.0 - hole);
+	puddle *= 0.75 + 0.25 * texture(detail, wp / 14.0).r;
+	c = mix(c * mix(1.0, 0.62, wet), c * 0.3 + vec3(0.03, 0.035, 0.045), puddle);
+	ALBEDO = c;
+	ROUGHNESS = mix(mix(0.95, 0.35, wet), 0.03, puddle);
+	SPECULAR = mix(mix(0.25, 0.6, wet), 0.95, puddle);
 }

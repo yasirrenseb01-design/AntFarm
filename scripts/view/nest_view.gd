@@ -5,6 +5,8 @@ extends Node3D
 const Ant := preload("res://scripts/sim/ant.gd")
 const Mesher := preload("res://scripts/view/nest_mesher.gd")
 const AntModel := preload("res://scripts/view/ant_model3d.gd")
+const Props := preload("res://scripts/view/mesh_kit.gd")
+const CLUMP := 24                  # eggs stick together in packets of about this many
 const CH := 16
 const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0),
 	Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
@@ -77,10 +79,15 @@ var _fx_larva_mm: MultiMesh
 var _fx_silk_mm: MultiMesh
 var _fx_cocoon_mm: MultiMesh
 var _carry_cocoon_mm: MultiMesh
+var _carry_shell_mm: MultiMesh
+var _fx_soil_mm: MultiMesh
+var _fx_drop_mm: MultiMesh
+var _bits_mm: MultiMesh            # pieces of prey laid on the larvae for them to feed on
 var _queen_xf := Transform3D()
 var _queen_turn := 0.0
 var _queen_turn_t := 0.0
 var _queen_act := -1
+var _egg_spots: Array = []         # floor beside the queen (not under her) where the egg packets lie
 
 
 func setup(s) -> void:
@@ -173,21 +180,31 @@ func setup(s) -> void:
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true)
 	_ant_mm.use_custom_data = true
 	_egg_mm = _multimesh(_ellipsoid(0.32, 0.22), _mat_simple(Color(0.96, 0.94, 0.86), 0.25), false)
-	_larva_mm = _multimesh(_ellipsoid(1.0, 0.8), _mat_simple(Color(0.93, 0.87, 0.7), 0.35), false)
-	_pupa_mm = _multimesh(_ellipsoid(1.35, 0.62), _mat_simple(Color(0.78, 0.62, 0.42), 0.8), false)
+	var larva_mesh: Mesh = Props.larva()
+	var cocoon_mesh: Mesh = Props.cocoon()
+	var larva_mat := _mat_vc(0.3)
+	var cocoon_mat := _mat_vc(0.85)
+	_larva_mm = _multimesh(larva_mesh, larva_mat, false)
+	_pupa_mm = _multimesh(cocoon_mesh, cocoon_mat, false)
 	_pellet_mm = _multimesh(_ellipsoid(0.42, 0.34), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false)
-	_carry_larva_mm = _multimesh(_ellipsoid(1.0, 0.8), _mat_simple(Color(0.93, 0.87, 0.7), 0.35), false)
+	_carry_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	_carry_pellet_mm = _multimesh(_ellipsoid(0.8, 0.65), _mat_simple(Color(0.45, 0.32, 0.2), 0.95), false)
 	_fx_egg_mm = _multimesh(_ellipsoid(0.32, 0.22), _mat_simple(Color(0.96, 0.94, 0.86), 0.25), false)
-	_fx_larva_mm = _multimesh(_ellipsoid(1.0, 0.8), _mat_simple(Color(0.93, 0.87, 0.7), 0.35), false)
+	_fx_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	var silk := StandardMaterial3D.new()
 	silk.albedo_color = Color(0.97, 0.95, 0.9)
 	silk.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	silk.vertex_color_use_as_albedo = true
 	silk.roughness = 0.9
 	_fx_silk_mm = _multimesh(_ellipsoid(1.35, 0.62), silk, true)
-	_fx_cocoon_mm = _multimesh(_ellipsoid(1.35, 0.62), _mat_simple(Color(0.78, 0.62, 0.42), 0.8), false)
-	_carry_cocoon_mm = _multimesh(_ellipsoid(1.35, 0.62), _mat_simple(Color(0.78, 0.62, 0.42), 0.8), false)
+	_fx_cocoon_mm = _multimesh(cocoon_mesh, cocoon_mat, false)
+	_carry_cocoon_mm = _multimesh(cocoon_mesh, cocoon_mat, false)
+	_carry_shell_mm = _multimesh(cocoon_mesh, cocoon_mat, false)
+	_fx_soil_mm = _multimesh(_ellipsoid(0.42, 0.34), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false)
+	var dew := _mat_simple(Color(0.85, 0.55, 0.15, 0.8), 0.1)
+	dew.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_fx_drop_mm = _multimesh(_ellipsoid(0.16, 0.14), dew, false)
+	_bits_mm = _multimesh(_ellipsoid(0.38, 0.26), _mat_simple(Color(0.45, 0.3, 0.18), 0.7), false)
 	_queen_mm = _multimesh(AntModel.make(0.0, true, true), ant_mat, true)
 	_queen_mm.use_custom_data = true
 
@@ -212,6 +229,14 @@ func setup(s) -> void:
 
 
 # ---------------------------------------------------------------- meshes
+
+func _mat_vc(rough: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
+	m.roughness = rough
+	return m
+
 
 func _mat_simple(c: Color, rough: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -333,7 +358,7 @@ func refresh(delta: float) -> void:
 	_poll_events()
 	_step_anims(delta if speed > 0 else 0.0)
 	var sig := [sim.eggs.size(), sim.larvae.size(), sim.pupae.size(), nest.excavated / 2, snappedf(_plane_w, 0.5),
-		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate")]
+		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5)]
 	if sig != _brood_sig:
 		_brood_sig = sig
 		_update_brood()
@@ -588,6 +613,17 @@ func _refresh_spots() -> void:
 			if d < best_d:
 				best_d = d
 				_spots.queen = sp
+	# egg packets lie a little way from the queen, nearest-first so the first packet is beside her
+	_egg_spots = []
+	if _spots.queen != Vector3.ZERO:
+		var cands := []
+		for sp in _spots.eggs:
+			var d := Vector2(sp.x - _spots.queen.x, sp.z - _spots.queen.z).length()
+			if d > 2.6:
+				cands.append([absf(d - 3.4), sp])
+		cands.sort_custom(func(a, b): return a[0] < b[0])
+		for c in cands:
+			_egg_spots.append(c[1])
 	# brood chambers from the top down; Lasius keep pupae in the upper, drier chambers
 	var brood := []
 	for i in _rooms.size():
@@ -646,6 +682,20 @@ func _pile_xf(spots: Array, i: int, scale: float) -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, _hash(i, 3) * TAU).scaled(Vector3.ONE * scale), p)
 
 
+## Egg i in its packet: Lasius eggs are sticky, so nurses keep (and carry) them as small heaps.
+func _egg_xf(i: int) -> Transform3D:
+	var spots: Array = _egg_spots if not _egg_spots.is_empty() else _spots.eggs
+	var c := i / CLUMP
+	var j := i % CLUMP
+	var centre: Vector3 = spots[(c * 3) % spots.size()]
+	var rmax := 0.3 * pow(float(CLUMP), 0.42)
+	var r := 0.3 * pow(float(j), 0.42)
+	var a := j * 2.39996
+	var h := 0.2 + 0.42 * (1.0 - r / rmax)
+	var b := Basis(Vector3.UP, _hash(i, 3) * TAU) * Basis(Vector3.BACK, (_hash(i, 4) - 0.5) * 1.2)
+	return Transform3D(b, centre + Vector3(cos(a) * r, h, sin(a) * r))
+
+
 func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Callable, old_spots := [], moved := 1 << 20) -> void:
 	var n := mini(items.size(), max_n)
 	if spots.is_empty():
@@ -663,8 +713,23 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 
 
 func _update_brood() -> void:
-	_pile(_egg_mm, _spots.eggs, sim.eggs.slice(0, maxi(0, sim.eggs.size() - _pending("egg"))), 400, func(_e): return 1.0)
-	_pile(_larva_mm, _spots.larvae, sim.larvae, 300, func(l): return 0.35 + l.p * 0.65, _spots.larvae_old, _moved)
+	var exs := []
+	if not _spots.eggs.is_empty():
+		for i in mini(400, maxi(0, sim.eggs.size() - _pending("egg"))):
+			var xf := _egg_xf(i)
+			if _visible(xf.origin):
+				exs.append(xf)
+	_fill(_egg_mm, exs)
+	# young larvae are tiny; they grow about tenfold in mass before pupating
+	_pile(_larva_mm, _spots.larvae, sim.larvae, 300, func(l): return 0.28 + l.p * 0.8, _spots.larvae_old, _moved)
+	var bits := []
+	if not sim.larvae.is_empty() and not _spots.larvae.is_empty():
+		for k in mini(16, int(sim.protein * 1.5)):
+			var base := _pile_xf(_spots.larvae, k * 3 + 1, 1.0).origin
+			var xf := Transform3D(Basis(Vector3.UP, _hash(k, 9) * TAU), base + Vector3(_hash(k, 7) - 0.5, 0.1, _hash(k, 8) - 0.5))
+			if _visible(xf.origin):
+				bits.append(xf)
+	_fill(_bits_mm, bits)
 	_pile(_pupa_mm, _spots.pupae, sim.pupae.slice(0, maxi(0, sim.pupae.size() - _pending("pupate"))), 300, func(p): return p.get("s", 1.0))
 	# the crater mound of excavated pellets around the entrance on top of the block
 	var n := mini(nest.excavated / 2, 900)
@@ -776,10 +841,12 @@ func _queen_room() -> int:
 ## What an ant does when it reaches the place it was heading for.
 func _arrive(m: Dictionary) -> void:
 	if m.has("deliver"):
-		m.deliver.done = true                       # the cocoon is set down in the pupa chamber
+		m.deliver.done = true                       # cocoon set down, or empty shell taken out
 		m.erase("deliver")
 		m.carry = false
 		m.item = ""
+		if m.goal == -1:
+			m.goal = _brood_room(_larva_group)
 	match m.role:
 		"nurse":
 			m.rest = randi_range(30, 140)
@@ -942,12 +1009,14 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 		m.act = ACT_CARRY
 	elif m.rest > 0:
 		if m.role == "nurse" and _rooms.size() > 0:
-			# nurses at the brood pile lick and feed the larvae
-			m.act = ACT_TEND
+			# nurses at the brood pile lick the larvae and regurgitate food to them
+			m.act = ACT_FEED if fmod(m.anim + m.cool * 3.0, 11.0) < 4.0 and not sim.larvae.is_empty() else ACT_TEND
 			m.face = _nearest_spot(m.to, _spots.larvae)
 		elif m.role == "attend":
 			m.act = ACT_TEND
 			m.face = _spots.queen
+			if fmod(m.anim, 16.0) > 9.0 and not sim.eggs.is_empty() and not _spots.eggs.is_empty():
+				m.face = _egg_xf(0).origin            # licking the egg packet clean
 		elif randf() < 0.04 * delta:
 			_begin(m, ACT_GROOM, randf_range(2.0, 4.5))     # resting ants groom every so often
 		else:
@@ -1031,6 +1100,8 @@ func _update_ants(delta: float) -> void:
 	var cus := []
 	var larva_loads := []
 	var cocoon_loads := []
+	var shell_loads := []
+	var drops := []
 	var pellet_loads := []
 	for m in _mates:
 		m.anim += adt
@@ -1050,6 +1121,8 @@ func _update_ants(delta: float) -> void:
 			path = (m.from as Vector3).lerp(m.to, clampf(m.t, 0.0, 1.0))
 		var tr := _smooth(m, path, m.up, delta, m.size)
 		m.xf = tr
+		if m.act == ACT_FEED and _visible(tr.origin):
+			drops.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.8 + 0.3 * sin(m.anim * 3.0))), MOUTH + Vector3(0.2, 0, 0)))
 		if _visible(tr.origin):
 			xs.append(tr)
 			cols.append(_mate_color(m, body, young))
@@ -1057,6 +1130,8 @@ func _update_ants(delta: float) -> void:
 			if m.carry:
 				if m.get("item", "") == "cocoon":
 					cocoon_loads.append(tr * CARRY_OFFSET)
+				elif m.get("item", "") == "shell":
+					shell_loads.append(tr * CARRY_OFFSET * Transform3D(Basis.from_scale(Vector3(0.85, 0.6, 1.1)), Vector3.ZERO))
 				else:
 					larva_loads.append(tr * CARRY_OFFSET)
 	_emerging(xs, cols, cus, young)
@@ -1102,6 +1177,8 @@ func _update_ants(delta: float) -> void:
 		_ant_mm.set_instance_custom_data(i, cus[i])
 	_fill(_carry_larva_mm, larva_loads)
 	_fill(_carry_cocoon_mm, cocoon_loads)
+	_fill(_carry_shell_mm, shell_loads)
+	_fill(_fx_drop_mm, drops)
 	_fill(_carry_pellet_mm, pellet_loads)
 
 	# the queen: rests among her retinue, curls her gaster to lay whenever a new egg appears
@@ -1211,7 +1288,7 @@ func _start_egg() -> void:
 	if not sim.queen.alive or _spots.queen == Vector3.ZERO:
 		return
 	var idx := maxi(0, sim.eggs.size() - 1 - _pending("egg"))
-	var pile: Vector3 = _pile_xf(_spots.eggs, idx, 1.0).origin if not _spots.eggs.is_empty() else _spots.queen
+	var pile: Vector3 = _egg_xf(idx).origin if not _spots.eggs.is_empty() else _spots.queen
 	var a := {"k": "egg", "t": 0.0, "d": 5.0 * _anim_k(), "pile": pile, "helper": null}
 	var hs := _helpers(_spots.queen, 1, 7.0)
 	if not hs.is_empty():
@@ -1248,6 +1325,7 @@ func _step_anims(adt: float) -> void:
 	_queen_act = -1
 	_queen_turn_t = 0.0
 	var walk := 3.5 / _anim_k()                   # voxels per second for hired helpers
+	var fresh := []
 	for m in _mates:
 		if m.has("script"):
 			m.script.pos = (m.script.pos as Vector3).move_toward(m.script.goal, walk * adt)
@@ -1315,7 +1393,27 @@ func _step_anims(adt: float) -> void:
 					for m in hs:
 						_release(m)
 					_add_mate(Vector3i(roundi(a.p.x), roundi(a.p.y + 0.45), roundi(a.p.z)), "nurse", sim.tick, a.s)
+					if not hs.is_empty():
+						# a helper carries the empty cocoon up and out to the refuse pile
+						var h: Dictionary = hs[0]
+						var shell := {"k": "shell", "t": 0.0, "d": 1e9, "helper": h}
+						h.deliver = shell
+						h.carry = true
+						h.item = "shell"
+						h.goal = -1
+						h.rest = 0
+						h.wander = 0
+						fresh.append(shell)
+			"shell":
+				var h = a.helper
+				if not _mates.has(h) or not h.has("deliver") or a.t > 45.0:
+					a.done = true
+					if _mates.has(h) and h.has("deliver"):
+						h.erase("deliver")
+						h.carry = false
+						h.item = ""
 	_anims = _anims.filter(func(a): return not a.get("done", false))
+	_anims.append_array(fresh)
 	_queen_turn = lerp_angle(_queen_turn, _queen_turn_t, minf(1.0, 3.0 * adt))
 
 
@@ -1342,6 +1440,7 @@ func _draw_anims() -> void:
 	var larvae := []
 	var silk := []
 	var cocoons := []
+	var soil := []
 	for a in _anims:
 		var u: float = a.t / a.d
 		match a.k:
@@ -1369,6 +1468,14 @@ func _draw_anims() -> void:
 				var s: float = a.s
 				if _visible(a.p):
 					var lb := Basis(Vector3.UP, a.t * 0.3).scaled(Vector3.ONE * s)
+					if u < 0.62:
+						# Lasius larvae need a covering of soil particles to spin against
+						var shown := int(clampf(u / 0.25, 0.0, 1.0) * 8.0)
+						var gone := clampf((u - 0.52) / 0.1, 0.0, 1.0)
+						for g in shown:
+							var ga: float = g * 0.785
+							var gp: Vector3 = a.p + Vector3(cos(ga) * 0.7 * s, 0.35 + 0.35 * float(g % 2), sin(ga) * 0.7 * s)
+							soil.append(Transform3D(Basis.from_scale(Vector3.ONE * (1.0 - gone)), gp))
 					if u < 0.6:
 						larvae.append(Transform3D(lb.scaled(Vector3(1.0, 1.0 - 0.15 * sin(a.t * 6.0), 1.0)), a.p + Vector3(0, 0.3, 0)))
 						var cover := clampf(u / 0.6, 0.0, 1.0)
@@ -1389,6 +1496,7 @@ func _draw_anims() -> void:
 	_fill(_fx_egg_mm, eggs)
 	_fill(_fx_larva_mm, larvae)
 	_fill(_fx_cocoon_mm, cocoons)
+	_fill(_fx_soil_mm, soil)
 	_fx_silk_mm.instance_count = silk.size()
 	for i in silk.size():
 		_fx_silk_mm.set_instance_transform(i, silk[i][0])
