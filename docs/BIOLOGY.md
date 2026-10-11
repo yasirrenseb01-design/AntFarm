@@ -40,5 +40,5 @@
 - ภาพ "Castes and developmental stages present in a Lasius niger colony" (ResearchGate, figure 2 ของบทความ 342742677)
   https://www.researchgate.net/figure/Castes-and-developmental-stages-present-in-a-Lasius-niger-colony-Pictures-were-taken_fig2_342742677
 - ภาพราชินี Lasius niger จาก fourmishome.fr (ภาพโดย John Hennequin) — สีขา/หนวด, รูปทรงอก
-- ภาพอ้างอิงอื่นที่ผู้ใช้ส่ง: จิ้งหรีดบ้าน, เพลี้ยถั่วดำบนต้นไม้ (เก็บใน `reference/` เมื่อผู้ใช้ใส่ไฟล์)
+- ภาพอ้างอิงอื่นที่ผู้ใช้ส่ง: จิ้งหรีดบ้าน, เพลี้ยถั่วดำบนต้นไม้ — ไฟล์ทั้งหมดอยู่ใน `reference/` (ดูตารางใน `reference/README.md`)
 - นอกนั้นเป็นความรู้ทั่วไปเรื่องชีววิทยามด — ถ้าจะใช้ตัวเลขใหม่ ควรหาแหล่งยืนยันแล้วจดไว้ที่นี่
