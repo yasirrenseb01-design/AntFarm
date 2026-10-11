@@ -101,7 +101,7 @@ func _build_tools(root: Control) -> void:
 		_cut_row.visible = not on and not sim.nest.slab)
 	row.add_child(_xray_btn)
 	var g := ButtonGroup.new()
-	for pair in [["มือ (เลื่อนจอ)", "pan"], ["หยดน้ำผึ้ง", "honey"], ["จิ้งหรีดตาย", "cricket"], ["ก้อนหิน", "rock"], ["ลบกลิ่น", "erase"]]:
+	for pair in [["มือ (เลื่อนจอ)", "pan"]] + FoodKinds.tools() + [["ก้อนหิน", "rock"], ["ลบกลิ่น", "erase"]]:
 		var b := _button(pair[0], true, g)
 		b.button_pressed = pair[1] == world.tool
 		var t: String = pair[1]

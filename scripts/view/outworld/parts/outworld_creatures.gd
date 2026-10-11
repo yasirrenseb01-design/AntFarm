@@ -90,7 +90,7 @@ func _update_ants(delta: float) -> void:
 ## True near a carcass the colony is still burying.
 func _burying(p: Vector2) -> bool:
 	for f in sim.foods:
-		if (f.kind == "cricket" or f.kind == "fly") and f.found and _cover(f) < 0.85 and f.pos.distance_squared_to(p) < 2500.0:
+		if FoodKinds.info(f.kind).get("buried", false) and f.found and _cover(f) < 0.85 and f.pos.distance_squared_to(p) < 2500.0:
 			return true
 	return false
 
@@ -114,10 +114,11 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 		away = Vector3(1, 0, 0)
 	away = away.normalized()
 	var left: float = clampf(f.amt / f.cap, 0.0, 1.0)
-	match f.kind:
-		"aphids":
-			if act != 9:
-				return {}
+	var k := FoodKinds.info(f.kind)
+	if k.is_empty() or act != int(k.handling[2]):
+		return {}
+	match k.get("feed_pose", ""):
+		"climb":
 			# climb the stem to one of the low aphids and stroke its abdomen for the drop
 			var e: Dictionary = _foods.get(f.seed, {})
 			if e.is_empty() or e.low.is_empty():
@@ -130,21 +131,17 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 			var base := Vector3(on.x, ground_h(on.x, on.z), on.z) + out_dir * 0.4
 			return {"climb": true, "base": base, "pos": on, "fwd": Vector3.UP, "up": out_dir,
 				"dew": ax * Vector3(-0.95, 0.4, 0)}
-		"honey":
-			if act != 10:
-				return {}
+		"rim":
 			var r := (3.0 + 7.0 * sqrt(left)) * U * 1.1
 			var p := c + away * (r + 0.85 * s)
 			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -away, "up": Vector3.UP}
-		"cricket", "fly":
-			if act != 2:
-				return {}
+		"carcass":
 			# around the carcass outline (an ellipse along its body), head in, cutting
 			var ang: float = f.ang
 			var rot := Basis(Vector3.UP, -ang)
 			var dl: Vector3 = rot.inverse() * away
-			var ea := 6.4 if f.kind == "cricket" else 2.2
-			var eb := 2.4 if f.kind == "cricket" else 1.3
+			var ea: float = k.carcass[0]
+			var eb: float = k.carcass[1]
 			var th := atan2(dl.z / eb, dl.x / ea)
 			var n := rot * Vector3(cos(th) / ea, 0, sin(th) / eb).normalized()
 			var p := c + rot * Vector3(ea * cos(th), 0, eb * sin(th)) + n * 1.1 * s

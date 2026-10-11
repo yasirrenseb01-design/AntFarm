@@ -199,7 +199,7 @@ func _use_tool(tool: String, at: Vector3) -> void:
 		return
 	var p := _px(at)
 	match tool:
-		"honey", "cricket":
+		_ when FoodKinds.info(tool).has("tool"):
 			sim.place_food(tool, p)
 			_items_timer = 0.0
 		"rock":

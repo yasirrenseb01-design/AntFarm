@@ -6,6 +6,7 @@ extends CanvasLayer
 const Ant := preload("res://scripts/sim/ant.gd")
 const Kit := preload("res://scripts/view/surface2d/draw_kit.gd")
 const Store := preload("res://scripts/game/save_store.gd")
+const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 
 signal speed_changed(speed: float)
 signal view_changed(mode: String)

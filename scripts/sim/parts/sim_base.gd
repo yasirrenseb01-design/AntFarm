@@ -8,6 +8,7 @@ const Climate := preload("res://scripts/sim/climate.gd")
 const LasiusNiger := preload("res://scripts/sim/species/lasius_niger.gd")
 const NestVolume := preload("res://scripts/sim/nest_volume.gd")
 const T := preload("res://scripts/sim/text_th.gd")     # journal texts
+const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 
 signal logged(entry: Dictionary)
 
@@ -217,19 +218,12 @@ func can_place(p: Vector2) -> bool:
 func place_food(kind: String, p: Vector2) -> bool:
 	if not can_place(p):
 		return false
+	var k := FoodKinds.info(kind)
+	if k.is_empty():
+		return false
 	var f := {"kind": kind, "pos": p, "found": false, "age": 0.0, "seed": rng.randi(), "rotten": false,
 		"ang": rng.randf() * TAU}
-	match kind:
-		"aphids":
-			f.merge({"type": Ant.SUGAR, "amt": 10.0, "cap": 16.0, "regen": 9.0, "r": 16.0})
-		"honey":
-			f.merge({"type": Ant.SUGAR, "amt": 25.0, "cap": 25.0, "regen": 0.0, "r": 8.0})
-		"cricket":
-			f.merge({"type": Ant.PROTEIN, "amt": 30.0, "cap": 30.0, "regen": 0.0, "r": 12.0})
-		"fly":
-			f.merge({"type": Ant.PROTEIN, "amt": 6.0, "cap": 6.0, "regen": 0.0, "r": 5.0})
-		_:
-			return false
+	f.merge({"type": k.type, "amt": k.amt, "cap": k.cap, "regen": k.regen, "r": k.r})
 	foods.append(f)
 	_food_dirty = true
 	return true
@@ -340,9 +334,6 @@ func _kill(a: Ant) -> void:
 		corpses.append({"pos": a.pos, "ang": a.ang, "age": 0.0})
 		if a.carry == Ant.CORPSE:
 			corpses.append({"pos": a.pos + Vector2(4, 2), "ang": a.ang + 1.0, "age": 0.0})
-
-
-const HANDLING := {"aphids": [60, 140, 9], "honey": [40, 80, 10], "cricket": [90, 200, 2], "fly": [50, 110, 2]}
 
 
 func blocked(p: Vector2) -> bool:

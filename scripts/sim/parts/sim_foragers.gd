@@ -157,7 +157,7 @@ func _step_ant(a: Ant) -> void:
 func _pick_up(a: Ant, f: Dictionary) -> void:
 	# collecting a load takes a while: stroking aphids for honeydew, drinking until the crop is full,
 	# or cutting a piece off a carcass with the mandibles
-	var h: Array = HANDLING.get(f.kind, [30, 60, 2])
+	var h: Array = FoodKinds.info(f.kind).get("handling", [30, 60, 2])
 	a.busy = rng.randi_range(h[0], h[1])
 	a.act = h[2]
 	a.ang = (f.pos - a.pos).angle()
@@ -170,11 +170,9 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 	a.turn_after = true
 	if not f.found:
 		f.found = true
-		match f.kind:
-			"aphids": _log(T.found_aphids, "ok")
-			"honey": _log(T.found_honey, "ok")
-			"cricket": _log(T.found_cricket, "ok")
-			"fly": _log(T.found_fly, "ok")
+		var line: String = FoodKinds.info(f.kind).get("found", "")
+		if line != "":
+			_log(line, "ok")
 
 
 func _arrive(a: Ant) -> void:

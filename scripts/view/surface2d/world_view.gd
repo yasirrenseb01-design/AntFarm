@@ -5,6 +5,7 @@ extends Node2D
 const Ant := preload("res://scripts/sim/ant.gd")
 const Kit := preload("res://scripts/view/surface2d/draw_kit.gd")
 const AntBatch := preload("res://scripts/view/surface2d/ant_batch.gd")
+const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 
 const PHER_HOME := Color(0.5, 0.66, 1.0)
 const PHER_FOOD := Color(0.98, 0.68, 0.27)
@@ -242,6 +243,7 @@ func _draw_items(ci: Node2D) -> void:
 			"honey": Kit.honey(ci, f.pos, left)
 			"cricket": Kit.cricket(ci, f.pos, f.ang, left, f.rotten)
 			"fly": Kit.fly(ci, f.pos, f.ang, left)
+			_: Kit.ellipse(ci, f.pos, Vector2(f.r, f.r) * 0.6, Color(0.6, 0.45, 0.3))   # a kind with no drawing yet
 
 
 func _draw_ants(ci: Node2D) -> void:
@@ -374,10 +376,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			match tool:
 				"pan":
 					pass
-				"honey":
-					sim.place_food("honey", p)
-				"cricket":
-					sim.place_food("cricket", p)
+				_ when FoodKinds.info(tool).has("tool"):
+					sim.place_food(tool, p)
 				_:
 					_painting = true
 					_paint(p)

@@ -276,9 +276,9 @@ func _outworld(dt: float) -> void:
 		f.age += dt
 		if f.regen > 0.0:
 			f.amt = minf(f.cap, f.amt + f.regen * dt * (0.4 + 0.6 * light))
-		elif f.kind == "honey":
-			f.amt *= pow(0.78, dt)  # the drop dries out and crystallises
-		elif f.type == Ant.PROTEIN and f.age > 6.0 and not f.rotten:
+		elif FoodKinds.info(f.kind).has("dries"):
+			f.amt *= pow(FoodKinds.info(f.kind).dries, dt)  # a drop dries out and crystallises
+		elif f.age > FoodKinds.info(f.kind).get("rots_after", INF) and not f.rotten:
 			f.rotten = true
 			_food_dirty = true
 	var before := foods.size()

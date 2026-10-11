@@ -8,6 +8,7 @@ extends Node3D
 const Ant := preload("res://scripts/sim/ant.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
+const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units
 const ANT_SCALE := 1.1

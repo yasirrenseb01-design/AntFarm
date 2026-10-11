@@ -35,7 +35,7 @@ func _sync_foods() -> void:
 		var node := _make_food(f, left)
 		_food_root.add_child(node)
 		var low := []
-		if f.kind == "aphids":
+		if FoodKinds.info(f.kind).get("feed_pose", "") == "climb":
 			for s in Props.aphid_spots(f.seed):
 				if s[1] != 2 and (s[0] as Transform3D).origin.y < 10.0:
 					low.append(s[0])
@@ -69,117 +69,133 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 	var root := Node3D.new()
 	root.position = _on_ground(f.pos, 0.0)
 	root.rotation.y = -f.ang
-	match f.kind:
-		"aphids":
-			var plant := MeshInstance3D.new()
-			plant.mesh = Props.aphid_plant(f.seed)
-			plant.material_override = _plant_mat
-			root.add_child(plant)
-			var spots: Array = Props.aphid_spots(f.seed)
-			for kind in 3:
-				var xs := []
-				for s in spots:
-					if s[1] == kind:
-						xs.append(s[0])
-				if xs.is_empty():
-					continue
-				for layer in ([_aphid_meshes[kind], _aphid_wings] if kind == 2 else [_aphid_meshes[kind]]):
-					var mm := MultiMesh.new()
-					mm.transform_format = MultiMesh.TRANSFORM_3D
-					mm.mesh = layer
-					mm.instance_count = xs.size()
-					for i in xs.size():
-						mm.set_instance_transform(i, xs[i])
-					var mi := MultiMeshInstance3D.new()
-					mi.multimesh = mm
-					mi.material_override = _prop_mat if layer != _aphid_wings else _wing_mat()
-					root.add_child(mi)
-			# honeydew waiting on the aphids: as many drops as the colony has to give right now
-			var rng := RandomNumberGenerator.new()
-			rng.seed = f.seed
-			for i in int(round(left * 8.0)):
-				var s: Array = spots[rng.randi() % spots.size()]
-				var drop := MeshInstance3D.new()
-				drop.mesh = _blob_mesh(Vector3(0.24, 0.22, 0.24))
-				drop.material_override = _honey_mat()
-				drop.position = (s[0] as Transform3D) * Vector3(-0.95, 0.4, 0)
-				root.add_child(drop)
-		"honey":
-			var r := (3.0 + 7.0 * sqrt(left)) * U
-			var drop := MeshInstance3D.new()
-			drop.mesh = _blob_mesh(Vector3(r * 1.1, r * 0.42, r))
-			drop.material_override = _honey_mat()
-			root.add_child(drop)
-		"cricket":
-			var body := Node3D.new()
-			body.rotation.x = 0.12        # lying a little on one side
-			root.add_child(body)
-			if Props.asset("prey/cricket_head") != null:
-				# the Blender carcass comes in pieces: the abdomen shrinks and legs go as the ants cut it up
-				var mat: StandardMaterial3D = _prop_mat
-				if f.rotten:
-					mat = _prop_mat.duplicate()
-					mat.albedo_color = Color(0.72, 0.78, 0.66)
-				# Lasius eat a big carcass where it lies: they bite in at the soft joints and drink or cut out
-				# the insides, so the hard shell keeps its shape while the abdomen sags and wrinkles flat
-				var gone := 1.0 - left
-				# once the muscle inside the hip is eaten away, one hind leg comes off and lies beside it
-				var lost := ("cricket_hindleg_l" if f.seed % 2 == 0 else "cricket_hindleg_r") if left < 0.35 else ""
-				for pc in ["cricket_head", "cricket_abdomen", "cricket_hindleg_l", "cricket_hindleg_r", "cricket_legs"]:
-					var mi := MeshInstance3D.new()
-					mi.mesh = Props.asset("prey/" + pc)
-					mi.material_override = mat
-					body.add_child(mi)
-					if pc == lost:
-						var sd := -1.0 if pc.ends_with("_l") else 1.0
-						# fallen flat on the ground, pulled a little way out from the body
-						# tip it over its foot until the hip end rests on the ground, then shift it clear of the body
-						var piv := Vector3(-7.3, 0.0, 2.8 * sd)
-						var tip := Transform3D(Basis.IDENTITY, piv) * Transform3D(Basis(Vector3.BACK, -0.22), Vector3.ZERO) * Transform3D(Basis.IDENTITY, -piv)
-						mi.transform = Transform3D(Basis(Vector3.UP, -0.3 * sd), Vector3(1.2, 0.15, 2.0 * sd)) * tip
-						var socket := MeshInstance3D.new()
-						socket.mesh = _blob_mesh(Vector3(0.45, 0.3, 0.4))
-						socket.material_override = _flesh_mat()
-						socket.position = Vector3(0.5, 1.75, 1.45 * sd)
-						body.add_child(socket)
-					if pc == "cricket_abdomen":
-						# deflate about the belly, which stays on the ground
-						var sc := Vector3(1.0 - 0.06 * gone, 1.0 - 0.5 * gone, 1.0 - 0.15 * gone)
-						var pivot := Vector3(-1.6, 0.25, 0)
-						mi.scale = sc
-						mi.position = pivot - pivot * sc
-						var wa := Props.cricket_wounds(left, f.seed, true)
-						if wa != null:
-							var w := MeshInstance3D.new()
-							w.mesh = wa
-							w.material_override = _prop_mat
-							mi.add_child(w)
-				var wf := Props.cricket_wounds(left, f.seed, false)
-				if wf != null:
-					var w2 := MeshInstance3D.new()
-					w2.mesh = wf
-					w2.material_override = _prop_mat
-					body.add_child(w2)
-				root.set_meta("husk", true)
-			else:
-				var c := MeshInstance3D.new()
-				c.mesh = Props.cricket(left, f.rotten, f.seed)
-				c.material_override = _prop_mat
-				body.add_child(c)
-		"fly":
-			var b := MeshInstance3D.new()
-			b.mesh = Props.fly(left)
-			b.material_override = _prop_mat
-			root.add_child(b)
-			var wings := MeshInstance3D.new()
-			wings.mesh = Props.fly_wings()
-			wings.material_override = _wing_mat()
-			wings.scale = Vector3.ONE * (0.6 + 0.4 * left)
-			root.add_child(wings)
-	if f.kind in ["cricket", "fly"]:
+	var builder := "_food_" + String(f.kind)
+	if has_method(builder):
+		call(builder, root, f, left)
+	else:
+		# a kind without its own model yet: a plain lump
+		var lump := MeshInstance3D.new()
+		lump.mesh = _blob_mesh(Vector3(f.r, f.r * 0.5, f.r) * U * 0.6)
+		lump.material_override = _mat(Color(0.6, 0.45, 0.3), 0.8)
+		root.add_child(lump)
+	if FoodKinds.info(f.kind).get("buried", false):
 		_add_soil_cover(root, f, left)
 	return root
 
+
+## One builder per food kind (named _food_<kind>), called by _make_food().
+func _food_aphids(root: Node3D, f: Dictionary, left: float) -> void:
+	var plant := MeshInstance3D.new()
+	plant.mesh = Props.aphid_plant(f.seed)
+	plant.material_override = _plant_mat
+	root.add_child(plant)
+	var spots: Array = Props.aphid_spots(f.seed)
+	for kind in 3:
+		var xs := []
+		for s in spots:
+			if s[1] == kind:
+				xs.append(s[0])
+		if xs.is_empty():
+			continue
+		for layer in ([_aphid_meshes[kind], _aphid_wings] if kind == 2 else [_aphid_meshes[kind]]):
+			var mm := MultiMesh.new()
+			mm.transform_format = MultiMesh.TRANSFORM_3D
+			mm.mesh = layer
+			mm.instance_count = xs.size()
+			for i in xs.size():
+				mm.set_instance_transform(i, xs[i])
+			var mi := MultiMeshInstance3D.new()
+			mi.multimesh = mm
+			mi.material_override = _prop_mat if layer != _aphid_wings else _wing_mat()
+			root.add_child(mi)
+	# honeydew waiting on the aphids: as many drops as the colony has to give right now
+	var rng := RandomNumberGenerator.new()
+	rng.seed = f.seed
+	for i in int(round(left * 8.0)):
+		var s: Array = spots[rng.randi() % spots.size()]
+		var drop := MeshInstance3D.new()
+		drop.mesh = _blob_mesh(Vector3(0.24, 0.22, 0.24))
+		drop.material_override = _honey_mat()
+		drop.position = (s[0] as Transform3D) * Vector3(-0.95, 0.4, 0)
+		root.add_child(drop)
+
+
+func _food_honey(root: Node3D, f: Dictionary, left: float) -> void:
+	var r := (3.0 + 7.0 * sqrt(left)) * U
+	var drop := MeshInstance3D.new()
+	drop.mesh = _blob_mesh(Vector3(r * 1.1, r * 0.42, r))
+	drop.material_override = _honey_mat()
+	root.add_child(drop)
+
+
+func _food_cricket(root: Node3D, f: Dictionary, left: float) -> void:
+	var body := Node3D.new()
+	body.rotation.x = 0.12        # lying a little on one side
+	root.add_child(body)
+	if Props.asset("prey/cricket_head") != null:
+		# the Blender carcass comes in pieces: the abdomen shrinks and legs go as the ants cut it up
+		var mat: StandardMaterial3D = _prop_mat
+		if f.rotten:
+			mat = _prop_mat.duplicate()
+			mat.albedo_color = Color(0.72, 0.78, 0.66)
+		# Lasius eat a big carcass where it lies: they bite in at the soft joints and drink or cut out
+		# the insides, so the hard shell keeps its shape while the abdomen sags and wrinkles flat
+		var gone := 1.0 - left
+		# once the muscle inside the hip is eaten away, one hind leg comes off and lies beside it
+		var lost := ("cricket_hindleg_l" if f.seed % 2 == 0 else "cricket_hindleg_r") if left < 0.35 else ""
+		for pc in ["cricket_head", "cricket_abdomen", "cricket_hindleg_l", "cricket_hindleg_r", "cricket_legs"]:
+			var mi := MeshInstance3D.new()
+			mi.mesh = Props.asset("prey/" + pc)
+			mi.material_override = mat
+			body.add_child(mi)
+			if pc == lost:
+				var sd := -1.0 if pc.ends_with("_l") else 1.0
+				# fallen flat on the ground, pulled a little way out from the body
+				# tip it over its foot until the hip end rests on the ground, then shift it clear of the body
+				var piv := Vector3(-7.3, 0.0, 2.8 * sd)
+				var tip := Transform3D(Basis.IDENTITY, piv) * Transform3D(Basis(Vector3.BACK, -0.22), Vector3.ZERO) * Transform3D(Basis.IDENTITY, -piv)
+				mi.transform = Transform3D(Basis(Vector3.UP, -0.3 * sd), Vector3(1.2, 0.15, 2.0 * sd)) * tip
+				var socket := MeshInstance3D.new()
+				socket.mesh = _blob_mesh(Vector3(0.45, 0.3, 0.4))
+				socket.material_override = _flesh_mat()
+				socket.position = Vector3(0.5, 1.75, 1.45 * sd)
+				body.add_child(socket)
+			if pc == "cricket_abdomen":
+				# deflate about the belly, which stays on the ground
+				var sc := Vector3(1.0 - 0.06 * gone, 1.0 - 0.5 * gone, 1.0 - 0.15 * gone)
+				var pivot := Vector3(-1.6, 0.25, 0)
+				mi.scale = sc
+				mi.position = pivot - pivot * sc
+				var wa := Props.cricket_wounds(left, f.seed, true)
+				if wa != null:
+					var w := MeshInstance3D.new()
+					w.mesh = wa
+					w.material_override = _prop_mat
+					mi.add_child(w)
+		var wf := Props.cricket_wounds(left, f.seed, false)
+		if wf != null:
+			var w2 := MeshInstance3D.new()
+			w2.mesh = wf
+			w2.material_override = _prop_mat
+			body.add_child(w2)
+		root.set_meta("husk", true)
+	else:
+		var c := MeshInstance3D.new()
+		c.mesh = Props.cricket(left, f.rotten, f.seed)
+		c.material_override = _prop_mat
+		body.add_child(c)
+
+
+func _food_fly(root: Node3D, f: Dictionary, left: float) -> void:
+	var b := MeshInstance3D.new()
+	b.mesh = Props.fly(left)
+	b.material_override = _prop_mat
+	root.add_child(b)
+	var wings := MeshInstance3D.new()
+	wings.mesh = Props.fly_wings()
+	wings.material_override = _wing_mat()
+	wings.scale = Vector3.ONE * (0.6 + 0.4 * left)
+	root.add_child(wings)
 
 func _add_soil_cover(root: Node3D, f: Dictionary, left: float) -> void:
 	var cover := _cover(f)
@@ -188,7 +204,7 @@ func _add_soil_cover(root: Node3D, f: Dictionary, left: float) -> void:
 	if _grain_mesh == null:
 		_grain_mesh = _blob_mesh(Vector3(1.0, 0.75, 1.0))
 		_grain_mat = _vc_mat(0.95, false, false)
-	var big: bool = f.kind == "cricket"
+	var big: bool = FoodKinds.info(f.kind).get("big", false)
 	var n_all := 220 if big else 60
 	var rng := RandomNumberGenerator.new()
 	rng.seed = f.seed + 51
