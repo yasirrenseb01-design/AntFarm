@@ -198,7 +198,7 @@ func _food_fly(root: Node3D, f: Dictionary, left: float) -> void:
 	root.add_child(wings)
 
 func _add_soil_cover(root: Node3D, f: Dictionary, left: float) -> void:
-	var cover := _cover(f)
+	var cover := _cover(f) if sim.sp.get("buries_prey", false) else 0.0
 	if cover <= 0.0:
 		return
 	if _grain_mesh == null:

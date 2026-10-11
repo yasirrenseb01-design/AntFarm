@@ -42,7 +42,7 @@ func refresh(delta: float) -> void:
 	if not sim.queen.alive:
 		_show(q, "ตายแล้ว", DANGER)
 	elif sim.founding():
-		_show(q, "ไขมัน %d%%" % int(sim.queen.reserve / sim.QUEEN_RESERVE * 100.0), LEAF)   # sealed in, living on her reserves
+		_show(q, "ไขมัน %d%%" % int(sim.queen.reserve / float(sim.sp["queen_reserve"]) * 100.0), LEAF)   # sealed in, living on her reserves
 	elif sim.starving or sim.queen.starve > 0.5:
 		_show(q, "หยุดวางไข่", DANGER)
 	else:

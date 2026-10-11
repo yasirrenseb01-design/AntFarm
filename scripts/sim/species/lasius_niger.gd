@@ -53,6 +53,15 @@ const DATA := {
 	# Movement in outworld px per tick (1 px ≈ 0.5 mm).
 	"walk_speed": 0.7,
 
+	# Colony founding and habits that set this species apart (read by the simulation and the views,
+	# so another species can differ without new code paths).
+	"founding": "claustral",          # the queen seals herself in and raises the first brood on her reserves
+	"queen_reserve": 90.0,            # her fat body + dissolved wing muscle, in food units
+	"founding_eggs": 3,               # eggs already laid when the colony starts
+	"nanitic_size": [0.8, 0.04, 0.72, 0.9],   # first workers: mean, spread, min, max (1.0 = 4.2 mm worker)
+	"tends_aphids": true,             # milks aphids for honeydew
+	"buries_prey": true,              # piles soil on large prey it is exploiting
+
 	"body_color": Color(0.085, 0.062, 0.05),
 	"callow_color": Color(0.5, 0.36, 0.24),
 }

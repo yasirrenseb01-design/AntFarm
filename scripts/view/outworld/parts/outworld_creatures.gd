@@ -89,6 +89,8 @@ func _update_ants(delta: float) -> void:
 
 ## True near a carcass the colony is still burying.
 func _burying(p: Vector2) -> bool:
+	if not sim.sp.get("buries_prey", false):
+		return false
 	for f in sim.foods:
 		if FoodKinds.info(f.kind).get("buried", false) and f.found and _cover(f) < 0.85 and f.pos.distance_squared_to(p) < 2500.0:
 			return true

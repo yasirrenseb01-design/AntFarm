@@ -16,7 +16,6 @@ const TPD := 3600                    # ticks per game day (60 s at 1×)
 const WORLD := Vector2(1200, 750)    # outworld in px, 1 px ≈ 0.5 mm → 60 × 37.5 cm box
 const CELL := 5.0
 const NEST_R := 9.0
-const QUEEN_RESERVE := 90.0          # body reserves of a newly mated queen, in food units
 const COLONY_EVERY := 20             # colony bookkeeping runs every N ticks
 const SENSE_EVERY := 4               # ants re-read pheromone gradients every N ticks
 const INV_CELL := 1.0 / CELL
@@ -120,7 +119,8 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false) ->
 
 	for i in start_workers:
 		var w := _new_worker(rng.randf_range(5.0, 90.0))
-		w.size = clampf(rng.randfn(0.8, 0.04), 0.72, 0.9)    # first-generation nanitics are small
+		var ns: Array = sp["nanitic_size"]
+		w.size = clampf(rng.randfn(ns[0], ns[1]), ns[2], ns[3])    # first-generation nanitics are small
 		workers.append(w)
 	var k := start_workers / 14.0
 	for i in int(9 * k):
@@ -134,8 +134,8 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false) ->
 	if start_workers == 0:
 		# Claustral founding: a newly mated queen seals herself in a small chamber and raises the first
 		# workers alone, living on her fat body and the muscles of the wings she has shed.
-		queen.reserve = QUEEN_RESERVE
-		for i in 3:
+		queen.reserve = sp["queen_reserve"]
+		for i in int(sp["founding_eggs"]):
 			eggs.append({"p": rng.randf() * 0.3})
 
 	place_food("aphids", Vector2(985, 230))
