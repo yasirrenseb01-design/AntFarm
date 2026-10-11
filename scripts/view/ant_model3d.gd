@@ -162,9 +162,57 @@ func build(swing := 0.0, queen := false, detailed := true) -> ArrayMesh:
 	return mesh
 
 
+static var _cache := {}
+# appendage colour relative to the body tint (see limb_gain in shaders/ant.gdshader)
+const WORKER_LIMBS := Vector3(1.7, 1.45, 1.25)
+const QUEEN_LIMBS := Vector3(5.6, 4.6, 2.6)
+
+
+## The model sculpted in Blender (tools/blender/build_ant.py -> assets/models/*.antmesh) when present,
+## otherwise the procedural one below.
 static func make(swing := 0.0, queen := false, detailed := true) -> ArrayMesh:
-	var b = load("res://scripts/view/ant_model3d.gd").new()
-	return b.build(swing, queen, detailed)
+	var key := "%s_%s" % ["queen" if queen else "worker", "hi" if detailed else "lo"]
+	if not _cache.has(key):
+		var m := load_antmesh("res://assets/models/%s.antmesh" % key)
+		if m == null:
+			var b = load("res://scripts/view/ant_model3d.gd").new()
+			m = b.build(swing, queen, detailed)
+		_cache[key] = m
+	return _cache[key]
+
+
+## File layout: "ANTM", vertex count, index count (u32), then per vertex 10 floats
+## (position, normal, colour RGBA), then u32 indices.
+static func load_antmesh(path: String) -> ArrayMesh:
+	if not FileAccess.file_exists(path):
+		return null
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null or f.get_buffer(4).get_string_from_ascii() != "ANTM":
+		return null
+	var nv := f.get_32()
+	var ni := f.get_32()
+	var data := f.get_buffer(nv * 40).to_float32_array()
+	var idx := f.get_buffer(ni * 4).to_int32_array()
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var c := PackedColorArray()
+	v.resize(nv)
+	n.resize(nv)
+	c.resize(nv)
+	for i in nv:
+		var o := i * 10
+		v[i] = Vector3(data[o], data[o + 1], data[o + 2])
+		n[i] = Vector3(data[o + 3], data[o + 4], data[o + 5])
+		c[i] = Color(data[o + 6], data[o + 7], data[o + 8], data[o + 9])
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = v
+	arrays[Mesh.ARRAY_NORMAL] = n
+	arrays[Mesh.ARRAY_COLOR] = c
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
 
 
 ## Instance colour for a body colour (vertex colours carry the 0.55 body multiplier).

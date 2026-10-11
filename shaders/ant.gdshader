@@ -11,7 +11,9 @@ render_mode diffuse_burley;
 // y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
 
 uniform float rim_amount = 0.35;
+uniform vec3 limb_gain = vec3(1.0);   // appendages are lighter than the body: amber-orange in L. niger queens
 varying float stretch;
+varying float limb;
 const float K = 0.34;   // model design units -> mesh units
 
 mat3 rot_x(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(1, 0, 0), vec3(0, c, s), vec3(0, -s, c)); }
@@ -25,6 +27,7 @@ void vertex() {
 	float full = code >= 99.5 ? 1.0 : 0.0;
 	float act = code - full * 100.0;
 	stretch = 0.0;
+	limb = (part >= 2.0 && part <= 9.0) || part == 11.0 ? 1.0 : 0.0;
 	float t = INSTANCE_CUSTOM.z;
 	float mv = INSTANCE_CUSTOM.w;
 	mat3 R = mat3(1.0);
@@ -125,7 +128,8 @@ void vertex() {
 
 void fragment() {
 	// a stretched crop shows amber honeydew through the pale membranes between the plates
-	ALBEDO = mix(COLOR.rgb, vec3(0.42, 0.27, 0.1), stretch * 0.55);
+	vec3 base = COLOR.rgb * mix(vec3(1.0), limb_gain, limb);
+	ALBEDO = mix(base, vec3(0.42, 0.27, 0.1), stretch * 0.55);
 	ROUGHNESS = 0.4;
 	SPECULAR = 0.55;
 	RIM = rim_amount;

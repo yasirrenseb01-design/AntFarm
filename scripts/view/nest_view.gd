@@ -179,7 +179,11 @@ func setup(s) -> void:
 	_ant_meshes = {"hi": AntModel.make(), "lo": AntModel.make(0.0, false, false)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true)
 	_ant_mm.use_custom_data = true
-	_egg_mm = _multimesh(_ellipsoid(0.32, 0.22), _mat_simple(Color(0.96, 0.94, 0.86), 0.25), false)
+	var egg_mat := _mat_simple(Color(0.95, 0.96, 0.95, 0.88), 0.12)     # translucent, glossy white
+	egg_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	egg_mat.rim_enabled = true
+	egg_mat.rim = 0.5
+	_egg_mm = _multimesh(_ellipsoid(0.32, 0.2), egg_mat, false)
 	var larva_mesh: Mesh = Props.larva()
 	var cocoon_mesh: Mesh = Props.cocoon()
 	var larva_mat := _mat_vc(0.3)
@@ -189,7 +193,7 @@ func setup(s) -> void:
 	_pellet_mm = _multimesh(_ellipsoid(0.42, 0.34), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false)
 	_carry_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	_carry_pellet_mm = _multimesh(_ellipsoid(0.8, 0.65), _mat_simple(Color(0.45, 0.32, 0.2), 0.95), false)
-	_fx_egg_mm = _multimesh(_ellipsoid(0.32, 0.22), _mat_simple(Color(0.96, 0.94, 0.86), 0.25), false)
+	_fx_egg_mm = _multimesh(_ellipsoid(0.32, 0.2), egg_mat, false)
 	_fx_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	var silk := StandardMaterial3D.new()
 	silk.albedo_color = Color(0.97, 0.95, 0.9)
@@ -205,7 +209,10 @@ func setup(s) -> void:
 	dew.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_fx_drop_mm = _multimesh(_ellipsoid(0.16, 0.14), dew, false)
 	_bits_mm = _multimesh(_ellipsoid(0.38, 0.26), _mat_simple(Color(0.45, 0.3, 0.18), 0.7), false)
-	_queen_mm = _multimesh(AntModel.make(0.0, true, true), ant_mat, true)
+	ant_mat.set_shader_parameter("limb_gain", AntModel.WORKER_LIMBS)
+	var queen_mat: ShaderMaterial = ant_mat.duplicate()
+	queen_mat.set_shader_parameter("limb_gain", AntModel.QUEEN_LIMBS)
+	_queen_mm = _multimesh(AntModel.make(0.0, true, true), queen_mat, true)
 	_queen_mm.use_custom_data = true
 
 	if nest.slab:
@@ -343,7 +350,7 @@ func refresh(delta: float) -> void:
 		budget -= 1
 	_ease_camera(delta)
 	_update_camera()
-	var lod := "hi" if cam_dist < 90.0 else "lo"      # detailed ants only when they are big on screen
+	var lod := "hi" if cam_dist < 40.0 else "lo"      # detailed ants only when they are big on screen
 	if lod != _lod:
 		_lod = lod
 		_ant_mm.mesh = _ant_meshes[lod]

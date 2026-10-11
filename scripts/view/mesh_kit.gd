@@ -314,22 +314,25 @@ static func aphid_spots(seed_value: int) -> Array:
 ## smaller and greyer with waxy patches; the occasional winged adult has a shiny thorax and wings.
 static func aphid(kind := 0) -> ArrayMesh:
 	var k = _new()
-	var body := Color(0.13, 0.13, 0.1) if kind != 1 else Color(0.36, 0.38, 0.3)
-	var leg := Color(0.26, 0.24, 0.18)
+	var body := Color(0.17, 0.18, 0.2) if kind != 1 else Color(0.27, 0.28, 0.29)
+	var leg := Color(0.6, 0.6, 0.5)
 	k.blob(Vector3(-0.15, 0.42, 0), Vector3(0.62, 0.42, 0.46), body)                  # abdomen
-	if kind == 1:
-		for x in [-0.4, -0.05, 0.25]:
-			k.blob(Vector3(x, 0.78, 0), Vector3(0.14, 0.06, 0.25), Color(0.7, 0.72, 0.66), Basis.IDENTITY, true)   # wax
+	# transverse rows of white wax spots across the back of the abdomen
+	for row in 4:
+		var x := 0.25 - row * 0.22
+		for zz in [-0.28, -0.1, 0.1, 0.28]:
+			var y := 0.42 + 0.42 * sqrt(maxf(0.0, 1.0 - pow(zz / 0.46, 2.0) - pow((x + 0.15) / 0.62, 2.0)))
+			k.blob(Vector3(x, y - 0.01, zz), Vector3(0.035, 0.018, 0.045) * (1.3 if kind == 1 else 1.0), Color(0.58, 0.6, 0.6), Basis.IDENTITY, true)
 	k.blob(Vector3(0.48, 0.42, 0), Vector3(0.28, 0.26, 0.3), body.lightened(0.05), Basis.IDENTITY, true)        # thorax
 	k.blob(Vector3(0.72, 0.38, 0), Vector3(0.17, 0.17, 0.2), body.lightened(0.1), Basis.IDENTITY, true)         # head
 	for side in [-1.0, 1.0]:
 		k.blob(Vector3(0.8, 0.45, 0.14 * side), Vector3(0.06, 0.06, 0.06), Color(0.35, 0.05, 0.03), Basis.IDENTITY, true)
 		k.chain([Vector3(0.82, 0.5, 0.08 * side), Vector3(0.95, 0.75, 0.25 * side), Vector3(0.4, 0.95, 0.45 * side),
-			Vector3(-0.3, 0.85, 0.55 * side)], 0.025, 0.018, leg.darkened(0.3))      # antennae swept back
+			Vector3(-0.3, 0.85, 0.55 * side)], 0.022, 0.016, leg)                  # pale antennae swept back
 		k.seg(Vector3(-0.55, 0.62, 0.18 * side), Vector3(-0.78, 0.82, 0.24 * side), 0.045, Color(0.04, 0.04, 0.04))  # cornicle
 		for x in [0.55, 0.42, 0.25]:
 			k.chain([Vector3(x, 0.25, 0.18 * side), Vector3(x + 0.1, 0.45, 0.55 * side), Vector3(x + 0.05, 0.0, 0.75 * side)],
-				0.03, 0.025, leg)
+				0.026, 0.02, leg)
 	k.blob(Vector3(-0.8, 0.4, 0), Vector3(0.1, 0.06, 0.06), body, Basis.IDENTITY, true)                       # cauda
 	if kind == 2:
 		k.blob(Vector3(0.45, 0.6, 0), Vector3(0.3, 0.2, 0.28), Color(0.05, 0.05, 0.05))
@@ -347,65 +350,88 @@ static func aphid_wings() -> ArrayMesh:
 	return k.commit()
 
 
-## A dead field cricket lying on its side; `left` (0..1) is how much of it is still there. Where the
-## ants have cut pieces away, pale muscle and dark body fluid show through the cuticle.
+## A dead house cricket (Acheta domesticus, the feeder cricket keepers use) lying slightly on its side;
+## `left` (0..1) is how much of it is still there. Straw-tan with dark brown markings: a band
+## between the eyes, blotches on the pronotum, a dark edge on each abdominal plate; spiny hind
+## tibiae, long cerci, antennae longer than the body. Where the ants have cut pieces away, pale muscle
+## and dark body fluid show through.
 static func cricket(left: float, rotten: bool, seed_value := 1) -> ArrayMesh:
 	var k = _new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
-	var body := Color(0.2, 0.13, 0.07)
-	var dark := Color(0.09, 0.06, 0.04)
+	var tan := Color(0.48, 0.37, 0.23)
+	var dark := Color(0.2, 0.13, 0.07)
+	var leg := Color(0.53, 0.42, 0.27)
 	if rotten:
-		body = body.lerp(Color(0.33, 0.35, 0.25), 0.5)
+		tan = tan.lerp(Color(0.42, 0.42, 0.32), 0.5)
 		dark = dark.lerp(Color(0.22, 0.24, 0.18), 0.5)
+		leg = leg.lerp(Color(0.42, 0.42, 0.32), 0.5)
 	var abd := maxf(0.35, left)
-	k.blob(Vector3(-1.6, 1.7, 0), Vector3(3.6 * abd, 1.6 * abd, 1.7 * abd), body)     # abdomen
-	k.blob(Vector3(2.0, 1.9, 0), Vector3(1.5, 1.4, 1.6), body.lightened(0.05))        # pronotum
-	k.blob(Vector3(3.8, 1.8, 0), Vector3(1.2, 1.3, 1.3), dark)                          # head
+	k.blob(Vector3(-1.6, 1.6, 0), Vector3(3.6 * abd, 1.4 * abd, 1.6 * abd), tan)     # abdomen
+	for i in 6:                                                                        # dark plate margins
+		var x := (0.9 - i * 0.95) * abd - 0.4
+		k.blob(Vector3(x, 1.6 + 1.25 * abd, 0), Vector3(0.14, 0.12, 1.25 * abd), dark, Basis.IDENTITY, true)
+	k.blob(Vector3(2.0, 1.8, 0), Vector3(1.5, 1.3, 1.5), tan.lightened(0.05))          # pronotum
+	for zz in [-0.6, 0.6]:
+		k.blob(Vector3(2.1, 2.85, zz), Vector3(0.75, 0.2, 0.35), dark, Basis.IDENTITY, true)
+	k.blob(Vector3(3.8, 1.75, 0), Vector3(1.2, 1.25, 1.25), tan)                      # head
+	k.blob(Vector3(4.2, 2.45, 0), Vector3(0.75, 0.3, 1.0), dark)                      # band between the eyes
 	for side in [-1.0, 1.0]:
-		k.blob(Vector3(4.3, 2.3, 0.75 * side), Vector3(0.35, 0.35, 0.3), Color(0.03, 0.02, 0.02))
-		k.chain([Vector3(4.6, 2.4, 0.4 * side), Vector3(7.0, 2.6, 1.6 * side), Vector3(11.0, 1.4, 3.0 * side)], 0.1, 0.06, dark)
-		k.seg(Vector3(-4.6 * abd, 1.8, 0.3 * side), Vector3(-6.8 * abd, 1.6, 1.2 * side), 0.12, dark)   # cerci
+		k.blob(Vector3(4.25, 2.25, 0.82 * side), Vector3(0.38, 0.4, 0.3), Color(0.05, 0.04, 0.03))
+		k.chain([Vector3(4.6, 2.4, 0.4 * side), Vector3(8.0, 2.8, 2.0 * side), Vector3(13.0, 2.0, 4.0 * side),
+			Vector3(18.0, 0.8, 5.0 * side)], 0.07, 0.035, leg.darkened(0.15))       # antennae longer than the body
+		k.chain([Vector3(-4.6 * abd, 1.7, 0.3 * side), Vector3(-7.5 * abd, 1.5, 1.4 * side)], 0.11, 0.05, leg)    # cerci
 		if left > 0.3:
-			# big jumping hind legs: thick femur, thin tibia
-			k.blob(Vector3(-1.0, 2.2, 1.7 * side), Vector3(2.6, 0.75, 0.55), dark, Basis(Vector3.BACK, 0.35))
-			k.chain([Vector3(-3.3, 1.4, 1.9 * side), Vector3(-5.6, 0.25, 2.3 * side), Vector3(-6.3, 0.1, 2.6 * side)], 0.22, 0.14, dark)
+			# big jumping hind legs: a thick femur with dark stripes, a spiny tibia
+			k.blob(Vector3(-1.0, 2.1, 1.7 * side), Vector3(2.6, 0.75, 0.55), leg, Basis(Vector3.BACK, 0.35))
+			for st in 3:
+				k.blob(Vector3(-0.2 - st * 0.8, 2.35 - st * 0.3, 2.05 * side), Vector3(0.45, 0.08, 0.1), dark, Basis(Vector3.BACK, 0.35), true)
+			var knee := Vector3(-3.3, 1.3, 1.9 * side)
+			var heel := Vector3(-5.6, 0.25, 2.3 * side)
+			k.chain([knee, heel, Vector3(-6.4, 0.1, 2.6 * side)], 0.2, 0.12, leg)
+			for sp in 5:
+				var at := knee.lerp(heel, 0.2 + sp * 0.16)
+				k.seg(at, at + Vector3(-0.15, 0.45, 0.25 * side), 0.05, leg.lightened(0.2), false)   # tibial spines
 		if left > 0.6:
 			for x in [2.6, 1.0]:
-				k.chain([Vector3(x, 1.0, 0.9 * side), Vector3(x + 0.6, 0.7, 2.0 * side), Vector3(x + 1.0, 0.05, 2.6 * side)], 0.16, 0.1, dark)
-	k.blob(Vector3(-1.0, 2.9, 0), Vector3(3.0 * abd, 0.4, 1.4 * abd), Color(0.32, 0.23, 0.13))   # folded wings
+				k.chain([Vector3(x, 1.0, 0.9 * side), Vector3(x + 0.6, 0.7, 2.0 * side), Vector3(x + 1.0, 0.05, 2.6 * side)], 0.16, 0.1, leg)
+	k.seg(Vector3(-4.6 * abd, 1.5, 0), Vector3(-8.0 * abd, 1.6, 0), 0.08, dark)        # ovipositor (a female)
+	k.blob(Vector3(-0.6, 2.75, 0), Vector3(2.4 * abd, 0.3, 1.3 * abd), tan.darkened(0.12))   # wing pads
 	# bite wounds: the more that has been carried off, the more open patches on the soft parts
 	var wounds := int(round((1.0 - left) * 9.0))
 	for i in wounds:
 		var a := rng.randf_range(-PI, PI)
 		var x := rng.randf_range(-4.2, 1.0) * abd
-		var on := Vector3(x, 1.7 + sin(a) * 1.55 * abd, cos(a) * 1.65 * abd)
+		var on := Vector3(x, 1.6 + sin(a) * 1.35 * abd, cos(a) * 1.5 * abd)
 		var r := rng.randf_range(0.45, 0.9)
-		k.blob(on, Vector3(r, r * 0.55, r), Color(0.78, 0.62, 0.45) if i % 3 != 2 else Color(0.32, 0.16, 0.08),
+		k.blob(on, Vector3(r, r * 0.55, r), Color(0.82, 0.68, 0.52) if i % 3 != 2 else Color(0.32, 0.16, 0.08),
 			Basis(Vector3.RIGHT, a))
 	return k.commit()
 
 
-## Lasius larva: a fat, curved ("crook-necked") grub, translucent cream with the gut showing darker
-## through the skin, the slim neck and tiny head bent down toward the belly. Facing +x, ~2 units.
+## Lasius larva: an elongated, gently curved grub, translucent white with the segments showing as
+## soft ridges and the gut a little darker inside; the narrow front end with the tiny head bends down.
+## Facing +x, about 2 units long.
 static func larva() -> ArrayMesh:
 	var k = _new()
-	var skin := Color(0.95, 0.9, 0.76)
-	var n := 9
+	var skin := Color(0.96, 0.95, 0.9)
+	var n := 13
 	for i in n:
 		var t := float(i) / (n - 1)
-		var th := lerpf(-1.9, 1.4, t)                 # from the rear end round to the neck
-		var p := Vector3(sin(th) * 0.62, 0.55 - cos(th) * 0.5, 0)
-		var r := lerpf(0.42, 0.55, sin(t * PI)) * (1.0 - 0.55 * smoothstep(0.75, 1.0, t))
-		k.blob(p, Vector3(r * 0.9, r, r * 1.05), skin)
-		if t > 0.2 and t < 0.7:
-			k.blob(p + Vector3(0, 0.05, 0), Vector3(r * 0.5, r * 0.5, r * 0.55), Color(0.78, 0.66, 0.44), Basis.IDENTITY, true)
-	k.blob(Vector3(0.95, 0.42, 0), Vector3(0.16, 0.16, 0.17), Color(0.85, 0.75, 0.55), Basis.IDENTITY, true)   # head
+		var th := lerpf(-0.75, 0.95, t)              # a shallow arc, not a tight C
+		var p := Vector3(sin(th) * 1.15, 0.42 + (1.0 - cos(th)) * 0.55 - 0.08, 0)
+		var r := 0.36 * sin(lerpf(0.35, 2.75, t))    # thick in the middle, tapering to both ends
+		r *= 1.0 + 0.07 * cos(t * PI * 12.0)        # segment ridges
+		r = maxf(r, 0.1)
+		k.blob(p, Vector3(r * 0.75, r, r * 1.05), skin)
+		if t > 0.25 and t < 0.75:
+			k.blob(p + Vector3(0, 0.03, 0), Vector3(r * 0.4, r * 0.45, r * 0.5), Color(0.86, 0.82, 0.68), Basis.IDENTITY, true)
+	k.blob(Vector3(1.0, 0.62, 0), Vector3(0.12, 0.12, 0.13), Color(0.9, 0.85, 0.7), Basis.IDENTITY, true)   # head
 	return k.commit()
 
 
 ## Silk cocoon of a Lasius pupa, with the dark meconium (the larva's gut contents, voided just
-## before pupation) showing through at the rear end. 2.7 × 1.24 units, like the brood piles.
+## before pupation) showing through at the very tip of the rear end. 2.7 × 1.24 units, like the brood piles.
 static func cocoon() -> ArrayMesh:
 	var s := SphereMesh.new()
 	s.radius = 0.62
@@ -419,9 +445,10 @@ static func cocoon() -> ArrayMesh:
 		var p := v[i]
 		p.x *= 1.35 / 0.62
 		v[i] = p
-		var tan := Color(0.8, 0.65, 0.45).lerp(Color(0.86, 0.73, 0.54), 0.5 + 0.5 * sin(p.x * 5.0 + p.y * 9.0))
-		var spot := smoothstep(-0.85, -1.2, p.x)
-		cols.append(tan.lerp(Color(0.12, 0.08, 0.06), spot))
+		# pale cream silk, a dark brown meconium spot only at the very tip
+		var silk := Color(0.93, 0.89, 0.78).lerp(Color(0.97, 0.94, 0.85), 0.5 + 0.5 * sin(p.x * 5.0 + p.y * 9.0))
+		var spot := smoothstep(-1.15, -1.32, p.x)
+		cols.append(silk.lerp(Color(0.35, 0.18, 0.08), spot))
 	arr[Mesh.ARRAY_VERTEX] = v
 	arr[Mesh.ARRAY_COLOR] = cols
 	var nrm: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]

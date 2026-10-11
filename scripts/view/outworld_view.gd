@@ -116,6 +116,7 @@ func setup(s, w) -> void:
 
 	var ant_mat := ShaderMaterial.new()
 	ant_mat.shader = load("res://shaders/ant.gdshader")
+	ant_mat.set_shader_parameter("limb_gain", AntModel.WORKER_LIMBS)
 	_ant_meshes = {"hi": AntModel.make(), "lo": AntModel.make(0.0, false, false)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
 	_corpse_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
