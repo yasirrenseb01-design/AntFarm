@@ -25,7 +25,7 @@ func _new_day() -> void:
 		queen["rested"] = maxf(0.0, was - 1.0 / 300.0)
 		if scenario == "keeper" and was >= 0.5 and queen.rested < 0.5 and not fridge_on:
 			_log(T.rest_low, "bad")
-	match nest.plan_chambers(eggs.size() + larvae.size() + pupae.size(), workers.size()):
+	match nest.plan_chambers(eggs.size() + larvae.size() + pupae.size(), workers.size(), target_air()):
 		"planned":
 			_log(T.chamber_planned % nest.chambers.size(), "ok")
 		"opened":
@@ -386,7 +386,10 @@ func _outworld(dt: float) -> void:
 		f.age += dt
 		if f.regen > 0.0:
 			# aphids feed and breed only in the warm months (they overwinter as eggs)
+			var was: float = f.amt
 			f.amt = minf(f.cap, f.amt + f.regen * dt * (0.4 + 0.6 * light) * life)
+			if was < 1.0 and f.amt >= 1.0:
+				_food_dirty = true      # honeydew again: foragers can smell it once more
 		elif FoodKinds.info(f.kind).has("dries"):
 			f.amt *= pow(FoodKinds.info(f.kind).dries, dt)  # a drop dries out and crystallises
 		elif f.age > FoodKinds.info(f.kind).get("rots_after", INF) and not f.rotten:

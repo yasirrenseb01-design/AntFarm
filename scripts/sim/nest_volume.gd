@@ -6,6 +6,9 @@ extends RefCounted
 ##  - tunnel tips are favoured over widening an existing tunnel, and digging trends downward
 ##  - inside a chamber site (around queen/brood) widening is allowed, but chambers stay flat
 ##  - the colony stops when the open volume matches its population (Buhl et al. 2004)
+## Chambers are flat, elongated bulges along the galleries (Lasius: ~1–2 cm wide, 3–5 cm long, a few mm
+## high, galleries 1.5–5 mm; Wang et al. 1995), with solid soil between them. Nobody plans them: they
+## grow where workers crowd round brood (Römer & Roces 2014) — the plan here stands for that outcome.
 ## Each bite is carried up the tunnels and dropped on the surface, building the crater mound.
 
 const VOXEL_MM := 1.5
@@ -187,13 +190,8 @@ func _plan_at(c: Vector3i) -> int:
 	var p := Vector3(c)
 	var on_shaft := false
 	for ch in chambers:
-		var g: float = ch.goal
-		if ch.get("open", true):
-			var q: Vector3 = (p - ch.c) / Vector3(g, g * 0.45, g)
-			if slab:
-				q.z = 0.0
-			if q.length_squared() <= 1.0:
-				return 2
+		if ch.get("open", true) and chamber_q(p, ch) <= 1.0:
+			return 2
 		if ch.has("from"):
 			var a: Vector3 = ch.from
 			var b: Vector3 = ch.c
@@ -202,6 +200,31 @@ func _plan_at(c: Vector3i) -> int:
 			if p.distance_to(a + ab * t) <= 1.3:
 				on_shaft = true
 	return 1 if on_shaft else 0
+
+
+## Half-axes of a chamber's planned shape: long, wide (across), high. Flat: about two ants high.
+func chamber_axes(ch: Dictionary) -> Vector3:
+	var g: float = ch.goal
+	if slab:     # seen edge-on against the glass: a room one ant-layer deep, so a little higher and shorter
+		return Vector3(minf(g, 10.0), clampf(2.2 + g * 0.08, 2.2, 3.0), 1.0)
+	return Vector3(g, clampf(1.7 + g * 0.06, 1.7, 2.4), maxf(2.6, g * 0.6))
+
+
+## Where a point lies relative to a chamber's planned shape (<= 1 inside), turned to its heading.
+func chamber_q(p: Vector3, ch: Dictionary) -> float:
+	var d: Vector3 = p - ch.c
+	var yaw: float = ch.get("yaw", 0.0)
+	var ax := chamber_axes(ch)
+	if slab:
+		return Vector2(d.x / ax.x, d.y / ax.y).length_squared()     # one layer deep: no heading
+	var u := d.x * cos(yaw) + d.z * sin(yaw)
+	var v := -d.x * sin(yaw) + d.z * cos(yaw)
+	return Vector3(u / ax.x, d.y / ax.y, v / ax.z).length_squared()
+
+
+func _chamber_volume(ch: Dictionary) -> float:
+	var ax := chamber_axes(ch)
+	return 4.0 / 3.0 * PI * ax.x * ax.y * (1.0 if slab else ax.z)
 
 
 func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
@@ -221,7 +244,7 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 		if is_open(s + d):
 			open_n += 1
 	var plan := _plan_at(s)
-	var k := 0.35                                      # unplanned digging is rare
+	var k := 0.06                                      # unplanned digging is rare: soil stays solid between chambers
 	if depth < 6 and Vector2(s.x - entrance.x, s.z - entrance.z).length() > 2.0:
 		k = 0.1                                        # the surface crust is left intact around the shaft
 	elif plan == 2:
@@ -231,13 +254,15 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 	elif open_n >= 3:
 		k = 0.05                                       # would widen a tunnel beyond ant width
 	elif open_n == 1 and s.y < from.y:
-		k = 0.8                                        # an exploratory tunnel tip going down
+		k = 0.25                                       # an exploratory tunnel tip going down
 	var dirk := 1.0
 	if s.y < from.y:
 		dirk = 1.6
 	elif s.y > from.y:
 		dirk = 0.3
-	return 0.05 * soft * k * dirk * (1.0 + 4.0 * _dig_signal(s))
+	# fresh digging draws more digging, but only where there is a reason to dig (a chamber, a shaft)
+	var lure := 4.0 if plan > 0 else 0.8
+	return 0.05 * soft * k * dirk * (1.0 + lure * _dig_signal(s))
 
 
 func _bite(s: Vector3i) -> void:
@@ -404,45 +429,67 @@ func _move(d: Dictionary, n: Vector3i) -> void:
 ## Called by the colony once a day. Chambers grow while brood is crowded; a growing colony also
 ## plans a new chamber a little deeper and sinks a shaft down to it, giving the stacked layout of
 ## Lasius nests (flat chambers in series along vertical shafts).
-func plan_chambers(brood: int, workers: int) -> String:
+func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	var event := ""
 	for ch in chambers:
 		if not ch.get("open", true) and is_open(Vector3i(ch.c)):
 			ch.open = true
 			event = "opened"
-	var load := brood + workers * 0.3
+	# how big a chamber gets grows with the colony: ~1.5 cm long for a founding queen, up to ~4 cm
+	var cap := clampf(5.0 + workers / 20.0, 5.0, 13.0)
+	var planned := 0.0
 	var floor_cap := 0.0
 	for ch in chambers:
+		planned += _chamber_volume(ch)
 		if ch.get("open", true):
-			floor_cap += PI * ch.goal * ch.goal * 1.5
-	if load > floor_cap * 0.7:
-		for ch in chambers:
-			if ch.get("open", true) and ch.goal < 6.5:
-				ch.goal += 0.5
-				if event == "":
-					event = "grown"
-				break
-	var wanted := 1 if workers < 10 else 2 + workers / 15     # a founding queen makes do with one chamber
+			var ax := chamber_axes(ch)
+			floor_cap += PI * ax.x * (1.0 if slab else ax.z) * 1.5
+	var load := brood + workers * 0.3
+	var short := target_air > 0 and planned < target_air * 0.8      # the colony needs more room
+	if load > floor_cap * 0.7 or short:
+		# crowded brood: workers widen the chamber they crowd in (the smallest one that can still grow)
+		var best := -1
+		for i in chambers.size():
+			var ch: Dictionary = chambers[i]
+			if ch.get("open", true) and ch.goal < cap and (best < 0 or ch.goal < chambers[best].goal):
+				best = i
+		if best >= 0:
+			chambers[best].goal = minf(cap, chambers[best].goal + 0.5)
+			if event == "" and load > floor_cap * 0.7 and int(chambers[best].goal * 2.0) % 4 == 0:
+				event = "grown"         # told now and then, not every day it grows
+			return event
+	var wanted := 1 if workers < 10 else 2          # a founding queen makes do with one chamber
 	var pending := 0
 	for ch in chambers:
 		if not ch.get("open", true):
 			pending += 1
-	if chambers.size() >= mini(wanted, 14) or pending > 0:
+	if pending > 0 or chambers.size() >= 24 or (chambers.size() >= wanted and not short):
 		return event
-	for attempt in 40:
+	# a new chamber: beside an existing one on the same level (nests are top-heavy) or a level deeper,
+	# reached by a gallery from the side of the old chamber
+	for attempt in 60:
 		var src: Dictionary = chambers[rng.randi() % chambers.size()]
-		var site := Vector3(src.c) + Vector3(rng.randf_range(-14 if slab else -11, 14 if slab else 11),
-			-rng.randf_range(9, 14), 0.0 if slab else rng.randf_range(-11, 11))
-		if site.x < 6 or site.x > nx - 7 or site.y < 6 or site.z < (1 if slab else 6) or site.z > nz - (2 if slab else 7):
+		var depth: float = ny - float(src.c.y)
+		var sideways := rng.randf() < (0.65 if depth < 30.0 else 0.35)
+		var ang := rng.randf() * TAU
+		var reach := rng.randf_range(src.goal + 8.0, src.goal + 14.0) if sideways else rng.randf_range(4.0, 12.0)
+		var off := Vector3(cos(ang) * reach, rng.randf_range(-2.0, 1.0) if sideways else -rng.randf_range(8.0, 13.0), sin(ang) * reach)
+		if slab:
+			off.x = (reach if cos(ang) >= 0.0 else -reach) * (1.0 if sideways else 0.6)
+			off.z = 0.0
+		var site := Vector3(src.c) + off
+		if site.x < 8 or site.x > nx - 9 or site.y < 6 or site.y > ny - 9 or site.z < (1 if slab else 8) or site.z > nz - (2 if slab else 9):
 			continue
 		var ok := true
 		for ch in chambers:
-			if site.distance_to(ch.c) < ch.goal + 6.0:
+			if site.distance_to(ch.c) < ch.goal + 9.0:
 				ok = false
 				break
 		if ok:
-			var from := Vector3(src.c) + Vector3(0, -src.goal * 0.45, 0)
-			chambers.append({"c": site, "r": 3.5, "goal": 3.5, "kind": "brood", "from": from, "open": false})
+			var dir := (site - Vector3(src.c)) * Vector3(1, 0, 1)
+			var from: Vector3 = Vector3(src.c) + (dir.normalized() * float(src.goal) * 0.7 if dir.length() > 0.1 else Vector3.ZERO)
+			chambers.append({"c": site, "r": 3.5, "goal": 3.5, "kind": "brood", "from": from, "open": false,
+				"yaw": ang + rng.randf_range(-0.6, 0.6)})
 			return "planned"
 	return event
 

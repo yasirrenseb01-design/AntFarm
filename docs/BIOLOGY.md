@@ -26,6 +26,14 @@
 - ชวนพวกด้วยเส้นทางกลิ่น (recruitment)
 
 ### รัง
+- **รูปทรง** (Wang et al. 1995 ศึกษา *L. neoniger* ญาติใกล้ชิด; Khuong et al. 2016; ผู้เลี้ยงมด): เครือข่ายทางเดิน (gallery)
+  ทรงท่อกว้าง 1.5–5 มม. เชื่อมห้อง (chamber) ที่โป่งกว้าง 1–2 ซม. ยาว 3–5 ซม. และ**แบนเตี้ย** (สูงราวสองตัวมด);
+  ระหว่างห้องเป็นดินทึบ ผนังอัดแน่นกว่าดินรอบๆ; ส่วนใหญ่อยู่ใน 30 ซม. บนสุด มีปล่องลึกไม่กี่เส้น (ถึง ~70 ซม.);
+  รังมักหนักด้านบน (ห้องมากใกล้ผิวดิน); ใต้ก้อนหินมักเป็นห้องแบนกว้างซ้อนกันคั่นด้วยพื้นบางๆ
+- ในการทดลอง (Lasius niger ในฟอร์มิคาเรียม) ปริมาตรที่ขุดเป็นห้องมากกว่าทางเดิน และขุดน้อยลงตามความลึก
+- **ไม่มีใครสั่ง:** ราชินีไม่ได้กำหนดห้อง — มดงานย้ายลูกมดไปจุดที่อุณหภูมิ/ความชื้นเหมาะ แล้วมดที่มารวมตัวรอบลูกมด
+  ก็ขุดตรงนั้นมากขึ้นจนกลายเป็นห้อง (Römer & Roces 2014, มดตัดใบ); การก่อสร้างประสานกันด้วยกลิ่นในเนื้อดิน
+  (stigmergy) และใช้ขนาดตัวเป็นแม่แบบความสูงเพดาน (Khuong et al. 2016, *L. niger*)
 - ขุดในดิน ปริมาตรรังโตตามจำนวนประชากร (Buhl et al. 2004); ห้องแบนเชื่อมด้วยปล่อง; กองดินรอบปากรัง
 - ย้ายตัวอ่อนขึ้น-ลงตามอุณหภูมิในแต่ละวัน; ดักแด้เก็บห้องบนที่แห้งกว่า
 
@@ -71,6 +79,9 @@
   ป้องกันตัวด้วยการพ่นสารเคมีจากต่อมปลายท้อง (pygidial glands) ทำให้มดที่เกาะอยู่ร่วงหลุด; รังมดมักแค่รังควานจนมันไป
 
 ## แหล่งอ้างอิง
+- Wang D., McSweeney K., Lowery B., Norman J.M. (1995) Nest structure of ant *Lasius neoniger* Emery and its implications to soil modification. Geoderma 66
+- Khuong A. et al. (2016) Stigmergic construction and topochemical information shape ant nest architecture. PNAS 113(5):1303–1308
+- Römer D., Roces F. (2014) Nest enlargement in leaf-cutting ants: relocated brood and fungus trigger the excavation of new chambers. PLoS ONE 9(5)
 - Buhl J. et al. (2004) Self-organized digging activity in ant colonies — ปริมาตรรังตามประชากร
 - ภาพ "Castes and developmental stages present in a Lasius niger colony" (ResearchGate, figure 2 ของบทความ 342742677)
   https://www.researchgate.net/figure/Castes-and-developmental-stages-present-in-a-Lasius-niger-colony-Pictures-were-taken_fig2_342742677
