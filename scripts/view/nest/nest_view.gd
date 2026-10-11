@@ -8,6 +8,7 @@ extends "res://scripts/view/nest/parts/nest_mates.gd"
 func setup(s) -> void:
 	sim = s
 	nest = sim.nest
+	_feed = EventFeed.new(sim)
 	target = Vector3(nest.nx / 2.0, nest.ny - 16.0, nest.nz / 2.0)
 
 	var env := Environment.new()
@@ -158,7 +159,7 @@ func set_active(on: bool) -> void:
 	_cam.current = on
 	if on:
 		_refresh_spots()
-		_ev_n = sim.event_seq          # what happened while we were away is not replayed
+		_feed.skip()                   # what happened while we were away is not replayed
 
 
 func refresh(delta: float) -> void:

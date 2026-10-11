@@ -8,11 +8,9 @@ func _anim_k() -> float:
 
 
 func _poll_events() -> void:
-	if _ev_n < 0:
-		_ev_n = sim.event_seq
 	var watch := speed > 0.0 and speed <= 5.0
-	for e in sim.events:
-		if e.n <= _ev_n or not watch:
+	for e in _feed.take():
+		if not watch:
 			continue
 		var busy := 0
 		for a in _anims:
@@ -28,7 +26,6 @@ func _poll_events() -> void:
 			"eclose":
 				if busy < 3:
 					_start_eclose(e.s)
-	_ev_n = sim.event_seq
 
 
 ## Nearby nestmates free to help; they must be close, since they walk straight to the spot.

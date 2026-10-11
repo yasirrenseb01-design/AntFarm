@@ -7,6 +7,7 @@ const Ant := preload("res://scripts/sim/ant.gd")
 const Mesher := preload("res://scripts/view/nest/nest_mesher.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
+const EventFeed := preload("res://scripts/view/common/event_feed.gd")
 const CLUMP := 24                  # eggs stick together in packets of about this many
 const CH := 16
 const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0),
@@ -74,7 +75,7 @@ var _mound_n := -1
 var _vol: ImageTexture3D
 var _vol_timer := 0.0
 var _vol_dirty := true
-var _ev_n := -1                    # last simulation life-cycle event seen
+var _feed                          # EventFeed: life-cycle moments from the simulation (set up in setup())
 var _anims: Array = []             # life-cycle moments being acted out
 var _fx_egg_mm: MultiMesh
 var _fx_larva_mm: MultiMesh

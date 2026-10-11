@@ -6,7 +6,19 @@
 - **ภาพอ่านการจำลอง แต่ไม่แก้** — ยกเว้นการกระทำของผู้เล่น (`place_food`, `add_rock`, `add_water` ...) ส่วนภาพเคลื่อนไหวที่ sim ไม่รู้
   (มดในรังเดินตามอุโมงค์, อนิเมชันวงจรชีวิต) เป็นของ view ล้วน ใช้ `randf()` ได้ และไม่ถูกเซฟ
 - **เหตุการณ์จาก sim ไปภาพ**: `sim.events` (รายการล่าสุด `{n, k, s}`, ไม่ถูกเซฟ) — view จำ `n` ล่าสุดที่เห็นแล้ว เช่น `nest_lifecycle.gd`
-- **บันทึกผู้เลี้ยง**: `sim._log()` → สัญญาณ `logged`
+- **บันทึกผู้เลี้ยง**: `sim._log(T.<ชื่อ>)` → สัญญาณ `logged`; ข้อความภาษาไทยทั้งหมดของการจำลองอยู่ที่ `scripts/sim/text_th.gd`
+- **ภาพอ่านเหตุการณ์** ผ่าน `view/common/event_feed.gd` (แต่ละมุมมองมี feed ของตัวเอง: `take()` ได้เหตุการณ์ใหม่, `skip()` ข้ามของเก่า)
+
+## ตารางชนิดของ (เพิ่มของใหม่ = เพิ่มรายการ ไม่ต้องไล่แก้หลายไฟล์)
+- **อาหาร** `scripts/sim/food_kinds.gd` (`KINDS`): ค่าการจำลอง, เวลาเก็บ, ข้อความตอนเจอ, ปุ่มวางของ, ท่าที่มดยืนกิน, การกลบดิน
+  - ภาพ 3 มิติ: ฟังก์ชัน `_food_<ชนิด>()` ใน `view/outworld/parts/outworld_props.gd` (ไม่มีก็ได้ก้อนเรียบๆ แทน)
+  - ภาพ 2 มิติ: `_draw_items()` ใน `view/surface2d/world_view.gd`
+- **ศัตรู** `scripts/sim/enemies/<ชนิด>.gd` (static `spawn(sim)`, `step(sim, c) -> bool`, `CHASED`) ลงทะเบียนใน `ENEMY_KINDS` ของ `sim/parts/sim_enemies.gd`;
+  ตัวที่อยู่ในกล่องอยู่ใน `sim.creatures` (Dictionary ที่มี `kind`, `pos`, ... ถูกเซฟตรงๆ)
+  - ภาพ 3 มิติ: `_update_spider()` ใน `outworld_creatures.gd` (PART 6 จะแยกเป็นไฟล์ละชนิดแบบเดียวกัน); ภาพ 2 มิติ: `_draw_ants()` ใน `world_view.gd`
+- **วรรณะ** `ant.caste`: `Ant.WORKER` (ตอนนี้ทุกตัว), `Ant.GYNE`, `Ant.MALE` (PART 8)
+- **สายพันธุ์** `scripts/sim/species/lasius_niger.gd` (`sim.sp`): ตัวเลขชีววิทยา + นิสัยเฉพาะ (`founding`, `queen_reserve`, `founding_eggs`,
+  `nanitic_size`, `tends_aphids`, `buries_prey`) — โค้ดอ่านจากที่นี่ ไม่เขียนค่าตายตัว
 
 ## โฟลเดอร์
 ```
@@ -67,6 +79,9 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 
 ## เซฟ
 - `scripts/game/save_store.gd`: 3 ช่อง (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
-- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_base.gd`
-- **ข้อควรระวัง:** ตอนนี้ถ้า `SAVE_VERSION` ไม่ตรง เกมจะเริ่มรังใหม่ — ต้องทำระบบแปลงเซฟเก่า (migration) ก่อนเปลี่ยนรูปแบบเซฟครั้งแรก (แผน v0.5.8)
+- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_base.gd` (ตอนนี้ 2)
+- **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
+- ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
+  และ**ไม่บันทึกทับ**; อ่านไม่ได้ → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (บอกผู้เล่นทุกกรณี)
+- รูปแบบ v1→v2 (v0.5.8): มดมี `caste`, แมงมุมตัวเดียว (`spider`) → รายการ `creatures`
 - ทดสอบโดยไม่แตะเซฟจริง: `--sandbox` ใช้ `user://sandbox/`
