@@ -386,19 +386,28 @@ static func aphid_wings() -> Mesh:
 ## between the eyes, blotches on the pronotum, a dark edge on each abdominal plate; spiny hind
 ## tibiae, long cerci, antennae longer than the body. Where the ants have cut pieces away, pale muscle
 ## and dark body fluid show through.
-## Fresh wounds where pieces of the carcass have been cut away (on top of the Blender model).
-static func cricket_wounds(left: float, seed_value: int) -> ArrayMesh:
-	var k = _new()
+## Open wounds where the ants have bitten through the soft joints: neck, leg bases and the membranes
+## between the abdominal plates (`abdomen` picks which set). Pale muscle or dark body fluid shows.
+## Null while nothing has been eaten yet.
+static func cricket_wounds(left: float, seed_value: int, abdomen: bool) -> Mesh:
+	var spots := [] if abdomen else [Vector3(3.05, 1.9, 0.95), Vector3(3.05, 1.9, -0.95), Vector3(0.7, 1.15, 1.4),
+		Vector3(0.7, 1.15, -1.4), Vector3(2.4, 0.95, 1.2), Vector3(3.0, 1.0, -1.1)]
+	if abdomen:
+		for i in 5:
+			var x := 0.5 - i * 0.95
+			spots.append(Vector3(x, 2.55, 0.7 if i % 2 == 0 else -0.7))
+			spots.append(Vector3(x - 0.3, 1.5, 1.45 if i % 2 == 1 else -1.45))
 	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_value
-	var abd := maxf(0.35, left)
-	for i in int(round((1.0 - left) * 9.0)):
-		var a := rng.randf_range(-PI, PI)
-		var x := rng.randf_range(-4.2, 1.0) * abd
-		var on := Vector3(x, 1.6 + sin(a) * 1.3 * abd, cos(a) * 1.5 * abd)
-		var r := rng.randf_range(0.45, 0.9)
-		k.blob(on, Vector3(r, r * 0.55, r), Color(0.82, 0.68, 0.52) if i % 3 != 2 else Color(0.32, 0.16, 0.08),
-			Basis(Vector3.RIGHT, a))
+	rng.seed = seed_value + (7 if abdomen else 3)
+	var n := mini(spots.size(), int(round((1.0 - left) * spots.size() * 1.1)))
+	if n <= 0:
+		return null
+	var k = _new()
+	for i in n:
+		var p: Vector3 = spots[i]
+		var r := rng.randf_range(0.3, 0.55)
+		var flesh := Color(0.82, 0.68, 0.52) if rng.randf() < 0.65 else Color(0.34, 0.17, 0.08)
+		k.blob(p, Vector3(r, r * 0.45, r * 0.8), flesh, Basis(Vector3.RIGHT, rng.randf_range(-0.5, 0.5)))
 	return k.commit()
 
 

@@ -429,6 +429,10 @@ func _take_shot() -> void:
 		camera.zoom = Vector2.ONE * _zoom_t
 		var fc: PackedStringArray = _opts.get("focus", "%d,%d" % [sim.nest_pos.x, sim.nest_pos.y]).split(",")
 		_center_on(Vector2(float(fc[0]), float(fc[1])))
+	if _opts.has("food-left"):
+		for f in sim.foods:
+			if f.kind == "cricket":
+				f.amt = f.cap * float(_opts["food-left"])
 	if _opts.has("rain"):
 		sim.climate.rain_ticks = sim.TPD
 	if mode == "outworld":

@@ -474,8 +474,31 @@ func _sync_foods() -> void:
 		_foods[key] = {"node": node, "sig": sig, "low": low}
 	for key in _foods.keys():
 		if not seen.has(key):
-			_foods[key].node.queue_free()
+			var node: Node3D = _foods[key].node
+			if node.has_meta("husk"):
+				_make_husk(node)
+				_husks.append({"node": node, "until": sim.tick + sim.TPD * 3})
+			else:
+				node.queue_free()
 			_foods.erase(key)
+	for h in _husks:
+		if sim.tick > int(h.until) or sim.tick < int(h.until) - sim.TPD * 4:
+			h.node.queue_free()
+	_husks = _husks.filter(func(h): return sim.tick <= int(h.until) and sim.tick >= int(h.until) - sim.TPD * 4)
+
+
+var _husks: Array = []
+var _husk_mat: StandardMaterial3D
+
+
+## What is left of a carcass: the dry, hollow exoskeleton, faded and flattened.
+func _make_husk(node: Node3D) -> void:
+	if _husk_mat == null:
+		_husk_mat = _prop_mat.duplicate()
+		_husk_mat.albedo_color = Color(0.78, 0.74, 0.66)
+		_husk_mat.roughness = 0.95
+	for mi in node.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).material_override = _husk_mat
 
 
 func _make_food(f: Dictionary, left: float) -> Node3D:
@@ -533,24 +556,33 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 				if f.rotten:
 					mat = _prop_mat.duplicate()
 					mat.albedo_color = Color(0.72, 0.78, 0.66)
-				var abd := maxf(0.35, left)
-				var pieces := [["cricket_head", true], ["cricket_abdomen", true], ["cricket_hindlegs", left > 0.3], ["cricket_legs", left > 0.6]]
-				for pc in pieces:
-					if not pc[1]:
-						continue
+				# Lasius eat a big carcass where it lies: they bite in at the soft joints and drink or cut out
+				# the insides, so the hard shell keeps its shape while the abdomen sags and wrinkles flat
+				var gone := 1.0 - left
+				for pc in ["cricket_head", "cricket_abdomen", "cricket_hindlegs", "cricket_legs"]:
 					var mi := MeshInstance3D.new()
-					mi.mesh = Props.asset(pc[0])
+					mi.mesh = Props.asset(pc)
 					mi.material_override = mat
-					if pc[0] == "cricket_abdomen":
-						var pivot := Vector3(0.4, 1.6, 0)
-						mi.scale = Vector3.ONE * abd
-						mi.position = pivot * (1.0 - abd)
 					body.add_child(mi)
-				if int(round((1.0 - left) * 9.0)) > 0:
-					var w := MeshInstance3D.new()
-					w.mesh = Props.cricket_wounds(left, f.seed)
-					w.material_override = _prop_mat
-					body.add_child(w)
+					if pc == "cricket_abdomen":
+						# deflate about the belly, which stays on the ground
+						var sc := Vector3(1.0 - 0.06 * gone, 1.0 - 0.5 * gone, 1.0 - 0.15 * gone)
+						var pivot := Vector3(-1.6, 0.25, 0)
+						mi.scale = sc
+						mi.position = pivot - pivot * sc
+						var wa := Props.cricket_wounds(left, f.seed, true)
+						if wa != null:
+							var w := MeshInstance3D.new()
+							w.mesh = wa
+							w.material_override = _prop_mat
+							mi.add_child(w)
+				var wf := Props.cricket_wounds(left, f.seed, false)
+				if wf != null:
+					var w2 := MeshInstance3D.new()
+					w2.mesh = wf
+					w2.material_override = _prop_mat
+					body.add_child(w2)
+				root.set_meta("husk", true)
 			else:
 				var c := MeshInstance3D.new()
 				c.mesh = Props.cricket(left, f.rotten, f.seed)
