@@ -29,8 +29,8 @@ var follow := 0          # ticks left of edging along an obstacle before heading
 var slide := 1.0        # which way it turns to follow a wall (+1 left, -1 right)
 var busy := 0           # ticks left standing still doing something (eating, milking aphids, meeting)
 var act := 0            # what it is doing for the view: 0 walk, 2 bite/cut, 3 antennate, 9 milk aphids, 10 drink
-var meet_cd := 0
-var turn_after := false  # turn round once the current task is done        # ticks before it will stop for another encounter
+var meet_cd := 0         # ticks before it will stop for another encounter
+var turn_after := false  # turn round once the current task is done
 var phase := 0.0        # gait phase for leg animation
 var dead := false
 

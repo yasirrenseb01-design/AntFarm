@@ -73,3 +73,15 @@ func clear_circle(center: Vector2, r: float) -> void:
 		for cx in range(x0, x1 + 1):
 			if Vector2(cx * cs + cs * 0.5, cy * cs + cs * 0.5).distance_to(center) <= r:
 				val[cy * w + cx] = 0.0
+
+
+# ---------------------------------------------------------------- save / load
+
+func to_dict() -> Dictionary:
+	return {"val": val, "stamp": stamp, "clock": clock}
+
+
+func from_dict(d: Dictionary) -> void:
+	val = d.val
+	stamp = d.stamp
+	clock = d.clock

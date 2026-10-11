@@ -4,10 +4,14 @@ extends CanvasLayer
 
 const Ant := preload("res://scripts/sim/ant.gd")
 const Kit := preload("res://scripts/view/draw_kit.gd")
+const Store := preload("res://scripts/save_store.gd")
 
 signal speed_changed(speed: float)
 signal view_changed(mode: String)
-signal new_colony(nest_kind: String)
+signal colony_new(slot: int, nest_kind: String)
+signal colony_play(slot: int)
+signal settings_changed(settings: Dictionary)
+signal save_requested
 signal cam_action(action: String)
 
 const PANEL_W := 352.0
@@ -32,6 +36,13 @@ var _mono: SystemFont
 var _display: SystemFont
 var _t := 0.0
 var _frame := 0
+var current_slot := 1
+var settings := {}
+var _colonies: Window
+var _colonies_body: PanelContainer
+var _confirm: ConfirmationDialog
+var _report: AcceptDialog
+var _pending := [1, "soil:queen"]
 var _proj_tex: ImageTexture
 var _proj_air := -1
 var _spots_t := -10.0
@@ -60,6 +71,7 @@ func setup(s, w) -> void:
 	_build_tools(root)
 	_build_panel(root)
 	_build_camera_pad(root)
+	_build_colonies(root)
 	_apply_mode("surface")
 	refresh(1.0)
 
@@ -92,6 +104,20 @@ func _make_theme() -> Theme:
 	th.default_font = body
 	th.default_font_size = 14
 	th.set_stylebox("panel", "PanelContainer", _box(BG, LINE, 10, 14, 12))
+	# dialogs (time-away report, confirmations) in the same dark keeper's-panel look
+	for cls in ["AcceptDialog", "ConfirmationDialog", "PopupPanel"]:
+		th.set_stylebox("panel", cls, _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 10, 16, 14))
+	th.set_stylebox("embedded_border", "Window", _box(Color(0.14, 0.1, 0.075), LINE, 10, 10, 32))
+	th.set_color("title_color", "Window", INK)
+	th.set_font("title_font", "Window", body)
+	th.set_stylebox("normal", "OptionButton", _box(Color(0.17, 0.13, 0.1), LINE, 6, 10, 5))
+	th.set_stylebox("normal", "MenuButton", _box(Color(0.17, 0.13, 0.1), LINE, 6, 10, 5))
+	th.set_color("font_color", "MenuButton", INK)
+	th.set_color("font_color", "CheckBox", INK)
+	for st in ["normal", "pressed", "hover", "hover_pressed", "focus"]:
+		th.set_stylebox(st, "CheckBox", StyleBoxEmpty.new())
+	th.set_color("font_pressed_color", "CheckBox", INK)
+	th.set_color("font_hover_pressed_color", "CheckBox", INK)
 	th.set_stylebox("normal", "Button", _box(Color(0.17, 0.13, 0.1), LINE, 6, 10, 5))
 	th.set_stylebox("hover", "Button", _box(Color(0.22, 0.17, 0.12), MUTED, 6, 10, 5))
 	th.set_stylebox("pressed", "Button", _box(AMBER, AMBER, 6, 10, 5))
@@ -181,21 +207,10 @@ func _build_top(root: Control) -> void:
 	vwrap.add_child(views)
 	row.add_child(vwrap)
 
-	var fresh := _button("เริ่มรังใหม่", false)
-	var pick := PopupMenu.new()
-	pick.add_theme_font_size_override("font_size", 14)
-	pick.add_item("ราชินีตัวเดียว · ก้อนดินธรรมชาติ (เริ่มแบบธรรมชาติ)", 0)
-	pick.add_item("ราชินีตัวเดียว · ตู้แอนท์ฟาร์มกระจก", 1)
-	pick.add_separator()
-	pick.add_item("รังอายุ 3 เดือน (มดงาน 14 ตัว) · ก้อนดินธรรมชาติ", 2)
-	pick.add_item("รังอายุ 3 เดือน (มดงาน 14 ตัว) · ตู้แอนท์ฟาร์มกระจก", 3)
-	pick.id_pressed.connect(func(id): new_colony.emit(["soil:queen", "glass:queen", "soil:young", "glass:young"][id]))
-	fresh.add_child(pick)
-	fresh.pressed.connect(func():
-		pick.position = Vector2i(fresh.get_screen_position() + Vector2(0, fresh.size.y + 4))
-		pick.popup())
+	var mine := _button("รังของฉัน", false)
+	mine.pressed.connect(open_colonies)
 	var fwrap := CenterContainer.new()
-	fwrap.add_child(fresh)
+	fwrap.add_child(mine)
 	row.add_child(fwrap)
 
 
@@ -317,6 +332,131 @@ func _build_camera_pad(root: Control) -> void:
 			_cam_nest.append(b)
 		else:
 			_cam_surface.append(b)
+
+
+## "My colonies": the save slots (play one, start a new colony in one) and what happens to time
+## while the game is closed.
+func _build_colonies(root: Control) -> void:
+	_colonies = Window.new()
+	_colonies.title = "รังของฉัน"
+	_colonies.theme = root.theme
+	_colonies.transient = true
+	_colonies.exclusive = true
+	_colonies.unresizable = true
+	_colonies.wrap_controls = true
+	_colonies.visible = false
+	_colonies.close_requested.connect(_colonies.hide)
+	root.add_child(_colonies)
+	_colonies_body = PanelContainer.new()
+	_colonies_body.add_theme_stylebox_override("panel", _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 0, 16, 14))
+	_colonies.add_child(_colonies_body)
+	_confirm = ConfirmationDialog.new()
+	_confirm.theme = root.theme
+	_confirm.title = "เริ่มรังใหม่"
+	_confirm.ok_button_text = "เริ่มใหม่"
+	_confirm.cancel_button_text = "ยกเลิก"
+	_confirm.confirmed.connect(func(): colony_new.emit(_pending[0], _pending[1]))
+	root.add_child(_confirm)
+	_report = AcceptDialog.new()
+	_report.theme = root.theme
+	_report.ok_button_text = "ดูรัง"
+	root.add_child(_report)
+
+
+func open_colonies() -> void:
+	for c in _colonies_body.get_children():
+		c.queue_free()
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	col.custom_minimum_size = Vector2(560, 0)
+	_colonies_body.add_child(col)
+	var kinds := [["ราชินีตัวเดียว · ก้อนดิน (เริ่มแบบธรรมชาติ)", "soil:queen"], ["ราชินีตัวเดียว · ตู้แอนท์ฟาร์ม", "glass:queen"],
+		["รังอายุ 3 เดือน (14 ตัว) · ก้อนดิน", "soil:young"], ["รังอายุ 3 เดือน (14 ตัว) · ตู้แอนท์ฟาร์ม", "glass:young"]]
+	for s in range(1, Store.SLOTS + 1):
+		var m: Dictionary = Store.meta(s)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var info := VBoxContainer.new()
+		info.add_theme_constant_override("separation", 0)
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_child(_label("รัง %d%s" % [s, "  · กำลังเล่น" if s == current_slot else ""], 15, AMBER if s == current_slot else INK))
+		var desc := "ว่าง"
+		if not m.is_empty():
+			var when := Time.get_datetime_string_from_unix_time(int(m.get("saved_unix", 0)) + _tz_offset(), true)
+			desc = "วันที่ %d · มดงาน %d · %s%s · บันทึก %s" % [m.get("day", 1), m.get("workers", 0),
+				"ตู้แอนท์ฟาร์ม" if m.get("glass", false) else "ก้อนดิน",
+				"" if m.get("queen", true) else " · ราชินีตายแล้ว", when.replace("T", " ").left(16)]
+		info.add_child(_label(desc, 12, MUTED))
+		row.add_child(info)
+		if not m.is_empty() and s != current_slot:
+			var play := _button("เล่นรังนี้", false)
+			var slot_n: int = s
+			play.pressed.connect(func():
+				_colonies.hide()
+				colony_play.emit(slot_n))
+			row.add_child(play)
+		var fresh := MenuButton.new()
+		fresh.text = "เริ่มใหม่ ▾"
+		fresh.flat = false
+		fresh.focus_mode = Control.FOCUS_NONE
+		var pm := fresh.get_popup()
+		for i in kinds.size():
+			pm.add_item(kinds[i][0], i)
+		var slot_k: int = s
+		var occupied: bool = not m.is_empty()
+		pm.id_pressed.connect(func(id):
+			_colonies.hide()
+			_pending = [slot_k, kinds[id][1]]
+			if occupied:
+				_confirm.dialog_text = "รัง %d ที่มีอยู่จะถูกลบและเริ่มใหม่เป็น\n%s\n\nแน่ใจไหม?" % [slot_k, kinds[id][0]]
+				_confirm.popup_centered()
+			else:
+				colony_new.emit(slot_k, kinds[id][1]))
+		row.add_child(fresh)
+		col.add_child(row)
+	col.add_child(HSeparator.new())
+	var away := HBoxContainer.new()
+	away.add_child(_label("ตอนปิดเกม", 13, MUTED))
+	var opt := OptionButton.new()
+	opt.focus_mode = Control.FOCUS_NONE
+	for i in Store.AWAY_RATES.size():
+		opt.add_item(Store.AWAY_RATES[i][0], i)
+	opt.select(int(settings.get("away", 3)))
+	opt.item_selected.connect(func(i):
+		settings["away"] = i
+		settings_changed.emit(settings))
+	opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	away.add_child(opt)
+	col.add_child(away)
+	var care := CheckBox.new()
+	care.text = "ผู้ช่วยเติมน้ำและให้อาหารตอนที่ไม่อยู่"
+	care.button_pressed = settings.get("care", true)
+	care.toggled.connect(func(on):
+		settings["care"] = on
+		settings_changed.emit(settings))
+	col.add_child(care)
+	var foot := HBoxContainer.new()
+	var note := _label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม" % int(Store.MAX_AWAY_DAYS), 12, MUTED)
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	foot.add_child(note)
+	var save_now := _button("เซฟตอนนี้", false)
+	save_now.pressed.connect(func():
+		save_requested.emit()
+		save_now.text = "เซฟแล้ว")
+	foot.add_child(save_now)
+	col.add_child(foot)
+	_colonies.reset_size()
+	_colonies.popup_centered()
+
+
+func show_report(title: String, text: String) -> void:
+	_report.title = title
+	_report.dialog_text = text
+	_report.popup_centered(Vector2i(520, 0))
+
+
+func _tz_offset() -> int:
+	return int(Time.get_time_zone_from_system().get("bias", 0)) * 60
 
 
 func set_cut(v: float) -> void:

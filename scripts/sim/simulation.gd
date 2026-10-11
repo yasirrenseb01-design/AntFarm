@@ -989,3 +989,125 @@ func _log(text: String, kind: String = "") -> void:
 	if log_entries.size() > 80:
 		log_entries.pop_back()
 	logged.emit(e)
+
+
+# ---------------------------------------------------------------- save / load
+
+const SAVE_VERSION := 1
+const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
+	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase"]
+
+
+## The complete state of the colony and its box. Loading it with from_dict() and stepping on gives
+## exactly the same future as never having stopped (the random generator's state is included).
+func to_dict() -> Dictionary:
+	var ants := []
+	for a in workers:
+		var row := []
+		for f in ANT_FIELDS:
+			row.append(a.get(f))
+		ants.append(row)
+	var out_ids := PackedInt32Array()
+	for a in outside:
+		out_ids.append(a.id)
+	return {
+		"version": SAVE_VERSION, "species": sp["id"], "rng_seed": rng.seed, "rng_state": rng.state, "tick": tick,
+		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(),
+		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
+		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
+		"sugar": sugar, "protein": protein, "humidity": humidity, "mold": mold, "heater": heater, "enemies": enemies,
+		"spider": spider, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
+		"history": history, "log": log_entries, "warned": _warned, "next_id": _next_id,
+		"cannibal_cd": _cannibal_cd, "recruits": _recruits,
+		# values the colony tick derives but foragers read in between
+		"derived": {"nurses": nurses, "callow": callow, "out_count": out_count, "dev": dev, "activity": activity,
+			"starving": starving, "queen_fed": queen_fed, "hungry": hungry, "diggers_wanted": diggers_wanted},
+	}
+
+
+func from_dict(d: Dictionary) -> void:
+	gw = int(WORLD.x / CELL)
+	gh = int(WORLD.y / CELL)
+	rng.seed = d.rng_seed
+	rng.state = d.rng_state
+	tick = d.tick
+	climate = Climate.new(rng)
+	climate.from_dict(d.climate)
+	nest = NestVolume.new()
+	nest.from_dict(rng, d.nest)
+	home = Field.new(gw, gh, CELL)
+	home.from_dict(d.home)
+	food = Field.new(gw, gh, CELL)
+	food.from_dict(d.food)
+	rock = d.rock
+	rocks = d.rocks
+	foods = d.foods
+	corpses = d.corpses
+	workers = []
+	var by_id := {}
+	for row in d.workers:
+		var a := Ant.new()
+		for i in ANT_FIELDS.size():
+			a.set(ANT_FIELDS[i], row[i])
+		workers.append(a)
+		by_id[a.id] = a
+	outside = []
+	for id in d.outside:
+		if by_id.has(id):
+			outside.append(by_id[id])
+	eggs = d.eggs
+	larvae = d.larvae
+	pupae = d.pupae
+	queen = d.queen
+	sugar = d.sugar
+	protein = d.protein
+	humidity = d.humidity
+	mold = d.mold
+	heater = d.heater
+	enemies = d.enemies
+	spider = d.spider
+	corpses_inside = d.corpses_inside
+	egg_acc = d.egg_acc
+	stats = d.stats
+	history = d.history
+	log_entries = d.log
+	_warned = d.warned
+	_next_id = d.next_id
+	_cannibal_cd = d.cannibal_cd
+	_recruits = d.recruits
+	var dv: Dictionary = d.derived
+	nurses = dv.nurses
+	callow = dv.callow
+	out_count = dv.out_count
+	dev = dv.dev
+	activity = dv.activity
+	starving = dv.starving
+	queen_fed = dv.queen_fed
+	hungry = dv.hungry
+	diggers_wanted = dv.diggers_wanted
+	food_cell.resize(gw * gh)
+	food_cell.fill(-1)
+	_food_dirty = true
+
+
+## A short summary for the save menu and the "while you were away" report.
+func summary() -> Dictionary:
+	return {"day": day(), "workers": workers.size(), "eggs": eggs.size(), "larvae": larvae.size(),
+		"pupae": pupae.size(), "born": stats.born, "dead": stats.dead + stats.cannibalized,
+		"chambers": nest.chambers.size(), "volume": nest.volume_cm3(), "humidity": humidity,
+		"queen": queen.alive, "glass": nest.slab, "founding": founding()}
+
+
+## The automatic keeper used by tests and, if the player allows it, while the game is closed:
+## waters when the reservoir runs low and feeds in proportion to the colony.
+func auto_care(day_index: int) -> void:
+	if humidity < 0.45:
+		add_water()
+	if workers.is_empty():
+		return
+	if day_index % 3 == 0:
+		for k in 1 + workers.size() / 40:
+			place_food("cricket", Vector2(rng.randf_range(600, 1100), rng.randf_range(380, 700)))
+	if sugar < sugar_cap() * 0.3:
+		for k in 1 + workers.size() / 50:
+			place_food("honey", Vector2(rng.randf_range(600, 1100), rng.randf_range(80, 300)))

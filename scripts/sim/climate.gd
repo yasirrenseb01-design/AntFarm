@@ -40,3 +40,17 @@ func update(tod: float, heater: bool, ticks_per_day: int) -> void:
 func settle(tod: float, heater: bool) -> void:
 	air = day_mean + day_amp * sin(TAU * (tod - 0.375))
 	nest = _nest_target(heater)
+
+
+# ---------------------------------------------------------------- save / load
+
+func to_dict() -> Dictionary:
+	return {"day_mean": day_mean, "day_amp": day_amp, "air": air, "nest": nest, "rain_ticks": rain_ticks}
+
+
+func from_dict(d: Dictionary) -> void:
+	day_mean = d.day_mean
+	day_amp = d.day_amp
+	air = d.air
+	nest = d.nest
+	rain_ticks = d.rain_ticks

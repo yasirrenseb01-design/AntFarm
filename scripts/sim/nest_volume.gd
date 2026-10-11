@@ -445,3 +445,31 @@ func plan_chambers(brood: int, workers: int) -> String:
 			chambers.append({"c": site, "r": 3.5, "goal": 3.5, "kind": "brood", "from": from, "open": false})
 			return "planned"
 	return event
+
+
+# ---------------------------------------------------------------- save / load
+
+## Everything that affects how digging continues, so a loaded nest carries on exactly where it was.
+func to_dict() -> Dictionary:
+	return {"nx": nx, "ny": ny, "nz": nz, "slab": slab, "rho": rho, "dug_at": dug_at, "dist": dist,
+		"excavated": excavated, "chambers": chambers, "diggers": diggers, "entrance": entrance, "tick": tick,
+		"dist_age": _dist_age, "next_id": _next_id}
+
+
+func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
+	rng = r
+	nx = d.nx
+	ny = d.ny
+	nz = d.nz
+	slab = d.slab
+	rho = d.rho
+	dug_at = d.dug_at
+	dist = d.dist
+	excavated = d.excavated
+	chambers = d.chambers
+	diggers = d.diggers
+	entrance = d.entrance
+	tick = d.tick
+	_dist_age = d.dist_age
+	_next_id = d.next_id
+	_recount()
