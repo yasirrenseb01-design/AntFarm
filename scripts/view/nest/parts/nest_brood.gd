@@ -145,6 +145,8 @@ func _egg_xf(i: int) -> Transform3D:
 func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Callable, old_spots := [], moved := 1 << 20,
 		col_fn := Callable()) -> void:
 	var n := mini(items.size(), max_n)
+	if _queen_mm.instance_count > 0:
+		spots = spots.filter(func(s): return _queen_gap(s) > 0.6)      # not under the queen
 	if spots.is_empty():
 		n = 0
 	elif spots.size() * 3 < n and not _spots.all.is_empty():
@@ -220,6 +222,14 @@ func _queen_pose() -> void:
 					var t := clampf((c - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
 					if c.distance_to(qa.lerp(qb, t)) < 1.1:
 						_queen_cells[Vector3i(x, y, z)] = true
+
+
+## How far a point is from the surface of the queen's body (negative: inside it).
+func _queen_gap(p: Vector3) -> float:
+	var qa: Vector3 = _queen_xf * QUEEN_HEAD
+	var qb: Vector3 = _queen_xf * QUEEN_TAIL
+	var t := clampf((p - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
+	return p.distance_to(qa.lerp(qb, t)) - QUEEN_R
 
 
 func _random_room() -> int:

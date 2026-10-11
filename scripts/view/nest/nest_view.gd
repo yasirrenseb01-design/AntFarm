@@ -175,10 +175,7 @@ func refresh(delta: float) -> void:
 	_vol_timer -= delta
 	if _vol_dirty and _vol_timer <= 0.0:
 		_upload_volume()
-	var budget := 8
-	while budget > 0 and not _queue.is_empty():
-		_build_chunk(_queue.pop_front())
-		budget -= 1
+	_pump_chunks(_queue)
 	_ease_camera(delta)
 	_update_camera()
 	var lod := "hi" if cam_dist < 40.0 else "lo"      # detailed ants only when they are big on screen

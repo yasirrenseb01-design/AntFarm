@@ -136,11 +136,26 @@ func _take_shot() -> void:
 	var keep := speed
 	if not _opts.has("live"):
 		speed = 0        # hold the clock still; _process keeps rendering
+	var frame_ms := []
+	var last := Time.get_ticks_usec()
 	for i in int(_opts.get("frames", "40")):
 		await get_tree().process_frame
+		var now := Time.get_ticks_usec()
+		frame_ms.append((now - last) / 1000.0)
+		last = now
 		if _opts.has("live") and i % 120 == 0 and mode == "nest":
 			print(nest_view.debug_summary())
 	speed = keep
+	if _opts.has("perf") and frame_ms.size() > 20:
+		# frame times: the average and the worst ones (stutter is what the eye notices)
+		var s := frame_ms.slice(10)
+		s.sort()
+		var avg := 0.0
+		for v in s:
+			avg += v
+		avg /= s.size()
+		print("perf: avg %.1f ms (%.0f fps)  p95 %.1f ms  worst %.1f ms  frames over 33 ms: %d" % [avg, 1000.0 / avg,
+			s[int(s.size() * 0.95)], s[-1], s.filter(func(v): return v > 33.3).size()])
 	var path: String = _opts["shot"]
 	if _opts.has("seq"):
 		# a strip of frames with the clock running (gait checks): <shot>_0.png, _1.png ...

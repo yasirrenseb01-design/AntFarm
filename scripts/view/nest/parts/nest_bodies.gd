@@ -106,16 +106,19 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 					if l2 < rr and l2 > 0.000001:
 						var l := sqrt(l2)
 						push += d / l * (reach - l) * 0.5
-	if _queen_mm.instance_count > 0 and not m.has("script"):     # attendants touch her
+	if _queen_mm.instance_count > 0:
 		var qa: Vector3 = _queen_xf * QUEEN_HEAD
 		var qb: Vector3 = _queen_xf * QUEEN_TAIL
 		if p.distance_squared_to((qa + qb) * 0.5) < 36.0:
+			var attending := m.has("script")             # an attendant may touch her with its head, no more
 			for a in [a0, a1]:
 				var t := clampf((a - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
 				var d: Vector3 = a - qa.lerp(qb, t)
 				d -= up * d.dot(up)
 				var l := d.length()
 				var reach := QUEEN_R + r
+				if attending and a == a0:
+					reach = QUEEN_R * 0.8
 				if l < reach and l > 0.001:
 					push += d / l * (reach - l)
 	var want := push.limit_length(2.5)

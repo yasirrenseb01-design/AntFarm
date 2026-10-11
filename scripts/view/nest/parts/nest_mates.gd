@@ -257,7 +257,7 @@ func _update_ants(delta: float) -> void:
 	# where everyone stood last frame, binned by cell: nestmates keep a body width apart instead of
 	# standing inside one another (the queen, much bigger, keeps a wider berth)
 	var near := {}
-	for m in _mates:
+	for m in _mates + _dig_vis.values():          # the diggers from the simulation have bodies too
 		if m.has("xf"):
 			var x: Transform3D = m.xf
 			var o: Vector3 = x.origin
@@ -268,8 +268,19 @@ func _update_ants(delta: float) -> void:
 			if not near.has(key):
 				near[key] = []
 			near[key].append(m)
-	for m in _mates:
-		m.anim += adt
+	_mate_frame += 1
+	for mi in _mates.size():
+		var m: Dictionary = _mates[mi]
+		# off screen a nestmate is moved on only every fourth frame (with the time it missed): it is not drawn
+		m.lag = float(m.get("lag", 0.0)) + delta
+		var seen_now: bool = not m.has("xf") or _visible((m.xf as Transform3D).origin)
+		if not seen_now and not m.has("script") and (_mate_frame + mi) % 4 != 0:
+			continue
+		var md: float = m.lag
+		m.lag = 0.0
+		var mdt := md * cells_per_sec * chill
+		var madt := md * lerpf(0.25, 1.0, chill) if running else 0.0
+		m.anim += madt
 		var path: Vector3
 		if m.has("script"):
 			# hired for a life-cycle moment: walks where the animation needs it
@@ -277,17 +288,17 @@ func _update_ants(delta: float) -> void:
 			m.face = m.script.face
 			path = m.script.pos
 		else:
-			_update_activity(m, adt)
+			_update_activity(m, madt)
 			if not m.act in STILL_ACTS:
-				m.t += dt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0)
-				while m.t >= 1.0 and dt > 0.0:
+				m.t += mdt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0)
+				while m.t >= 1.0 and mdt > 0.0:
 					m.t -= 1.0
 					_step_mate(m)
 			path = (m.from as Vector3).lerp(m.to, clampf(m.t, 0.0, 1.0))
 		m.stride = AntModel.stride_scale(chill, m.carry)      # shorter, slower steps when cold or laden
-		var tr := _smooth(m, path, m.up, delta, m.size)
+		var tr := _smooth(m, path, m.up, md, m.size)
 		if _visible(tr.origin):
-			tr.origin += _keep_apart(m, tr.origin, near, delta)      # only where anyone can see it
+			tr.origin += _keep_apart(m, tr.origin, near, md)      # only where anyone can see it
 		m.xf = tr
 		if m.act == ACT_FEED and _visible(tr.origin):
 			drops.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.8 + 0.3 * sin(m.anim * 3.0))), MOUTH + Vector3(0.2, 0, 0)))
@@ -327,6 +338,9 @@ func _update_ants(delta: float) -> void:
 		if not v.has("size"):
 			v.size = _sample_size()
 		var tr := _smooth(v, (v.from as Vector3).lerp(v.to, clampf(v.t, 0.0, 1.0)), v.up, delta, v.size)
+		if _visible(tr.origin):
+			tr.origin += _keep_apart(v, tr.origin, near, delta)
+		v.xf = tr
 		if _visible(tr.origin):
 			var act := ACT_CARRY if d.carry else (ACT_DIG if v.still > 0.25 else ACT_WALK)
 			xs.append(tr)

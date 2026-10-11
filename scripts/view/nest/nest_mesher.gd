@@ -1,6 +1,8 @@
 extends RefCounted
 ## Surface-nets mesher for the nest soil, one 16³ chunk at a time.
 ## Voxel centres sit on integer coordinates; one mesh unit = one voxel (1.5 mm).
+## Two stages so the slow part can run on a worker thread: sample() reads the soil (main thread, fast:
+## one pass over the voxels), mesh_from() turns the samples into a mesh (touches nothing shared).
 
 const CH := 16
 # corner i of a cube: bit0 = +x, bit1 = +y, bit2 = +z
@@ -8,23 +10,59 @@ const EDGES := [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], 
 
 
 static func build(nest, k: Vector3i) -> ArrayMesh:
+	var dens := sample(nest, k)
+	return mesh_from(dens, k) if not dens.is_empty() else null
+
+
+## The soil density the mesher works on for chunk k (samples o-1 .. o+CH+1): solid or open, softened with
+## the six neighbours (as nest_voxels.density() does, but read in one pass). Empty if there is no surface.
+static func sample(nest, k: Vector3i) -> PackedFloat32Array:
 	var o := k * CH
-	var S := CH + 3                       # density samples from o-1 .. o+CH+1
+	var S := CH + 3
+	var B := S + 2                        # solid flags one voxel further out, for the softening
+	var rho: PackedByteArray = nest.rho
+	var nx: int = nest.nx
+	var ny: int = nest.ny
+	var nz: int = nest.nz
+	var air: int = nest.AIR
+	var solid := PackedFloat32Array()
+	solid.resize(B * B * B)
+	for z in B:
+		var vz: int = o.z + z - 2
+		for y in B:
+			var vy: int = o.y + y - 2
+			var row := (z * B + y) * B
+			if vz < 0 or vy < 0 or vz >= nz or vy >= ny:
+				continue                      # outside the block counts as air (0)
+			var base := (vz * ny + vy) * nx
+			for x in B:
+				var vx: int = o.x + x - 2
+				if vx >= 0 and vx < nx and rho[base + vx] >= air:
+					solid[row + x] = 1.0
 	var dens := PackedFloat32Array()
 	dens.resize(S * S * S)
 	var any_air := false
 	var any_solid := false
+	var B2 := B * B
 	for z in S:
 		for y in S:
 			for x in S:
-				var v: float = nest.density(o.x + x - 1, o.y + y - 1, o.z + z - 1)
+				var i := ((z + 1) * B + (y + 1)) * B + (x + 1)
+				var v := 0.4 * solid[i] + 0.1 * (solid[i - 1] + solid[i + 1] + solid[i - B] + solid[i + B] + solid[i - B2] + solid[i + B2])
 				dens[(z * S + y) * S + x] = v
 				if v >= 0.5:
 					any_solid = true
 				else:
 					any_air = true
 	if not (any_air and any_solid):
-		return null
+		return PackedFloat32Array()
+	return dens
+
+
+## Samples from sample() -> the chunk's mesh. Uses nothing but its arguments: safe on a worker thread.
+static func mesh_from(dens: PackedFloat32Array, k: Vector3i) -> ArrayMesh:
+	var o := k * CH
+	var S := CH + 3
 
 	var C := S - 1
 	var vid := PackedInt32Array()

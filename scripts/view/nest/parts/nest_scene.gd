@@ -87,6 +87,8 @@ var _fx_soil_mm: MultiMesh
 var _fx_drop_mm: MultiMesh
 var _bits_mm: MultiMesh            # pieces of prey laid on the larvae for them to feed on
 var _queen_xf := Transform3D()
+var _mate_frame := 0
+var _meshing := {}               # chunk -> {"task", "out"}: meshes being made on worker threads
 var _queen_cells := {}           # voxel cells the queen's body fills: nestmates walk round them
 # the queen's body as a capsule, in her model's units (scaled by her transform)
 const QUEEN_HEAD := Vector3(1.25, 0.5, 0.0)
@@ -208,7 +210,34 @@ func _upload_volume() -> void:
 
 
 func _build_chunk(k: Vector3i) -> void:
-	var mesh: ArrayMesh = Mesher.build(nest, k)
+	_set_chunk(k, Mesher.build(nest, k))
+
+
+## Rebuild changed chunks without stalling the frame: the soil is sampled here (fast), the mesh is made on a
+## worker thread, and finished meshes are swapped in on a later frame. At most a few milliseconds a frame.
+func _pump_chunks(queue: Array) -> void:
+	for k in _meshing.keys():
+		var job: Dictionary = _meshing[k]
+		if WorkerThreadPool.is_task_completed(job.task):
+			WorkerThreadPool.wait_for_task_completion(job.task)
+			_meshing.erase(k)
+			_set_chunk(k, job.out[0] if not job.out.is_empty() else null)
+	var t0 := Time.get_ticks_usec()
+	while not queue.is_empty() and _meshing.size() < 6 and Time.get_ticks_usec() - t0 < 3000:
+		var k: Vector3i = queue[0]
+		if _meshing.has(k):
+			break                         # still being made: wait for it, then remake with the newer soil
+		queue.pop_front()
+		var dens := Mesher.sample(nest, k)
+		if dens.is_empty():
+			_set_chunk(k, null)
+			continue
+		var out := []
+		var task := WorkerThreadPool.add_task(func(): out.append(Mesher.mesh_from(dens, k)))
+		_meshing[k] = {"task": task, "out": out}
+
+
+func _set_chunk(k: Vector3i, mesh: ArrayMesh) -> void:
 	var mi: MeshInstance3D = _chunks.get(k)
 	if mesh == null:
 		if mi:
