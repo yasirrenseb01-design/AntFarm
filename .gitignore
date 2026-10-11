@@ -1,0 +1,7 @@
+# Godot editor cache
+.godot/
+# built game and test output (rebuilt with tools/build.ps1 and --shot)
+build/
+shots/
+*.exe
+*.tmp

@@ -1,0 +1,22 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="AntFarm"
+config/version="0.3.7"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/vsync/vsync_mode=1
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+anti_aliasing/quality/msaa_2d=2
+environment/defaults/default_clear_color=Color(0.06, 0.045, 0.035, 1)

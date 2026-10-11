@@ -1,0 +1,692 @@
+<title>ฟาร์มมดลาซิอัส</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: formicarium viewport on the left, keeper's instrument panel on the right; stacks on phones.
+   Deliberate single dark look: a dim observation room with a warm lamp. */
+:root{
+  --room:#17110d; --panel:#201812; --panel-2:#2a2018; --line:#3d2f24;
+  --ink:#f1e6d6; --muted:#b09a83; --amber:#e9a23b; --leaf:#9cc565; --trail-home:#7fa8ff; --danger:#e8664f;
+  --display:'Chakra Petch','Segoe UI',sans-serif;
+  --body:'IBM Plex Sans Thai','Leelawadee UI','Tahoma',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--room);color:var(--ink)}
+body{font-family:var(--body);font-size:14px;line-height:1.5;padding-inline:16px;padding-block:14px 28px}
+*{box-sizing:border-box}
+.wrap{max-width:1280px;margin:0 auto;display:grid;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(22px,3vw,30px);margin:0;letter-spacing:.01em;text-wrap:balance}
+h1 small{display:block;font-family:var(--mono);font-size:12px;font-weight:400;color:var(--muted);letter-spacing:.06em}
+.clock{font-family:var(--mono);font-variant-numeric:tabular-nums;display:flex;gap:18px;flex-wrap:wrap;color:var(--muted)}
+.clock b{color:var(--ink);font-weight:500;font-size:18px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+@media (max-width:960px){.layout{grid-template-columns:minmax(0,1fr)}}
+.stage{display:grid;gap:10px;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.group{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.group>span{font-size:12px;color:var(--muted);margin-right:4px;letter-spacing:.04em}
+button{font:inherit;font-size:13px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--amber);color:#1d140b;border-color:var(--amber);font-weight:600}
+button.ghost{background:transparent}
+.tank{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);box-shadow:0 0 0 6px #0f0b08, 0 18px 40px rgba(0,0,0,.45)}
+#world{display:block;width:100%;height:auto;aspect-ratio:900/560;max-width:100%;touch-action:none;cursor:crosshair}
+.hint{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px}
+.hint i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+aside{display:grid;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px;min-width:0}
+.card h2{font-family:var(--display);font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.stat{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--line);padding-bottom:3px}
+.stat span{color:var(--muted);font-size:12.5px}
+.stat b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.stat.full{grid-column:1/-1}
+.warn{color:var(--danger)!important}
+.good{color:var(--leaf)!important}
+canvas.mini{width:100%;height:auto;display:block;border-radius:6px;max-width:100%}
+#nestCv{aspect-ratio:320/190}
+#popCv{aspect-ratio:320/110}
+.log{list-style:none;margin:0;padding:0;max-height:190px;overflow:auto;font-size:12.5px;display:grid;gap:4px}
+.log li{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.log time{font-family:var(--mono);color:var(--muted);font-size:11.5px;white-space:nowrap}
+.log li.bad span{color:var(--danger)}
+.log li.ok span{color:var(--leaf)}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:3px;margin-right:5px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>ฟาร์มมดลาซิอัส<small>LASIUS NIGER · มดดำสวน · จำลองรังเดี่ยว ราชินี 1 ตัว</small></h1>
+    <div class="clock">
+      <div>วันที่ <b id="cDay">1</b></div>
+      <div>เวลา <b id="cTime">07:00</b></div>
+      <div>อากาศ <b id="cTa">--</b></div>
+      <div id="cWeather">แจ่มใส</div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="stage">
+      <div class="toolbar">
+        <div class="group" role="group" aria-label="ความเร็ว">
+          <span>ความเร็ว</span>
+          <button id="sp0" data-speed="0">หยุด</button>
+          <button id="sp1" data-speed="1" aria-pressed="true">1×</button>
+          <button id="sp5" data-speed="5">5×</button>
+          <button id="sp20" data-speed="20">20×</button>
+          <button id="sp60" data-speed="60">60×</button>
+        </div>
+        <div class="group" role="group" aria-label="เครื่องมือ">
+          <span>วาง</span>
+          <button id="tSugar" data-tool="sugar" aria-pressed="true">น้ำผึ้งผสมน้ำ</button>
+          <button id="tCricket" data-tool="cricket">จิ้งหรีดตาย</button>
+          <button id="tRock" data-tool="rock">ก้อนหิน</button>
+          <button id="tErase" data-tool="erase">ลบกลิ่น</button>
+        </div>
+        <div class="group" role="group" aria-label="ตัวเลือก">
+          <button id="oPher" aria-pressed="true">ฟีโรโมน</button>
+          <button id="oHeat" aria-pressed="false">แผ่นความร้อน</button>
+          <button id="oEnemy" aria-pressed="true">แมงมุม</button>
+          <button id="oNew" class="ghost">เริ่มรังใหม่</button>
+        </div>
+      </div>
+      <div class="tank"><canvas id="world" aria-label="พื้นที่หาอาหารของมด"></canvas></div>
+      <div class="hint">
+        <span><i style="background:var(--trail-home)"></i>กลิ่นทางกลับรัง</span>
+        <span><i style="background:var(--amber)"></i>กลิ่นนำทางไปอาหาร</span>
+        <span><i style="background:var(--leaf)"></i>เพลี้ยอ่อน (ให้น้ำหวาน)</span>
+        <span>คลิกในพื้นที่เพื่อวางของ · ลากเพื่อวางหิน/ลบกลิ่น</span>
+      </div>
+    </div>
+
+    <aside>
+      <section class="card">
+        <h2>สถานะรัง</h2>
+        <div class="stats">
+          <div class="stat full"><span>ราชินี</span><b id="sQueen">มีชีวิต</b></div>
+          <div class="stat"><span>มดงาน</span><b id="sWorkers">0</b></div>
+          <div class="stat"><span>ออกหาอาหาร</span><b id="sOut">0</b></div>
+          <div class="stat"><span>พี่เลี้ยง</span><b id="sNurse">0</b></div>
+          <div class="stat"><span>ตัวใหม่ (callow)</span><b id="sCallow">0</b></div>
+          <div class="stat"><span>ไข่</span><b id="sEggs">0</b></div>
+          <div class="stat"><span>ตัวอ่อน</span><b id="sLarvae">0</b></div>
+          <div class="stat"><span>ดักแด้</span><b id="sPupae">0</b></div>
+          <div class="stat"><span>ตาย/ถูกกิน</span><b id="sDead">0</b></div>
+          <div class="stat"><span>น้ำตาลสะสม</span><b id="sSugar">0</b></div>
+          <div class="stat"><span>โปรตีนสะสม</span><b id="sProt">0</b></div>
+          <div class="stat"><span>ในรัง</span><b id="sTn">--</b></div>
+          <div class="stat"><span>พัฒนาการ</span><b id="sDev">--</b></div>
+          <div class="stat full"><span>ไข่ → มดงาน ที่อุณหภูมินี้</span><b id="sCycle">--</b></div>
+        </div>
+      </section>
+      <section class="card">
+        <h2>ภาพตัดขวางรัง</h2>
+        <canvas id="nestCv" class="mini"></canvas>
+      </section>
+      <section class="card">
+        <h2>ประชากรรายวัน</h2>
+        <canvas id="popCv" class="mini"></canvas>
+        <div class="legend"><span><i style="background:var(--amber)"></i>มดงาน</span><span><i style="background:var(--ink)"></i>ไข่+ตัวอ่อน+ดักแด้</span></div>
+      </section>
+      <section class="card">
+        <h2>บันทึกผู้เลี้ยง</h2>
+        <ul class="log" id="log"></ul>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+const W = 900, H = 560, CS = 4, GW = W / CS, GH = H / CS, N = GW * GH;
+const DAY = 3600;              // ticks per game day (60 s at 1×)
+const TAU = Math.PI * 2;
+const rnd = Math.random;
+const $ = id => document.getElementById(id);
+
+const cv = $('world'), ctx = cv.getContext('2d');
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+cv.width = W * DPR; cv.height = H * DPR;
+
+const homeP = new Float32Array(N), foodP = new Float32Array(N), tmpP = new Float32Array(N);
+const rock = new Uint8Array(N);
+const bg = document.createElement('canvas'); bg.width = W * DPR; bg.height = H * DPR;
+const bctx = bg.getContext('2d');
+const pc = document.createElement('canvas'); pc.width = GW; pc.height = GH;
+const pctx = pc.getContext('2d'); const pimg = pctx.createImageData(GW, GH);
+
+const nest = { x: 330, y: 300, r: 9 };
+let g, speed = 1, tool = 'sugar', showP = true, frame = 0;
+
+// ---------- biology helpers ----------
+// development rate relative to optimum (Lasius brood stalls below ~13°C, optimum ~28°C)
+function devRate(t) {
+  if (t < 13) return 0;
+  if (t < 28) return (t - 13) / 15;
+  if (t <= 33) return 1;
+  return Math.max(0, 1 - (t - 33) / 5);
+}
+// foraging activity driven by surface temperature
+function activity(t) {
+  if (t < 8) return 0;
+  if (t < 22) return (t - 8) / 14;
+  if (t <= 32) return 1;
+  return Math.max(0, 1 - (t - 32) / 8);
+}
+const EGG_D = 10, LARVA_D = 13, PUPA_D = 11; // days at optimum
+
+function mkWorker(age) {
+  return { age, life: 240 + rnd() * 380, out: false, x: 0, y: 0, a: 0, state: 'search',
+           carry: null, trip: 0, since: 0, energy: 1, patience: 2000, leg: rnd() * 6, dead: false };
+}
+
+function stamp() {
+  const d = Math.floor(g.tick / DAY) + 1, tod = (g.tick % DAY) / DAY;
+  const m = Math.floor(tod * 1440);
+  return `ว${d} ${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+function log(m, k = '') {
+  g.log.unshift({ t: stamp(), m, k });
+  if (g.log.length > 40) g.log.pop();
+  renderLog();
+}
+
+// ---------- world setup ----------
+function paintRock(x, y, r, record = true) {
+  const r2 = r * r;
+  for (let cy = Math.max(0, (y - r) / CS | 0); cy <= Math.min(GH - 1, (y + r) / CS | 0); cy++)
+    for (let cx = Math.max(0, (x - r) / CS | 0); cx <= Math.min(GW - 1, (x + r) / CS | 0); cx++) {
+      const dx = cx * CS + 2 - x, dy = cy * CS + 2 - y;
+      if (dx * dx + dy * dy <= r2) { const i = cy * GW + cx; rock[i] = 1; homeP[i] = 0; foodP[i] = 0; }
+    }
+  if (record) { const s = rnd() * 1000; g.rocks.push({ x, y, r, s }); drawStone(x, y, r, s); }
+}
+function drawStone(x, y, r, seed) {
+  const c = bctx; c.save(); c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const n = 9; c.beginPath();
+  for (let k = 0; k < n; k++) {
+    const a = k / n * TAU, rr = r * (0.85 + 0.25 * Math.abs(Math.sin(seed + k * 1.7)));
+    const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+    k ? c.lineTo(px, py) : c.moveTo(px, py);
+  }
+  c.closePath();
+  const gr = c.createRadialGradient(x - r * .35, y - r * .4, r * .1, x, y, r * 1.1);
+  gr.addColorStop(0, '#9a8f84'); gr.addColorStop(1, '#4d443d');
+  c.fillStyle = gr; c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 6; c.shadowOffsetY = 2; c.fill();
+  c.restore();
+}
+function drawBg() {
+  const c = bctx; c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const gr = c.createRadialGradient(W * .45, H * .5, 50, W * .5, H * .5, W * .7);
+  gr.addColorStop(0, '#6b5038'); gr.addColorStop(1, '#3f2e21');
+  c.fillStyle = gr; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 5200; i++) {
+    const x = rnd() * W, y = rnd() * H, s = rnd() * 1.6 + .3, v = rnd();
+    c.fillStyle = v < .5 ? 'rgba(30,20,12,.35)' : v < .85 ? 'rgba(150,120,90,.28)' : 'rgba(210,190,160,.25)';
+    c.fillRect(x, y, s, s);
+  }
+  // fallen leaf litter and twigs
+  for (let i = 0; i < 14; i++) {
+    const x = rnd() * W, y = rnd() * H;
+    c.save(); c.translate(x, y); c.rotate(rnd() * TAU);
+    c.strokeStyle = 'rgba(40,28,18,.55)'; c.lineWidth = 1.4 + rnd();
+    c.beginPath(); c.moveTo(-18 - rnd() * 14, 0); c.lineTo(18 + rnd() * 14, rnd() * 4 - 2); c.stroke();
+    c.restore();
+  }
+  for (const r of g.rocks) drawStone(r.x, r.y, r.r, r.s);
+}
+
+function addFood(kind, x, y) {
+  if (kind === 'aphid') g.foods.push({ kind, type: 'sugar', x, y, amt: 10, max: 14, regen: 9, r: 15,
+    dots: Array.from({ length: 16 }, () => [rnd() * 22 - 11, rnd() * 22 - 11]) });
+  if (kind === 'drop') g.foods.push({ kind, type: 'sugar', x, y, amt: 25, max: 25, r: 8 });
+  if (kind === 'cricket') g.foods.push({ kind, type: 'protein', x, y, amt: 30, max: 30, r: 10, a: rnd() * TAU });
+}
+
+function newGame() {
+  homeP.fill(0); foodP.fill(0); rock.fill(0);
+  g = { tick: Math.floor(DAY * 0.29), sugar: 6, protein: 3, queen: { alive: true, starve: 0 },
+        eggs: [], larvae: [], pupae: [], workers: [], foods: [], rocks: [], eggAcc: 0,
+        dead: 0, cannib: 0, born: 0, delivered: 0, rain: 0, spider: null, heater: false,
+        enemies: $('oEnemy').getAttribute('aria-pressed') === 'true', hist: [], log: [],
+        Ta: 20, Tn: 22, dev: .5, act: .5, nurses: 0, callow: 0, outN: 0, starving: false, warned: {} };
+  g.heater = $('oHeat').getAttribute('aria-pressed') === 'true';
+  for (let i = 0; i < 14; i++) g.workers.push(mkWorker(5 + rnd() * 80));
+  for (let i = 0; i < 9; i++) g.eggs.push({ p: rnd() });
+  for (let i = 0; i < 7; i++) g.larvae.push({ p: rnd(), h: 0 });
+  for (let i = 0; i < 4; i++) g.pupae.push({ p: rnd() });
+  [[120, 120, 26], [610, 250, 20], [640, 280, 14], [470, 470, 22], [210, 360, 12], [800, 470, 30], [380, 140, 10]]
+    .forEach(([x, y, r]) => { g.rocks.push({ x, y, r, s: rnd() * 1000 }); });
+  drawBg();
+  for (const r of g.rocks) paintRock(r.x, r.y, r.r, false);
+  addFood('aphid', 740, 120);
+  addFood('aphid', 150, 470);
+  addFood('cricket', 560, 420);
+  g.hist.push({ w: g.workers.length, b: g.eggs.length + g.larvae.length + g.pupae.length });
+  log('รังอายุราว 3 เดือน: ราชินี 1 ตัว มดงานรุ่นแรก 14 ตัว เริ่มสังเกตการณ์');
+  log('เคล็ดลับ: ตัวอ่อนต้องการโปรตีน ลองวางจิ้งหรีดตายให้มดหาเจอ', 'ok');
+}
+
+// ---------- ant movement ----------
+function idx(x, y) { const cx = x / CS | 0, cy = y / CS | 0; return (cx < 0 || cy < 0 || cx >= GW || cy >= GH) ? -1 : cy * GW + cx; }
+function sense(P, a, off) {
+  const ang = a.a + off, i = idx(a.x + Math.cos(ang) * 10, a.y + Math.sin(ang) * 10);
+  if (i < 0 || rock[i]) return -1;
+  return P[i];
+}
+function dep(P, x, y, v) { const i = idx(x, y); if (i >= 0) P[i] = Math.min(6, P[i] + v); }
+function steer(a, P) {
+  const l = sense(P, a, -.55), c = sense(P, a, 0), r = sense(P, a, .55);
+  if (Math.max(l, c, r) < .03) return;
+  if (c >= l && c >= r) return;
+  a.a += (l > r ? -1 : 1) * .24;
+}
+function turnToward(a, tx, ty, k) {
+  let d = Math.atan2(ty - a.y, tx - a.x) - a.a;
+  d = Math.atan2(Math.sin(d), Math.cos(d)); a.a += d * k;
+}
+function stepAnt(a) {
+  a.trip++; a.leg += .7;
+  const dn = Math.hypot(nest.x - a.x, nest.y - a.y);
+  if (a.state === 'search') {
+    dep(homeP, a.x, a.y, .5 * Math.max(.05, 1 - a.trip / 4000));
+    let near = null;
+    for (const f of g.foods) {
+      if (f.amt < 1) continue;
+      const d = Math.hypot(f.x - a.x, f.y - a.y);
+      if (d < f.r + 2) {
+        f.amt -= 1; a.carry = f.type; a.state = 'return'; a.since = 0; a.a += Math.PI; near = null;
+        if (!f.found) { f.found = true; log(f.type === 'sugar' ? 'มดพบแหล่งน้ำหวาน และเริ่มทิ้งกลิ่นนำทาง' : 'มดพบซากแมลง กำลังตัดชิ้นส่วนกลับรัง', 'ok'); }
+        break;
+      }
+      if (d < f.r + 24) near = f;
+    }
+    if (a.state === 'search') {
+      if (near) turnToward(a, near.x, near.y, .15); else steer(a, foodP);
+      if (a.trip > a.patience) a.state = 'home';
+    }
+  } else {
+    a.since++;
+    if (a.carry) dep(foodP, a.x, a.y, 1.2 * Math.max(.05, 1 - a.since / 3000));
+    if (dn < 70) turnToward(a, nest.x, nest.y, .2);
+    else { steer(a, homeP); turnToward(a, nest.x, nest.y, .03); } // path integration keeps them oriented
+    if (dn < nest.r) { arrive(a); return; }
+  }
+  a.a += (rnd() - .5) * .32;
+  const sp = .65 * (.35 + .65 * g.act) * (a.carry === 'protein' ? .7 : 1);
+  const nx = a.x + Math.cos(a.a) * sp, ny = a.y + Math.sin(a.a) * sp;
+  const i = idx(nx, ny);
+  if (nx < 3 || ny < 3 || nx > W - 3 || ny > H - 3 || i < 0 || rock[i]) { a.a += Math.PI * (.6 + rnd() * .8); return; }
+  a.x = nx; a.y = ny;
+}
+function arrive(a) {
+  if (a.carry) {
+    if (a.carry === 'sugar') g.sugar += 1; else g.protein += 1;
+    a.carry = null; g.delivered++;
+    if (rnd() < .75 && g.act > .3) { a.state = 'search'; a.trip = 0; a.a += Math.PI; return; }
+  }
+  a.out = false; a.state = 'search'; a.trip = 0;
+}
+
+// ---------- spider ----------
+function stepSpider() {
+  const s = g.spider; s.life--;
+  let best = null, bd = 150;
+  for (const w of g.workers) if (w.out && !w.dead) { const d = Math.hypot(w.x - s.x, w.y - s.y); if (d < bd) { bd = d; best = w; } }
+  if (s.life > 0 && best) turnToward(s, best.x, best.y, .08); else s.a += (rnd() - .5) * .2;
+  if (s.life <= 0) turnToward(s, s.ex, s.ey, .1);
+  const nx = s.x + Math.cos(s.a) * .5, ny = s.y + Math.sin(s.a) * .5, i = idx(nx, ny);
+  if (s.life > 0 && (i < 0 || rock[i])) s.a += 2; else { s.x = nx; s.y = ny; }
+  s.leg += .4;
+  if (best && bd < 6 && rnd() < .04) {
+    best.dead = true; g.dead++; s.kills++;
+    if (s.kills === 1) log('แมงมุมล่ามดงานไปแล้ว 1 ตัว', 'bad');
+  }
+  if (s.life <= 0 && (s.x < -20 || s.y < -20 || s.x > W + 20 || s.y > H + 20)) {
+    log(`แมงมุมจากไปแล้ว (จับมดได้ ${s.kills} ตัว)`); g.spider = null;
+  }
+}
+function spawnSpider() {
+  const side = rnd() * 4 | 0, p = rnd();
+  const pos = [[p * W, -10], [W + 10, p * H], [p * W, H + 10], [-10, p * H]][side];
+  const ex = [[p * W, -40], [W + 40, p * H], [p * W, H + 40], [-40, p * H]][side];
+  g.spider = { x: pos[0], y: pos[1], a: Math.atan2(H / 2 - pos[1], W / 2 - pos[0]), life: DAY * .45, kills: 0, leg: 0, ex: ex[0], ey: ex[1] };
+  log('แมงมุมหมาป่าเดินเข้ามาในพื้นที่หาอาหาร!', 'bad');
+}
+
+// ---------- colony physiology (one tick) ----------
+function colonyTick() {
+  const dt = 1 / DAY, tod = (g.tick % DAY) / DAY;
+  g.Ta = 19 + 7 * Math.sin(TAU * (tod - .375)) - (g.rain > 0 ? 3 : 0);
+  g.Tn = g.Ta * .5 + 23 * .5 + (g.heater ? 4 : 0);
+  g.dev = devRate(g.Tn);
+  g.act = activity(g.Ta) * (g.rain > 0 ? .1 : 1);
+
+  const hungry = g.sugar < g.workers.length * .4 + 2 || g.protein < g.larvae.length * .5 + 1;
+  const fAge = hungry ? 9 : 20; // age polyethism: young ants nurse, older ants forage
+  let nurses = 0, callow = 0, outN = 0; const foragersIn = [];
+  for (const w of g.workers) {
+    w.age += dt;
+    if (w.out) { outN++; continue; }
+    if (w.age < 3) { callow++; continue; }
+    if (w.age < fAge) nurses++; else foragersIn.push(w);
+  }
+  g.nurses = nurses; g.callow = callow; g.outN = outN;
+  const nurseCap = nurses * 5 + foragersIn.length * 1.5;
+
+  const pExit = .0012 * g.act * (hungry ? 1.6 : .7);
+  for (const w of foragersIn) if (rnd() < pExit) {
+    Object.assign(w, { out: true, x: nest.x, y: nest.y, a: rnd() * TAU, state: 'search', trip: 0, carry: null, patience: 1800 + rnd() * 2400 });
+  }
+
+  // sugar fuels adults and queen
+  const sNeed = (g.workers.length * .08 + (g.queen.alive ? .5 : 0) + g.larvae.length * .04) * dt;
+  g.starving = g.sugar < sNeed;
+  g.sugar = Math.max(0, g.sugar - sNeed);
+  for (const w of g.workers) {
+    w.energy = g.starving ? w.energy - dt / 7 : Math.min(1, w.energy + dt);
+    if (w.energy <= 0 || w.age > w.life || (w.out && rnd() < .012 * dt)) { w.dead = true; g.dead++; }
+  }
+  if (g.starving && !g.warned.starve) { g.warned.starve = true; log('น้ำตาลในรังหมด มดงานเริ่มอดอาหาร', 'bad'); }
+  if (!g.starving) g.warned.starve = false;
+
+  if (g.queen.alive) {
+    g.queen.starve = g.starving ? g.queen.starve + dt : Math.max(0, g.queen.starve - dt);
+    if (g.queen.starve > 12) { g.queen.alive = false; log('ราชินีตายจากการขาดอาหาร รังจะค่อยๆ ร่วงโรยเพราะไม่มีไข่ใหม่', 'bad'); }
+    else if (!g.starving) {
+      const rate = 28 * g.dev * Math.min(1, g.protein / 3);
+      g.eggAcc += rate * dt;
+      while (g.eggAcc >= 1) { g.eggAcc--; g.eggs.push({ p: 0 }); g.protein = Math.max(0, g.protein - .05); }
+    }
+  }
+
+  for (let i = g.eggs.length - 1; i >= 0; i--) {
+    const e = g.eggs[i]; e.p += dt / EGG_D * g.dev;
+    if (e.p >= 1) { g.eggs.splice(i, 1); g.larvae.push({ p: 0, h: 0 }); }
+  }
+  const L = g.larvae.length;
+  if (L) {
+    const need = L * .25 * dt;
+    const r = Math.min(1, nurseCap / L, g.protein / need);
+    g.protein = Math.max(0, g.protein - need * r);
+    let hungriest = -1, hh = 3;
+    for (let i = L - 1; i >= 0; i--) {
+      const l = g.larvae[i];
+      l.p += dt / LARVA_D * g.dev * r;
+      l.h = Math.max(0, l.h + dt * (1 - r) - dt * r * .5);
+      if (l.p >= 1) { g.larvae.splice(i, 1); g.pupae.push({ p: 0 }); continue; }
+      if (l.h > hh) { hh = l.h; hungriest = i; }
+    }
+    if (hungriest >= 0) {
+      g.larvae.splice(hungriest, 1); g.protein += .3; g.cannib++;
+      if (g.cannib === 1 || g.cannib % 10 === 0) log(`ขาดโปรตีน: มดงานกินตัวอ่อนที่อดอาหารไปแล้ว ${g.cannib} ตัว`, 'bad');
+    }
+  }
+  for (let i = g.pupae.length - 1; i >= 0; i--) {
+    const p = g.pupae[i]; p.p += dt / PUPA_D * g.dev;
+    if (p.p >= 1) {
+      g.pupae.splice(i, 1); g.workers.push(mkWorker(0)); g.born++;
+      if (g.born <= 3 || g.born % 25 === 0) log(`มดงานตัวใหม่ออกจากรังไหม (รวม ${g.born} ตัว)`, 'ok');
+    }
+  }
+  if (g.Tn > 35 && rnd() < .3 * dt * 60) {
+    const all = [g.eggs, g.larvae, g.pupae].filter(a => a.length);
+    if (all.length) { all[rnd() * all.length | 0].pop(); g.dead++; if (!g.warned.heat) { g.warned.heat = true; log('ในรังร้อนเกินไป ตัวอ่อนเริ่มตาย', 'bad'); } }
+  }
+
+  for (const f of g.foods) if (f.regen) f.amt = Math.min(f.max, f.amt + f.regen * dt);
+  g.foods = g.foods.filter(f => f.regen || f.amt >= 1);
+  if (g.rain > 0) { g.rain--; if (g.rain === 0) log('ฝนหยุดแล้ว เส้นทางกลิ่นถูกชะล้างไปมาก'); }
+  if (g.enemies && !g.spider && rnd() < .25 / DAY) spawnSpider();
+}
+
+function dayTick() {
+  g.hist.push({ w: g.workers.length, b: g.eggs.length + g.larvae.length + g.pupae.length });
+  if (g.hist.length > 120) g.hist.shift();
+  if (rnd() < .14) { g.rain = Math.floor(DAY * (.2 + rnd() * .25)); log('ฝนตก มดหลบเข้ารัง', ''); }
+}
+
+function pheromoneTick(t) {
+  if (t % 4 === 0) {
+    const fh = g.rain > 0 ? .96 : .998, ff = g.rain > 0 ? .95 : .9972;
+    for (let i = 0; i < N; i++) { homeP[i] *= fh; foodP[i] *= ff; }
+  }
+  if (t % 16 === 0) for (const P of [homeP, foodP]) {
+    tmpP.set(P);
+    for (let y = 1; y < GH - 1; y++) for (let x = 1; x < GW - 1; x++) {
+      const i = y * GW + x; if (rock[i]) continue;
+      P[i] = tmpP[i] * .8 + (tmpP[i - 1] + tmpP[i + 1] + tmpP[i - GW] + tmpP[i + GW]) * .05;
+    }
+  }
+}
+
+function step() {
+  g.tick++;
+  if (g.tick % DAY === 0) dayTick();
+  colonyTick();
+  pheromoneTick(g.tick);
+  for (const w of g.workers) if (w.out && !w.dead) stepAnt(w);
+  if (g.spider) stepSpider();
+  if (g.tick % 30 === 0 || g.workers.some(w => w.dead)) g.workers = g.workers.filter(w => !w.dead);
+}
+
+// ---------- rendering ----------
+function drawPher() {
+  const d = pimg.data;
+  for (let i = 0; i < N; i++) {
+    const ah = Math.min(1, homeP[i] / 2.2) * .5, af = Math.min(1, foodP[i] / 1.8) * .85, s = ah + af, o = i * 4;
+    if (s < .02) { d[o + 3] = 0; continue; }
+    d[o] = (127 * ah + 240 * af) / s; d[o + 1] = (168 * ah + 165 * af) / s; d[o + 2] = (255 * ah + 60 * af) / s;
+    d[o + 3] = Math.min(1, s) * 200;
+  }
+  pctx.putImageData(pimg, 0, 0);
+}
+function drawAnt(c, x, y, a, leg, carry, scale = 1, col = '#0f0a07') {
+  c.save(); c.translate(x, y); c.rotate(a); c.scale(scale, scale);
+  c.strokeStyle = col; c.lineWidth = .55; c.beginPath();
+  for (let k = -1; k <= 1; k++) {
+    const sw = Math.sin(leg + k * 2.1) * 1.1;
+    c.moveTo(k * 1.1, 0); c.lineTo(k * 1.1 + sw, -2.7);
+    c.moveTo(k * 1.1, 0); c.lineTo(k * 1.1 - sw, 2.7);
+  }
+  c.stroke(); c.fillStyle = col; c.beginPath();
+  c.ellipse(-2.6, 0, 1.9, 1.45, 0, 0, TAU);
+  c.ellipse(0, 0, 1.25, .8, 0, 0, TAU);
+  c.ellipse(2.1, 0, 1.1, 1, 0, 0, TAU);
+  c.fill();
+  if (carry) { c.fillStyle = carry === 'sugar' ? '#f6c85a' : '#c46a3a'; c.beginPath(); c.arc(3.7, 0, 1.25, 0, TAU); c.fill(); }
+  c.restore();
+}
+function drawFood(f) {
+  const k = f.amt / f.max;
+  if (f.kind === 'aphid') {
+    ctx.strokeStyle = '#4f6b2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(f.x - 14, f.y + 12); ctx.lineTo(f.x + 12, f.y - 12); ctx.stroke();
+    ctx.fillStyle = '#6f9a3a'; ctx.beginPath(); ctx.ellipse(f.x + 4, f.y - 2, 9, 4, -.8, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#a9d36e';
+    for (const [dx, dy] of f.dots) { ctx.beginPath(); ctx.ellipse(f.x + dx * .7, f.y + dy * .7, 1.4, 1, .4, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = `rgba(246,200,90,${.25 + .5 * k})`; ctx.beginPath(); ctx.arc(f.x, f.y, 2 + 3 * k, 0, TAU); ctx.fill();
+  } else if (f.kind === 'drop') {
+    ctx.fillStyle = `rgba(240,180,60,${.3 + .5 * k})`; ctx.beginPath(); ctx.arc(f.x, f.y, 3 + 6 * k, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,200,.6)'; ctx.beginPath(); ctx.arc(f.x - 2, f.y - 2, 1.5 + k, 0, TAU); ctx.fill();
+  } else {
+    ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.a); const s = .5 + .5 * k;
+    ctx.fillStyle = '#5a3a1e'; ctx.beginPath(); ctx.ellipse(0, 0, 11 * s, 4 * s, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3c2512'; ctx.beginPath(); ctx.ellipse(10 * s, 0, 3.4 * s, 3 * s, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#3c2512'; ctx.lineWidth = 1.2; ctx.beginPath();
+    ctx.moveTo(-2, 3 * s); ctx.lineTo(-12 * s, 9 * s); ctx.moveTo(-2, -3 * s); ctx.lineTo(-12 * s, -9 * s);
+    ctx.moveTo(12 * s, -1); ctx.lineTo(22 * s, -6 * s); ctx.moveTo(12 * s, 1); ctx.lineTo(22 * s, 6 * s); ctx.stroke();
+    ctx.restore();
+  }
+}
+let pointer = null;
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.drawImage(bg, 0, 0, W, H);
+  if (showP) { if (frame % 3 === 0) drawPher(); ctx.imageSmoothingEnabled = true; ctx.drawImage(pc, 0, 0, W, H); }
+  // nest entrance and excavated soil mound
+  const mg = ctx.createRadialGradient(nest.x, nest.y, 4, nest.x, nest.y, 34);
+  mg.addColorStop(0, 'rgba(150,115,80,.9)'); mg.addColorStop(1, 'rgba(150,115,80,0)');
+  ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(nest.x, nest.y, 34, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#120b07'; ctx.beginPath(); ctx.ellipse(nest.x, nest.y, 6, 4.5, .3, 0, TAU); ctx.fill();
+  for (const f of g.foods) drawFood(f);
+  for (const w of g.workers) if (w.out) drawAnt(ctx, w.x, w.y, w.a, w.leg, w.carry);
+  if (g.spider) {
+    const s = g.spider; ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.a);
+    ctx.strokeStyle = '#2a1f17'; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (let k = 0; k < 4; k++) { const sw = Math.sin(s.leg + k) * 2, ox = 3 - k * 2;
+      ctx.moveTo(ox, 0); ctx.lineTo(ox + 6 + sw, -11 + k); ctx.moveTo(ox, 0); ctx.lineTo(ox + 6 - sw, 11 - k); }
+    ctx.stroke(); ctx.fillStyle = '#3a2b20';
+    ctx.beginPath(); ctx.ellipse(-6, 0, 7, 5.5, 0, 0, TAU); ctx.ellipse(3, 0, 4.5, 4, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#7a6550'; ctx.fillRect(-10, -.8, 8, 1.6);
+    ctx.restore();
+  }
+  if (g.rain > 0) {
+    ctx.strokeStyle = 'rgba(190,210,235,.35)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let i = 0; i < 120; i++) { const x = (i * 97 + frame * 7) % W, y = (i * 53 + frame * 15) % H; ctx.moveTo(x, y); ctx.lineTo(x - 3, y + 10); }
+    ctx.stroke(); ctx.fillStyle = 'rgba(40,60,90,.18)'; ctx.fillRect(0, 0, W, H);
+  }
+  const tod = (g.tick % DAY) / DAY, sun = Math.sin(TAU * (tod - .25));
+  const dark = Math.max(0, Math.min(.5, .5 - sun * 1.2));
+  if (dark > 0) { ctx.fillStyle = `rgba(8,10,30,${dark})`; ctx.fillRect(0, 0, W, H); }
+  if (pointer && (tool === 'rock' || tool === 'erase')) {
+    ctx.strokeStyle = 'rgba(241,230,214,.6)'; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.arc(pointer.x, pointer.y, tool === 'rock' ? 10 : 22, 0, TAU); ctx.stroke();
+  }
+}
+
+// nest cross-section
+const nc = $('nestCv'), nctx = nc.getContext('2d');
+nc.width = 320 * DPR; nc.height = 190 * DPR;
+const chambers = { queen: [160, 118, 34, 15], eggs: [72, 92, 36, 14], larvae: [250, 92, 42, 16], pupae: [92, 158, 44, 15], store: [236, 160, 36, 13] };
+function seeded(i, s) { const x = Math.sin(i * 12.9898 + s * 78.233) * 43758.5453; return x - Math.floor(x); }
+function drawNest() {
+  const c = nctx; c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const gr = c.createLinearGradient(0, 0, 0, 190); gr.addColorStop(0, '#4a3626'); gr.addColorStop(1, '#2a1d14');
+  c.fillStyle = gr; c.fillRect(0, 0, 320, 190);
+  c.fillStyle = '#6b8a3c'; c.fillRect(0, 0, 320, 6);
+  c.strokeStyle = '#140d09'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath();
+  c.moveTo(160, 0); c.lineTo(160, 104); c.moveTo(160, 60); c.lineTo(72, 92); c.moveTo(160, 60); c.lineTo(250, 92);
+  c.moveTo(160, 118); c.lineTo(92, 158); c.moveTo(160, 118); c.lineTo(236, 160); c.stroke();
+  c.fillStyle = '#140d09';
+  for (const k in chambers) { const [x, y, rx, ry] = chambers[k]; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill(); }
+  const t = frame * .02;
+  const place = (k, i, n) => { const [x, y, rx, ry] = chambers[k]; const a = seeded(i, n) * TAU, r = Math.sqrt(seeded(i, n + 1)) * .8;
+    return [x + Math.cos(a) * rx * r, y + Math.sin(a) * ry * r]; };
+  c.fillStyle = '#f4efe2';
+  for (let i = 0; i < Math.min(80, g.eggs.length); i++) { const [x, y] = place('eggs', i, 1); c.beginPath(); c.ellipse(x, y, 1.3, .9, .5, 0, TAU); c.fill(); }
+  c.fillStyle = '#efe3c4';
+  for (let i = 0; i < Math.min(60, g.larvae.length); i++) { const l = g.larvae[i], [x, y] = place('larvae', i, 3), s = 1.2 + l.p * 2.6;
+    c.beginPath(); c.ellipse(x, y, s, s * .75, .3, 0, TAU); c.fill(); }
+  c.fillStyle = '#c9a97a';
+  for (let i = 0; i < Math.min(50, g.pupae.length); i++) { const [x, y] = place('pupae', i, 5); c.beginPath(); c.ellipse(x, y, 3.6, 1.9, seeded(i, 9) * 3, 0, TAU); c.fill(); }
+  const fill = Math.min(1, g.sugar / 40), fp = Math.min(1, g.protein / 25);
+  c.fillStyle = 'rgba(246,200,90,.85)'; c.beginPath(); c.ellipse(226, 162, 22 * Math.max(.08, fill), 8 * Math.max(.2, fill), 0, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(196,106,58,.9)'; c.beginPath(); c.ellipse(254, 160, 10 * Math.max(.1, fp), 6 * Math.max(.2, fp), 0, 0, TAU); c.fill();
+  if (g.queen.alive) drawAnt(c, 160, 118, Math.sin(t * .3) * .3, t * 2, null, 2.7, '#1f140d');
+  else { c.fillStyle = '#b09a83'; c.font = '11px ' + getComputedStyle(document.body).fontFamily; c.fillText('ไม่มีราชินี', 132, 122); }
+  const inside = g.workers.filter(w => !w.out);
+  const keys = ['eggs', 'larvae', 'pupae', 'queen', 'store'];
+  for (let i = 0; i < Math.min(40, inside.length); i++) {
+    const k = keys[i % 5], [x, y] = place(k, i + 200, 11), w = inside[i];
+    drawAnt(c, x + Math.sin(t + i) * 2, y + Math.cos(t * .7 + i) * 1.2, seeded(i, 2) * TAU + Math.sin(t + i) * .4, t * 6 + i, null, .95, w.age < 3 ? '#8a6a4a' : '#160e09');
+  }
+  c.font = '10px ' + 'IBM Plex Mono, monospace'; c.fillStyle = '#b09a83';
+  c.fillText(`ไข่ ${g.eggs.length}`, 40, 72); c.fillText(`ตัวอ่อน ${g.larvae.length}`, 220, 70);
+  c.fillText(`ดักแด้ ${g.pupae.length}`, 52, 184); c.fillText('คลังอาหาร', 210, 184);
+}
+
+const popc = $('popCv'), popx = popc.getContext('2d');
+popc.width = 320 * DPR; popc.height = 110 * DPR;
+function drawPop() {
+  const c = popx; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.clearRect(0, 0, 320, 110);
+  const h = g.hist.concat([{ w: g.workers.length, b: g.eggs.length + g.larvae.length + g.pupae.length }]);
+  const max = Math.max(10, ...h.map(p => Math.max(p.w, p.b)));
+  const top = Math.ceil(max / 10) * 10, px = i => 26 + (h.length < 2 ? 0 : i / (h.length - 1)) * 286, py = v => 98 - v / top * 86;
+  c.strokeStyle = '#3d2f24'; c.lineWidth = 1; c.font = '10px IBM Plex Mono, monospace'; c.fillStyle = '#b09a83';
+  for (const v of [0, top / 2, top]) { c.beginPath(); c.moveTo(26, py(v)); c.lineTo(312, py(v)); c.stroke(); c.fillText(String(v), 0, py(v) + 3); }
+  for (const [key, col] of [['b', '#f1e6d6'], ['w', '#e9a23b']]) {
+    c.strokeStyle = col; c.lineWidth = 1.8; c.beginPath();
+    h.forEach((p, i) => i ? c.lineTo(px(i), py(p[key])) : c.moveTo(px(i), py(p[key]))); c.stroke();
+    const l = h[h.length - 1]; c.fillStyle = col; c.beginPath(); c.arc(px(h.length - 1), py(l[key]), 2.6, 0, TAU); c.fill();
+  }
+}
+
+function renderLog() {
+  $('log').innerHTML = g.log.map(e => `<li class="${e.k === 'bad' ? 'bad' : e.k === 'ok' ? 'ok' : ''}"><time>${e.t}</time><span>${e.m}</span></li>`).join('');
+}
+function updatePanel() {
+  const d = Math.floor(g.tick / DAY) + 1, m = Math.floor((g.tick % DAY) / DAY * 1440);
+  $('cDay').textContent = d;
+  $('cTime').textContent = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  $('cTa').textContent = g.Ta.toFixed(1) + '°C';
+  $('cWeather').textContent = g.rain > 0 ? 'ฝนตก' : (m < 360 || m > 1110) ? 'กลางคืน' : 'แจ่มใส';
+  const q = $('sQueen');
+  q.textContent = g.queen.alive ? (g.queen.starve > 3 ? 'หิว ไม่วางไข่' : g.starving ? 'หยุดวางไข่' : 'วางไข่ปกติ') : 'ตายแล้ว';
+  q.className = !g.queen.alive || g.starving ? 'warn' : 'good';
+  $('sWorkers').textContent = g.workers.length; $('sOut').textContent = g.outN;
+  $('sNurse').textContent = g.nurses; $('sCallow').textContent = g.callow;
+  $('sEggs').textContent = g.eggs.length; $('sLarvae').textContent = g.larvae.length; $('sPupae').textContent = g.pupae.length;
+  $('sDead').textContent = g.dead + g.cannib;
+  const s = $('sSugar'); s.textContent = g.sugar.toFixed(1); s.className = g.sugar < 2 ? 'warn' : '';
+  const p = $('sProt'); p.textContent = g.protein.toFixed(1); p.className = g.protein < 1 && g.larvae.length ? 'warn' : '';
+  const tn = $('sTn'); tn.textContent = g.Tn.toFixed(1) + '°C'; tn.className = g.Tn > 34 ? 'warn' : '';
+  $('sDev').textContent = Math.round(g.dev * 100) + '%';
+  $('sCycle').textContent = g.dev > .01 ? `≈ ${Math.round((EGG_D + LARVA_D + PUPA_D) / g.dev)} วัน` : 'หยุดพัฒนา (เย็นเกินไป)';
+}
+
+// ---------- input ----------
+function toWorld(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+let drawing = false;
+function applyBrush(pt) {
+  if (tool === 'rock') { const i = idx(pt.x, pt.y); if (i >= 0 && Math.hypot(pt.x - nest.x, pt.y - nest.y) > 30) paintRock(pt.x, pt.y, 10); }
+  if (tool === 'erase') {
+    for (let cy = Math.max(0, (pt.y - 22) / CS | 0); cy <= Math.min(GH - 1, (pt.y + 22) / CS | 0); cy++)
+      for (let cx = Math.max(0, (pt.x - 22) / CS | 0); cx <= Math.min(GW - 1, (pt.x + 22) / CS | 0); cx++) {
+        if (Math.hypot(cx * CS - pt.x, cy * CS - pt.y) < 22) { homeP[cy * GW + cx] = 0; foodP[cy * GW + cx] = 0; }
+      }
+  }
+}
+cv.addEventListener('pointerdown', e => {
+  const pt = toWorld(e); const i = idx(pt.x, pt.y);
+  if (tool === 'sugar' && i >= 0 && !rock[i]) { addFood('drop', pt.x, pt.y); log('วางหยดน้ำผึ้งผสมน้ำ'); }
+  else if (tool === 'cricket' && i >= 0 && !rock[i]) { addFood('cricket', pt.x, pt.y); log('วางจิ้งหรีดตาย (โปรตีนสำหรับตัวอ่อน)'); }
+  else { drawing = true; cv.setPointerCapture(e.pointerId); applyBrush(pt); }
+});
+cv.addEventListener('pointermove', e => { pointer = toWorld(e); if (drawing) applyBrush(pointer); });
+cv.addEventListener('pointerup', () => { drawing = false; });
+cv.addEventListener('pointerleave', () => { pointer = null; });
+
+document.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => {
+  speed = +b.dataset.speed;
+  document.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', x === b));
+}));
+document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => {
+  tool = b.dataset.tool;
+  document.querySelectorAll('[data-tool]').forEach(x => x.setAttribute('aria-pressed', x === b));
+}));
+function toggle(id, fn) { $(id).addEventListener('click', () => { const v = $(id).getAttribute('aria-pressed') !== 'true'; $(id).setAttribute('aria-pressed', v); fn(v); }); }
+toggle('oPher', v => showP = v);
+toggle('oHeat', v => { g.heater = v; log(v ? 'เปิดแผ่นความร้อนใต้รัง (+4°C) ตัวอ่อนจะโตเร็วขึ้น' : 'ปิดแผ่นความร้อน'); });
+toggle('oEnemy', v => { g.enemies = v; if (!v && g.spider) { g.spider = null; log('ไล่แมงมุมออกไปแล้ว'); } });
+$('oNew').addEventListener('click', newGame);
+
+// ---------- loop ----------
+newGame();
+function loop() {
+  for (let i = 0; i < speed; i++) step();
+  frame++;
+  render();
+  if (frame % 6 === 0) { drawNest(); updatePanel(); }
+  if (frame % 30 === 0) drawPop();
+  requestAnimationFrame(loop);
+}
+drawNest(); updatePanel(); drawPop();
+requestAnimationFrame(loop);
+})();
+</script>
