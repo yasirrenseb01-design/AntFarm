@@ -1,0 +1,211 @@
+extends "res://scripts/view/ui/parts/hud_colonies.gd"
+## HUD, layer 3 of 5: the top bar (clock, speed, views), the tool bar and the camera pad.
+
+
+# ---------------------------------------------------------------- layout
+
+func _build_top(root: Control) -> void:
+	var panel := PanelContainer.new()
+	panel.position = Vector2(14, 12)
+	root.add_child(panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 20)
+	panel.add_child(row)
+
+	var title := VBoxContainer.new()
+	title.add_theme_constant_override("separation", 0)
+	title.add_child(_label(sim.sp["name_th"], 22, INK, _display))
+	title.add_child(_label("%s · รังเดี่ยว ราชินี 1 ตัว · กล่อง 60×37 ซม. · v%s" % [sim.sp["name"], ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED))
+	row.add_child(title)
+
+	var clock := VBoxContainer.new()
+	clock.add_theme_constant_override("separation", 0)
+	_clock = _label("", 20, INK, _mono)
+	_weather = _label("", 12, MUTED)
+	clock.add_child(_clock)
+	clock.add_child(_weather)
+	row.add_child(clock)
+
+	var speeds := HBoxContainer.new()
+	speeds.add_theme_constant_override("separation", 4)
+	speeds.alignment = BoxContainer.ALIGNMENT_CENTER
+	var g := ButtonGroup.new()
+	for pair in [["หยุด", 0.0], ["0.5×", 0.5], ["1×", 1.0], ["5×", 5.0], ["20×", 20.0], ["60×", 60.0]]:
+		var b := _button(pair[0], true, g)
+		b.button_pressed = pair[1] == 1.0
+		var v: float = pair[1]
+		b.pressed.connect(func(): speed_changed.emit(v))
+		speeds.add_child(b)
+	var wrap := CenterContainer.new()
+	wrap.add_child(speeds)
+	row.add_child(wrap)
+
+	var views := HBoxContainer.new()
+	views.add_theme_constant_override("separation", 4)
+	var vg := ButtonGroup.new()
+	for pair in [["พื้นดิน 3 มิติ", "outworld"], ["มุมบน 2 มิติ", "surface"], ["ในรัง 3 มิติ", "nest"]]:
+		var b := _button(pair[0], true, vg)
+		b.button_pressed = pair[1] == "outworld"
+		_view_btns[pair[1]] = b
+		var m: String = pair[1]
+		b.pressed.connect(func():
+			_apply_mode(m)
+			view_changed.emit(m))
+		views.add_child(b)
+	var vwrap := CenterContainer.new()
+	vwrap.add_child(views)
+	row.add_child(vwrap)
+
+	var mine := _button("รังของฉัน", false)
+	mine.pressed.connect(open_colonies)
+	var fwrap := CenterContainer.new()
+	fwrap.add_child(mine)
+	row.add_child(fwrap)
+
+
+func _build_tools(root: Control) -> void:
+	var panel := PanelContainer.new()
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = 14
+	panel.offset_top = -64
+	panel.offset_bottom = -12
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	root.add_child(panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	panel.add_child(row)
+	var place_label := _label("วางในกล่อง", 12, MUTED)
+	row.add_child(place_label)
+	_surface_tools.append(place_label)
+	_cut_row = HBoxContainer.new()
+	_cut_row.visible = false
+	_cut_row.add_child(_label("ระนาบตัด", 12, MUTED))
+	var cut := HSlider.new()
+	_cut_slider = cut
+	cut.min_value = -32
+	cut.max_value = 32
+	cut.step = 0.5
+	cut.value = 0
+	cut.custom_minimum_size = Vector2(220, 0)
+	cut.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cut.focus_mode = Control.FOCUS_NONE
+	cut.value_changed.connect(func(v): if nest_view: nest_view.cut_offset = v)
+	_cut_row.add_child(cut)
+	row.add_child(_cut_row)
+	_xray_btn = _button("มองทะลุดิน", true)
+	_xray_btn.visible = false
+	_xray_btn.toggled.connect(func(on):
+		if nest_view:
+			nest_view.set_xray(on)
+		_cut_row.visible = not on and not sim.nest.slab)
+	row.add_child(_xray_btn)
+	var g := ButtonGroup.new()
+	for pair in [["มือ (เลื่อนจอ)", "pan"], ["หยดน้ำผึ้ง", "honey"], ["จิ้งหรีดตาย", "cricket"], ["ก้อนหิน", "rock"], ["ลบกลิ่น", "erase"]]:
+		var b := _button(pair[0], true, g)
+		b.button_pressed = pair[1] == world.tool
+		var t: String = pair[1]
+		b.pressed.connect(func(): world.tool = t)
+		row.add_child(b)
+		_surface_tools.append(b)
+	row.add_child(VSeparator.new())
+	var water := _button("เติมน้ำในรัง", false)
+	water.pressed.connect(func(): sim.add_water())
+	row.add_child(water)
+	var pher := _button("แสดงกลิ่น", true)
+	pher.button_pressed = world.show_pheromones
+	pher.toggled.connect(func(on): world.show_pheromones = on)
+	row.add_child(pher)
+	_surface_tools.append(pher)
+	var heat := _button("แผ่นความร้อน", true)
+	heat.toggled.connect(func(on):
+		sim.heater = on
+		sim._log("เปิดแผ่นความร้อนใต้รัง อุณหภูมิในรังจะค่อยๆ สูงขึ้น" if on else "ปิดแผ่นความร้อน"))
+	row.add_child(heat)
+	var enemy := _button("ศัตรูธรรมชาติ", true)
+	enemy.button_pressed = sim.enemies
+	enemy.toggled.connect(func(on):
+		sim.enemies = on
+		if not on:
+			sim.remove_spider())
+	row.add_child(enemy)
+	_surface_tools.append(enemy)
+	_hint = _label("", 12, MUTED)
+	_hint.anchor_top = 1.0
+	_hint.anchor_bottom = 1.0
+	_hint.offset_left = 18
+	_hint.offset_top = -92
+	root.add_child(_hint)
+	_apply_mode("surface")
+
+
+## On-screen camera buttons, bottom-right of the view (left of the side panel).
+func _build_camera_pad(root: Control) -> void:
+	var panel := PanelContainer.new()
+	panel.anchor_left = 1.0
+	panel.anchor_right = 1.0
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_right = -PANEL_W - 14
+	panel.offset_bottom = -12
+	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	root.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	panel.add_child(col)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	col.add_child(row)
+	for spec in [["−", "zoom_out", "both"], ["+", "zoom_in", "both"], ["⟲", "left", "3d"], ["⟳", "right", "3d"],
+			["มุมบน", "top", "out"], ["เต็มจอ", "reset", "both"]]:
+		var b := _button(spec[0], false)
+		b.custom_minimum_size = Vector2(34, 0)
+		var a: String = spec[1]
+		b.pressed.connect(func(): cam_action.emit(a))
+		row.add_child(b)
+		if spec[2] == "3d":
+			_cam_3d.append(b)
+		elif spec[2] == "out":
+			_cam_out.append(b)
+	var go := HBoxContainer.new()
+	go.add_theme_constant_override("separation", 4)
+	col.add_child(go)
+	var lbl := _label("ไปที่", 12, MUTED)
+	go.add_child(lbl)
+	for spec in [["ปากรัง", "nest", "surface"], ["ราชินี", "queen", "nest"], ["ตัวอ่อน", "larvae", "nest"],
+			["ดักแด้", "pupae", "nest"], ["ปากรัง", "entrance", "nest"]]:
+		var b := _button(spec[0], false)
+		var a: String = spec[1]
+		b.pressed.connect(func(): cam_action.emit(a))
+		go.add_child(b)
+		if spec[2] == "nest":
+			_cam_nest.append(b)
+		else:
+			_cam_surface.append(b)
+
+
+func set_cut(v: float) -> void:
+	if _cut_slider:
+		_cut_slider.set_value_no_signal(v)
+
+
+func _apply_mode(m: String) -> void:
+	var outside := m != "nest"
+	if _view_btns.has(m):
+		_view_btns[m].button_pressed = true
+	for c in _cam_nest:
+		c.visible = m == "nest"
+	for c in _cam_surface:
+		c.visible = outside
+	for c in _cam_3d:
+		c.visible = m != "surface"
+	for c in _cam_out:
+		c.visible = m == "outworld"
+	for c in _surface_tools:
+		c.visible = outside
+	_cut_row.visible = m == "nest" and not sim.nest.slab and not _xray_btn.button_pressed
+	_xray_btn.visible = m == "nest"
+	_hint.text = ("ลากซ้าย หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูม · ดับเบิลคลิก ไปที่ห้องนั้น · WASD เลื่อน · Q/E หมุน · R/F เอียง"
+		if m == "nest" else "ลากซ้าย (มือ) หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · Q/E หมุน · R/F เอียง"
+		if m == "outworld" else "ลากซ้าย (มือ) หรือลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · +/− ซูม")
