@@ -227,6 +227,14 @@ func _chamber_volume(ch: Dictionary) -> float:
 	return 4.0 / 3.0 * PI * ax.x * ax.y * (1.0 if slab else ax.z)
 
 
+## The bottom of the deepest chamber (voxel y).
+func _lowest_chamber() -> float:
+	var low := float(ny)
+	for ch in chambers:
+		low = minf(low, float(ch.c.y) - chamber_axes(ch).y)
+	return low
+
+
 func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 	if not inside(s) or rho[idx(s)] < AIR:
 		return 0.0
@@ -257,7 +265,8 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 	elif open_n >= 3:
 		k = 0.05                                       # would widen a tunnel beyond ant width
 	elif open_n == 1 and s.y < from.y:
-		k = 0.25                                       # an exploratory tunnel tip going down
+		# an exploratory tunnel tip going down, but not far below the deepest chamber
+		k = 0.25 if s.y > _lowest_chamber() - 7.0 else 0.003
 	var dirk := 1.0
 	if s.y < from.y:
 		dirk = 1.6
@@ -271,7 +280,7 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 func _bite(s: Vector3i) -> void:
 	var i := idx(s)
 	var v := rho[i] - BITE
-	rho[i] = maxi(0, v)
+	rho[i] = maxi(0, v) if v >= AIR else 0      # once open, all of it is carried off (a smooth surface for the mesher)
 	dug_at[i] = tick
 	for d in DIRS:
 		var n := s + d
@@ -522,4 +531,8 @@ func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
 	tick = d.tick
 	_dist_age = d.dist_age
 	_next_id = d.next_id
+	# nests dug before v0.8.2 left open voxels at half density, which drew as blocky steps
+	for i in rho.size():
+		if rho[i] < AIR:
+			rho[i] = 0
 	_recount()

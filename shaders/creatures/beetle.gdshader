@@ -13,6 +13,8 @@ mat3 rot_x(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(1, 0,
 mat3 rot_y(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(c, 0, -s), vec3(0, 1, 0), vec3(s, 0, c)); }
 mat3 rot_z(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(c, s, 0), vec3(-s, c, 0), vec3(0, 0, 1)); }
 
+#include "res://shaders/terrain/ground_h.gdshaderinc"
+
 void vertex() {
 	float part = floor(COLOR.a * 16.0 + 0.5);
 	float gait = INSTANCE_CUSTOM.x;
@@ -52,6 +54,7 @@ void vertex() {
 	if (state > 0.5 && !dead && part == 0.0 && VERTEX.x < -4.0) {
 		VERTEX.y += (-4.0 - VERTEX.x) * 0.12;      // abdomen tip raised to spray
 	}
+	VERTEX = follow_ground(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
 }
 
 void fragment() {

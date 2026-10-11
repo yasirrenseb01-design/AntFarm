@@ -238,7 +238,10 @@ func _update_creatures(delta: float) -> void:
 			var up := ground_n(p.x, p.y)
 			var f := Vector3(cos(v.a), 0, sin(v.a))
 			f = (f - up * f.dot(up)).normalized()
-			mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * cv.scale), Vector3(p.x, ground_h(p.x, p.y), p.y)))
+			# out beyond the box (arriving or leaving) it is not drawn
+			var inside: bool = Rect2(Vector2.ZERO, sim.WORLD).grow(-2.0).has_point(v.p)
+			var sc: float = cv.scale if inside else 0.0
+			mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * sc), Vector3(p.x, ground_h(p.x, p.y), p.y)))
 			var striking := 1.0 if int(s.get("strike", 0)) > 0 else 0.0
 			var struggling := maxf(v.mv, 1.0 if int(s.get("held", 0)) > 0 else 0.0)    # pinned: legs thrash
 			mm.set_instance_custom_data(i, Color(fmod(s.phase * cv.gait, TAU * 64.0), striking, _t, struggling))

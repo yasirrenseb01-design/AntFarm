@@ -11,23 +11,13 @@ uniform sampler2D detail : filter_linear_mipmap, repeat_enable;
 uniform sampler2D pher_tex : source_color, filter_linear;
 uniform float pher_on = 1.0;
 uniform vec2 world_size = vec2(400.0, 250.0);
-uniform vec2 nest_xz = vec2(160.0, 133.3);
-uniform float mound_h = 0.5;
-uniform float mound_r = 4.0;
 uniform float wet = 0.0;
 uniform float frost = 0.0;           // white hoarfrost on the soil on freezing mornings (outdoors)
 
 varying vec2 wp;
 varying float gh;
 
-float ground_h(vec2 p) {
-	float h = 0.8 * sin(p.x * 0.021 + 1.3) * cos(p.y * 0.027 + 0.4) + 0.45 * sin(p.x * 0.057 + p.y * 0.043 + 2.0);
-	float d = length(p - nest_xz);
-	float k = (d - mound_r) / (mound_r * 0.6);
-	h += mound_h * exp(-k * k) + mound_h * 0.5 * (1.0 - smoothstep(0.0, mound_r, d));
-	h -= 1.6 * (1.0 - smoothstep(0.6, 1.9, d));
-	return h;
-}
+#include "res://shaders/terrain/ground_h.gdshaderinc"
 
 void vertex() {
 	wp = VERTEX.xz;

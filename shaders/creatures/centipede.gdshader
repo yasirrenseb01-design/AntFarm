@@ -9,6 +9,8 @@ render_mode diffuse_burley;
 //   - the venom claws snap shut when it strikes; dead, it curls up with its legs drawn in.
 // INSTANCE_CUSTOM: x = gait phase, y = 1 striking / 2 dead, z = clock, w = how much it is moving.
 
+#include "res://shaders/terrain/ground_h.gdshaderinc"
+
 void vertex() {
 	float part = floor(COLOR.a * 16.0 + 0.5);
 	float gait = INSTANCE_CUSTOM.x;
@@ -48,6 +50,7 @@ void vertex() {
 		v.z += sway;
 	}
 	VERTEX = v;
+	VERTEX = follow_ground(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
 }
 
 void fragment() {

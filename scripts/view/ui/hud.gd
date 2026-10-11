@@ -40,8 +40,9 @@ func refresh(delta: float) -> void:
 	var q: Label = _vals["queen"]
 	if not sim.queen.alive:
 		_show(q, "ตายแล้ว", DANGER)
-	elif sim.climate.nest < 10.0:
-		_show(q, "จำศีล", INK)              # winter torpor: no laying until the nest warms
+	elif sim.cold_days >= 3 or sim.climate.nest < 6.0:
+		# winter torpor: counted in days, not by the hour, so a mild afternoon does not flip it back
+		_show(q, "จำศีล", INK)
 	elif sim.founding():
 		_show(q, "ไขมัน %d%%" % int(sim.queen.reserve / float(sim.sp["queen_reserve"]) * 100.0), LEAF)   # sealed in, living on her reserves
 	elif sim.starving or sim.queen.starve > 0.5:

@@ -314,6 +314,16 @@ func _update_ants(delta: float) -> void:
 	var shell_loads := []
 	var drops := []
 	var pellet_loads := []
+	# where everyone stood last frame, binned by cell: nestmates keep a body width apart instead of
+	# standing inside one another (the queen, much bigger, keeps a wider berth)
+	var near := {}
+	for m in _mates:
+		if m.has("xf"):
+			var o: Vector3 = (m.xf as Transform3D).origin
+			var key := Vector3i(floori(o.x / 2.0), floori(o.y / 2.0), floori(o.z / 2.0))
+			if not near.has(key):
+				near[key] = []
+			near[key].append(m)
 	for m in _mates:
 		m.anim += adt
 		var path: Vector3
@@ -332,6 +342,7 @@ func _update_ants(delta: float) -> void:
 			path = (m.from as Vector3).lerp(m.to, clampf(m.t, 0.0, 1.0))
 		m.stride = AntModel.stride_scale(chill, m.carry)      # shorter, slower steps when cold or laden
 		var tr := _smooth(m, path, m.up, delta, m.size)
+		tr.origin += _keep_apart(m, tr.origin, near, delta)
 		m.xf = tr
 		if m.act == ACT_FEED and _visible(tr.origin):
 			drops.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.8 + 0.3 * sin(m.anim * 3.0))), MOUTH + Vector3(0.2, 0, 0)))
@@ -416,3 +427,34 @@ func debug_summary() -> String:
 	return "anims %d cam %s d%.1f yaw%.2f cut%.1f | %s %s  roles %s  acts %s  carrying %d  larvae moved %d/%d (%s→%s)  rooms %d  fields %d" % [_anims.size(), target, cam_dist, yaw, cut_offset, sim.clock_text(),
 		"air>nest" if sim.climate.air > sim.climate.nest + 0.5 else "air<nest", roles, acts, carrying,
 		mini(_moved, sim.larvae.size()), sim.larvae.size(), _larva_prev, _larva_group, _rooms.size(), _fields.size()]
+
+
+## A small sideways shift away from nestmates (and the queen) that are closer than a body width; eased so
+## it never jitters, capped so nobody is pushed into the soil.
+func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> Vector3:
+	var up: Vector3 = m.up
+	var push := Vector3.ZERO
+	var key := Vector3i(floori(p.x / 2.0), floori(p.y / 2.0), floori(p.z / 2.0))
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			for dz in [-1, 0, 1]:
+				for o in near.get(key + Vector3i(dx, dy, dz), []):
+					if o == m:
+						continue
+					var d: Vector3 = p - (o.xf as Transform3D).origin
+					d -= up * d.dot(up)
+					var reach: float = 0.95 * (float(m.size) + float(o.size))
+					var l := d.length()
+					if l < reach and l > 0.001:
+						push += d / l * (reach - l)
+	if _spots.queen != Vector3.ZERO:
+		var dq: Vector3 = p - _spots.queen
+		dq -= up * dq.dot(up)
+		var lq := dq.length()
+		if lq < 3.2 and lq > 0.001:
+			push += dq / lq * (3.2 - lq) * 0.6
+	var want := push.limit_length(1.4) * 0.5
+	var sep: Vector3 = m.get("sep", Vector3.ZERO)
+	sep = sep.lerp(want, minf(1.0, 4.0 * delta))
+	m.sep = sep
+	return sep

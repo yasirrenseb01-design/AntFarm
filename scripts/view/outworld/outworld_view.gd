@@ -72,6 +72,8 @@ func setup(s, w) -> void:
 	be_mat.shader = load("res://shaders/creatures/beetle.gdshader")
 	_creature_views["ground_beetle"] = {"mm": _multimesh(Props.asset("creatures/ground_beetle"), be_mat, false, true), "mat": be_mat,
 		"scale": 1.0, "gait": 1.4}
+	_mound = -1.0
+	_update_mound()             # the creatures' shaders need the ground's shape too
 
 	var drop := BoxMesh.new()
 	drop.size = Vector3(0.12, 3.2, 0.12)

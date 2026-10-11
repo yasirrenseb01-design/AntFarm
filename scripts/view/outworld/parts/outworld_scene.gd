@@ -184,8 +184,10 @@ func _update_mound() -> void:
 		return
 	_mound = m
 	_mound_r = 3.0 + m * 2.2
-	_ground_mat.set_shader_parameter("mound_h", _mound)
-	_ground_mat.set_shader_parameter("mound_r", _mound_r)
+	for mat in [_ground_mat] + _creature_views.values().map(func(cv): return cv.mat):
+		mat.set_shader_parameter("mound_h", _mound)
+		mat.set_shader_parameter("mound_r", _mound_r)
+		mat.set_shader_parameter("nest_xz", _nest_xz)
 
 
 func _build_box() -> void:
