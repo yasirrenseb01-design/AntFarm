@@ -302,3 +302,24 @@ static func centipede(ci: CanvasItem, pos: Vector2, ang: float, phase: float, de
 			head + fwd * 22.0 + side * s * 12.0]), Color(0.75, 0.32, 0.1), 1.0, true)
 		var tail := pos - fwd * 50.0
 		ci.draw_line(tail, tail - fwd * 20.0 + side * s * 6.0, Color(0.7, 0.3, 0.09), 1.6, true)
+
+
+## Ground beetle from above: black elytra with a violet rim, heart-shaped pronotum, sickle mandibles.
+static func ground_beetle(ci: CanvasItem, pos: Vector2, ang: float, phase: float, dead := false) -> void:
+	ci.draw_set_transform_matrix(Transform2D(ang, Vector2.ONE, 0.0, pos))
+	var leg := Color(0.06, 0.06, 0.07)
+	for k in 3:
+		for side in [-1.0, 1.0]:
+			var sw := sin(phase + k * PI + (0.0 if side > 0 else PI)) * 0.25 if not dead else 0.0
+			var hip := Vector2([10.8, 3.6, -1.8][k], 4.0 * side)
+			var foot := hip + Vector2.from_angle(([0.6, 1.5, 2.4][k] + sw) * side) * 16.0
+			ci.draw_polyline(PackedVector2Array([hip, hip.lerp(foot, 0.5) + Vector2(0, 2.0 * side), foot]), leg, 1.5, true)
+	ellipse(ci, Vector2(-7.5, 0), Vector2(18.5, 9.3), Color(0.07, 0.07, 0.1))
+	ellipse(ci, Vector2(-7.5, 0), Vector2(17.0, 8.0), Color(0.11, 0.1, 0.18))
+	ci.draw_line(Vector2(9, 0), Vector2(-25, 0), Color(0.03, 0.03, 0.04), 0.8, true)
+	ellipse(ci, Vector2(12, 0), Vector2(4.5, 7.2), Color(0.09, 0.08, 0.14))
+	ellipse(ci, Vector2(19, 0), Vector2(4.5, 4.2), Color(0.06, 0.06, 0.07))
+	for side in [-1.0, 1.0]:
+		ci.draw_polyline(PackedVector2Array([Vector2(22, 1.8 * side), Vector2(27, 2.2 * side), Vector2(29, 0.2 * side)]), leg, 1.2, true)
+		ci.draw_polyline(PackedVector2Array([Vector2(22, 2.8 * side), Vector2(32, 9.0 * side), Vector2(43, 15.0 * side)]), leg, 0.7, true)
+	ci.draw_set_transform_matrix(Transform2D.IDENTITY)

@@ -68,6 +68,10 @@ func setup(s, w) -> void:
 	ce_mat.shader = load("res://shaders/creatures/centipede.gdshader")
 	_creature_views["centipede"] = {"mm": _multimesh(Props.asset("creatures/centipede"), ce_mat, false, true), "mat": ce_mat,
 		"scale": 1.0, "gait": 1.0}
+	var be_mat := ShaderMaterial.new()
+	be_mat.shader = load("res://shaders/creatures/beetle.gdshader")
+	_creature_views["ground_beetle"] = {"mm": _multimesh(Props.asset("creatures/ground_beetle"), be_mat, false, true), "mat": be_mat,
+		"scale": 1.0, "gait": 1.4}
 
 	var drop := BoxMesh.new()
 	drop.size = Vector3(0.12, 3.2, 0.12)

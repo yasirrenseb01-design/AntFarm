@@ -240,7 +240,7 @@ func _add_soil_cover(root: Node3D, f: Dictionary, left: float) -> void:
 	root.add_child(mi)
 
 
-func _dead_creature(root: Node3D, kind: String, left: float, lift: float) -> void:
+func _dead_creature(root: Node3D, kind: String, left: float, lift: float, on_back := false) -> void:
 	var cv: Dictionary = _creature_views[kind]
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -249,7 +249,10 @@ func _dead_creature(root: Node3D, kind: String, left: float, lift: float) -> voi
 	mm.instance_count = 1
 	var sag := 0.75 + 0.25 * left            # the body empties as the ants eat it
 	var sc: float = cv.scale
-	mm.set_instance_transform(0, Transform3D(Basis.from_scale(Vector3(sc, sc * sag, sc)), Vector3(0, lift, 0)))
+	var b := Basis.from_scale(Vector3(sc, sc * sag, sc))
+	if on_back:
+		b = Basis(Vector3.RIGHT, PI) * b          # dead beetles end up on their backs, legs in the air
+	mm.set_instance_transform(0, Transform3D(b, Vector3(0, lift, 0)))
 	mm.set_instance_custom_data(0, Color(0.0, 2.0, 0.0, 0.0))
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
@@ -264,3 +267,7 @@ func _food_wolf_spider_dead(root: Node3D, f: Dictionary, left: float) -> void:
 
 func _food_centipede_dead(root: Node3D, f: Dictionary, left: float) -> void:
 	_dead_creature(root, "centipede", left, -0.2)
+
+
+func _food_ground_beetle_dead(root: Node3D, f: Dictionary, left: float) -> void:
+	_dead_creature(root, "ground_beetle", left, 3.6, true)

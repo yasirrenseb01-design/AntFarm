@@ -11,6 +11,7 @@ extends "res://scripts/sim/parts/sim_foragers.gd"
 const ENEMY_KINDS := {
 	"wolf_spider": preload("res://scripts/sim/enemies/wolf_spider.gd"),
 	"centipede": preload("res://scripts/sim/enemies/centipede.gd"),
+	"ground_beetle": preload("res://scripts/sim/enemies/ground_beetle.gd"),
 }
 const ACID := 0.0004        # health an ant's bite + formic acid takes off per tick
 const ACT_ATTACK := 13      # view: biting and spraying (gaster curled forward)
