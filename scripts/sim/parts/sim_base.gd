@@ -7,6 +7,7 @@ const Field := preload("res://scripts/sim/pheromone_field.gd")
 const Climate := preload("res://scripts/sim/climate.gd")
 const LasiusNiger := preload("res://scripts/sim/species/lasius_niger.gd")
 const NestVolume := preload("res://scripts/sim/nest_volume.gd")
+const T := preload("res://scripts/sim/text_th.gd")     # journal texts
 
 signal logged(entry: Dictionary)
 
@@ -142,11 +143,11 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false) ->
 
 	history.append(_snapshot())
 	if start_workers == 0:
-		_log("ราชินีที่เพิ่งผสมพันธุ์สลัดปีกทิ้ง ขุดห้องเล็กแล้วปิดตัวเองอยู่ในนั้น (ก่อตั้งรังแบบปิด)")
-		_log("เธอจะเลี้ยงลูกรุ่นแรกด้วยไขมันสะสมในตัวโดยไม่ออกหาอาหาร มดงานตัวแรกใช้เวลาราว 6–8 สัปดาห์", "ok")
+		_log(T.founding_sealed)
+		_log(T.founding_reserves, "ok")
 	else:
-		_log("รังอายุราว 3 เดือน: ราชินี 1 ตัว มดงาน %d ตัว เริ่มบันทึกการสังเกต" % start_workers)
-		_log("ตัวอ่อนต้องการโปรตีน มีจิ้งหรีดตายวางอยู่ทางขวาล่างของกล่อง", "ok")
+		_log(T.young_colony % start_workers)
+		_log(T.young_needs_protein, "ok")
 
 
 ## Adult size is fixed at pupation: well-fed larvae and nurses in a big colony make bigger workers.
@@ -236,7 +237,7 @@ func place_food(kind: String, p: Vector2) -> bool:
 
 func add_water() -> void:
 	humidity = minf(1.0, humidity + 0.35)
-	_log("เติมน้ำในแท็งก์น้ำของรัง ความชื้น %d%%" % int(humidity * 100))
+	_log(T.water_added % int(humidity * 100))
 
 
 func add_rock(p: Vector2, r: float) -> bool:

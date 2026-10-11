@@ -15,7 +15,7 @@ func step() -> void:
 	if raining:
 		climate.rain_ticks -= 1
 		if climate.rain_ticks == 0:
-			_log("ฝนหยุดแล้ว เส้นทางกลิ่นส่วนใหญ่ถูกชะล้างไป")
+			_log(T.rain_stop)
 	home.decay(_log_rain if raining else _log_home)
 	food.decay(_log_rain if raining else _log_food)
 	var t0 := Time.get_ticks_usec()

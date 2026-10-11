@@ -171,10 +171,10 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 	if not f.found:
 		f.found = true
 		match f.kind:
-			"aphids": _log("มดพบฝูงเพลี้ยอ่อน เริ่มรีดน้ำหวานและทิ้งกลิ่นนำทาง", "ok")
-			"honey": _log("มดพบหยดน้ำผึ้ง กำลังชวนกันมาเก็บ", "ok")
-			"cricket": _log("มดพบจิ้งหรีด กำลังตัดชิ้นส่วนกลับรัง", "ok")
-			"fly": _log("มดพบแมลงวันตาย ได้โปรตีนเพิ่ม", "ok")
+			"aphids": _log(T.found_aphids, "ok")
+			"honey": _log(T.found_honey, "ok")
+			"cricket": _log(T.found_cricket, "ok")
+			"fly": _log(T.found_fly, "ok")
 
 
 func _arrive(a: Ant) -> void:

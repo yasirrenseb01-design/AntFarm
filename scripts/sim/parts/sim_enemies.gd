@@ -12,7 +12,7 @@ func _spawn_spider() -> void:
 	var start: Vector2 = starts[side]
 	spider = {"pos": start, "ang": (WORLD * 0.5 - start).angle(), "life": TPD * 0.45, "kills": 0,
 		"exit": start + (start - WORLD * 0.5).normalized() * 60.0, "phase": 0.0}
-	_log("แมงมุมหมาป่าเดินเข้ามาในพื้นที่หาอาหาร", "bad")
+	_log(T.spider_arrives, "bad")
 
 
 func _step_spider() -> void:
@@ -43,13 +43,13 @@ func _step_spider() -> void:
 		_kill(best)
 		s.kills += 1
 		if s.kills == 1:
-			_log("แมงมุมจับมดงานไป 1 ตัว", "bad")
+			_log(T.spider_first_kill, "bad")
 	if s.life <= 0 and not Rect2(Vector2(-30, -30), WORLD + Vector2(60, 60)).has_point(s.pos):
-		_log("แมงมุมออกไปแล้ว (จับมดได้ %d ตัว)" % s.kills)
+		_log(T.spider_leaves % s.kills)
 		spider = {}
 
 
 func remove_spider() -> void:
 	if not spider.is_empty():
 		spider = {}
-		_log("ไล่แมงมุมออกจากกล่องแล้ว")
+		_log(T.spider_chased)

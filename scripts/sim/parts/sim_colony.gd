@@ -6,17 +6,17 @@ func _new_day() -> void:
 	climate.new_day()
 	match nest.plan_chambers(eggs.size() + larvae.size() + pupae.size(), workers.size()):
 		"planned":
-			_log("รังเริ่มแน่น มดเริ่มขุดปล่องลงไปทำห้องใหม่ (ห้องที่ %d)" % nest.chambers.size(), "ok")
+			_log(T.chamber_planned % nest.chambers.size(), "ok")
 		"opened":
-			_log("มดขุดทะลุถึงห้องใหม่แล้ว กำลังขยายห้องให้กว้าง", "ok")
+			_log(T.chamber_opened, "ok")
 		"grown":
-			_log("มดขยายห้องรังให้กว้างขึ้นเพราะตัวอ่อนเริ่มแน่น")
+			_log(T.chamber_grown)
 	history.append(_snapshot())
 	if history.size() > 365:
 		history.pop_front()
 	if rng.randf() < 0.14:
 		climate.rain_ticks = int(TPD * rng.randf_range(0.15, 0.4))
-		_log("ฝนตก มดหลบเข้ารัง กลิ่นบนพื้นกำลังถูกชะล้าง")
+		_log(T.rain_start)
 
 
 # ---------------------------------------------------------------- colony physiology
@@ -144,8 +144,8 @@ func _metabolism(dt: float) -> void:
 			a.energy = minf(1.0, a.energy + dt)
 		if a.energy <= 0.0 or a.age > a.life or (a.state != Ant.IN_NEST and rng.randf() < sp["forager_daily_risk"] * dt):
 			_kill(a)
-	_warn("starve", starving, "น้ำตาลในรังหมด มดงานเริ่มอดอาหาร")
-	_warn("dry", dry, "รังแห้งมาก มดงานเริ่มขาดน้ำ ควรเติมน้ำ")
+	_warn("starve", starving, T.warn_starve)
+	_warn("dry", dry, T.warn_dry)
 
 
 func _moisture(dt: float) -> void:
@@ -157,7 +157,7 @@ func _moisture(dt: float) -> void:
 		var p: float = (sp["humidity_ok_min"] - humidity) * 2.0 * dt
 		_cull(eggs, p)
 		_cull(larvae, p * 0.5)
-	_warn("lowhum", humidity < sp["humidity_ok_min"], "ความชื้นในรังต่ำ ไข่เริ่มแห้งตาย")
+	_warn("lowhum", humidity < sp["humidity_ok_min"], T.warn_lowhum)
 	if humidity > sp["humidity_ok_max"]:
 		mold += dt
 	else:
@@ -166,7 +166,7 @@ func _moisture(dt: float) -> void:
 		_cull(larvae, 0.15 * dt)
 		_cull(pupae, 0.1 * dt)
 		protein *= pow(0.85, dt)
-		_warn("mold", true, "ราขึ้นในรังเพราะชื้นเกินไป ตัวอ่อนและอาหารเริ่มเสีย")
+		_warn("mold", true, T.warn_mold)
 	else:
 		_warn("mold", false, "")
 
@@ -178,8 +178,8 @@ func _queen(dt: float) -> void:
 	queen.dry = (queen.get("dry", 0.0) + dt) if humidity < 0.1 else maxf(0.0, queen.get("dry", 0.0) - dt)
 	if queen.starve > sp["starve_days_queen"] or queen.dry > sp["starve_days_queen"] * 1.5:
 		queen.alive = false
-		var why := "ขาดอาหาร" if queen.starve > sp["starve_days_queen"] else "ขาดน้ำ"
-		_log("ราชินีตายจาก%s รังจะค่อยๆ หมดไปเพราะไม่มีไข่ใหม่" % why, "bad")
+		var why := T.cause_starvation if queen.starve > sp["starve_days_queen"] else T.cause_thirst
+		_log(T.queen_died % why, "bad")
 		return
 	if starving:
 		return
@@ -243,7 +243,7 @@ func _brood(dt: float, nurse_cap: float) -> void:
 			protein += 0.3
 			stats.cannibalized += 1
 			if stats.cannibalized == 1 or stats.cannibalized % 10 == 0:
-				_log("ขาดโปรตีน มดงานกินตัวอ่อนที่อดอาหารไปแล้ว %d ตัว" % stats.cannibalized, "bad")
+				_log(T.cannibalism % stats.cannibalized, "bad")
 
 	for i in range(pupae.size() - 1, -1, -1):
 		pupae[i].p += dt / sp["pupa_days"] * dev
@@ -251,21 +251,21 @@ func _brood(dt: float, nurse_cap: float) -> void:
 			var pupa: Dictionary = pupae[i]
 			pupae.remove_at(i)
 			if workers.is_empty():
-				_log("มดงานตัวแรกออกจากรังไหมแล้ว! เป็นมดรุ่นแรกตัวเล็ก (nanitic) จะเปิดปากรังออกไปหาอาหาร", "ok")
+				_log(T.first_worker, "ok")
 			var nw := _new_worker(0.0)
 			nw.size = pupa.get("s", 1.0)
 			_event("eclose", nw.size)
 			workers.append(nw)
 			stats.born += 1
 			if stats.born <= 3 or stats.born % 25 == 0:
-				_log("มดงานตัวใหม่ออกจากรังไหม (รวม %d ตัว)" % stats.born, "ok")
+				_log(T.new_worker % stats.born, "ok")
 
 	if climate.nest > sp["dev_lethal_c"] - 2.0:
 		var p := 0.4 * dt
 		_cull(eggs, p)
 		_cull(larvae, p)
 		_cull(pupae, p)
-		_warn("heat", true, "ในรังร้อนเกินไป ตัวอ่อนเริ่มตาย")
+		_warn("heat", true, T.warn_heat)
 	else:
 		_warn("heat", false, "")
 
@@ -290,7 +290,7 @@ func _outworld(dt: float) -> void:
 		var p := Vector2(rng.randf_range(30, WORLD.x - 30), rng.randf_range(30, WORLD.y - 30))
 		if place_food("fly", p) and not _warned.get("fly_hint", false):
 			_warned["fly_hint"] = true
-			_log("มีแมลงวันตายตกลงมาในกล่อง มดจะหาเจอเองถ้าออกสำรวจ")
+			_log(T.fly_fell)
 
 	for c in corpses:
 		c.age += dt
