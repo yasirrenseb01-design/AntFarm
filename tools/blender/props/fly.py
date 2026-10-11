@@ -85,7 +85,6 @@ def fly():
                        ((-0.95, 0.05, 0), (1.15, 0.7, 0.85), flat), ((-1.85, 0.0, 0), (0.42, 0.4, 0.45), flat)],
           0, upright(fly_body_col), 0.045, 6, 2600)
     blobs("fly_head", [((1.78, 0.22, 0), (0.42, 0.72, 0.8), flat)], 0, upright(fly_head_col), 0.04, 5, 900)
-    lift = lambda u, v: 0.12 * u
     for side in (-1, 1):
         ell("eye", (1.86, 0.36, 0.43 * side), (0.42, 0.6, 0.4), 0, upright(fly_eye_col), 18)
         ell("antenna", (2.18, 0.28, 0.12 * side), (0.12, 0.2, 0.08), 0, upright(const((0.35, 0.3, 0.25))), 8)
@@ -109,23 +108,6 @@ def fly():
         # halteres: the little knobbed balancers behind the wings
         tube("haltere", [(-0.15, 0.35, 0.55 * side), (-0.3, 0.4, 0.78 * side)], [0.03, 0.025], 0, upright(const((0.6, 0.55, 0.4))), 4)
         ell("haltere_knob", (-0.32, 0.4, 0.82 * side), (0.07, 0.06, 0.07), 0, upright(const((0.7, 0.64, 0.45))), 6)
-        # wing: membrane (group 1) and the dark veins of a Musca wing (the sharp forward bend of vein M)
-        outline = [(0.0, 0.0), (0.5, 0.33), (1.5, 0.58), (2.7, 0.66), (3.55, 0.48), (3.9, 0.12),
-                   (3.75, -0.24), (2.9, -0.46), (1.6, -0.52), (0.6, -0.38), (0.12, -0.16)]
-        xf = _wing_frame(side)
-        sheet("wing", outline, xf, lift, 1, const((0.85, 0.88, 0.9)), 0.0)
-        veins = [[(0.0, 0.05), (1.4, 0.55), (2.7, 0.66), (3.55, 0.48)],
-                 [(0.1, 0.02), (1.6, 0.42), (2.9, 0.5), (3.6, 0.4)],
-                 [(0.2, 0.0), (1.8, 0.18), (3.0, 0.25), (3.88, 0.14)],
-                 [(0.25, -0.05), (1.9, -0.12), (2.9, -0.12), (3.3, 0.02), (3.82, 0.0)],
-                 [(0.2, -0.12), (1.6, -0.33), (2.75, -0.44)],
-                 [(1.95, 0.18), (1.9, -0.12)], [(2.75, -0.13), (2.65, -0.43)]]
-        for vn in veins:
-            pts = []
-            for u, v in vn:
-                gp = xf @ Vector((u, lift(u, v) + 0.012, v))
-                pts.append((gp.x, gp.y, gp.z))
-            tube("vein", pts, [0.016] * len(pts), 0, upright(const((0.22, 0.19, 0.15))), 3, cap=False)
     # proboscis and its sponging pad
     tube("proboscis", [(1.75, -0.4, 0), (1.92, -0.8, 0), (2.0, -1.0, 0)], [0.13, 0.11, 0.09], 0, upright(const((0.3, 0.27, 0.22))), 6)
     ell("labellum", (2.02, -1.08, 0), (0.18, 0.09, 0.24), 0, upright(const((0.42, 0.37, 0.3))), 8)
@@ -152,3 +134,31 @@ def fly():
     for o in OBJS:
         o.data.transform(Matrix.Translation(G(0.0, FLY_LIFT[0], 0.0)))
         o.data.update()
+    # the wings, added after turning it over: from their roots on the thorax they fall flat onto the
+    # ground on either side (membrane in group 1, the dark veins of a Musca wing in group 0)
+    for side in (-1, 1):
+        r = Vector((0.45, 0.66, 0.32 * side))
+        root = Vector((r.x, r.y * c - r.z * s + FLY_LIFT[0], r.y * s + r.z * c))
+        sd = 1.0 if root.z > 0 else -1.0
+        d = Vector((-0.75, 0.0, 0.66 * sd)).normalized()
+        w = d.cross(Vector((0.0, 1.0, 0.0))) * sd
+        xf = Matrix.Identity(4)
+        for i in range(3):
+            xf[i][0], xf[i][1], xf[i][2], xf[i][3] = d[i], (0.0, 1.0, 0.0)[i], w[i], root[i]
+        h = root.y - 0.04
+        lift = lambda u, v, h=h: -h * min(1.0, u / 1.1) ** 0.7
+        outline = [(0.0, 0.0), (0.5, 0.33), (1.5, 0.58), (2.7, 0.66), (3.55, 0.48), (3.9, 0.12),
+                   (3.75, -0.24), (2.9, -0.46), (1.6, -0.52), (0.6, -0.38), (0.12, -0.16)]
+        sheet("wing", outline, xf, lift, 1, const((0.85, 0.88, 0.9)), 0.0)
+        veins = [[(0.0, 0.05), (1.4, 0.55), (2.7, 0.66), (3.55, 0.48)],
+                 [(0.1, 0.02), (1.6, 0.42), (2.9, 0.5), (3.6, 0.4)],
+                 [(0.2, 0.0), (1.8, 0.18), (3.0, 0.25), (3.88, 0.14)],
+                 [(0.25, -0.05), (1.9, -0.12), (2.9, -0.12), (3.3, 0.02), (3.82, 0.0)],
+                 [(0.2, -0.12), (1.6, -0.33), (2.75, -0.44)],
+                 [(1.95, 0.18), (1.9, -0.12)], [(2.75, -0.13), (2.65, -0.43)]]
+        for vn in veins:
+            pts = []
+            for u, v in vn:
+                gp = xf @ Vector((u, lift(u, v) + 0.012, v))
+                pts.append((gp.x, gp.y, gp.z))
+            tube("vein", pts, [0.016] * len(pts), 0, const((0.22, 0.19, 0.15)), 3, cap=False)

@@ -123,7 +123,7 @@ func _update_larva_group() -> void:
 
 func _pile_xf(spots: Array, i: int, scale: float) -> Transform3D:
 	var sp: Vector3 = spots[i % spots.size()]
-	var layer := i / spots.size()
+	var layer := mini(i / spots.size(), 2)
 	var p := sp + Vector3(_hash(i, 1) - 0.5, 0.25 + layer * 0.45, _hash(i, 2) - 0.5) * Vector3(0.8, 1, 0.8)
 	return Transform3D(Basis(Vector3.UP, _hash(i, 3) * TAU).scaled(Vector3.ONE * scale), p)
 
@@ -147,6 +147,10 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 	var n := mini(items.size(), max_n)
 	if spots.is_empty():
 		n = 0
+	elif spots.size() * 3 < n and not _spots.all.is_empty():
+		# brood is spread in a low layer over the floor, never stacked into a tower: a crowded group
+		# spills onto the floors of the other chambers
+		spots = spots + _spots.all.filter(func(s): return not spots.has(s))
 	var xs := []
 	var cs := []
 	for i in n:

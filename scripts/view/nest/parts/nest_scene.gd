@@ -122,7 +122,7 @@ func _ellipsoid(length: float, wid: float) -> Mesh:
 	return st.commit()
 
 
-func _multimesh(mesh: Mesh, mat: Material, colors: bool) -> MultiMesh:
+func _multimesh(mesh: Mesh, mat: Material, colors: bool, shadows := true) -> MultiMesh:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = colors
@@ -131,6 +131,8 @@ func _multimesh(mesh: Mesh, mat: Material, colors: bool) -> MultiMesh:
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = mat
+	if not shadows:
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	return mm
 

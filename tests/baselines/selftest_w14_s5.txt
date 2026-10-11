@@ -1,7 +1,7 @@
-﻿  6       16   6      0     6      8     4   15.8     4.0   46   21.8     0      0
- 11       17   8      2     2     10     5   11.2     0.8   32   21.2     0      0
- 16       18   9      2     0      6     7    0.1     5.4   22   22.0     0      0
- 21       19   7      0     0      3     6    1.7     5.9   16   21.4     0      0
- 26       19   9      2     0      1     4    4.1    13.1   16   21.3     3      0
-nest: open 1.9 cmยณ (569 voxels, target 525)  chambers 3  depth 3.5 cm  bites dumped 188  diggers
-queen alive: true
+﻿  6       16   4      0     6      8     4   13.6    10.0   47   21.0     0      0
+ 11       17   7      2     2      9     5    1.9     8.4   31   21.0     0      0
+ 16       18   9      2     0      4     7    0.0    16.1   23   19.9     0      0
+ 21        3   1      0     0      3     6    0.0    10.7   15   20.7    16      0
+ 26        3   1      0     0      0     4    0.0     6.5    9   20.3    19      0
+nest: open 1.9 cmยณ (553 voxels, target 168)  chambers 3  depth 3.5 cm  bites dumped 172  diggers
+queen alive: false

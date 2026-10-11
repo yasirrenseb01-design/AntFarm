@@ -244,13 +244,16 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 		if is_open(s + d):
 			open_n += 1
 	var plan := _plan_at(s)
-	var k := 0.06                                      # unplanned digging is rare: soil stays solid between chambers
+	var k := 0.03                                      # unplanned digging is rare: soil stays solid between chambers
+	var from_room := plan == 0 and _plan_at(from) == 2   # the walls and floor of a finished chamber stay smooth
 	if depth < 6 and Vector2(s.x - entrance.x, s.z - entrance.z).length() > 2.0:
 		k = 0.1                                        # the surface crust is left intact around the shaft
 	elif plan == 2:
 		k = 4.0                                        # hollowing out a chamber
 	elif plan == 1:
 		k = 3.5                                        # sinking a shaft toward a planned chamber
+	elif from_room:
+		k = 0.005
 	elif open_n >= 3:
 		k = 0.05                                       # would widen a tunnel beyond ant width
 	elif open_n == 1 and s.y < from.y:

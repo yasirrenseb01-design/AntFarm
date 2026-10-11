@@ -106,7 +106,7 @@ func setup(s) -> void:
 	var cocoon_mat := _mat_vc(0.85)
 	_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	_pupa_mm = _multimesh(cocoon_mesh, cocoon_mat, true)
-	_pellet_mm = _multimesh(_ellipsoid(0.42, 0.34), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false)
+	_pellet_mm = _multimesh(_ellipsoid(0.42, 0.34), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false, false)
 	_carry_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	_carry_pellet_mm = _multimesh(_ellipsoid(0.8, 0.65), _mat_simple(Color(0.45, 0.32, 0.2), 0.95), false)
 	_fx_egg_mm = _multimesh(_ellipsoid(0.32, 0.2), egg_mat, false)
