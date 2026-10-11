@@ -203,30 +203,42 @@ func _update_corpses() -> void:
 		_corpse_mm.set_instance_custom_data(n + i, Color(0, 11, 0, 0))
 
 
-func _update_spider(delta: float) -> void:
-	var spiders := []
+## Every enemy in the box, drawn with its kind's model (see _creature_views, set up in setup()).
+## Each keeps its own smoothing state by creature id, so the drawn body glides between sim steps.
+func _update_creatures(delta: float) -> void:
+	var by_kind := {}
 	for c in sim.creatures:
-		if c.kind == "wolf_spider":
-			spiders.append(c)
-	_spider_vis.resize(spiders.size())
-	_spider_mm.instance_count = spiders.size()
-	for i in spiders.size():
-		var s: Dictionary = spiders[i]
-		if _spider_vis[i] == null:
-			_spider_vis[i] = {"p": s.pos, "a": s.ang, "mv": 0.0}
-		var v: Dictionary = _spider_vis[i]
-		var step: Vector2 = s.pos - v.p
-		v.p += step * (1.0 - exp(-15.0 * delta))
-		v.a = lerp_angle(v.a, s.ang, 1.0 - exp(-8.0 * delta))
-		v.mv = lerpf(v.mv, 1.0 if step.length_squared() > 0.0004 else 0.0, minf(1.0, 6.0 * delta))
-		var p: Vector2 = v.p * U
-		var up := ground_n(p.x, p.y)
-		var f := Vector3(cos(v.a), 0, sin(v.a))
-		f = (f - up * f.dot(up)).normalized()
-		_spider_mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * 0.85), Vector3(p.x, ground_h(p.x, p.y), p.y)))
-		var striking := 1.0 if int(s.get("strike", 0)) > 0 else 0.0
-		var struggling := maxf(v.mv, 1.0 if int(s.get("held", 0)) > 0 else 0.0)    # pinned: legs thrash
-		_spider_mm.set_instance_custom_data(i, Color(fmod(s.phase * 0.5, TAU * 64.0), striking, _t, struggling))
+		if _creature_views.has(c.kind):
+			if not by_kind.has(c.kind):
+				by_kind[c.kind] = []
+			by_kind[c.kind].append(c)
+	var seen := {}
+	for kind in _creature_views:
+		var cv: Dictionary = _creature_views[kind]
+		var list: Array = by_kind.get(kind, [])
+		var mm: MultiMesh = cv.mm
+		mm.instance_count = list.size()
+		for i in list.size():
+			var s: Dictionary = list[i]
+			seen[s.id] = true
+			if not _creature_vis.has(s.id):
+				_creature_vis[s.id] = {"p": s.pos, "a": s.ang, "mv": 0.0}
+			var v: Dictionary = _creature_vis[s.id]
+			var step: Vector2 = s.pos - v.p
+			v.p += step * (1.0 - exp(-15.0 * delta))
+			v.a = lerp_angle(v.a, s.ang, 1.0 - exp(-8.0 * delta))
+			v.mv = lerpf(v.mv, 1.0 if step.length_squared() > 0.0004 else 0.0, minf(1.0, 6.0 * delta))
+			var p: Vector2 = v.p * U
+			var up := ground_n(p.x, p.y)
+			var f := Vector3(cos(v.a), 0, sin(v.a))
+			f = (f - up * f.dot(up)).normalized()
+			mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * cv.scale), Vector3(p.x, ground_h(p.x, p.y), p.y)))
+			var striking := 1.0 if int(s.get("strike", 0)) > 0 else 0.0
+			var struggling := maxf(v.mv, 1.0 if int(s.get("held", 0)) > 0 else 0.0)    # pinned: legs thrash
+			mm.set_instance_custom_data(i, Color(fmod(s.phase * cv.gait, TAU * 64.0), striking, _t, struggling))
+	for id in _creature_vis.keys():
+		if not seen.has(id):
+			_creature_vis.erase(id)
 
 
 func _update_rain(delta: float, raining: bool) -> void:

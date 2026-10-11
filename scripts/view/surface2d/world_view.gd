@@ -245,14 +245,16 @@ func _draw_items(ci: Node2D) -> void:
 			"cricket": Kit.cricket(ci, f.pos, f.ang, left, f.rotten)
 			"fly": Kit.fly(ci, f.pos, f.ang, left)
 			"wolf_spider_dead": Kit.wolf_spider(ci, f.pos, f.ang, 0.0)
+			"centipede_dead": Kit.centipede(ci, f.pos, f.ang, 0.0, true)
 			_: Kit.ellipse(ci, f.pos, Vector2(f.r, f.r) * 0.6, Color(0.6, 0.45, 0.3))   # a kind with no drawing yet
 
 
 func _draw_ants(ci: Node2D) -> void:
 	# foragers are batched in AntBatch; only the predator is drawn here
 	for c in sim.creatures:
-		if c.kind == "wolf_spider":
-			Kit.wolf_spider(ci, c.pos, c.ang, c.phase)
+		match c.kind:
+			"wolf_spider": Kit.wolf_spider(ci, c.pos, c.ang, c.phase)
+			"centipede": Kit.centipede(ci, c.pos, c.ang, c.phase)
 
 
 func _draw_fx(ci: Node2D) -> void:

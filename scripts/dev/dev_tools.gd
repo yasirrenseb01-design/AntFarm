@@ -26,6 +26,7 @@ func _take_shot() -> void:
 		sim._spawn_creature(_opts["enemy"])
 		var ep: PackedStringArray = String(_opts.get("enemy-at", "%d,%d" % [sim.nest_pos.x + 120, sim.nest_pos.y + 40])).split(",")
 		sim.creatures[-1].pos = Vector2(float(ep[0]), float(ep[1]))
+		sim.creatures[-1].ang = float(_opts.get("enemy-ang", "3.1"))
 		for i in int(_opts.get("fight", "0")):
 			sim.step()
 		var look_at := Vector2.INF

@@ -40,8 +40,8 @@ var _lod := ""
 var _ant_mm: MultiMesh
 var _corpse_mm: MultiMesh
 var _prey_mm: MultiMesh
-var _spider_mm: MultiMesh
-var _spider_vis: Array = []        # smoothing state per wolf spider, in sim.creatures order
+var _creature_views := {}          # enemy kind -> {"mm": MultiMesh, "mat": ShaderMaterial, "scale", "gait"}
+var _creature_vis := {}            # creature id -> drawn position/heading smoothing
 var _rain_mm: MultiMesh
 var _rain: Array = []
 var _ring: MeshInstance3D

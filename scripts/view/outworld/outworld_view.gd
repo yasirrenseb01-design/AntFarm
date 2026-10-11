@@ -62,7 +62,12 @@ func setup(s, w) -> void:
 	var sp_mat := ShaderMaterial.new()
 	sp_mat.shader = load("res://shaders/creatures/spider.gdshader")
 	_spider_mat = sp_mat
-	_spider_mm = _multimesh(Props.spider(), sp_mat, false, true)
+	_creature_views["wolf_spider"] = {"mm": _multimesh(Props.spider(), sp_mat, false, true), "mat": sp_mat,
+		"scale": 0.85, "gait": 0.5}
+	var ce_mat := ShaderMaterial.new()
+	ce_mat.shader = load("res://shaders/creatures/centipede.gdshader")
+	_creature_views["centipede"] = {"mm": _multimesh(Props.asset("creatures/centipede"), ce_mat, false, true), "mat": ce_mat,
+		"scale": 1.0, "gait": 1.0}
 
 	var drop := BoxMesh.new()
 	drop.size = Vector3(0.12, 3.2, 0.12)
@@ -148,7 +153,7 @@ func refresh(delta: float) -> void:
 		_ant_mm.mesh = _ant_meshes[lod]
 	_update_ants(delta)
 	_update_corpses()
-	_update_spider(delta)
+	_update_creatures(delta)
 	_update_rain(delta, raining)
 	_update_ring()
 

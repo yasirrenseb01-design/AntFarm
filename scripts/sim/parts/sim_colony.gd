@@ -321,5 +321,5 @@ func _outworld(dt: float) -> void:
 	if corpses.size() > 250:
 		corpses = corpses.slice(corpses.size() - 250)
 
-	if enemies and creatures.is_empty() and rng.randf() < 0.25 * dt:
-		_spawn_creature("wolf_spider")
+	if enemies:
+		_maybe_spawn(dt)

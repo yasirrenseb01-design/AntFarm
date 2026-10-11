@@ -29,6 +29,8 @@ const KINDS := {
 	# enemies the ants killed (never placed by the keeper)
 	"wolf_spider_dead": {"type": Ant.PROTEIN, "amt": 18.0, "cap": 18.0, "regen": 0.0, "r": 10.0, "handling": [90, 200, 2],
 		"found": T.found_spider_dead, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [4.6, 2.2], "buried": true},
+	"centipede_dead": {"type": Ant.PROTEIN, "amt": 40.0, "cap": 40.0, "regen": 0.0, "r": 22.0, "handling": [90, 200, 2],
+		"found": T.found_centipede_dead, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [18.0, 1.6], "buried": true, "big": true},
 }
 
 

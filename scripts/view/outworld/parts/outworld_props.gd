@@ -240,17 +240,27 @@ func _add_soil_cover(root: Node3D, f: Dictionary, left: float) -> void:
 	root.add_child(mi)
 
 
-func _food_wolf_spider_dead(root: Node3D, f: Dictionary, left: float) -> void:
+func _dead_creature(root: Node3D, kind: String, left: float, lift: float) -> void:
+	var cv: Dictionary = _creature_views[kind]
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
-	mm.mesh = Props.spider()
+	mm.mesh = (cv.mm as MultiMesh).mesh
 	mm.instance_count = 1
-	var sag := 0.75 + 0.25 * left            # the abdomen empties as the ants eat it
-	mm.set_instance_transform(0, Transform3D(Basis.from_scale(Vector3(0.85, 0.85 * sag, 0.85)), Vector3(0, -0.3, 0)))
+	var sag := 0.75 + 0.25 * left            # the body empties as the ants eat it
+	var sc: float = cv.scale
+	mm.set_instance_transform(0, Transform3D(Basis.from_scale(Vector3(sc, sc * sag, sc)), Vector3(0, lift, 0)))
 	mm.set_instance_custom_data(0, Color(0.0, 2.0, 0.0, 0.0))
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
-	mi.material_override = _spider_mat
+	mi.material_override = cv.mat
 	root.add_child(mi)
 	root.set_meta("husk", true)
+
+
+func _food_wolf_spider_dead(root: Node3D, f: Dictionary, left: float) -> void:
+	_dead_creature(root, "wolf_spider", left, -0.3)
+
+
+func _food_centipede_dead(root: Node3D, f: Dictionary, left: float) -> void:
+	_dead_creature(root, "centipede", left, -0.2)

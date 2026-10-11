@@ -279,3 +279,26 @@ static func wolf_spider(ci: CanvasItem, pos: Vector2, ang: float, phase: float) 
 	for side in [-1.0, 1.0]:
 		ci.draw_polyline(PackedVector2Array([Vector2(10, 1.8 * side), Vector2(14, 3.2 * side), Vector2(15.5, 2.0 * side)]), leg, 1.4, true)
 	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+## Giant centipede from above: red head, dark segments, a pair of orange legs on each, long last legs.
+static func centipede(ci: CanvasItem, pos: Vector2, ang: float, phase: float, dead := false) -> void:
+	var fwd := Vector2.from_angle(ang)
+	var side := fwd.orthogonal()
+	var n := 21
+	for i in n:
+		var t := float(i) / (n - 1)
+		var along := (0.5 - t) * 100.0
+		var sway := sin(t * 6.0 - phase) * 3.0 if not dead else (t - 0.5) * (t - 0.5) * 40.0
+		var c := pos + fwd * along + side * sway
+		for s in [-1.0, 1.0]:
+			var step := sin(phase * 2.0 - i * 0.9 + (PI if s > 0.0 else 0.0)) * 2.0 if not dead else 0.0
+			ci.draw_line(c, c + side * s * 9.0 + fwd * (step - 1.5), Color(0.85, 0.55, 0.15), 1.1, true)
+		ellipse(ci, c, Vector2(3.0, 4.6), Color(0.55, 0.2, 0.07) if i == 0 else Color(0.14, 0.14, 0.11), ang)
+	var head := pos + fwd * 53.0
+	ellipse(ci, head, Vector2(4.0, 4.4), Color(0.55, 0.2, 0.07), ang)
+	for s in [-1.0, 1.0]:
+		ci.draw_polyline(PackedVector2Array([head + side * s * 1.5, head + fwd * 12.0 + side * s * 6.0,
+			head + fwd * 22.0 + side * s * 12.0]), Color(0.75, 0.32, 0.1), 1.0, true)
+		var tail := pos - fwd * 50.0
+		ci.draw_line(tail, tail - fwd * 20.0 + side * s * 6.0, Color(0.7, 0.3, 0.09), 1.6, true)

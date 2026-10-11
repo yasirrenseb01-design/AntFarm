@@ -10,11 +10,36 @@ extends "res://scripts/sim/parts/sim_foragers.gd"
 
 const ENEMY_KINDS := {
 	"wolf_spider": preload("res://scripts/sim/enemies/wolf_spider.gd"),
+	"centipede": preload("res://scripts/sim/enemies/centipede.gd"),
 }
 const ACID := 0.0004        # health an ant's bite + formic acid takes off per tick
 const ACT_ATTACK := 13      # view: biting and spraying (gaster curled forward)
 const ACT_ALARM := 14       # view: running in alarmed, mandibles open
 const FIGHT_FROM := 20      # a colony smaller than this hides from big enemies instead of mobbing them
+
+
+## Now and then an enemy finds its way into the box (one at a time); night hunters only after dark.
+func _maybe_spawn(dt: float) -> void:
+	if not creatures.is_empty():
+		return
+	for kind in ENEMY_KINDS:
+		var S: Dictionary = ENEMY_KINDS[kind].STATS
+		if S.get("night", false) and daylight() > 0.15:
+			continue
+		if rng.randf() < S.rate * dt:
+			_spawn_creature(kind)
+			return
+
+
+## Where on the enemy this ant holds on: round its body (spider) or along its sides (centipede).
+func _grip(a: Ant, c: Dictionary, S: Dictionary) -> Vector2:
+	if S.get("shape", "round") == "long":
+		var along := float((a.id * 7) % 13) / 12.0 - 0.5
+		var side := 1.0 if a.id % 2 == 0 else -1.0
+		var fwd := Vector2.from_angle(c.ang)
+		return c.pos + fwd * along * S.length * 0.9 + fwd.orthogonal() * side * S.width
+	var grip := float(a.id % 16) / 16.0 * TAU
+	return c.pos + Vector2.from_angle(c.ang + grip) * S.r
 
 
 func _spawn_creature(kind: String) -> void:
@@ -95,7 +120,7 @@ func _release(c: Dictionary, clinging: Array) -> void:
 
 ## The enemy bites an ant: often fatal, otherwise it limps on maimed (a leg or antenna lost).
 func _bite(a: Ant, c: Dictionary) -> void:
-	if rng.randf() < 0.45 or a.hurt >= 0.5:
+	if rng.randf() < ENEMY_KINDS[c.kind].STATS.get("lethal", 0.45) or a.hurt >= 0.5:
 		_kill(a)
 	else:
 		a.hurt = minf(0.9, a.hurt + 0.5)
@@ -123,9 +148,8 @@ func _step_defender(a: Ant) -> void:
 	var S: Dictionary = ENEMY_KINDS[c.kind].STATS
 	if a.busy > 0:
 		# clinging on: ride with the enemy at its grip point, biting and spraying formic acid
-		var grip := float(a.id % 16) / 16.0 * TAU
-		a.pos = c.pos + Vector2.from_angle(c.ang + grip) * S.r
-		a.ang = (c.pos - a.pos).angle()
+		a.pos = _grip(a, c, S)
+		a.ang = (c.pos - a.pos).angle() if S.get("shape", "round") != "long" else (c.pos - a.pos).angle() + 0.6 * (1.0 if a.id % 2 == 0 else -1.0)
 		a.act = ACT_ATTACK
 		c.hp -= ACID * n * (1.0 - S.armor)
 		if ((tick + a.id) % 6) < n:
@@ -135,8 +159,8 @@ func _step_defender(a: Ant) -> void:
 	a.trip += n
 	var spd := _spd * 1.3 * (1.0 - 0.35 * a.hurt)
 	a.phase += spd * 0.95
-	var to: Vector2 = c.pos - a.pos
-	if to.length() < S.r + 2.0:
+	var to: Vector2 = _grip(a, c, S) - a.pos
+	if to.length() < 3.0 + spd:
 		if c.held < S.hold:
 			c.held += 1
 			a.busy = 1

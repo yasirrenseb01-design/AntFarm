@@ -22,6 +22,7 @@ const STATS := {
 	"shake": 0.0016,    # chance per tick, per clinging ant, to throw one off
 	"carcass": "wolf_spider_dead",
 	"night": false,     # hunts by day as well
+	"rate": 0.25,       # chance per day of one wandering in
 }
 
 
