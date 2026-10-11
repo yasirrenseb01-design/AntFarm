@@ -49,6 +49,8 @@ var larvae: Array = []
 var pupae: Array = []
 var queen := {"alive": true, "starve": 0.0, "reserve": 0.0}   # reserve: fat body + dissolved wing muscle
 var sugar := 6.0
+var sugar_income := 0.0             # sugar brought home, averaged over about a week (units per week)
+var sugar_spend := 0.0              # sugar eaten by the colony, averaged the same way
 var fat := 0.0                     # food stored in the workers' fat bodies (what carries a colony through winter)
 var protein := 3.0
 var humidity := 0.7
@@ -148,6 +150,9 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 		pupae.append({"p": rng.randf(), "s": clampf(rng.randfn(0.84, 0.04), 0.75, 0.95)})
 	sugar = sugar_cap() * 0.5 if start_workers > 0 else 0.0
 	protein = 3.0 * k
+	# a young colony starts out earning comfortably more than it eats (a week's worth of each)
+	sugar_spend = 7.0 * (start_workers * sp["sugar_worker"] + sp["sugar_queen"])
+	sugar_income = sugar_spend * 1.5
 	if start_workers == 0:
 		# Claustral founding: a newly mated queen seals herself in a small chamber and raises the first
 		# workers alone, living on her fat body and the muscles of the wings she has shed.
@@ -158,8 +163,15 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 	place_food("aphids", Vector2(985, 230))
 	place_food("aphids", Vector2(210, 640))
 	place_food("cricket", Vector2(760, 560))
+	if scen == "wild":
+		# a queen founds her nest near a plant with aphids on it: the colony's first sugar is close by
+		for off in [Vector2(115, -55), Vector2(-110, -70), Vector2(100, 80), Vector2(-120, 60)]:
+			if place_food("aphids", nest_pos + off):
+				break
 
 	history.append(_snapshot())
+	if scen == "wild":
+		_log(T.wild_start, "ok")
 	if start_workers == 0:
 		_log(T.founding_sealed)
 		_log(T.founding_reserves, "ok")
@@ -374,7 +386,7 @@ func winding_down() -> bool:
 
 ## How much the workers can lay down as body fat: roughly a winter's worth each.
 func fat_cap() -> float:
-	return workers.size() * 1.2
+	return workers.size() * 1.6
 
 
 func sugar_cap() -> float:
@@ -446,6 +458,6 @@ func _log(text: String, kind: String = "") -> void:
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 4              # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 5              # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
 	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt"]

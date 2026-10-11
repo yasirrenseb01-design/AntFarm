@@ -6,7 +6,8 @@ extends SceneTree
 
 const SIM := "res://scripts/sim/simulation.gd"
 const MIGRATIONS := "res://scripts/sim/save_migrations.gd"
-const FIXTURES := ["res://tests/fixtures/save_v1.antfarm", "res://tests/fixtures/save_v2.antfarm", "res://tests/fixtures/save_v3.antfarm"]
+const FIXTURES := ["res://tests/fixtures/save_v1.antfarm", "res://tests/fixtures/save_v2.antfarm", "res://tests/fixtures/save_v3.antfarm",
+	"res://tests/fixtures/save_v4.antfarm"]
 
 
 func _read(path: String) -> Dictionary:

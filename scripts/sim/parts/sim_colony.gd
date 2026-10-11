@@ -180,6 +180,10 @@ func _metabolism(dt: float) -> void:
 		var give := minf(need - sugar, queen.reserve)
 		queen.reserve -= give
 		sugar += give
+	# what the colony earns and eats, as running averages over about a week
+	var fade := exp(-dt / 7.0)
+	sugar_income *= fade
+	sugar_spend = sugar_spend * fade + need + q_need
 	var fed := 1.0 if need <= 0.0 else clampf(sugar / need, 0.0, 1.0)
 	starving = fed < 0.999
 	sugar = maxf(0.0, sugar - need)
@@ -204,10 +208,13 @@ func _metabolism(dt: float) -> void:
 
 
 func _moisture(dt: float) -> void:
-	# Evaporation is proportional to how wet the nest is, so a drying nest slows down
-	# (a watered Ytong/plaster nest lasts 2–3 weeks; a heat mat dries it faster).
-	var k := 0.09 + (0.06 if heater else 0.0) + workers.size() * 0.0002
-	humidity = clampf(humidity * exp(-k * dt), 0.0, 1.0)
+	if scenario == "wild":
+		_soil_moisture(dt)
+	else:
+		# Evaporation is proportional to how wet the nest is, so a drying nest slows down
+		# (a watered Ytong/plaster nest lasts 2–3 weeks; a heat mat dries it faster).
+		var k := 0.09 + (0.06 if heater else 0.0) + workers.size() * 0.0002
+		humidity = clampf(humidity * exp(-k * dt), 0.0, 1.0)
 	if humidity < sp["humidity_ok_min"]:
 		var p: float = (sp["humidity_ok_min"] - humidity) * 2.0 * dt
 		_cull(eggs, p)
@@ -224,6 +231,20 @@ func _moisture(dt: float) -> void:
 		_warn("mold", true, T.warn_mold)
 	else:
 		_warn("mold", false, "")
+
+
+## Outdoors nobody waters the nest: rain soaks into the ground, the deeper soil keeps it damp from
+## below (wetter in winter, drier in a hot summer) and too much water drains away.
+func _soil_moisture(dt: float) -> void:
+	var warm := clampf((climate.season_mean() - 2.0) / 16.0, 0.0, 1.0)
+	var ground := lerpf(0.75, 0.5, warm)                 # what the soil around the nest settles to
+	humidity += (ground - humidity) * (1.0 - exp(-0.12 * dt))
+	humidity *= exp(-(0.01 + 0.04 * warm + workers.size() * 0.0001) * dt)   # drying from the surface
+	if climate.raining() and climate.air > 0.0:          # rain (not snow) soaks in
+		humidity += (1.0 - humidity) * (1.0 - exp(-0.9 * dt))
+	if humidity > 0.8:
+		humidity -= (humidity - 0.8) * (1.0 - exp(-1.5 * dt))   # the excess drains away
+	humidity = clampf(humidity, 0.0, 1.0)
 
 
 func _queen(dt: float) -> void:
@@ -250,6 +271,15 @@ func _queen(dt: float) -> void:
 		rate *= 0.3
 	if winding_down() and workers.size() >= 5:
 		rate = 0.0
+	if workers.size() >= 5:
+		# workers feed the queen (and so her laying) by how much food the colony has in store: a colony
+		# grows only as far as its foraging ground can feed it
+		var stock := (sugar + fat) / (sugar_cap() * 0.5 + fat_cap() * 0.5)
+		rate *= clampf(stock, 0.1, 1.0)
+		# ...and above all by whether foraging brings in more than the colony eats: when the income only
+		# just covers the workers there is nothing spare for more brood
+		var earning := sugar_income / maxf(sugar_spend, 0.5)
+		rate *= clampf((earning - 1.0) / 0.5, 0.05, 1.0)
 	egg_acc += rate * dt
 	while egg_acc >= 1.0:
 		egg_acc -= 1.0
@@ -347,7 +377,9 @@ func _outworld(dt: float) -> void:
 	if foods.size() != before:
 		_food_dirty = true
 
-	if rng.randf() < 0.8 * dt * life:
+	# small insects die or are caught out on open ground far more often than in a closed box
+	var insects := 3.0 if scenario == "wild" else 0.8
+	if rng.randf() < insects * dt * life:
 		var p := Vector2(rng.randf_range(30, WORLD.x - 30), rng.randf_range(30, WORLD.y - 30))
 		if place_food("fly", p) and not _warned.get("fly_hint", false):
 			_warned["fly_hint"] = true

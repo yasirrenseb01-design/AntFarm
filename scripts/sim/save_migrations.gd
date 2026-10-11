@@ -17,6 +17,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				_v2_to_v3(d)
 			3:
 				_v3_to_v4(d)
+			4:
+				_v4_to_v5(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -64,3 +66,10 @@ static func _v3_to_v4(d: Dictionary) -> void:
 	d.climate["scenario"] = "keeper"
 	d.climate["fridge"] = 0.0
 	d.queen["rested"] = 1.0
+
+
+## v0.7.1: the colony keeps a running account of the sugar it brings in and eats (laying follows it).
+## Start it as if income had just covered the colony's needs.
+static func _v4_to_v5(d: Dictionary) -> void:
+	d["sugar_spend"] = 7.0 * (d.workers.size() * 0.08 + 0.5)
+	d["sugar_income"] = d.sugar_spend * 1.5

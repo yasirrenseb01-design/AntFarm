@@ -111,6 +111,7 @@ func _build_tools(root: Control) -> void:
 	row.add_child(VSeparator.new())
 	var water := _button("เติมน้ำในรัง", false)
 	water.pressed.connect(func(): sim.add_water())
+	water.visible = sim.scenario == "keeper"     # outdoors the rain waters the nest
 	row.add_child(water)
 	var pher := _button("แสดงกลิ่น", true)
 	pher.button_pressed = world.show_pheromones
