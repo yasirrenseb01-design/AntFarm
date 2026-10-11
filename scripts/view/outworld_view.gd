@@ -524,12 +524,38 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 			drop.material_override = _honey_mat()
 			root.add_child(drop)
 		"cricket":
-			var c := MeshInstance3D.new()
-			c.mesh = Props.cricket(left, f.rotten, f.seed)
-			c.material_override = _prop_mat
-			c.rotation.x = 0.35           # lying slightly on its side
-			c.scale = Vector3.ONE * 0.95
-			root.add_child(c)
+			var body := Node3D.new()
+			body.rotation.x = 0.12        # lying a little on one side
+			root.add_child(body)
+			if Props.asset("cricket_head") != null:
+				# the Blender carcass comes in pieces: the abdomen shrinks and legs go as the ants cut it up
+				var mat: StandardMaterial3D = _prop_mat
+				if f.rotten:
+					mat = _prop_mat.duplicate()
+					mat.albedo_color = Color(0.72, 0.78, 0.66)
+				var abd := maxf(0.35, left)
+				var pieces := [["cricket_head", true], ["cricket_abdomen", true], ["cricket_hindlegs", left > 0.3], ["cricket_legs", left > 0.6]]
+				for pc in pieces:
+					if not pc[1]:
+						continue
+					var mi := MeshInstance3D.new()
+					mi.mesh = Props.asset(pc[0])
+					mi.material_override = mat
+					if pc[0] == "cricket_abdomen":
+						var pivot := Vector3(0.4, 1.6, 0)
+						mi.scale = Vector3.ONE * abd
+						mi.position = pivot * (1.0 - abd)
+					body.add_child(mi)
+				if int(round((1.0 - left) * 9.0)) > 0:
+					var w := MeshInstance3D.new()
+					w.mesh = Props.cricket_wounds(left, f.seed)
+					w.material_override = _prop_mat
+					body.add_child(w)
+			else:
+				var c := MeshInstance3D.new()
+				c.mesh = Props.cricket(left, f.rotten, f.seed)
+				c.material_override = _prop_mat
+				body.add_child(c)
 		"fly":
 			var b := MeshInstance3D.new()
 			b.mesh = Props.fly(left)

@@ -112,6 +112,19 @@ static func _new():
 	return load("res://scripts/view/mesh_kit.gd").new()
 
 
+static var _assets := {}
+
+
+## A model built in Blender (tools/blender/build_props.py -> assets/models/<name>.antmesh), or null.
+static func asset(name: String) -> Mesh:
+	if not _assets.has(name):
+		_assets[name] = load("res://scripts/view/ant_model3d.gd").load_antmesh("res://assets/models/%s.antmesh" % name)
+	return _assets[name]
+
+
+const PLANT_VARIANTS := 3
+
+
 ## A field stone: a lumpy dome whose footprint follows the simulation's outline (in units, around 0).
 static func rock(outline: PackedVector2Array, r: float, tone: float, seed_value: int) -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
@@ -218,6 +231,15 @@ static func blade() -> ArrayMesh:
 ## Broad bean shoot (Vicia faba), a favourite host of the black bean aphid. Returns the stem line
 ## (local points, base at the origin) shared by the mesh, the aphids and the ants that climb it.
 static func plant_stem(seed_value: int) -> Array:
+	# the Blender shoots carry their own stem line
+	var path := "res://assets/models/plant%d.json" % (absi(seed_value) % PLANT_VARIANTS)
+	if FileAccess.file_exists(path):
+		var d = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if d is Dictionary:
+			var pts := []
+			for p in d.stem:
+				pts.append(Vector3(p[0], p[1], p[2]))
+			return pts
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var h := rng.randf_range(22.0, 28.0)
@@ -241,7 +263,10 @@ static func stem_at(pts: Array, y: float) -> Vector3:
 const STEM_R := 0.55
 
 
-static func aphid_plant(seed_value: int) -> ArrayMesh:
+static func aphid_plant(seed_value: int) -> Mesh:
+	var m := asset("plant%d" % (absi(seed_value) % PLANT_VARIANTS))
+	if m != null:
+		return m
 	var k = _new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value + 17
@@ -312,7 +337,10 @@ static func aphid_spots(seed_value: int) -> Array:
 ## Black bean aphid (Aphis fabae): a soft, matt black-olive pear-shaped body, small head with long
 ## antennae swept back, pale legs, two black cornicles and a short cauda at the rear. Nymphs are
 ## smaller and greyer with waxy patches; the occasional winged adult has a shiny thorax and wings.
-static func aphid(kind := 0) -> ArrayMesh:
+static func aphid(kind := 0) -> Mesh:
+	var m := asset(["aphid_adult", "aphid_nymph", "aphid_winged"][kind])
+	if m != null:
+		return m
 	var k = _new()
 	var body := Color(0.17, 0.18, 0.2) if kind != 1 else Color(0.27, 0.28, 0.29)
 	var leg := Color(0.6, 0.6, 0.5)
@@ -339,7 +367,10 @@ static func aphid(kind := 0) -> ArrayMesh:
 	return k.commit()
 
 
-static func aphid_wings() -> ArrayMesh:
+static func aphid_wings() -> Mesh:
+	var m := asset("aphid_wings")
+	if m != null:
+		return m
 	var k = _new()
 	for side in [-1.0, 1.0]:
 		var outline := PackedVector2Array()
@@ -355,6 +386,22 @@ static func aphid_wings() -> ArrayMesh:
 ## between the eyes, blotches on the pronotum, a dark edge on each abdominal plate; spiny hind
 ## tibiae, long cerci, antennae longer than the body. Where the ants have cut pieces away, pale muscle
 ## and dark body fluid show through.
+## Fresh wounds where pieces of the carcass have been cut away (on top of the Blender model).
+static func cricket_wounds(left: float, seed_value: int) -> ArrayMesh:
+	var k = _new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var abd := maxf(0.35, left)
+	for i in int(round((1.0 - left) * 9.0)):
+		var a := rng.randf_range(-PI, PI)
+		var x := rng.randf_range(-4.2, 1.0) * abd
+		var on := Vector3(x, 1.6 + sin(a) * 1.3 * abd, cos(a) * 1.5 * abd)
+		var r := rng.randf_range(0.45, 0.9)
+		k.blob(on, Vector3(r, r * 0.55, r), Color(0.82, 0.68, 0.52) if i % 3 != 2 else Color(0.32, 0.16, 0.08),
+			Basis(Vector3.RIGHT, a))
+	return k.commit()
+
+
 static func cricket(left: float, rotten: bool, seed_value := 1) -> ArrayMesh:
 	var k = _new()
 	var rng := RandomNumberGenerator.new()
