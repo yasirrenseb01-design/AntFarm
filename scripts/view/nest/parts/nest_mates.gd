@@ -135,15 +135,21 @@ func _step_mate(m: Dictionary) -> void:
 		return
 	var best: Array[Vector3i] = []
 	var floaty: Array[Vector3i] = []
+	var aside: Array[Vector3i] = []
 	for d in DIRS:
 		var n := c + d
-		if field.get(n, 1 << 20) < here:
+		var fn: int = field.get(n, 1 << 20)
+		if _queen_cells.has(n):
+			continue                    # the queen lies there: walk round her
+		if fn < here:
 			if nest.walkable(n):
 				best.append(n)
 			else:
 				floaty.append(n)
+		elif fn <= here + 1 and n != m.prev and nest.walkable(n):
+			aside.append(n)
 	if best.is_empty():
-		best = floaty
+		best = aside if not aside.is_empty() else floaty
 	if not best.is_empty():
 		_move_mate(m, best[randi() % best.size()])
 
@@ -321,8 +327,12 @@ func _update_ants(delta: float) -> void:
 	var near := {}
 	for m in _mates:
 		if m.has("xf"):
-			var o: Vector3 = (m.xf as Transform3D).origin
-			var key := Vector3i(floori(o.x / 2.0), floori(o.y / 2.0), floori(o.z / 2.0))
+			var x: Transform3D = m.xf
+			var o: Vector3 = x.origin
+			var f: Vector3 = x.basis.x.normalized() * (0.7 * float(m.size))
+			m.d0 = o + f                 # head-thorax and gaster discs, worked out once per frame
+			m.d1 = o - f
+			var key := Vector3i(floori(o.x / 3.0), floori(o.y / 3.0), floori(o.z / 3.0))
 			if not near.has(key):
 				near[key] = []
 			near[key].append(m)
@@ -344,7 +354,8 @@ func _update_ants(delta: float) -> void:
 			path = (m.from as Vector3).lerp(m.to, clampf(m.t, 0.0, 1.0))
 		m.stride = AntModel.stride_scale(chill, m.carry)      # shorter, slower steps when cold or laden
 		var tr := _smooth(m, path, m.up, delta, m.size)
-		tr.origin += _keep_apart(m, tr.origin, near, delta)
+		if _visible(tr.origin):
+			tr.origin += _keep_apart(m, tr.origin, near, delta)      # only where anyone can see it
 		m.xf = tr
 		if m.act == ACT_FEED and _visible(tr.origin):
 			drops.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.8 + 0.3 * sin(m.anim * 3.0))), MOUTH + Vector3(0.2, 0, 0)))
@@ -413,8 +424,22 @@ func _update_ants(delta: float) -> void:
 	_last_eggs = sim.eggs.size()
 	_queen_lay = maxf(0.0, _queen_lay - adt)
 	if _queen_mm.instance_count > 0:
-		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else ACT_REST)
-		_queen_mm.set_instance_custom_data(0, Color(0.0, qa, fmod(_queen_anim, 600.0), 0.0))
+		# between lifecycle moments she is not a statue: she rests, grooms, feels about with her antennae
+		# and now and then shifts round on the spot, stepping as she turns
+		_queen_mode_left -= adt
+		if _queen_mode_left <= 0.0 and _queen_act < 0:
+			var r := randf()
+			_queen_mode = ACT_REST if r < 0.45 else (ACT_GROOM if r < 0.65 else (ACT_ANTENNATE if r < 0.85 else ACT_WALK))
+			_queen_mode_left = randf_range(3.0, 9.0)
+			if _queen_mode == ACT_WALK:
+				_queen_turn_t = _queen_turn + randf_range(0.5, 1.2) * (1.0 if randf() < 0.5 else -1.0)
+		var turned := absf(wrapf(_queen_turn - _queen_prev_turn, -PI, PI))
+		_queen_prev_turn = _queen_turn
+		var qs := 0.6                       # short, heavy steps
+		_queen_gait = fmod(_queen_gait + turned * 0.9 / AntModel.stride_len(qs) * TAU, TAU * 64.0)
+		_queen_mv = lerpf(_queen_mv, 1.0 if turned > 0.002 else 0.0, minf(1.0, 8.0 * adt))
+		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else _queen_mode)
+		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, qa, fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs)))
 
 
 func debug_summary() -> String:
@@ -431,32 +456,55 @@ func debug_summary() -> String:
 		mini(_moved, sim.larvae.size()), sim.larvae.size(), _larva_prev, _larva_group, _rooms.size(), _fields.size()]
 
 
-## A small sideways shift away from nestmates (and the queen) that are closer than a body width; eased so
-## it never jitters, capped so nobody is pushed into the soil.
+const _NEAR := [Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+	Vector3i(1, 0, 1), Vector3i(1, 0, -1), Vector3i(-1, 0, 1), Vector3i(-1, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]
+
+
+## Bodies do not pass through one another: each ant is two discs along its body (head-thorax and
+## gaster), the queen a long capsule. Overlaps push the ant sideways (in the floor plane) right out of
+## the other body; the push is eased only a little so it never jitters.
 func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> Vector3:
 	var up: Vector3 = m.up
+	var s: float = m.size
+	var a0: Vector3 = m.get("d0", p)
+	var a1: Vector3 = m.get("d1", p)
+	var r := 0.55 * s
 	var push := Vector3.ZERO
-	var key := Vector3i(floori(p.x / 2.0), floori(p.y / 2.0), floori(p.z / 2.0))
-	for dx in [-1, 0, 1]:
-		for dy in [-1, 0, 1]:
-			for dz in [-1, 0, 1]:
-				for o in near.get(key + Vector3i(dx, dy, dz), []):
-					if o == m:
-						continue
-					var d: Vector3 = p - (o.xf as Transform3D).origin
+	var key := Vector3i(floori(p.x / 3.0), floori(p.y / 3.0), floori(p.z / 3.0))
+	for off in _NEAR:
+		var bin = near.get(key + off)
+		if bin == null:
+			continue
+		for o in bin:
+			if o == m:
+				continue
+			var oc: Vector3 = (o.xf as Transform3D).origin
+			if p.distance_squared_to(oc) > 9.0 * s * s:
+				continue
+			var reach: float = r + 0.55 * float(o.size)
+			var rr := reach * reach
+			for a in [a0, a1]:
+				for b in [o.d0, o.d1]:
+					var d: Vector3 = a - b
 					d -= up * d.dot(up)
-					var reach: float = 0.95 * (float(m.size) + float(o.size))
-					var l := d.length()
-					if l < reach and l > 0.001:
-						push += d / l * (reach - l)
-	if _spots.queen != Vector3.ZERO:
-		var dq: Vector3 = p - _spots.queen
-		dq -= up * dq.dot(up)
-		var lq := dq.length()
-		if lq < 3.2 and lq > 0.001:
-			push += dq / lq * (3.2 - lq) * 0.6
-	var want := push.limit_length(1.4) * 0.5
+					var l2 := d.length_squared()
+					if l2 < rr and l2 > 0.000001:
+						var l := sqrt(l2)
+						push += d / l * (reach - l) * 0.5
+	if _queen_mm.instance_count > 0 and not m.has("script"):     # attendants touch her
+		var qa: Vector3 = _queen_xf * QUEEN_HEAD
+		var qb: Vector3 = _queen_xf * QUEEN_TAIL
+		if p.distance_squared_to((qa + qb) * 0.5) < 36.0:
+			for a in [a0, a1]:
+				var t := clampf((a - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
+				var d: Vector3 = a - qa.lerp(qb, t)
+				d -= up * d.dot(up)
+				var l := d.length()
+				var reach := QUEEN_R + r
+				if l < reach and l > 0.001:
+					push += d / l * (reach - l)
+	var want := push.limit_length(2.5)
 	var sep: Vector3 = m.get("sep", Vector3.ZERO)
-	sep = sep.lerp(want, minf(1.0, 4.0 * delta))
+	sep = sep.lerp(want, minf(1.0, 14.0 * delta))
 	m.sep = sep
 	return sep

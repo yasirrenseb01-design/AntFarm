@@ -62,7 +62,7 @@ func setup(r: RandomNumberGenerator, glass_slab := false, founding := false) -> 
 		# what a lone queen digs after her mating flight: a short shaft and one small chamber
 		carve_line(Vector3(entrance), Vector3(mid.x, ny - 9, mid.z), 1.0)
 		var fc := Vector3(mid.x + 1, ny - 11, mid.z)
-		carve_ellipsoid(fc, Vector3(5.0, 2.2, 5.0 - (2.6 if slab else 0.0)))   # ~1.5 cm across
+		carve_room(fc, Vector3(5.0, 2.2, 5.0 - (2.6 if slab else 0.0)))   # ~1.5 cm across
 		chambers.append({"c": fc, "r": 5.0, "goal": 5.0, "kind": "queen"})
 		_recount()
 		_bfs()
@@ -70,11 +70,11 @@ func setup(r: RandomNumberGenerator, glass_slab := false, founding := false) -> 
 	# A three-month-old nest: the queen's shaft, her chamber, and a first brood chamber.
 	carve_line(Vector3(entrance), Vector3(mid.x, ny - 18, mid.z), 1.2)
 	var qc := Vector3(mid.x + 3, ny - 20, mid.z)
-	carve_ellipsoid(qc, Vector3(4.5, 2.0, 4.5 - flat))
+	carve_room(qc, Vector3(4.5, 2.0, 4.5 - flat))
 	chambers.append({"c": qc, "r": 4.5, "goal": 5.0, "kind": "queen"})
 	var bc := Vector3(mid.x - 6, ny - 11, mid.z + (0.0 if slab else 2.0))
 	carve_line(Vector3(mid.x, ny - 10, mid.z), bc, 1.1)
-	carve_ellipsoid(bc, Vector3(4.0, 1.8, 4.0 - flat))
+	carve_room(bc, Vector3(4.0, 1.8, 4.0 - flat))
 	chambers.append({"c": bc, "r": 4.0, "goal": 4.5, "kind": "brood"})
 	_recount()
 	_bfs()
@@ -94,11 +94,18 @@ func is_open(c: Vector3i) -> bool:
 	return inside(c) and rho[idx(c)] < AIR
 
 
-## Soil density as seen by the mesher: outside the block counts as air so the block gets faces.
+## Soil density as seen by the mesher: solid or open, softened with the six neighbours so burrows come
+## out rounded rather than square (a one-voxel tunnel stays open: 0.4 at most). Outside the block counts as
+## air so the block gets faces.
 func density(x: int, y: int, z: int) -> float:
+	return 0.4 * _solid(x, y, z) + 0.1 * (_solid(x - 1, y, z) + _solid(x + 1, y, z) + _solid(x, y - 1, z)
+		+ _solid(x, y + 1, z) + _solid(x, y, z - 1) + _solid(x, y, z + 1))
+
+
+func _solid(x: int, y: int, z: int) -> float:
 	if x < 0 or y < 0 or z < 0 or x >= nx or y >= ny or z >= nz:
 		return 0.0
-	return rho[(z * ny + y) * nx + x] / 255.0
+	return 1.0 if rho[(z * ny + y) * nx + x] >= AIR else 0.0
 
 
 func walkable(c: Vector3i) -> bool:
@@ -109,6 +116,24 @@ func walkable(c: Vector3i) -> bool:
 		if not inside(n) or rho[idx(n)] >= AIR:
 			return true
 	return false
+
+
+## A chamber's shape: a level floor (ants flatten it) under a low domed ceiling. d is measured from the
+## centre, ax are the half-axes (long, high, wide); <= 1 inside.
+static func room_q(d: Vector3, ax: Vector3) -> float:
+	var h := pow(d.x / ax.x, 2.0) + pow(d.z / ax.z, 2.0)
+	var v := d.y / ax.y
+	return h + (v * v if v > 0.0 else pow(-v, 6.0))
+
+
+## Carve a whole chamber at once (setting up a nest).
+func carve_room(center: Vector3, r: Vector3) -> void:
+	for y in range(maxi(0, int(center.y - r.y)), mini(ny, int(center.y + r.y) + 2)):
+		for z in range(maxi(0, int(center.z - r.z)), mini(nz, int(center.z + r.z) + 2)):
+			for x in range(maxi(0, int(center.x - r.x)), mini(nx, int(center.x + r.x) + 2)):
+				if room_q(Vector3(x, y, z) - center, r) <= 1.0:
+					rho[(z * ny + y) * nx + x] = 0
+					_mark(Vector3i(x, y, z))
 
 
 func carve_ellipsoid(center: Vector3, r: Vector3) -> void:
@@ -216,10 +241,10 @@ func chamber_q(p: Vector3, ch: Dictionary) -> float:
 	var yaw: float = ch.get("yaw", 0.0)
 	var ax := chamber_axes(ch)
 	if slab:
-		return Vector2(d.x / ax.x, d.y / ax.y).length_squared()     # one layer deep: no heading
+		return room_q(Vector3(d.x, d.y, 0.0), ax)     # one layer deep: no heading
 	var u := d.x * cos(yaw) + d.z * sin(yaw)
 	var v := -d.x * sin(yaw) + d.z * cos(yaw)
-	return Vector3(u / ax.x, d.y / ax.y, v / ax.z).length_squared()
+	return room_q(Vector3(u, d.y, v), ax)
 
 
 func _chamber_volume(ch: Dictionary) -> float:

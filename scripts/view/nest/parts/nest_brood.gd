@@ -206,9 +206,20 @@ func _queen_pose() -> void:
 	var show: bool = sim.queen.alive and qp != Vector3.ZERO and _visible(qp)
 	_queen_mm.instance_count = 1 if show else 0
 	if show:
-		_queen_xf = Transform3D(Basis(Vector3.UP, sin(_t * 0.15) * 0.3 + _queen_turn).scaled(Vector3.ONE * 2.3), qp)
+		_queen_xf = Transform3D(Basis(Vector3.UP, _queen_turn).scaled(Vector3.ONE * QUEEN_SCALE), qp)
 		_queen_mm.set_instance_transform(0, _queen_xf)
 		_queen_mm.set_instance_color(0, AntModel.tint(Color(0.075, 0.05, 0.038)))
+		# the cells under her body, for the nestmates' routes
+		_queen_cells.clear()
+		var qa: Vector3 = _queen_xf * QUEEN_HEAD
+		var qb: Vector3 = _queen_xf * QUEEN_TAIL
+		for x in range(int(qp.x) - 5, int(qp.x) + 6):
+			for y in range(int(qp.y) - 1, int(qp.y) + 3):
+				for z in range(int(qp.z) - 5, int(qp.z) + 6):
+					var c := Vector3(x, y, z)
+					var t := clampf((c - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
+					if c.distance_to(qa.lerp(qb, t)) < 1.1:
+						_queen_cells[Vector3i(x, y, z)] = true
 
 
 func _random_room() -> int:

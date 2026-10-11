@@ -87,8 +87,19 @@ var _fx_soil_mm: MultiMesh
 var _fx_drop_mm: MultiMesh
 var _bits_mm: MultiMesh            # pieces of prey laid on the larvae for them to feed on
 var _queen_xf := Transform3D()
+var _queen_cells := {}           # voxel cells the queen's body fills: nestmates walk round them
+# the queen's body as a capsule, in her model's units (scaled by her transform)
+const QUEEN_HEAD := Vector3(1.25, 0.5, 0.0)
+const QUEEN_TAIL := Vector3(-1.45, 0.5, 0.0)
+const QUEEN_R := 1.05
+const QUEEN_SCALE := 1.75     # her model at this scale is ~9 mm long (a Lasius niger queen: 8-9 mm; workers 3.5-5)
 var _queen_turn := 0.0
 var _queen_turn_t := 0.0
+var _queen_mode := 1               # what she is doing between lifecycle moments: ACT_REST/GROOM/ANTENNATE/WALK
+var _queen_mode_left := 0.0
+var _queen_gait := 0.0
+var _queen_mv := 0.0
+var _queen_prev_turn := 0.0
 var _queen_act := -1
 var _egg_spots: Array = []         # floor beside the queen (not under her) where the egg packets lie
 

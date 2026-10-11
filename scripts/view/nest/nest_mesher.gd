@@ -129,7 +129,11 @@ static func _relax(verts: PackedVector3Array, norms: PackedVector3Array, tris: P
 		nbr[a].append_array([b, c])
 		nbr[b].append_array([a, c])
 		nbr[c].append_array([a, b])
-	for it in 2:
+	var home := PackedVector3Array()          # each vertex keeps near the voxel cell it was made in
+	home.resize(n)
+	for i in n:
+		home[i] = (verts[i] - base).floor()
+	for it in 4:
 		var out := verts.duplicate()
 		for i in n:
 			if pinned[i] == 1:
@@ -141,8 +145,8 @@ static func _relax(verts: PackedVector3Array, norms: PackedVector3Array, tris: P
 			for j in ns:
 				avg += verts[j]
 			avg /= ns.size()
-			var cell := (verts[i] - base).floor()
-			out[i] = verts[i].lerp(avg, 0.55).clamp(base + cell - Vector3.ONE * 0.15, base + cell + Vector3.ONE * 1.15)
+			var cell := home[i]
+			out[i] = verts[i].lerp(avg, 0.5).clamp(base + cell - Vector3.ONE * 0.35, base + cell + Vector3.ONE * 1.35)
 		verts = out
 	# shading normals from the smoothed surface itself
 	var acc := PackedVector3Array()
