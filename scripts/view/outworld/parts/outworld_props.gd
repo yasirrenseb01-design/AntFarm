@@ -186,15 +186,21 @@ func _food_cricket(root: Node3D, f: Dictionary, left: float) -> void:
 		body.add_child(c)
 
 
+## A dead house fly on its back (Blender model, tools/blender/build_props.py fly()); it shrinks as it is eaten.
 func _food_fly(root: Node3D, f: Dictionary, left: float) -> void:
+	var s := Vector3.ONE * (0.6 + 0.4 * left)
+	var model := Props.asset("prey/fly")
 	var b := MeshInstance3D.new()
-	b.mesh = Props.fly(left)
+	b.mesh = model if model != null else Props.fly(left)
 	b.material_override = _prop_mat
+	if model != null:
+		b.scale = s
 	root.add_child(b)
 	var wings := MeshInstance3D.new()
-	wings.mesh = Props.fly_wings()
-	wings.material_override = _wing_mat()
-	wings.scale = Vector3.ONE * (0.6 + 0.4 * left)
+	var wm := Props.asset("prey/fly_wings")
+	wings.mesh = wm if wm != null else Props.fly_wings()
+	wings.material_override = _fly_wing_mat()
+	wings.scale = s
 	root.add_child(wings)
 
 func _add_soil_cover(root: Node3D, f: Dictionary, left: float) -> void:

@@ -76,6 +76,11 @@ func _take_shot() -> void:
 		elif _opts.has("at-ant") and not sim.outside.is_empty():
 			var a = sim.outside[int(_opts["at-ant"]) % sim.outside.size()]
 			outworld.target_t = Vector3(a.pos.x, 0, a.pos.y) * outworld.U
+		if _opts.has("at-food"):
+			# drop one of that food beside the nest and look at it (models: --at-food=fly)
+			var fp: Vector2 = sim.nest_pos + Vector2(70, 30)
+			sim.place_food(String(_opts["at-food"]), fp)
+			outworld.target_t = Vector3(fp.x, 0, fp.y) * outworld.U
 		outworld.snap_camera()
 	if _opts.get("view", "surface") == "nest":
 		hud._apply_mode("nest")

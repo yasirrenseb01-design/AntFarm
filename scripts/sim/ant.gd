@@ -8,7 +8,7 @@ const HOME := 3
 const UNDERTAKER := 4
 const DEFEND := 5          # answering the alarm: running at an enemy or clinging to it
 
-# castes: workers now; winged gynes (new queens) and males come with the nuptial flight (PART 8)
+# castes: workers now; winged gynes (new queens) and males come with the nuptial flight (PART 10)
 const WORKER := 0
 const GYNE := 1
 const MALE := 2

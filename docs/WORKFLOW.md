@@ -33,5 +33,7 @@
 ## Blender
 - เปิด Blender → กด N → แท็บ BlenderMCP → Connect (port 9876)
 - สร้างโมเดล: `python tools/blender/bl.py tools/blender/build_ant.py VARIANT=worker LOD=hi [SHOT=png VIEW=3q|side|top]`
-  หรือ `build_props.py WHAT=aphid|cricket|plant [VARIANT=0..2] [SHOT=png]` — ไฟล์ออกไปที่ `assets/models/<กลุ่ม>/`
+  หรือ `build_props.py WHAT=aphid|cricket|plant|spider|centipede|beetle|fly [VARIANT=0..2] [SHOT=png] [VIEW=top|side]` — ไฟล์ออกไปที่ `assets/models/<กลุ่ม>/`
+  (ตัวสร้างแต่ละชนิดอยู่ใน `tools/blender/props/<ชนิด>.py`; `build_props.py` มีแค่เครื่องมือกลางและตัวเลือก WHAT;
+  Blender สร้างซ้ำได้ไฟล์ต่างกันเล็กน้อยทุกครั้ง จึงสร้างใหม่เฉพาะชนิดที่แก้)
 - โมเดลมดต้องรักษาจุดหมุนข้อต่อและรหัสส่วนร่างกาย (ARCHITECTURE.md) ไม่อย่างนั้นอนิเมชันพัง

@@ -32,6 +32,7 @@ var target_t := Vector3(200, 0, 125)
 
 var _cam: Camera3D
 var _sun: DirectionalLight3D
+var _fly_wings: StandardMaterial3D
 var _frost := -1.0        # -1 until the first frame (then it starts at the right value)
 var _env: Environment
 var _ground_mat: ShaderMaterial
@@ -373,6 +374,21 @@ func _wing_mat() -> StandardMaterial3D:
 		_wings.roughness = 0.1
 		_wings.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return _wings
+
+
+## A fly's wings: clear membrane with a faint rainbow sheen where the light catches it.
+func _fly_wing_mat() -> StandardMaterial3D:
+	if _fly_wings == null:
+		_fly_wings = StandardMaterial3D.new()
+		_fly_wings.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_fly_wings.albedo_color = Color(0.78, 0.8, 0.85, 0.12)
+		_fly_wings.roughness = 0.05
+		_fly_wings.metallic_specular = 0.9
+		_fly_wings.rim_enabled = true
+		_fly_wings.rim = 0.4
+		_fly_wings.rim_tint = 0.2
+		_fly_wings.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return _fly_wings
 
 
 func _honey_mat() -> StandardMaterial3D:

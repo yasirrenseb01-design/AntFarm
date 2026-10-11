@@ -21,7 +21,7 @@
   สะบัดผ่าน `sim._shake_off()`; ตาย → อาหาร `<ชนิด>_dead` ในตารางอาหาร; `ant.hurt` = บาดเจ็บถาวร (เดินช้าลง)
   - ภาพ: กิจกรรม 13 (เกาะ กัด พ่นกรด) และ 14 (วิ่งตื่นตกใจ) ใน `shaders/ants/ant.gdshader`; กลิ่นเตือนภัยสีแดงในชั้นกลิ่นบนพื้น
   - ทดสอบภาพ: `--enemy=wolf_spider --fight=<tick>` (จัดศัตรูไว้ข้างรังแล้วเดินเวลา)
-- **วรรณะ** `ant.caste`: `Ant.WORKER` (ตอนนี้ทุกตัว), `Ant.GYNE`, `Ant.MALE` (PART 8)
+- **วรรณะ** `ant.caste`: `Ant.WORKER` (ตอนนี้ทุกตัว), `Ant.GYNE`, `Ant.MALE` (PART 10)
 - **สายพันธุ์** `scripts/sim/species/lasius_niger.gd` (`sim.sp`): ตัวเลขชีววิทยา + นิสัยเฉพาะ (`founding`, `queen_reserve`, `founding_eggs`,
   `nanitic_size`, `tends_aphids`, `buries_prey`) — โค้ดอ่านจากที่นี่ ไม่เขียนค่าตายตัว
 
@@ -40,7 +40,7 @@ scripts/
     ui/        hud.gd + parts/ (base, colonies, controls, panel)
 shaders/       ants/, creatures/, terrain/, plants/
 assets/models/ ants/, prey/, plants/   (ไฟล์ .antmesh/.json ที่ Blender สร้าง — ห้ามแก้มือ ให้รันสคริปต์ Blender ใหม่)
-tools/         build.ps1, check.ps1, blender/ (build_ant.py, build_props.py, bl.py), dev/split_gd.py
+tools/         build.ps1, check.ps1, blender/ (build_ant.py, build_props.py + props/<ชนิด>.py, bl.py), dev/split_gd.py
 tests/         save_test, reach_test, real_save_test, rock_test, nest_debug, baselines/
 reference/     ภาพอ้างอิงจากผู้ใช้ + ที่มา (ไม่รวมเข้าเกม)
 ```
