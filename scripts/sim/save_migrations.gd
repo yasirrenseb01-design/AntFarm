@@ -19,6 +19,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				_v3_to_v4(d)
 			4:
 				_v4_to_v5(d)
+			5:
+				_v5_to_v6(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -73,3 +75,10 @@ static func _v3_to_v4(d: Dictionary) -> void:
 static func _v4_to_v5(d: Dictionary) -> void:
 	d["sugar_spend"] = 7.0 * (d.workers.size() * 0.08 + 0.5)
 	d["sugar_income"] = d.sugar_spend * 1.5
+
+
+## v0.7.3: deaths are counted apart: workers (with a cause) and brood. Older saves counted lost
+## brood in "dead" too; that total cannot be split any more, so it stays as workers of unknown cause.
+static func _v5_to_v6(d: Dictionary) -> void:
+	d.stats["brood_dead"] = 0
+	d.stats["dead_by"] = {"other": int(d.stats.dead)}

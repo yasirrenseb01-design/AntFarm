@@ -61,7 +61,16 @@ func refresh(delta: float) -> void:
 	_show(_vals["protein"], "%.1f" % sim.protein, DANGER if sim.protein < 1.0 and not fnd else INK)
 	_show(_vals["nest_t"], "%.1f°C" % sim.climate.nest, DANGER if sim.climate.nest > 34.0 else INK)
 	_show(_vals["dev"], "%d%%" % int(sim.dev * 100))
-	_show(_vals["dead"], str(sim.stats.dead + sim.stats.cannibalized))
+	_show(_vals["dead"], str(sim.stats.dead))
+	_show(_vals["brood_dead"], str(sim.stats.brood_dead + sim.stats.cannibalized))
+	var by: Dictionary = sim.stats.dead_by
+	var causes := []
+	for k in [["starve", "อดอาหาร"], ["thirst", "ขาดน้ำ"], ["old", "แก่ตาย"], ["out", "หายตอนออกหากิน"], ["enemy", "ศัตรูกัด"], ["other", "ไม่ทราบ (เซฟเก่า)"]]:
+		if int(by.get(k[0], 0)) > 0:
+			causes.append("%s %d" % [k[1], by[k[0]]])
+	_vals["dead"].tooltip_text = "สาเหตุ: " + (", ".join(causes) if not causes.is_empty() else "-")
+	_vals["brood_dead"].tooltip_text = "ไข่/ตัวอ่อน/ดักแด้ที่ตายเพราะแห้ง ราขึ้น หรือร้อนเกิน %d · ตัวอ่อนที่มดงานกินตอนขาดโปรตีน %d" % [
+		sim.stats.brood_dead, sim.stats.cannibalized]
 	var cyc: float = sim.cycle_days()
 	_show(_vals["cycle"], "หยุด" if cyc == INF else "%d วัน" % int(cyc))
 	_show(_vals["vol"], "%.1f ซม³" % sim.nest.volume_cm3(), DANGER if sim.nest.air < sim.target_air() * 0.7 and not fnd else INK)

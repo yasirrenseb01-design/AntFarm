@@ -65,7 +65,9 @@ var start_doy := 205               # day of the year the colony started (a found
 var fridge_on := false             # keeper: the formicarium is in the fridge for its winter rest
 var cold_days := 0                 # days this winter with the nest below 10 °C (the queen's winter rest)
 var egg_acc := 0.0
-var stats := {"dead": 0, "cannibalized": 0, "born": 0, "sugar_in": 0, "protein_in": 0}
+## dead = workers (dead_by: starve, thirst, old, out = lost while foraging, enemy); brood_dead = eggs, larvae
+## and pupae lost to drought, mould or heat (larvae eaten by hungry workers are counted in cannibalized)
+var stats := {"dead": 0, "cannibalized": 0, "born": 0, "sugar_in": 0, "protein_in": 0, "brood_dead": 0, "dead_by": {}}
 var history: Array = []
 var log_entries: Array = []
 
@@ -405,7 +407,7 @@ func _cull(list: Array, p: float) -> void:
 	for i in range(list.size() - 1, -1, -1):
 		if rng.randf() < p:
 			list.remove_at(i)
-			stats.dead += 1
+			stats.brood_dead += 1
 
 
 func _warn(key: String, on: bool, text: String) -> void:
@@ -419,12 +421,13 @@ func _warn(key: String, on: bool, text: String) -> void:
 		_warned[key] = false
 
 
-func _kill(a: Ant) -> void:
+func _kill(a: Ant, cause := "other") -> void:
 	if a.dead:
 		return
 	a.dead = true
 	_any_dead = true
 	stats.dead += 1
+	stats.dead_by[cause] = int(stats.dead_by.get(cause, 0)) + 1
 	if a.state == Ant.IN_NEST:
 		corpses_inside += 1
 	else:
@@ -458,6 +461,6 @@ func _log(text: String, kind: String = "") -> void:
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 5              # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 6              # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
 	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt"]

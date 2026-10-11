@@ -203,11 +203,13 @@ func _arrive(a: Ant) -> void:
 	if a.carry == Ant.SUGAR:
 		sugar = minf(sugar_cap(), sugar + 1.0)
 		sugar_income += 1.0
-		humidity = minf(1.0, humidity + 0.004)  # honeydew is mostly water
+		if humidity < 0.8:
+			humidity = minf(0.8, humidity + 0.004)  # honeydew is mostly water (the ants get rid of any excess)
 		stats.sugar_in += 1
 	elif a.carry == Ant.PROTEIN:
 		protein = minf(protein_cap(), protein + 1.0)
-		humidity = minf(1.0, humidity + 0.002)
+		if humidity < 0.8:
+			humidity = minf(0.8, humidity + 0.002)
 		stats.protein_in += 1
 	a.carry = Ant.NONE
 	if had and activity > 0.2:

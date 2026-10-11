@@ -23,16 +23,17 @@ func _build_panel(root: Control) -> void:
 	grid.add_theme_constant_override("v_separation", 3)
 	st.add_child(grid)
 	for key in ["queen", "workers", "out", "nurses", "callow", "eggs", "larvae", "pupae", "sugar", "fat", "protein",
-			"nest_t", "dev", "dead", "cycle", "vol", "depth", "size"]:
+			"nest_t", "dev", "dead", "brood_dead", "cycle", "vol", "depth", "size"]:
 		var names := {"queen": "ราชินี", "workers": "มดงาน", "out": "นอกรัง", "nurses": "พี่เลี้ยง",
 			"callow": "ตัวใหม่", "eggs": "ไข่", "larvae": "ตัวอ่อน", "pupae": "ดักแด้", "sugar": "น้ำตาล", "fat": "ไขมันสะสม",
-			"protein": "โปรตีน", "nest_t": "ในรัง", "dev": "พัฒนาการ", "dead": "ตาย", "cycle": "ไข่→มดงาน",
+			"protein": "โปรตีน", "nest_t": "ในรัง", "dev": "พัฒนาการ", "dead": "มดงานตาย", "brood_dead": "ลูกมดตาย", "cycle": "ไข่→มดงาน",
 			"vol": "ปริมาตรรัง", "depth": "ลึก", "size": "ขนาดมดงาน"}
 		var l := _label(names[key], 13, MUTED)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var v := _label("-", 13, INK, _mono)
 		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		v.custom_minimum_size.x = 64
+		v.mouse_filter = Control.MOUSE_FILTER_PASS      # tooltips (causes of death)
 		grid.add_child(l)
 		grid.add_child(v)
 		_vals[key] = v

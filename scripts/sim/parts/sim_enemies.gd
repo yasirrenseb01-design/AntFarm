@@ -122,7 +122,7 @@ func _release(c: Dictionary, clinging: Array) -> void:
 ## The enemy bites an ant: often fatal, otherwise it limps on maimed (a leg or antenna lost).
 func _bite(a: Ant, c: Dictionary) -> void:
 	if rng.randf() < ENEMY_KINDS[c.kind].STATS.get("lethal", 0.45) or a.hurt >= 0.5:
-		_kill(a)
+		_kill(a, "enemy")
 	else:
 		a.hurt = minf(0.9, a.hurt + 0.5)
 		if a.busy > 0:

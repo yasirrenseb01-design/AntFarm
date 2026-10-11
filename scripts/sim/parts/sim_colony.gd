@@ -8,16 +8,23 @@ func _new_day() -> void:
 	climate.new_day()
 	# a keeper cools the formicarium down (and warms it back up) over about a week
 	climate.fridge = move_toward(climate.fridge, 1.0 if fridge_on else 0.0, 1.0 / 7.0)
+	if scenario == "keeper" and not fridge_on and int(doy_f()) == 305 and queen.alive:     # 1 November
+		_log(T.fridge_hint)
 	# a winter is a stretch of cold days; six weeks of it fully rests the queen for the next year
 	if climate.nest < 10.0:
 		cold_days += 1
 		if cold_days == 42:
 			queen["rested"] = 1.0
 			_log(T.winter_rest_done, "ok")
+			if fridge_on:
+				_log(T.fridge_ready, "ok")
 	else:
 		if cold_days > 0 and climate.nest > 14.0:
 			cold_days = 0
-		queen["rested"] = maxf(0.0, float(queen.get("rested", 1.0)) - 1.0 / 300.0)
+		var was := float(queen.get("rested", 1.0))
+		queen["rested"] = maxf(0.0, was - 1.0 / 300.0)
+		if scenario == "keeper" and was >= 0.5 and queen.rested < 0.5 and not fridge_on:
+			_log(T.rest_low, "bad")
 	match nest.plan_chambers(eggs.size() + larvae.size() + pupae.size(), workers.size()):
 		"planned":
 			_log(T.chamber_planned % nest.chambers.size(), "ok")
@@ -187,7 +194,8 @@ func _metabolism(dt: float) -> void:
 	var fed := 1.0 if need <= 0.0 else clampf(sugar / need, 0.0, 1.0)
 	starving = fed < 0.999
 	sugar = maxf(0.0, sugar - need)
-	var keep := sugar_cap() * (0.15 if winding_down() else 0.5)
+	# in autumn only a couple of days' food stays in the crops; everything else goes into fat
+	var keep := minf(sugar_cap() * 0.5, workers.size() * sp["sugar_worker"] * 2.0 + 2.0) if winding_down() else sugar_cap() * 0.5
 	if sugar > keep and fat < fat_cap():
 		# a well-fed colony lays down fat (and full crops) for the lean months, above all in autumn
 		var store := minf(minf(sugar - keep, fat_cap() - fat), workers.size() * 0.15 * dt)
@@ -201,8 +209,12 @@ func _metabolism(dt: float) -> void:
 			a.energy -= dt / 6.0 / a.hardiness
 		else:
 			a.energy = minf(1.0, a.energy + dt)
-		if a.energy <= 0.0 or a.age > a.life or (a.state != Ant.IN_NEST and rng.randf() < sp["forager_daily_risk"] * dt):
-			_kill(a)
+		if a.energy <= 0.0:
+			_kill(a, "starve" if starving else "thirst")
+		elif a.age > a.life:
+			_kill(a, "old")
+		elif a.state != Ant.IN_NEST and rng.randf() < sp["forager_daily_risk"] * dt:
+			_kill(a, "out")          # lost while foraging: a bird, a spider, a raindrop, a wrong turn
 	_warn("starve", starving, T.warn_starve)
 	_warn("dry", dry, T.warn_dry)
 
@@ -276,9 +288,12 @@ func _queen(dt: float) -> void:
 		# grows only as far as its foraging ground can feed it
 		var stock := (sugar + fat) / (sugar_cap() * 0.5 + fat_cap() * 0.5)
 		rate *= clampf(stock, 0.1, 1.0)
-		# ...and above all by whether foraging brings in more than the colony eats: when the income only
-		# just covers the workers there is nothing spare for more brood
-		var earning := sugar_income / maxf(sugar_spend, 0.5)
+		# ...and above all by whether foraging brings in more than the colony will eat once it is warm,
+		# counting the brood that is about to become workers: when the income only just covers them there
+		# is nothing spare for more brood
+		var mouths := workers.size() + larvae.size() + pupae.size()
+		var upkeep: float = 7.0 * (mouths * sp["sugar_worker"] + sp["sugar_queen"])     # a week, at full warmth
+		var earning := sugar_income / upkeep
 		rate *= clampf((earning - 1.0) / 0.5, 0.05, 1.0)
 	egg_acc += rate * dt
 	while egg_acc >= 1.0:
@@ -309,10 +324,15 @@ func _brood(dt: float, nurse_cap: float) -> void:
 		protein = maxf(0.0, protein - need * r)
 		var hungriest := -1
 		var worst: float = sp["larva_starve_days"]
+		# late in the year the last larvae stop short of pupating and overwinter as larvae (diapause)
+		var diapause := winding_down() or fridge_on
+		var cold := clampf(dev * 2.0, 0.0, 1.0)          # a larva held still by the cold does not go hungry
 		for i in range(n - 1, -1, -1):
 			var l = larvae[i]
 			l.p += dt / sp["larva_days"] * dev * r
-			l.h = maxf(0.0, l.h + dt * (1.0 - r) - dt * r * 0.5)
+			if diapause:
+				l.p = minf(l.p, 0.95)
+			l.h = maxf(0.0, l.h + dt * (1.0 - r) * cold - dt * r * 0.5)
 			l.q = lerpf(l.get("q", 0.6), r, minf(1.0, dt * 0.6))   # running average of how well it was fed
 			if l.p >= 1.0:
 				larvae.remove_at(i)

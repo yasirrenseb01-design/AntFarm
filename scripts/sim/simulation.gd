@@ -170,7 +170,7 @@ func from_dict(d: Dictionary) -> void:
 ## A short summary for the save menu and the "while you were away" report.
 func summary() -> Dictionary:
 	return {"day": day(), "workers": workers.size(), "eggs": eggs.size(), "larvae": larvae.size(),
-		"pupae": pupae.size(), "born": stats.born, "dead": stats.dead + stats.cannibalized,
+		"pupae": pupae.size(), "born": stats.born, "dead": stats.dead, "brood_dead": stats.brood_dead + stats.cannibalized,
 		"chambers": nest.chambers.size(), "volume": nest.volume_cm3(), "humidity": humidity,
 		"queen": queen.alive, "glass": nest.slab, "scenario": scenario, "founding": founding()}
 

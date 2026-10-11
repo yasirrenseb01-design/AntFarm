@@ -298,8 +298,10 @@ func _update_ants(delta: float) -> void:
 
 	var running := speed > 0
 	var cells_per_sec := clampf(60.0 * speed / nest.STEP_EVERY, 0.0, 25.0) if running else 0.0
-	var dt := delta * cells_per_sec
-	var adt := delta if running else 0.0          # body animation freezes with the clock
+	# cold-blooded: a cool nest slows them, and below ~5 °C they barely stir (winter torpor)
+	var chill := clampf((float(sim.climate.nest) - 3.0) / 15.0, 0.06, 1.0)
+	var dt := delta * cells_per_sec * chill
+	var adt := delta * lerpf(0.25, 1.0, chill) if running else 0.0          # body animation freezes with the clock
 	if running:
 		_meetings()
 	var body: Color = AntModel.tint(sim.sp["body_color"])

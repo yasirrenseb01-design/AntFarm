@@ -32,4 +32,5 @@ func _init():
 				s.climate.nest, s.climate.air, s.queen.reserve, s.sugar, s.fat, s.protein, s.humidity, s.queen.get("rested", 1.0), s.cold_days, s.stats.dead])
 		if not s.queen.alive:
 			print("QUEEN DIED ", s.date_text()); break
+	print("workers dead %d by %s · brood dead %d · larvae eaten %d · born %d" % [s.stats.dead, s.stats.dead_by, s.stats.brood_dead, s.stats.cannibalized, s.stats.born])
 	quit()

@@ -110,6 +110,9 @@ func _take_shot() -> void:
 			nest_view.snap_camera()
 	if _opts.has("colonies"):
 		hud.open_colonies()
+	if _opts.has("fridge"):
+		sim.fridge_on = true
+		sim.climate.fridge = 1.0
 	if _opts.has("newcolony"):
 		hud._open_new_colony(1, true)
 	var keep := speed

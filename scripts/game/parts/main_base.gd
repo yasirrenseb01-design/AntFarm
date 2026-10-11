@@ -143,7 +143,8 @@ func _report_away() -> void:
 	lines.append("คุณไม่อยู่ %s → ในรังผ่านไป %.1f วัน (วันที่ %d → %d)%s" % [_hours_text(_away_hours),
 		float(_catchup_total) / sim.TPD, b.day, a.day, "\n(จำลองให้สูงสุด %d วันในเกม)" % int(Store.MAX_AWAY_DAYS) if _away_capped else ""])
 	lines.append("")
-	lines.append("มดงาน  %d → %d   (เกิดใหม่ %d · ตาย %d)" % [b.workers, a.workers, a.born - b.born, a.dead - b.dead])
+	lines.append("มดงาน  %d → %d   (เกิดใหม่ %d · ตาย %d · ลูกมดตาย %d)" % [b.workers, a.workers, a.born - b.born, a.dead - b.dead,
+		int(a.get("brood_dead", 0)) - int(b.get("brood_dead", 0))])
 	lines.append("ไข่ %d · ตัวอ่อน %d · ดักแด้ %d" % [a.eggs, a.larvae, a.pupae])
 	lines.append("ห้องในรัง  %d → %d   · ปริมาตร %.1f ซม³" % [b.chambers, a.chambers, a.volume])
 	lines.append("ความชื้นในรังตอนนี้ %d%%%s" % [int(a.humidity * 100), "  (ควรเติมน้ำ)" if a.humidity < 0.35 else ""])

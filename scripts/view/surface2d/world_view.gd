@@ -371,6 +371,8 @@ func _sky_color() -> Color:
 		c = night
 	if sim.climate.raining():
 		c *= Color(0.78, 0.82, 0.9)
+	# inside the fridge: dark, with a cold blue glow
+	c = c.lerp(Color(0.32, 0.4, 0.55), sim.climate.fridge * 0.75)
 	return c
 
 
