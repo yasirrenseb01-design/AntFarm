@@ -40,7 +40,7 @@ var _ant_mm: MultiMesh
 var _corpse_mm: MultiMesh
 var _prey_mm: MultiMesh
 var _spider_mm: MultiMesh
-var _spider_vis := {}
+var _spider_vis: Array = []        # smoothing state per wolf spider, in sim.creatures order
 var _rain_mm: MultiMesh
 var _rain: Array = []
 var _ring: MeshInstance3D

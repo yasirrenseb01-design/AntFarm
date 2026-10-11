@@ -45,8 +45,8 @@ func step() -> void:
 			_step_ant(a)
 			prof.steps += 1
 	var t3 := Time.get_ticks_usec()
-	if not spider.is_empty():
-		_step_spider()
+	if not creatures.is_empty():
+		_step_creatures()
 	if _any_dead:
 		workers = workers.filter(func(w): return not w.dead)
 		outside = outside.filter(func(w): return not w.dead)
@@ -76,7 +76,7 @@ func to_dict() -> Dictionary:
 		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
 		"sugar": sugar, "protein": protein, "humidity": humidity, "mold": mold, "heater": heater, "enemies": enemies,
-		"spider": spider, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
+		"creatures": creatures, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
 		"history": history, "log": log_entries, "warned": _warned, "next_id": _next_id,
 		"cannibal_cd": _cannibal_cd, "recruits": _recruits,
 		# values the colony tick derives but foragers read in between
@@ -125,7 +125,7 @@ func from_dict(d: Dictionary) -> void:
 	mold = d.mold
 	heater = d.heater
 	enemies = d.enemies
-	spider = d.spider
+	creatures = d.creatures
 	corpses_inside = d.corpses_inside
 	egg_acc = d.egg_acc
 	stats = d.stats

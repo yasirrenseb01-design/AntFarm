@@ -81,6 +81,16 @@ static func meta(slot: int) -> Dictionary:
 	return d if d is Dictionary else {}
 
 
+## Keep a copy of the slot as slotN.<tag>.antfarm (+ .json) before it is migrated or given up on.
+## An existing copy with the same tag is left alone, so the oldest one survives.
+static func backup(slot: int, tag: String) -> void:
+	var dst := "%s/slot%d.%s.antfarm" % [_dir(), slot, tag]
+	if FileAccess.file_exists(_path(slot)) and not FileAccess.file_exists(dst):
+		DirAccess.copy_absolute(_path(slot), dst)
+		if FileAccess.file_exists(_meta_path(slot)):
+			DirAccess.copy_absolute(_meta_path(slot), "%s/slot%d.%s.json" % [_dir(), slot, tag])
+
+
 static func delete(slot: int) -> void:
 	for p in [_path(slot), _meta_path(slot)]:
 		if FileAccess.file_exists(p):

@@ -127,7 +127,7 @@ func _build_tools(root: Control) -> void:
 	enemy.toggled.connect(func(on):
 		sim.enemies = on
 		if not on:
-			sim.remove_spider())
+			sim.remove_enemies())
 	row.add_child(enemy)
 	_surface_tools.append(enemy)
 	_hint = _label("", 12, MUTED)

@@ -29,10 +29,21 @@ func _ready() -> void:
 		next_slot = 0
 		if next_nest == "":
 			var data := Store.load_slot(slot)
-			if not data.is_empty() and data.sim.get("version", -1) == Sim.SAVE_VERSION:
+			var v: int = int(data.sim.get("version", -1)) if data.has("sim") else -1
+			if v > Sim.SAVE_VERSION:
+				# saved by a newer game: play a scratch colony and never write over that save
+				_persist = false
+				_load_note = "รัง %d ถูกบันทึกด้วยเกมเวอร์ชันใหม่กว่านี้ (รูปแบบเซฟ %d) เกมนี้จึงเปิดรังทดลองให้แทน\nและจะไม่บันทึกทับรังนั้น — อัปเดตเกมแล้วรังจะกลับมาเหมือนเดิม" % [slot, v]
+			elif v >= 1:
+				if v < Sim.SAVE_VERSION:
+					Store.backup(slot, "before-v%d" % Sim.SAVE_VERSION)
+					data.sim = Migrations.migrate(data.sim, Sim.SAVE_VERSION)
 				sim.from_dict(data.sim)
 				loaded = true
 				_plan_catchup(data.meta)
+			elif Store.exists(slot):
+				Store.backup(slot, "unreadable-%d" % int(Time.get_unix_time_from_system()))
+				_load_note = "อ่านเซฟรัง %d ไม่ได้ เก็บไฟล์เดิมไว้ในโฟลเดอร์เซฟแล้ว (slot%d.unreadable-…) และเริ่มรังใหม่" % [slot, slot]
 		_settings["slot"] = slot
 		Store.save_settings(_settings)
 	if not loaded:
@@ -92,6 +103,8 @@ func _ready() -> void:
 
 	if _persist and not loaded:
 		_save_now()
+	if _load_note != "":
+		hud.show_report("เซฟ", _load_note)
 	if _catchup_left > 0:
 		_show_catchup_overlay()
 	if _opts.has("shot"):

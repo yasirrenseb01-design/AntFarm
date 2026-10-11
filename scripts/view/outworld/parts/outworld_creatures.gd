@@ -195,24 +195,27 @@ func _update_corpses() -> void:
 
 
 func _update_spider(delta: float) -> void:
-	if sim.spider.is_empty():
-		_spider_mm.instance_count = 0
-		_spider_vis = {}
-		return
-	var s: Dictionary = sim.spider
-	if _spider_vis.is_empty():
-		_spider_vis = {"p": s.pos, "a": s.ang, "mv": 0.0}
-	var step: Vector2 = s.pos - _spider_vis.p
-	_spider_vis.p += step * (1.0 - exp(-15.0 * delta))
-	_spider_vis.a = lerp_angle(_spider_vis.a, s.ang, 1.0 - exp(-8.0 * delta))
-	_spider_vis.mv = lerpf(_spider_vis.mv, 1.0 if step.length_squared() > 0.0004 else 0.0, minf(1.0, 6.0 * delta))
-	var p: Vector2 = _spider_vis.p * U
-	var up := ground_n(p.x, p.y)
-	var f := Vector3(cos(_spider_vis.a), 0, sin(_spider_vis.a))
-	f = (f - up * f.dot(up)).normalized()
-	_spider_mm.instance_count = 1
-	_spider_mm.set_instance_transform(0, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * 0.85), Vector3(p.x, ground_h(p.x, p.y), p.y)))
-	_spider_mm.set_instance_custom_data(0, Color(fmod(s.phase * 0.5, TAU * 64.0), 0, _t, _spider_vis.mv))
+	var spiders := []
+	for c in sim.creatures:
+		if c.kind == "wolf_spider":
+			spiders.append(c)
+	_spider_vis.resize(spiders.size())
+	_spider_mm.instance_count = spiders.size()
+	for i in spiders.size():
+		var s: Dictionary = spiders[i]
+		if _spider_vis[i] == null:
+			_spider_vis[i] = {"p": s.pos, "a": s.ang, "mv": 0.0}
+		var v: Dictionary = _spider_vis[i]
+		var step: Vector2 = s.pos - v.p
+		v.p += step * (1.0 - exp(-15.0 * delta))
+		v.a = lerp_angle(v.a, s.ang, 1.0 - exp(-8.0 * delta))
+		v.mv = lerpf(v.mv, 1.0 if step.length_squared() > 0.0004 else 0.0, minf(1.0, 6.0 * delta))
+		var p: Vector2 = v.p * U
+		var up := ground_n(p.x, p.y)
+		var f := Vector3(cos(v.a), 0, sin(v.a))
+		f = (f - up * f.dot(up)).normalized()
+		_spider_mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * 0.85), Vector3(p.x, ground_h(p.x, p.y), p.y)))
+		_spider_mm.set_instance_custom_data(i, Color(fmod(s.phase * 0.5, TAU * 64.0), 0, _t, v.mv))
 
 
 func _update_rain(delta: float, raining: bool) -> void:

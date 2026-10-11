@@ -7,6 +7,7 @@ const Hud := preload("res://scripts/view/ui/hud.gd")
 const NestView := preload("res://scripts/view/nest/nest_view.gd")
 const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
 const Store := preload("res://scripts/game/save_store.gd")
+const Migrations := preload("res://scripts/sim/save_migrations.gd")
 
 var sim
 var world
@@ -17,7 +18,8 @@ var mode := "surface"              # "outworld" (3D), "surface" (top-down 2D) or
 static var next_nest := ""      # "<soil|glass>:<queen|young>": start a fresh colony after the reload
 static var next_slot := 0       # which save slot to open after the reload (0 = the last one played)
 var slot := 1
-var _persist := false           # tests and screenshots never touch the player's saves
+var _persist := false
+var _load_note := ""                # told to the keeper once the HUD is up (a save that could not be used)           # tests and screenshots never touch the player's saves
 var _settings := {}
 var _autosave_t := 0.0
 var _catchup_left := 0          # ticks still to simulate for the time the game was closed

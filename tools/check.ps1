@@ -44,6 +44,8 @@ Report ("{0} scripts" -f $scripts.Count) ($fail -eq 0)
 Write-Host "2. tests"
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/save_test.gd") 300
 Report "save round trip" ($r -match "SAVE TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/migration_test.gd") 300
+Report "older save formats load and play on identically" ($r -match "MIGRATION TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/reach_test.gd") 300
 Report "ants reach food walled by stones" ($r -match "reached 8/8")
 $sandbox = Join-Path $env:APPDATA "Godot\app_userdata\AntFarm\sandbox\saves\slot1.antfarm"

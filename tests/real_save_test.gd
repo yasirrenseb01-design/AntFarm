@@ -5,6 +5,7 @@ extends SceneTree
 
 const SIM := "res://scripts/sim/simulation.gd"
 const STORE := "res://scripts/game/save_store.gd"
+const MIGRATIONS := "res://scripts/sim/save_migrations.gd"
 
 
 func _init() -> void:
@@ -16,7 +17,8 @@ func _init() -> void:
 		quit(1)
 		return
 	var sim = load(SIM).new()
-	sim.from_dict(data.sim)
+	print("save format v%d -> v%d" % [int(data.sim.get("version", 1)), sim.SAVE_VERSION])
+	sim.from_dict(load(MIGRATIONS).migrate(data.sim, sim.SAVE_VERSION))
 	var a: Dictionary = sim.summary()
 	for i in sim.TPD:
 		sim.step()

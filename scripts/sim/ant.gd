@@ -1,5 +1,5 @@
 extends RefCounted
-## One worker ant. Plain data; behaviour lives in simulation.gd.
+## One ant (so far always a worker). Plain data; behaviour lives in simulation.gd.
 
 const IN_NEST := 0
 const SEARCH := 1
@@ -7,12 +7,18 @@ const RETURN := 2
 const HOME := 3
 const UNDERTAKER := 4
 
+# castes: workers now; winged gynes (new queens) and males come with the nuptial flight (PART 8)
+const WORKER := 0
+const GYNE := 1
+const MALE := 2
+
 const NONE := 0
 const SUGAR := 1
 const PROTEIN := 2
 const CORPSE := 3
 
 var id := 0
+var caste := WORKER
 var age := 0.0          # days since eclosion
 var life := 400.0       # days until death of old age
 var state := IN_NEST

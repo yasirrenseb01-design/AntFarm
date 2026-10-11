@@ -246,8 +246,9 @@ func _draw_items(ci: Node2D) -> void:
 
 func _draw_ants(ci: Node2D) -> void:
 	# foragers are batched in AntBatch; only the predator is drawn here
-	if not sim.spider.is_empty():
-		Kit.wolf_spider(ci, sim.spider.pos, sim.spider.ang, sim.spider.phase)
+	for c in sim.creatures:
+		if c.kind == "wolf_spider":
+			Kit.wolf_spider(ci, c.pos, c.ang, c.phase)
 
 
 func _draw_fx(ci: Node2D) -> void:
@@ -303,8 +304,8 @@ func refresh(delta: float, sim_speed: float) -> void:
 		_items_sig = sig
 		_items.queue_redraw()
 	_batch.update(sim.outside, sim.sp["body_color"], sim.sp["callow_color"], 1.15, delta, sim_speed > 0)
-	if not sim.spider.is_empty() or _spider_drawn:
-		_spider_drawn = not sim.spider.is_empty()
+	if not sim.creatures.is_empty() or _spider_drawn:
+		_spider_drawn = not sim.creatures.is_empty()
 		_ants.queue_redraw()
 	_fx.queue_redraw()
 	if show_pheromones:

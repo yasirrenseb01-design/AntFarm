@@ -52,7 +52,7 @@ var humidity := 0.7
 var mold := 0.0
 var heater := false
 var enemies := true
-var spider: Dictionary = {}
+var creatures: Array = []          # enemies in the outworld: {"kind", "pos", ...} (see parts/sim_enemies.gd)
 var corpses_inside := 0
 var egg_acc := 0.0
 var stats := {"dead": 0, "cannibalized": 0, "born": 0, "sugar_in": 0, "protein_in": 0}
@@ -277,8 +277,9 @@ func add_rock(p: Vector2, r: float) -> bool:
 					a.pos = q
 					a.ang = tryd.angle()
 					break
-	if not spider.is_empty() and spider.pos.distance_to(p) < r + 6.0:
-		spider.pos = p + (spider.pos - p).normalized() * (r + 8.0)
+	for c in creatures:
+		if c.pos.distance_to(p) < r + 6.0:
+			c.pos = p + (c.pos - p).normalized() * (r + 8.0)
 	return true
 
 
@@ -369,6 +370,6 @@ func _log(text: String, kind: String = "") -> void:
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2              # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
-	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase"]
+	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste"]
