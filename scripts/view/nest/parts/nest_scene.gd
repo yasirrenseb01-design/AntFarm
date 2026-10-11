@@ -94,6 +94,7 @@ var _queen_cells := {}           # voxel cells the queen's body fills: nestmates
 const QUEEN_HEAD := Vector3(1.25, 0.5, 0.0)
 const QUEEN_TAIL := Vector3(-1.45, 0.5, 0.0)
 const QUEEN_R := 1.05
+const QUEEN_LIFT := 0.38      # her model reaches 0.24 below her feet (gaster) x QUEEN_SCALE
 const QUEEN_SCALE := 1.75     # her model at this scale is ~9 mm long (a Lasius niger queen: 8-9 mm; workers 3.5-5)
 var _queen_turn := 0.0
 var _queen_turn_t := 0.0

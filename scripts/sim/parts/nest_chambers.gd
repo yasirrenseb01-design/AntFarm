@@ -66,7 +66,7 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 			ch.open = true
 			event = "opened"
 	# how big a chamber gets grows with the colony: ~1.5 cm long for a founding queen, up to ~4 cm
-	var cap := clampf(5.0 + workers / 20.0, 5.0, 13.0)
+	var cap := clampf(6.0 + workers / 12.0, 6.0, 13.0)        # the first workers soon need more than the founding cell
 	var planned := 0.0
 	var floor_cap := 0.0
 	for ch in chambers:

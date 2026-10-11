@@ -130,5 +130,17 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 	var sep: Vector3 = m.get("sep", Vector3.ZERO)
 	sep = (sep + push * minf(1.0, 12.0 * delta)) * pow(0.5, delta)
 	sep = sep.limit_length(2.5)
+	# never into the soil: in a cramped chamber ants press together (as real ones do) rather than
+	# through the walls
+	if not _open_at(p + sep, up):
+		sep *= 0.5
+		if not _open_at(p + sep, up):
+			sep = Vector3.ZERO
 	m.sep = sep
 	return sep
+
+
+## Whether a body standing at p (on a surface whose up is `up`) is in open space, not in the soil.
+func _open_at(p: Vector3, up: Vector3) -> bool:
+	var c := p + up * 0.6
+	return nest.is_open(Vector3i(roundi(c.x), roundi(c.y), roundi(c.z)))

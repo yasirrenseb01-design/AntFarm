@@ -146,7 +146,13 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		col_fn := Callable()) -> void:
 	var n := mini(items.size(), max_n)
 	if _queen_mm.instance_count > 0:
-		spots = spots.filter(func(s): return _queen_gap(s) > 0.6)      # not under the queen
+		# not under the queen (a larva is ~2 units long); in a tiny founding chamber keep the spots farthest from her
+		var clear := spots.filter(func(s): return _queen_gap(s) > 1.3)
+		if clear.is_empty() and not spots.is_empty():
+			clear = spots.duplicate()
+			clear.sort_custom(func(a, b): return _queen_gap(a) > _queen_gap(b))
+			clear = clear.slice(0, maxi(1, clear.size() / 3))
+		spots = clear
 	if spots.is_empty():
 		n = 0
 	elif spots.size() * 3 < n and not _spots.all.is_empty():
@@ -208,7 +214,8 @@ func _queen_pose() -> void:
 	var show: bool = sim.queen.alive and qp != Vector3.ZERO and _visible(qp)
 	_queen_mm.instance_count = 1 if show else 0
 	if show:
-		_queen_xf = Transform3D(Basis(Vector3.UP, _queen_turn).scaled(Vector3.ONE * QUEEN_SCALE), qp)
+		# her heavy gaster hangs below her feet: stand her up on her legs so it rests on the floor, not in it
+		_queen_xf = Transform3D(Basis(Vector3.UP, _queen_turn).scaled(Vector3.ONE * QUEEN_SCALE), qp + Vector3.UP * QUEEN_LIFT)
 		_queen_mm.set_instance_transform(0, _queen_xf)
 		_queen_mm.set_instance_color(0, AntModel.tint(Color(0.075, 0.05, 0.038)))
 		# the cells under her body, for the nestmates' routes
