@@ -6,9 +6,20 @@
 3. **ลงมือ** — โมเดลทำใน Blender (`tools/blender/`), พฤติกรรมที่มีผลต่อรังอยู่ใน `scripts/sim/`, ภาพเคลื่อนไหวล้วนอยู่ใน `scripts/view/`
 4. **ตรวจ** — `powershell -ExecutionPolicy Bypass -File tools/check.ps1` (ระหว่างทำใช้ `-Quick`)
    - ถ้าตั้งใจเปลี่ยนผลการจำลอง: รัน `-UpdateBaseline` และเขียนใน CHANGELOG ว่าเปลี่ยนอะไร
-5. **ดูด้วยตา** — ถ่ายภาพด้วย `--shot` (ตัวเลือกอยู่หัว `scripts/game/main.gd`) เก็บใน `shots/vX.Y.Z/` แล้วเปิดดูจริงทุกครั้ง
+5. **ดูด้วยตา** — ถ่ายภาพด้วย `tools/dev/gd.sh --path . -- --shot=...` (ตัวเลือกอยู่หัว `scripts/game/main.gd`) แล้วเปิดดูจริงทุกครั้ง
+   - ของที่เคลื่อนไหว: ภาพต่อเนื่อง `--seq=9 --seq-every=3 --seq-speed=0.5` (+ `--at-ant=walker`) แล้ว `python tools/dev/strip.py`
+   - ของชิ้นใหม่: ดูทั้งมุมต่ำและมุมบน, เทียบขนาดกับตาราง "ขนาดจริง" ใน BIOLOGY.md
+   - ระบบที่กระทบการอยู่รอดของรัง: `tests/year_run.gd -- wild 0 1100 alone <seed>` อย่างน้อย 2 seed + แบบดูแล
 6. **ปล่อยเวอร์ชัน** — เพิ่ม `config/version` ใน `project.godot`, เขียน `CHANGELOG.md`, รัน `tools/build.ps1`, commit + push
 7. **ของที่ยังไม่ทำ** — ลง "รายการค้าง" ใน `docs/ROADMAP.md` ทันที อย่าเก็บไว้ในหัว
+
+## รายการตรวจก่อนส่ง (ทุกเวอร์ชัน)
+- [ ] `tools/check.ps1` ผ่าน (เปลี่ยนผลจำลองตั้งใจ → `-UpdateBaseline` + บอกใน CHANGELOG)
+- [ ] ดูภาพจริงของสิ่งที่แก้ (ข้อ 5) — ไม่ใช่แค่ test ผ่าน
+- [ ] ขนาดไฟล์: `git ls-files '*.gd' '*.py' | xargs wc -l | sort -rn | head` — เกิน ~500 แยก
+- [ ] เอกสาร: ARCHITECTURE (ชั้นไฟล์, รหัสกิจกรรม, รูปแบบเซฟ), BIOLOGY (ข้อมูล/ขนาดใหม่), ROADMAP (ทำแล้ว/ค้าง)
+- [ ] พลาดอะไรในรอบนี้ → เพิ่มใน `docs/LESSONS.md`
+- [ ] เวอร์ชัน + CHANGELOG + `tools/build.ps1` + commit/push
 
 ## เพิ่มของใหม่
 - อาหารชนิดใหม่: รายการใน `scripts/sim/food_kinds.gd` (+ `_food_<ชนิด>()` ภาพ 3 มิติ, ภาพ 2 มิติ, โมเดล Blender ถ้ามี)
@@ -19,7 +30,9 @@
 ## กฎขนาดไฟล์
 - ไฟล์โค้ดเกิน ~500 บรรทัด → แยก (ใช้ชั้น `extends` ตาม `docs/ARCHITECTURE.md`, เครื่องมือ `tools/dev/split_gd.py`)
 - ของชนิดใหม่ (ศัตรู, อาหาร, วรรณะ) ให้เป็นไฟล์ของตัวเอง อย่าเพิ่ม `match` ยาวๆ ในไฟล์กลาง
-- `mesh_kit.gd` (~576 บรรทัด): มีโมเดลสำรองแบบเก่าของเพลี้ย/จิ้งหรีด/ต้นไม้ — ลบได้เมื่อแน่ใจว่าไฟล์ Blender ครบทุกที่
+- ไฟล์ที่แยกแล้วเขียนหัวไฟล์ว่า "split from <ไฟล์เดิม> in vX.Y.Z" และลำดับชั้น เพื่อตามกลับได้ (ตารางใน ARCHITECTURE)
+- สคริปต์ Blender ที่โต: แยกเป็นไฟล์ย่อยแล้วให้ไฟล์หลัก `exec` ตามลำดับ (`tools/blender/props/`, `tools/blender/ant/`)
+- `mesh_kit.gd`: มีโมเดลสำรองแบบเก่าของเพลี้ย/จิ้งหรีด/ต้นไม้ — ลบได้เมื่อแน่ใจว่าไฟล์ Blender ครบทุกที่
 
 ## เซฟของผู้เล่น
 - ห้ามแตะเซฟจริง (`%APPDATA%\Godot\app_userdata\AntFarm\saves`) ในการทดสอบ — ใช้ `--sandbox`

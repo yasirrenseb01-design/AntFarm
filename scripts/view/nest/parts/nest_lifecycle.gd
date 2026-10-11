@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_brood.gd"
-## Nest view, layer 4 of 6: life-cycle moments acted out from sim.events (egg laying, pupation,
+## Nest view, layer 4 of 7: life-cycle moments acted out from sim.events (egg laying, pupation,
 ## eclosion, carrying the empty cocoon out).
 
 

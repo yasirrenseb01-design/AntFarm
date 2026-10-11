@@ -31,17 +31,20 @@ scripts/
   game/        main.gd (จุดเริ่ม), save_store.gd, parts/ (main_base, main_camera)
   dev/         dev_tools.gd (--shot, --selftest), ตัวเลือกบรรทัดคำสั่งอยู่หัว main.gd
   sim/         simulation.gd + parts/ (sim_base, sim_foragers, sim_enemies, sim_colony),
-               ant.gd, climate.gd, nest_volume.gd, pheromone_field.gd, species/
+               ant.gd, climate.gd, nest_volume.gd (+ parts/nest_voxels, nest_chambers), pheromone_field.gd, species/
   view/
-    common/    ant_model3d.gd (โหลด .antmesh ของมด), mesh_kit.gd (โมเดลของในกล่อง + โหลด asset)
+    common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset)
     outworld/  พื้นที่หาอาหาร 3 มิติ: outworld_view.gd + parts/ (scene, props, creatures, camera)
-    nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, mates), nest_mesher.gd
+    nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
     surface2d/ มุมบน 2 มิติ: world_view.gd, ant_batch.gd, draw_kit.gd
     ui/        hud.gd + parts/ (base, colonies, controls, panel)
-shaders/       ants/, creatures/, terrain/, plants/
+shaders/       ants/, creatures/, terrain/ (+ ground_h.gdshaderinc: ความสูงพื้นข้างนอก ใช้ร่วมพื้นกับสัตว์), plants/
 assets/models/ ants/, prey/, plants/   (ไฟล์ .antmesh/.json ที่ Blender สร้าง — ห้ามแก้มือ ให้รันสคริปต์ Blender ใหม่)
-tools/         build.ps1, check.ps1, blender/ (build_ant.py, build_props.py + props/<ชนิด>.py, bl.py), dev/split_gd.py
-tests/         save_test, reach_test, real_save_test, rock_test, nest_debug, baselines/
+tools/         build.ps1 (สร้าง + ลบ build เก่าเอง), check.ps1,
+               blender/ (build_ant.py + ant/<ส่วน>.py, build_props.py + props/<ชนิด>.py, bl.py),
+               dev/ (gd.sh เปิด Godot อย่างปลอดภัย, split_gd.py แยกไฟล์, strip.py รวมภาพต่อเนื่อง)
+tests/         save_test, migration_test (+ fixtures/save_vN), reach_test, real_save_test, rock_test, nest_debug,
+               year_run (จำลองหลายปี, แบบ alone = ไม่ดูแล), baselines/
 reference/     ภาพอ้างอิงจากผู้ใช้ + ที่มา (ไม่รวมเข้าเกม)
 ```
 
@@ -51,7 +54,9 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 | ระบบ | ลำดับชั้น (ล่าง → บน) |
 |---|---|
 | การจำลอง | `sim_base` (สถานะ, setup, เวลา, การกระทำของผู้เล่น) ← `sim_foragers` ← `sim_enemies` ← `sim_colony` ← `simulation` (step, เซฟ) |
-| รัง 3 มิติ | `nest_scene` ← `nest_camera` ← `nest_brood` ← `nest_lifecycle` ← `nest_mates` ← `nest_view` (setup, refresh, input) |
+| รัง (การจำลอง) | `nest_voxels` (ช่องดิน, ขุดทั้งห้อง, ความหนาแน่นให้ mesher, เซฟ) ← `nest_chambers` (แผนห้อง) ← `nest_volume` (มดขุด) — แยก v0.8.5 |
+| รัง 3 มิติ | `nest_scene` ← `nest_camera` ← `nest_brood` ← `nest_lifecycle` ← `nest_bodies` (เดินตามทาง, ตัวกันชน; แยก v0.8.5) ← `nest_mates` ← `nest_view` (setup, refresh, input) |
+| โมเดลของในกล่อง | `mesh_kit_base` (เครื่องมือสร้าง, asset, หิน/ใบไม้/หญ้า/ต้นถั่ว) ← `mesh_kit` (เพลี้ย, จิ้งหรีด, ลูกมด, แมลงวัน, แมงมุม) — แยก v0.8.5 |
 | พื้นดิน 3 มิติ | `outworld_scene` ← `outworld_props` ← `outworld_creatures` ← `outworld_camera` ← `outworld_view` |
 | HUD | `hud_base` ← `hud_colonies` ← `hud_controls` ← `hud_panel` ← `hud` |
 | เกม | `main_base` ← `main_camera` ← `dev/dev_tools` ← `main` |
@@ -74,12 +79,16 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 - vertex color = ตัวคูณสีบนสี tint ของแต่ละตัว; **alpha = รหัสส่วนร่างกาย / 16**:
   0 ลำตัว, 1 หัว, 2/3 หนวดซ้าย/ขวา, 4–9 ขา (หน้าซ้าย, หน้าขวา, กลางซ้าย, กลางขวา, หลังซ้าย, หลังขวา), 10 ท้อง, 11 กราม ("ซ้าย" = ด้าน -z)
 - `shaders/ants/ant.gdshader` หมุนแต่ละส่วนรอบข้อต่อ (จุดหมุนใน design units × K) ตาม INSTANCE_CUSTOM = (จังหวะเดิน, กิจกรรม, นาฬิกา, ปริมาณการเดิน)
-- รหัสกิจกรรม: 0 เดิน, 1 พัก, 2 ขุด/กัด, 3 แตะหนวด, 4 ทำความสะอาด, 5 วางไข่, 6 ป้อนอาหาร, 7 ดูแลตัวอ่อน, 8 คาบของ, 9 รีดเพลี้ย, 10 ดื่ม, 11 ตาย, 12 เพิ่งออกจากรังไหม; +100 = ท้องเต็มน้ำหวาน
+- รหัสกิจกรรม: 0 เดิน, 1 พัก, 2 ขุด/กัด, 3 แตะหนวด, 4 ทำความสะอาด, 5 วางไข่, 6 ป้อนอาหาร, 7 ดูแลตัวอ่อน, 8 คาบของ, 9 รีดเพลี้ย, 10 ดื่ม, 11 ตาย,
+  12 เพิ่งออกจากรังไหม, 13 สู้ (งับ+พ่นกรด), 14 ตื่นตกใจวิ่งเข้าหา, 15 หยุดสำรวจ (ส่ายหัว), 16 เดินตามทางกลิ่น (หนวดเคาะพื้น); +100 = ท้องเต็มน้ำหวาน
+- ขา: IK บนข้อต่อของ `LEGS` ใน `tools/blender/ant/legs.py` (ต้องตรงกับค่าใน shader) — ดู "รูปแบบไฟล์ .antmesh"
+- ตัวกันชนในรัง (`nest_bodies.gd`): มดงาน = วงกลม 2 วงตามลำตัว, ราชินี = แคปซูล (`QUEEN_HEAD/TAIL/R`), ช่องที่ราชินีนอนอยู่ (`_queen_cells`) มดเดินอ้อม
+- สัตว์ข้างนอก (`shaders/creatures/*`): ทุกจุดของตัวยึดกับพื้นใต้ตัวเอง (`follow_ground` ใน `ground_h.gdshaderinc`) — ต้องส่ง `mound_h/mound_r/nest_xz` ให้ material
 - `limb_gain` (shader uniform) ทำให้ขา/หนวด/กรามสีอ่อนกว่าตัว (ราชินีสีส้มอำพัน)
 
 ## รูปแบบไฟล์ .antmesh
 - `ANT2` (โมเดลมด): เหมือน `ANTM` แต่มี float ที่ 11 ต่อจุด = ท่อนขา (1 โคนขา, 2 ต้นขา, 3 หน้าแข้ง, 4 เท้า; 0 = ไม่ใช่ขา
-  หรือโมเดลไกล) ส่งเข้า shader ทาง `UV.x` — shader ใช้ IK บนข้อต่อของ `LEGS` ใน `build_ant.py` (ต้องตรงกันสองที่)
+  หรือโมเดลไกล) ส่งเข้า shader ทาง `UV.x` — shader ใช้ IK บนข้อต่อของ `LEGS` ใน `tools/blender/ant/legs.py` (ต้องตรงกันสองที่)
 - การก้าว: `ant_model3d.gd` (`STRIDE_A`, `stride_scale`, `duty`, `stride_len`, `gait_w`) คู่กับค่าใน shader;
   มุมมองเดินจังหวะก้าวด้วย "ระยะทางที่เดินจริง ÷ ความยาวก้าว" เท้าจึงไม่ไถล; `INSTANCE_CUSTOM.w` = mv + ขนาดก้าว×100
 `"ANTM"`, จำนวน vertex (u32), จำนวน index (u32), ต่อ vertex 10 float (ตำแหน่ง xyz, normal xyz, สี rgba), แล้ว index u32

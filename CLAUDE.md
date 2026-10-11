@@ -6,11 +6,13 @@
 - `docs/ROADMAP.md` แผนแต่ละ PART, สถานะ, งานถัดไป และ **รายการค้าง** (อัปเดตทุกครั้งที่ทำเสร็จหรือเว้นอะไรไว้)
 - `docs/WORKFLOW.md` ขั้นตอนหนึ่งรอบงาน, กฎขนาดไฟล์ (~500 บรรทัด), เรื่องเซฟและ Blender
 - `docs/ARCHITECTURE.md` โฟลเดอร์, ไฟล์ที่แยกเป็นชั้น (`extends` path), หน่วยวัด, รหัสส่วนร่างกายมด, รูปแบบ `.antmesh`
-- `docs/BIOLOGY.md` ข้อมูลชีววิทยาและแหล่งอ้างอิง (ภาพอ้างอิงใน `reference/`)
+- `docs/BIOLOGY.md` ข้อมูลชีววิทยา ตารางขนาดจริง และแหล่งอ้างอิง (ภาพอ้างอิงใน `reference/`)
+- `docs/LESSONS.md` **ความผิดพลาดที่เคยเกิดและวิธีกัน — อ่านทุกครั้ง** และเพิ่มข้อเมื่อพลาดเรื่องใหม่
 
 ## กฎสำคัญ
 - ทำงานทีละ PART ตามที่ผู้ใช้เลือก ไม่ทำล่วงหน้าหลายส่วนพร้อมกัน
-- Godot 4.7.2 GDScript: `E:\Godot_v4.7.2-stable_win64_console.exe` — สคริปต์ที่มี parse error ทำให้ Godot ค้าง ใช้ `timeout` และ `--check-only` ก่อนรัน
+- Godot 4.7.2 GDScript: `E:\Godot_v4.7.2-stable_win64_console.exe` — เปิดผ่าน `tools/dev/gd.sh <args>` เสมอ
+  (ตรวจ parse error ก่อน; สคริปต์ที่มี parse error ทำให้ Godot ค้างเป็นจอดำ)
 - ตรวจทุกอย่างก่อนส่ง: `powershell -ExecutionPolicy Bypass -File tools/check.ps1` (`-Quick` ระหว่างทำ)
 - ส่งงาน: เพิ่ม `config/version` (`0.PART.รอบแก้`) ใน `project.godot`, เขียน `CHANGELOG.md`, รัน `tools/build.ps1` (ทางลัดบนเดสก์ท็อปเปิด `build/AntFarm.exe`), commit + push
 - รังเริ่มต้นคือราชินีตัวเดียว; ทดสอบรัง 14 ตัวใส่ `--workers=14`; ห้ามแตะเซฟจริงของผู้เล่น (ใช้ `--sandbox`)

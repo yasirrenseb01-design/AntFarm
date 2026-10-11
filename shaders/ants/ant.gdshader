@@ -123,7 +123,7 @@ void vertex() {
 		R = rot_y(sw * side) * rot_x(-lift * side);
 		float seg = floor(UV.x + 0.5);
 		if (!posed && seg > 0.5) {
-			// rest joints of this leg (tools/blender/build_ant.py LEGS), mesh units
+			// rest joints of this leg (tools/blender/ant/legs.py LEGS), mesh units
 			vec3 L = li < 0.5 ? vec3(0.85, 0.75, 1.8) : (li < 1.5 ? vec3(0.2, 0.1, -0.1) : vec3(-0.4, -0.65, -2.2));
 			vec3 H = vec3(L.x, 0.85, 0.42 * side) * K;
 			vec3 C = vec3(L.x + 0.1, 0.55, 0.85 * side) * K;
