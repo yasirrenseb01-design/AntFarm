@@ -3,7 +3,11 @@ render_mode diffuse_burley;
 // Ant body animation on the GPU. Each vertex carries a body-part id in COLOR.a (see ant_model3d.gd);
 // each instance carries in INSTANCE_CUSTOM:
 //   x = gait phase (radians, advanced by distance walked)   y = activity id
-//   z = animation clock (seconds, per ant)                   w = how much it is walking (0..1)
+//   z = animation clock (seconds, per ant)
+//   w = how much it is walking (fraction, 0..1) + stride scale x 100 (whole part; 0 = normal), see
+//       ant_model3d.gd gait_w(). Walking legs use inverse kinematics on the joints of the Blender model
+//       (UV.x = leg segment: 1 coxa, 2 femur, 3 tibia, 4 tarsus): each foot stays planted on the ground
+//       while the body passes over it (alternating tripods), then swings forward; the knee bends to suit.
 // Activities: 0 walk/idle, 1 rest, 2 dig, 3 antennate, 4 groom, 5 lay eggs (queen),
 //             6 trophallaxis (mouth-to-mouth feeding), 7 tend brood / attend queen, 8 carry,
 //             9 milk aphids, 10 drink, 11 dead (on its back, legs curled),
@@ -21,6 +25,38 @@ const float K = 0.34;   // model design units -> mesh units
 mat3 rot_x(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(1, 0, 0), vec3(0, c, s), vec3(0, -s, c)); }
 mat3 rot_y(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(c, 0, -s), vec3(0, 1, 0), vec3(s, 0, c)); }
 mat3 rot_z(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(c, s, 0), vec3(-s, c, 0), vec3(0, 0, 1)); }
+// rotation about any unit axis (Rodrigues)
+vec3 rot_axis(vec3 v, vec3 k, float a) { float c = cos(a); float s = sin(a); return v * c + cross(k, v) * s + k * dot(k, v) * (1.0 - c); }
+// turn (x, z) toward z by a, about the vertical
+vec3 yaw(vec3 v, float a) { float c = cos(a); float s = sin(a); return vec3(v.x * c - v.z * s, v.y, v.x * s + v.z * c); }
+
+const float STRIDE_A = 1.3;      // ant_model3d.gd STRIDE_A
+const float LIFT_H = 0.42;       // how high a swinging foot is raised, design units
+
+// Two-segment leg (femur C->N, tibia N->A) reaching for an ankle target TA, in the vertical plane
+// through C and TA. Returns the femur and tibia rotations (about `axis`) for the knee-up solution.
+vec2 leg_ik(vec3 C, vec3 N, vec3 A, vec3 TA, out vec3 axis) {
+	vec3 d = TA - C;
+	vec3 dir = normalize(vec3(d.x, 0.0, d.z) + vec3(1e-4, 0.0, 0.0));
+	axis = normalize(cross(dir, vec3(0.0, 1.0, 0.0)));
+	vec2 u1 = vec2(dot(N - C, dir), N.y - C.y);
+	vec2 r2 = vec2(dot(A - C, dir), A.y - C.y);
+	vec2 c2 = vec2(dot(TA - C, dir), TA.y - C.y);
+	float l1 = length(u1);
+	float l2 = length(r2 - u1);
+	float dr = length(r2);
+	float dc = clamp(length(c2), abs(l1 - l2) + 1e-4, l1 + l2 - 1e-4);
+	float a0 = acos(clamp((l1 * l1 + dr * dr - l2 * l2) / (2.0 * l1 * dr), -1.0, 1.0));
+	float a1 = acos(clamp((l1 * l1 + dc * dc - l2 * l2) / (2.0 * l1 * dc), -1.0, 1.0));
+	float sgn = sign(r2.x * u1.y - r2.y * u1.x);
+	float f = atan(c2.y, c2.x) - atan(r2.y, r2.x) + sgn * (a1 - a0);
+	vec2 n2 = vec2(u1.x * cos(f) - u1.y * sin(f), u1.x * sin(f) + u1.y * cos(f));
+	vec2 cc = normalize(c2) * dc;
+	vec2 tb0 = r2 - u1;
+	vec2 tb1 = cc - n2;
+	float t = atan(tb1.y, tb1.x) - atan(tb0.y, tb0.x);
+	return vec2(f, t);
+}
 
 void vertex() {
 	float part = floor(COLOR.a * 16.0 + 0.5);
@@ -35,6 +71,12 @@ void vertex() {
 	mat3 R = mat3(1.0);
 	vec3 piv = vec3(0.0);
 
+	float sscale = floor(INSTANCE_CUSTOM.w) / 100.0;
+	if (sscale < 0.01) {
+		sscale = 1.0;
+	} else {
+		mv = fract(INSTANCE_CUSTOM.w);
+	}
 	if (part >= 4.0 && part <= 9.0) {
 		// legs: alternating tripods (front+hind of one side with the middle of the other)
 		float li = floor((part - 4.0) / 2.0);
@@ -43,6 +85,8 @@ void vertex() {
 		float ph = gait + grp;
 		float sw = sin(ph) * 0.42 * mv;
 		float lift = max(0.0, cos(ph)) * 0.32 * mv;
+		bool front = li < 0.5;
+		bool posed = act == 11.0 || act == 12.0 || act == 13.0 || (front && (act == 2.0 || act == 4.0 || act == 9.0));
 		if (mv < 0.05) {
 			sw = 0.04 * sin(t * 0.9 + li * 2.0 + side);      // standing: tiny shifts of weight
 		}
@@ -74,6 +118,63 @@ void vertex() {
 		float hipx = li < 0.5 ? 0.85 : (li < 1.5 ? 0.2 : -0.4);
 		piv = vec3(hipx, 0.85, 0.42 * side) * K;
 		R = rot_y(sw * side) * rot_x(-lift * side);
+		float seg = floor(UV.x + 0.5);
+		if (!posed && seg > 0.5) {
+			// rest joints of this leg (tools/blender/build_ant.py LEGS), mesh units
+			vec3 L = li < 0.5 ? vec3(0.85, 0.75, 1.8) : (li < 1.5 ? vec3(0.2, 0.1, -0.1) : vec3(-0.4, -0.65, -2.2));
+			vec3 H = vec3(L.x, 0.85, 0.42 * side) * K;
+			vec3 C = vec3(L.x + 0.1, 0.55, 0.85 * side) * K;
+			vec3 N = vec3(L.x + L.y, 1.75, 2.05 * side) * K;
+			vec3 A = vec3(L.x + L.z * 0.85, 0.35, 2.9 * side) * K;
+			vec3 F = vec3(L.x + L.z, 0.0, 3.15 * side) * K;
+			// where the foot is: planted and sliding back under the body for the duty part of the
+			// cycle, then lifted and swung forward (eased) to its next foothold
+			float duty = mix(0.55, 0.42, clamp((sscale - 1.0) / 0.5, 0.0, 1.0));
+			float u = fract((gait + grp) / TAU);
+			float amp = STRIDE_A * K * sscale * mv;
+			float dx;
+			float up = 0.0;
+			if (u < duty) {
+				dx = amp * (1.0 - 2.0 * u / duty);
+			} else {
+				float w = (u - duty) / (1.0 - duty);
+				dx = amp * (-1.0 + 2.0 * w * w * (3.0 - 2.0 * w));
+				up = LIFT_H * K * min(sscale, 1.2) * mv * sin(PI * w);
+			}
+			if (mv < 0.05) {
+				dx += 0.03 * K * sin(t * 0.9 + li * 2.0 + side);    // standing: tiny shifts of weight
+			}
+			vec3 T = F + vec3(dx, up, 0.0);
+			// the coxa swings the whole leg round toward the foothold...
+			vec2 v0 = (F - H).xz;
+			vec2 v1 = (T - H).xz;
+			float th = atan(v0.x * v1.y - v0.y * v1.x, dot(v0, v1));
+			vec3 Cy = H + yaw(C - H, th);
+			vec3 Ny = H + yaw(N - H, th);
+			vec3 Ay = H + yaw(A - H, th);
+			vec3 Fy = H + yaw(F - H, th);
+			// ...and femur and tibia bend at the knee so the tarsus lies where the foot is
+			vec3 TA = T + (Ay - Fy);
+			vec3 ax;
+			vec2 ang = leg_ik(Cy, Ny, Ay, TA, ax);
+			vec3 N2 = Cy + rot_axis(Ny - Cy, ax, ang.x);
+			vec3 A2 = N2 + rot_axis(Ay - Ny, ax, ang.y);
+			vec3 p = H + yaw(VERTEX - H, th);
+			vec3 nn = yaw(NORMAL, th);
+			if (seg > 3.5) {
+				p = A2 + (p - Ay);
+			} else if (seg > 2.5) {
+				p = N2 + rot_axis(p - Ny, ax, ang.y);
+				nn = rot_axis(nn, ax, ang.y);
+			} else if (seg > 1.5) {
+				p = Cy + rot_axis(p - Cy, ax, ang.x);
+				nn = rot_axis(nn, ax, ang.x);
+			}
+			VERTEX = p;
+			NORMAL = nn;
+			R = mat3(1.0);
+			piv = vec3(0.0);
+		}
 	} else if (part == 2.0 || part == 3.0) {
 		// antennae: constant exploratory sweeping; drumming when meeting a nestmate
 		float side = part == 2.0 ? -1.0 : 1.0;

@@ -78,6 +78,10 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 - `limb_gain` (shader uniform) ทำให้ขา/หนวด/กรามสีอ่อนกว่าตัว (ราชินีสีส้มอำพัน)
 
 ## รูปแบบไฟล์ .antmesh
+- `ANT2` (โมเดลมด): เหมือน `ANTM` แต่มี float ที่ 11 ต่อจุด = ท่อนขา (1 โคนขา, 2 ต้นขา, 3 หน้าแข้ง, 4 เท้า; 0 = ไม่ใช่ขา
+  หรือโมเดลไกล) ส่งเข้า shader ทาง `UV.x` — shader ใช้ IK บนข้อต่อของ `LEGS` ใน `build_ant.py` (ต้องตรงกันสองที่)
+- การก้าว: `ant_model3d.gd` (`STRIDE_A`, `stride_scale`, `duty`, `stride_len`, `gait_w`) คู่กับค่าใน shader;
+  มุมมองเดินจังหวะก้าวด้วย "ระยะทางที่เดินจริง ÷ ความยาวก้าว" เท้าจึงไม่ไถล; `INSTANCE_CUSTOM.w` = mv + ขนาดก้าว×100
 `"ANTM"`, จำนวน vertex (u32), จำนวน index (u32), ต่อ vertex 10 float (ตำแหน่ง xyz, normal xyz, สี rgba), แล้ว index u32
 (หน้าเรียงตามเข็มนาฬิกาแบบ Godot) — โหลดด้วย `ant_model3d.gd load_antmesh()`; ของในกล่องโหลดผ่าน `mesh_kit.gd asset("prey/aphid_adult")`
 ต้นถั่วมีไฟล์ `.json` คู่กัน เก็บเส้นลำต้น (ให้เพลี้ยและมดเกาะ)

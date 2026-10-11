@@ -182,16 +182,21 @@ static func make(swing := 0.0, queen := false, detailed := true) -> ArrayMesh:
 
 
 ## File layout: "ANTM", vertex count, index count (u32), then per vertex 10 floats
-## (position, normal, colour RGBA), then u32 indices.
+## (position, normal, colour RGBA), then u32 indices. "ANT2" (the ants) adds an 11th float per vertex:
+## the leg segment (1 coxa, 2 femur, 3 tibia, 4 tarsus), passed to the shader in UV.x.
 static func load_antmesh(path: String) -> ArrayMesh:
 	if not FileAccess.file_exists(path):
 		return null
 	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null or f.get_buffer(4).get_string_from_ascii() != "ANTM":
+	if f == null:
 		return null
+	var magic := f.get_buffer(4).get_string_from_ascii()
+	if magic != "ANTM" and magic != "ANT2":
+		return null
+	var stride := 11 if magic == "ANT2" else 10
 	var nv := f.get_32()
 	var ni := f.get_32()
-	var data := f.get_buffer(nv * 40).to_float32_array()
+	var data := f.get_buffer(nv * stride * 4).to_float32_array()
 	var idx := f.get_buffer(ni * 4).to_int32_array()
 	var v := PackedVector3Array()
 	var n := PackedVector3Array()
@@ -199,20 +204,54 @@ static func load_antmesh(path: String) -> ArrayMesh:
 	v.resize(nv)
 	n.resize(nv)
 	c.resize(nv)
+	var uv := PackedVector2Array()
+	if stride == 11:
+		uv.resize(nv)
 	for i in nv:
-		var o := i * 10
+		var o := i * stride
 		v[i] = Vector3(data[o], data[o + 1], data[o + 2])
 		n[i] = Vector3(data[o + 3], data[o + 4], data[o + 5])
 		c[i] = Color(data[o + 6], data[o + 7], data[o + 8], data[o + 9])
+		if stride == 11:
+			uv[i] = Vector2(data[o + 10], 0.0)
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = v
 	arrays[Mesh.ARRAY_NORMAL] = n
 	arrays[Mesh.ARRAY_COLOR] = c
+	if stride == 11:
+		arrays[Mesh.ARRAY_TEX_UV] = uv
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
+
+
+# ---------------------------------------------------------------- gait (kept in step with shaders/ants/ant.gdshader)
+# Ants speed up by taking both longer and quicker strides: stride length ~ speed^0.45 (Zollikofer 1994,
+# Reinhardt & Blickhan 2014); a laden ant takes shorter steps; a running ant spends less of each step on
+# the ground (duty factor below 0.5: a moment with no tripod down).
+const STRIDE_A := 1.3          # design units: half the backward sweep of a planted foot at full walking pace (stride ≈ 0.6 body length)
+
+
+## How long the strides are for a pace (1 = the species' normal walk) and whether the ant is laden.
+static func stride_scale(pace: float, laden: bool) -> float:
+	return clampf(pow(maxf(pace, 0.05), 0.45), 0.4, 1.5) * (0.75 if laden else 1.0)
+
+
+## Fraction of each step a foot spends on the ground.
+static func duty(s: float) -> float:
+	return lerpf(0.55, 0.42, clampf((s - 1.0) / 0.5, 0.0, 1.0))
+
+
+## Body travel per full step cycle, in mesh units: while planted a foot sweeps back 2A as the body moves 2A.
+static func stride_len(s: float) -> float:
+	return 2.0 * STRIDE_A * s * K / duty(s)
+
+
+## The shader's INSTANCE_CUSTOM.w: whole part = stride scale x 100, fraction = how much it is walking.
+static func gait_w(mv: float, s: float) -> float:
+	return floorf(s * 100.0) + clampf(mv, 0.0, 0.999)
 
 
 ## Instance colour for a body colour (vertex colours carry the 0.55 body multiplier).

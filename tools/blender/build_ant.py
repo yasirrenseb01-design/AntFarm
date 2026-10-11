@@ -7,6 +7,8 @@
 # Every vertex carries colour (a multiplier on the per-ant tint) and in alpha the body-part id / 16:
 # 0 trunk, 1 head, 2/3 left/right antenna, 4-9 legs (FL, FR, ML, MR, HL, HR), 10 gaster, 11 mandibles.
 # "Left" is the -z side in Godot. Output: assets/models/ants/<variant>_<lod>.antmesh (see ant_model3d.gd).
+# Leg vertices also carry which leg segment they belong to (1 coxa, 2 femur, 3 tibia, 4 tarsus; 0 elsewhere),
+# so the shader can bend the knee and plant the foot (inverse kinematics on the joints listed in LEGS).
 import bpy
 import bmesh
 import math
@@ -61,6 +63,7 @@ for c in scn.collection.children:
     c.hide_viewport = c != coll
 
 PARTS = []
+CUR_SEG = [0, None]          # leg segment for new objects (-1 = per vertex, by nearest joint line) and the joints
 
 
 def _obj(name, me, part, col):
@@ -68,6 +71,9 @@ def _obj(name, me, part, col):
     coll.objects.link(o)
     o["part"] = part
     o["rgb"] = col
+    o["seg"] = CUR_SEG[0]
+    if CUR_SEG[1] is not None:
+        o["joints"] = [c for p in CUR_SEG[1] for c in p]
     for p in me.polygons:
         p.use_smooth = True
     PARTS.append(o)
@@ -347,15 +353,20 @@ for li, L in enumerate(LEGS):
         knee = (L[0] + L[1], 1.75, 2.05 * side)
         ankle = (L[0] + L[2] * 0.85, 0.35, 2.9 * side)
         foot = (L[0] + L[2], 0.0, 3.15 * side)
+        CUR_SEG[1] = [hip, coxa, knee, ankle, foot]
         if HI:
+            CUR_SEG[0] = 1
             tube("coxa", [hip, lerp(hip, coxa, 0.5), coxa], [0.2, 0.22, 0.17], part, LIMB, segs)
+            CUR_SEG[0] = 2
             fem = [lerp(coxa, knee, t) for t in (0.0, 0.12, 0.4, 0.75, 1.0)]
             tube("femur", fem, [0.12, 0.15, 0.18, 0.15, 0.12], part, LIMB, segs)
+            CUR_SEG[0] = 3
             tib = [lerp(knee, ankle, t) for t in (0.0, 0.1, 0.6, 1.0)]
             tube("tibia", tib, [0.1, 0.095, 0.11, 0.12], part, LIMB, segs)
             spur = lerp(ankle, foot, 0.25)
             tube("spur", [ankle, (spur[0], spur[1] + 0.05, spur[2] - 0.1 * side)], [0.035, 0.01], part, LIMB, 4)
             # tarsus: five segments, a little arched, the last with a pair of claws
+            CUR_SEG[0] = 4
             prev = ankle
             for k in range(5):
                 t = (k + 1) / 5.0
@@ -370,8 +381,12 @@ for li, L in enumerate(LEGS):
                 tip = (foot[0] + fwd.x * 0.14, foot[1] - 0.06, foot[2] + fwd.z * 0.14 + cz)
                 tube("claw", [foot, tip], [0.025, 0.006], part, SUTURE, 4)
         else:
+            # far-away ants: no segments, so the shader swings the legs whole (cheap) instead of solving IK
+            CUR_SEG[0] = 0
             tube("leg", [hip, coxa, knee], [0.18, 0.16, 0.13], part, LIMB, segs)
             tube("leg", [knee, ankle, foot], [0.11, 0.11, 0.07], part, LIMB, segs)
+CUR_SEG[0] = 0
+CUR_SEG[1] = None
 
 # ---------------------------------------------------------------- erect setae (hi only)
 
@@ -447,10 +462,26 @@ for o in PARTS:
         attr.data[i].color = (col[0], col[1], col[2], p / 16.0)
 
 
+def _nearest_seg(g, j):
+    """Which leg segment a point is closest to: hip-coxa 1, coxa-knee 2, knee-ankle 3, ankle-foot 4."""
+    best, bd = 1, 1e9
+    for s in range(4):
+        a = Vector(j[s * 3:s * 3 + 3])
+        b = Vector(j[s * 3 + 3:s * 3 + 6])
+        ab = b - a
+        t = max(0.0, min(1.0, (g - a).dot(ab) / max(ab.length_squared, 1e-9)))
+        d = (g - (a + ab * t)).length
+        if d < bd:
+            best, bd = s + 1, d
+    return best
+
+
 def export(path):
     verts = []
     idx = []
     for o in PARTS:
+        seg = o.get("seg", 0)
+        joints = list(o["joints"]) if "joints" in o else None
         bm = bmesh.new()
         bm.from_mesh(o.data)
         bmesh.ops.triangulate(bm, faces=bm.faces)
@@ -469,7 +500,8 @@ def export(path):
                     continue
                 n = f.normal if flat else v.normal
                 c = v[col_layer] if col_layer else (rgb[0], rgb[1], rgb[2], a)
-                verts.append((v.co.x * K, v.co.z * K, -v.co.y * K, n.x, n.z, -n.y, c[0], c[1], c[2], a))
+                sg = seg if seg >= 0 else _nearest_seg(Vector((v.co.x, v.co.z, -v.co.y)), joints)
+                verts.append((v.co.x * K, v.co.z * K, -v.co.y * K, n.x, n.z, -n.y, c[0], c[1], c[2], a, float(sg)))
                 tri.append(len(verts) - 1)
                 if key is not None:
                     shared[key] = tri[-1]
@@ -477,10 +509,10 @@ def export(path):
         bm.free()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as fh:
-        fh.write(b"ANTM")
+        fh.write(b"ANT2")              # ANTM + an 11th float per vertex: the leg segment
         fh.write(struct.pack("<II", len(verts), len(idx)))
         for v in verts:
-            fh.write(struct.pack("<10f", *v))
+            fh.write(struct.pack("<11f", *v))
         fh.write(struct.pack("<%dI" % len(idx), *idx))
     return len(verts), len(idx) // 3
 

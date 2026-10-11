@@ -35,6 +35,7 @@ func _update_ants(delta: float) -> void:
 			a.vpos = a.pos
 			a.vang = a.ang
 			a.anim = randf() * 50.0
+			a.vgait = randf() * TAU
 		var step: Vector2 = a.pos - a.vpos
 		a.vpos += step * kp
 		var moving := step.length_squared() > 0.01
@@ -49,6 +50,11 @@ func _update_ants(delta: float) -> void:
 		var f := Vector3(cos(a.vang), 0, sin(a.vang))
 		f = (f - up * f.dot(up)).normalized()
 		var s: float = ANT_SCALE * a.size
+		# strides lengthen with pace (cold, rain, a load or an injury slow it); the leg cycle advances by
+		# the distance actually walked over the stride, so planted feet do not slide
+		var pace: float = (0.35 + 0.65 * sim.activity) * (1.0 - 0.35 * a.hurt) * (1.3 if a.state == Ant.DEFEND else 1.0)
+		var stride := AntModel.stride_scale(pace, a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE)
+		a.vgait = fmod(a.vgait + (step * kp).length() * U / (AntModel.stride_len(stride) * s) * TAU, TAU * 64.0)
 		var tr := Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), Vector3(p.x, ground_h(p.x, p.y), p.y))
 		var act: int = a.act if a.busy > 0 else 0
 		if a.state == Ant.DEFEND:
@@ -65,7 +71,7 @@ func _update_ants(delta: float) -> void:
 			act += 100                      # a crop full of honeydew swells the gaster
 		xs.append(tr)
 		cols.append(body.lerp(young, clampf(1.0 - a.age / 6.0, 0.0, 1.0)))
-		cus.append(Color(fmod(a.phase, TAU * 64.0), act, fmod(a.anim, 600.0), a.vmv))
+		cus.append(Color(a.vgait, act, fmod(a.anim, 600.0), AntModel.gait_w(a.vmv, stride)))
 		if act == 13:
 			# formic acid sprayed from the curled gaster tip, under the body
 			var puff := 0.5 + 0.5 * sin(a.anim * 9.0 + a.id)

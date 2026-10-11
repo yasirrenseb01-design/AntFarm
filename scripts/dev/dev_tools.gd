@@ -3,6 +3,8 @@ extends "res://scripts/game/parts/main_camera.gd"
 ## the test keeper and the nest side-view PNG. Options are listed at the top of scripts/game/main.gd.
 
 
+var _walker = null          # --at-ant=walker: the forager the camera follows
+
 # ---------------------------------------------------------------- tools
 
 func _take_shot() -> void:
@@ -73,6 +75,17 @@ func _take_shot() -> void:
 					if f.pos.distance_to(found.pos) < f.r + 14.0:
 						at = f.pos
 				outworld.target_t = Vector3(at.x, 0, at.y) * outworld.U + Vector3(0, float(_opts.get("lift", "0")), 0)
+		elif _opts.get("at-ant", "") == "walker":
+			# run on until a forager is out walking (not busy), then look at it (gait checks)
+			for i in sim.TPD:
+				for a in sim.outside:
+					if a.busy <= 0 and a.state in [sim.Ant.SEARCH, sim.Ant.HOME] and a.pos.distance_to(sim.nest_pos) > 40.0:
+						_walker = a
+				if _walker != null:
+					break
+				sim.step()
+			if _walker != null:
+				outworld.target_t = Vector3(_walker.pos.x, 0, _walker.pos.y) * outworld.U
 		elif _opts.has("at-ant") and not sim.outside.is_empty():
 			var a = sim.outside[int(_opts["at-ant"]) % sim.outside.size()]
 			outworld.target_t = Vector3(a.pos.x, 0, a.pos.y) * outworld.U
@@ -128,8 +141,25 @@ func _take_shot() -> void:
 		if _opts.has("live") and i % 120 == 0 and mode == "nest":
 			print(nest_view.debug_summary())
 	speed = keep
-	await RenderingServer.frame_post_draw
 	var path: String = _opts["shot"]
+	if _opts.has("seq"):
+		# a strip of frames with the clock running (gait checks): <shot>_0.png, _1.png ...
+		DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+		speed = float(_opts.get("seq-speed", str(keep)))
+		var who = _walker
+		if who == null and _opts.has("at-ant") and String(_opts["at-ant"]).is_valid_int() and not sim.outside.is_empty():
+			who = sim.outside[int(_opts["at-ant"]) % sim.outside.size()]
+		for k in int(_opts["seq"]):
+			for i in int(_opts.get("seq-every", "3")):
+				await get_tree().process_frame
+				if who != null and mode == "outworld" and who.vpos.x != INF:
+					outworld.target_t = Vector3(who.vpos.x, 0, who.vpos.y) * outworld.U     # follow the ant
+					outworld.target = outworld.target_t
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(path.get_basename() + "_%d.png" % k)
+		get_tree().quit()
+		return
+	await RenderingServer.frame_post_draw
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	get_viewport().get_texture().get_image().save_png(path)
 	_save_now()

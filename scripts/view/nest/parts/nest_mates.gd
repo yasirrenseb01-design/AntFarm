@@ -34,7 +34,7 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	if moving:
 		var want := step.normalized()
 		v.vf = (v.vf as Vector3).slerp(want, minf(1.0, 9.0 * delta)) if (v.vf as Vector3).dot(want) > -0.99 else want
-		v.gait = fmod(v.gait + step.length() * 6.0 / scale, TAU * 64.0)
+		v.gait = fmod(v.gait + step.length() / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
 	var face: Vector3 = v.get("face", Vector3.INF)
 	if face != Vector3.INF and not moving:
 		var to := face - np
@@ -246,7 +246,7 @@ func _nearest_spot(p: Vector3, spots: Array) -> Vector3:
 
 
 func _custom(v: Dictionary, act: int) -> Color:
-	return Color(v.get("gait", 0.0), act, fmod(v.get("anim", 0.0), 600.0), v.get("mv", 0.0))
+	return Color(v.get("gait", 0.0), act, fmod(v.get("anim", 0.0), 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
 
 
 func _update_ants(delta: float) -> void:
@@ -330,6 +330,7 @@ func _update_ants(delta: float) -> void:
 					m.t -= 1.0
 					_step_mate(m)
 			path = (m.from as Vector3).lerp(m.to, clampf(m.t, 0.0, 1.0))
+		m.stride = AntModel.stride_scale(chill, m.carry)      # shorter, slower steps when cold or laden
 		var tr := _smooth(m, path, m.up, delta, m.size)
 		m.xf = tr
 		if m.act == ACT_FEED and _visible(tr.origin):

@@ -25,6 +25,12 @@
 - เก็บน้ำหวานในกระเพาะพัก (crop) แล้วป้อนกันในรัง (trophallaxis) — ไม่มีห้องเก็บอาหาร
 - ชวนพวกด้วยเส้นทางกลิ่น (recruitment)
 
+### การเดิน
+- เดินแบบสามขาสลับ (alternating tripod): ขาหน้าและขาหลังข้างหนึ่งกับขากลางอีกข้าง ใช้แทบทุกความเร็ว (Zollikofer 1994)
+- เร็วขึ้นด้วยการก้าวยาวขึ้นและถี่ขึ้น: ความยาวก้าว ~ ความเร็ว^0.3–0.6; วิ่งเร็วมากมีช่วงที่ไม่มีขาแตะพื้น (Zollikofer 1994,
+  Reinhardt & Blickhan 2014); คาบของแล้วก้าวสั้นลง ช้าลง และถี่น้อยลง; พื้นขรุขระเดินช้าลง
+- เท้าที่เหยียบอยู่นิ่งกับพื้น ลำตัวเคลื่อนผ่านไป แล้วยกขาแกว่งไปวางจุดใหม่ (ช่วงเหยียบ/ช่วงแกว่ง)
+
 ### รัง
 - **รูปทรง** (Wang et al. 1995 ศึกษา *L. neoniger* ญาติใกล้ชิด; Khuong et al. 2016; ผู้เลี้ยงมด): เครือข่ายทางเดิน (gallery)
   ทรงท่อกว้าง 1.5–5 มม. เชื่อมห้อง (chamber) ที่โป่งกว้าง 1–2 ซม. ยาว 3–5 ซม. และ**แบนเตี้ย** (สูงราวสองตัวมด);
@@ -79,6 +85,9 @@
   ป้องกันตัวด้วยการพ่นสารเคมีจากต่อมปลายท้อง (pygidial glands) ทำให้มดที่เกาะอยู่ร่วงหลุด; รังมดมักแค่รังควานจนมันไป
 
 ## แหล่งอ้างอิง
+- Zollikofer C.P.E. (1994) Stepping patterns in ants I–III. J Exp Biol 192:95–127
+- Reinhardt L., Blickhan R. (2014) Level locomotion in wood ants: evidence for grounded running. J Exp Biol 217:2358–2370
+- Wahl V. et al. (2015) Walking and running in the desert ant Cataglyphis fortis. J Comp Physiol A 201
 - Wang D., McSweeney K., Lowery B., Norman J.M. (1995) Nest structure of ant *Lasius neoniger* Emery and its implications to soil modification. Geoderma 66
 - Khuong A. et al. (2016) Stigmergic construction and topochemical information shape ant nest architecture. PNAS 113(5):1303–1308
 - Römer D., Roces F. (2014) Nest enlargement in leaf-cutting ants: relocated brood and fungus trigger the excavation of new chambers. PLoS ONE 9(5)
