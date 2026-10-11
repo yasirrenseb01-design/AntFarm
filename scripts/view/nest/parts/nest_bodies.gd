@@ -100,12 +100,16 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 			var rr := reach * reach
 			for a in [a0, a1]:
 				for b in [o.d0, o.d1]:
+					# overlap is judged by the true distance (one ant may be on the wall, the other on
+					# the floor); the push itself stays in this ant's floor plane
 					var d: Vector3 = a - b
-					d -= up * d.dot(up)
 					var l2 := d.length_squared()
 					if l2 < rr and l2 > 0.000001:
 						var l := sqrt(l2)
-						push += d / l * (reach - l) * 0.5
+						var dir := d - up * d.dot(up)
+						if dir.length_squared() < 0.0001:
+							dir = (m.xf as Transform3D).basis.z if m.has("xf") else Vector3.RIGHT
+						push += dir.normalized() * (reach - l) * 0.5
 	if _queen_mm.instance_count > 0:
 		var qa: Vector3 = _queen_xf * QUEEN_HEAD
 		var qb: Vector3 = _queen_xf * QUEEN_TAIL
@@ -121,8 +125,10 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 					reach = QUEEN_R * 0.8
 				if l < reach and l > 0.001:
 					push += d / l * (reach - l)
-	var want := push.limit_length(2.5)
+	# The discs above already include last frame's shift, so `push` is what still overlaps: add it on, and
+	# let the shift relax slowly (half-life ~1 s) so an ant drifts back to its path once there is room.
 	var sep: Vector3 = m.get("sep", Vector3.ZERO)
-	sep = sep.lerp(want, minf(1.0, 14.0 * delta))
+	sep = (sep + push * minf(1.0, 12.0 * delta)) * pow(0.5, delta)
+	sep = sep.limit_length(2.5)
 	m.sep = sep
 	return sep

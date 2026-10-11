@@ -193,7 +193,8 @@ func refresh(delta: float) -> void:
 	_poll_events()
 	_step_anims(delta if speed > 0 else 0.0)
 	var sig := [sim.eggs.size(), sim.larvae.size(), sim.pupae.size(), nest.excavated / 2, snappedf(_plane_w, 0.5),
-		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5), sim.tick / 600]
+		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5), sim.tick / 600,
+		snappedf(_queen_turn, 0.12)]          # the queen turning round: the brood round her is laid out again
 	if sig != _brood_sig:
 		_brood_sig = sig
 		_update_brood()
