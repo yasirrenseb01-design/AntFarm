@@ -3,7 +3,7 @@ extends RefCounted
 ## behind it (soil has thermal inertia).
 ##   "keeper": an indoor formicarium on a shelf — room temperature all year, an optional heat mat, and
 ##             the keeper's fridge for hibernation (fridge 0..1 ramps the box toward FRIDGE_C).
-##   "wild":   a plot of ground in a temperate climate (where Lasius niger lives) — the year turns:
+##   "wild":   an open, sunny plot of ground (a garden or meadow — shown as "สวน/ทุ่งหญ้า") in a temperate climate (where Lasius niger lives) — the year turns:
 ##             freezing winters, warm summers, the nest soil lagging weeks behind the air.
 
 const SOIL_BASE_C := 24.0   # indoor formicarium on a shelf
