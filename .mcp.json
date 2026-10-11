@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "blender": {
+      "type": "stdio",
+      "command": "C:\\Users\\Lenovo\\.local\\bin\\uvx.exe",
+      "args": [
+        "blender-mcp"
+      ],
+      "env": {}
+    }
+  }
+}

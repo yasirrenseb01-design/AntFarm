@@ -185,7 +185,7 @@ func setup(s) -> void:
 	var larva_mat := _mat_vc(0.3)
 	var cocoon_mat := _mat_vc(0.85)
 	_larva_mm = _multimesh(larva_mesh, larva_mat, false)
-	_pupa_mm = _multimesh(cocoon_mesh, cocoon_mat, false)
+	_pupa_mm = _multimesh(cocoon_mesh, cocoon_mat, true)
 	_pellet_mm = _multimesh(_ellipsoid(0.42, 0.34), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false)
 	_carry_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	_carry_pellet_mm = _multimesh(_ellipsoid(0.8, 0.65), _mat_simple(Color(0.45, 0.32, 0.2), 0.95), false)
@@ -197,7 +197,7 @@ func setup(s) -> void:
 	silk.vertex_color_use_as_albedo = true
 	silk.roughness = 0.9
 	_fx_silk_mm = _multimesh(_ellipsoid(1.35, 0.62), silk, true)
-	_fx_cocoon_mm = _multimesh(cocoon_mesh, cocoon_mat, false)
+	_fx_cocoon_mm = _multimesh(cocoon_mesh, cocoon_mat, true)
 	_carry_cocoon_mm = _multimesh(cocoon_mesh, cocoon_mat, false)
 	_carry_shell_mm = _multimesh(cocoon_mesh, cocoon_mat, false)
 	_fx_soil_mm = _multimesh(_ellipsoid(0.42, 0.34), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false)
@@ -358,7 +358,7 @@ func refresh(delta: float) -> void:
 	_poll_events()
 	_step_anims(delta if speed > 0 else 0.0)
 	var sig := [sim.eggs.size(), sim.larvae.size(), sim.pupae.size(), nest.excavated / 2, snappedf(_plane_w, 0.5),
-		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5)]
+		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5), sim.tick / 600]
 	if sig != _brood_sig:
 		_brood_sig = sig
 		_update_brood()
@@ -696,20 +696,25 @@ func _egg_xf(i: int) -> Transform3D:
 	return Transform3D(b, centre + Vector3(cos(a) * r, h, sin(a) * r))
 
 
-func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Callable, old_spots := [], moved := 1 << 20) -> void:
+func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Callable, old_spots := [], moved := 1 << 20,
+		col_fn := Callable()) -> void:
 	var n := mini(items.size(), max_n)
 	if spots.is_empty():
 		n = 0
 	var xs := []
+	var cs := []
 	for i in n:
 		# items not yet carried over stay in the old pile
 		var src: Array = spots if (i < moved or old_spots.is_empty()) else old_spots
 		var xf := _pile_xf(src, i, scale_fn.call(items[i]))
 		if _visible(xf.origin):
 			xs.append(xf)
+			cs.append(col_fn.call(items[i]) if col_fn.is_valid() else Color.WHITE)
 	mm.instance_count = xs.size()
 	for i in xs.size():
 		mm.set_instance_transform(i, xs[i])
+		if mm.use_colors:
+			mm.set_instance_color(i, cs[i])
 
 
 func _update_brood() -> void:
@@ -730,7 +735,8 @@ func _update_brood() -> void:
 			if _visible(xf.origin):
 				bits.append(xf)
 	_fill(_bits_mm, bits)
-	_pile(_pupa_mm, _spots.pupae, sim.pupae.slice(0, maxi(0, sim.pupae.size() - _pending("pupate"))), 300, func(p): return p.get("s", 1.0))
+	_pile(_pupa_mm, _spots.pupae, sim.pupae.slice(0, maxi(0, sim.pupae.size() - _pending("pupate"))), 300, func(p): return p.get("s", 1.0),
+		[], 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)))
 	# the crater mound of excavated pellets around the entrance on top of the block
 	var n := mini(nest.excavated / 2, 900)
 	if n == _mound_n:
@@ -1114,7 +1120,7 @@ func _update_ants(delta: float) -> void:
 		else:
 			_update_activity(m, adt)
 			if not m.act in STILL_ACTS:
-				m.t += dt
+				m.t += dt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0)
 				while m.t >= 1.0 and dt > 0.0:
 					m.t -= 1.0
 					_step_mate(m)
@@ -1314,11 +1320,28 @@ func _start_eclose(s: float) -> void:
 		return
 	var shown: int = sim.pupae.size() - _pending("pupate")
 	var p: Vector3 = _pile_xf(_spots.pupae, maxi(0, shown + _pending("eclose")), s).origin
-	var a := {"k": "eclose", "t": 0.0, "d": 10.0 * _anim_k(), "p": p, "s": s, "helpers": [], "yaw": randf() * TAU}
+	var a := {"k": "eclose", "t": 0.0, "d": 13.0 * _anim_k(), "p": p, "s": s, "helpers": [], "yaw": randf() * TAU,
+		"queen": false}
 	for m in _helpers(p, 2):
 		a.helpers.append(m)
-		_hire(m, _beside(p, m, 1.5 + 0.2 * a.helpers.size()), p, ACT_DIG)
+		_hire(m, _beside(p, m, 1.6 + 0.3 * a.helpers.size()), p, ACT_TEND)
+	if a.helpers.is_empty() and sim.queen.alive and _spots.queen != Vector3.ZERO and _spots.queen.distance_to(p) < 8.0:
+		a.queen = true           # a founding queen opens her first cocoons herself
 	_anims.append(a)
+
+
+## Where the parts of an eclosion are at progress u: the cocoon's head end, how far the callow has
+## been pulled out, and the callow's own transform.
+func _eclose_parts(a: Dictionary, u: float) -> Dictionary:
+	var s: float = a.s
+	var b := Basis(Vector3.UP, a.yaw)
+	var bx: Vector3 = b.x
+	var head: Vector3 = a.p + Vector3(0, 0.3, 0) + bx * 1.3 * s
+	var pull := clampf((u - 0.5) / 0.22, 0.0, 1.0)
+	var roll := lerpf(1.3, 0.0, clampf((u - 0.85) / 0.13, 0.0, 1.0))
+	var origin: Vector3 = a.p + Vector3(0, 0.15 + 0.25 * roll, 0) + bx * (pull * 2.5 * s - 0.4 * s)
+	var callow := Transform3D((b * Basis(Vector3.RIGHT, roll)).scaled(Vector3.ONE * s), origin)
+	return {"bx": bx, "head": head, "pull": pull, "callow": callow, "side": b.z}
 
 
 func _step_anims(adt: float) -> void:
@@ -1385,16 +1408,43 @@ func _step_anims(adt: float) -> void:
 			"eclose":
 				var hs: Array = a.helpers.filter(func(m): return _mates.has(m))
 				a.helpers = hs
-				for m in hs:
-					if u > 0.62:
-						m.script.act = ACT_TEND        # lick and groom the newcomer
+				var ep := _eclose_parts(a, u)
+				var callow_head: Vector3 = (ep.callow as Transform3D) * MOUTH
+				for i in hs.size():
+					var m: Dictionary = hs[i]
+					var lift := Vector3(0, 0.45, 0)
+					if i == 0:
+						# at the head end: bites through the silk, then backs away pulling the callow out
+						m.script.goal = (ep.head as Vector3) + (ep.bx as Vector3) * (1.3 * a.s + ep.pull * 2.5 * a.s) + lift - Vector3(0, 0.3, 0)
+						m.script.face = ep.head if u < 0.5 else callow_head
+					else:
+						# alongside: helps with the silk, then peels the pupal skin off the callow's body
+						var along: float = -0.2 + ep.pull * 1.6
+						m.script.goal = a.p + (ep.side as Vector3) * (1.7 * a.s) + (ep.bx as Vector3) * along * a.s + lift
+						m.script.face = (ep.callow as Transform3D).origin if u > 0.5 else ep.head
+					if u < 0.18:
+						m.script.act = ACT_TEND           # checking the cocoon
+					elif u < 0.72:
+						m.script.act = ACT_DIG            # biting the silk open / pulling
+					elif u < 0.86 or i > 0:
+						m.script.act = ACT_TEND           # peeling and licking the newcomer clean
+					else:
+						m.script.act = ACT_FEED           # the first meal, mouth to mouth
+				if a.queen and sim.queen.alive:
+					var d: Vector3 = ep.head - _spots.queen
+					_queen_turn_t = atan2(-d.z, d.x)
+					_queen_act = ACT_DIG if (u > 0.18 and u < 0.72) else ACT_TEND
 				if u >= 1.0:
 					a.done = true
 					for m in hs:
 						_release(m)
-					_add_mate(Vector3i(roundi(a.p.x), roundi(a.p.y + 0.45), roundi(a.p.z)), "nurse", sim.tick, a.s)
+					var o: Vector3 = (ep.callow as Transform3D).origin
+					_add_mate(Vector3i(roundi(o.x), roundi(a.p.y + 0.45), roundi(o.z)), "nurse", sim.tick, a.s)
+					var newborn: Dictionary = _mates[-1]
+					newborn.weak_until = sim.tick + int(sim.TPD * 0.25)   # unsteady for the first hours
+					newborn.rest = randi_range(40, 90)
 					if not hs.is_empty():
-						# a helper carries the empty cocoon up and out to the refuse pile
+						# a helper carries the empty cocoon and the shed skin out to the refuse pile
 						var h: Dictionary = hs[0]
 						var shell := {"k": "shell", "t": 0.0, "d": 1e9, "helper": h}
 						h.deliver = shell
@@ -1417,7 +1467,8 @@ func _step_anims(adt: float) -> void:
 	_queen_turn = lerp_angle(_queen_turn, _queen_turn_t, minf(1.0, 3.0 * adt))
 
 
-## Ants still being born are drawn here (pale, legs folded, rolling upright), then join _mates.
+## Ants still being born are drawn here: pulled head first out of the cocoon still wrapped in the
+## pupal skin, legs folded; once the skin is peeled off it rolls upright and unfolds, then joins _mates.
 func _emerging(xs: Array, cols: Array, cus: Array, young: Color) -> void:
 	for a in _anims:
 		if a.k != "eclose":
@@ -1425,14 +1476,11 @@ func _emerging(xs: Array, cols: Array, cus: Array, young: Color) -> void:
 		var u: float = a.t / a.d
 		if u < 0.5:
 			continue
-		var roll := lerpf(1.3, 0.0, clampf((u - 0.62) / 0.25, 0.0, 1.0))
-		var p: Vector3 = a.p + Vector3(0, 0.15 + 0.25 * roll, 0)
-		var b := Basis(Vector3.UP, a.yaw) * Basis(Vector3.RIGHT, roll)
-		var tr := Transform3D(b.scaled(Vector3.ONE * a.s), p)
-		if _visible(p):
+		var tr: Transform3D = _eclose_parts(a, u).callow
+		if _visible(tr.origin):
 			xs.append(tr)
 			cols.append(young.lightened(0.3))
-			cus.append(Color(0.0, ACT_EMERGE, (u - 0.5) * a.d, 0.0))
+			cus.append(Color(0.0, ACT_EMERGE, maxf(0.0, (u - 0.82) * a.d), 0.0))
 
 
 func _draw_anims() -> void:
@@ -1485,17 +1533,28 @@ func _draw_anims() -> void:
 			"eclose":
 				if not _visible(a.p):
 					continue
-				var wig := sin(a.t * 9.0) * 0.18 * clampf(u / 0.15, 0.0, 1.0) if u < 0.5 else 0.0
-				var b := Basis(Vector3.UP, a.yaw) * Basis(Vector3.FORWARD, wig)
-				var open := clampf((u - 0.45) / 0.15, 0.0, 1.0)
-				var shrink := 1.0 - 0.35 * clampf((u - 0.85) / 0.15, 0.0, 1.0)
-				var sc: Vector3 = Vector3(1.0 - 0.25 * open, 1.0 - 0.3 * open, 1.0 + 0.15 * open) * a.s * shrink
-				# the empty shell is pushed aside once the callow is out
-				var p: Vector3 = a.p + Vector3(0, 0.3, 0) + (b.x * -0.9 * open)
-				cocoons.append(Transform3D(b.scaled(sc), p))
+				var ep := _eclose_parts(a, u)
+				var wig := sin(a.t * 9.0) * 0.16 * clampf((u - 0.06) / 0.1, 0.0, 1.0) if u < 0.55 else 0.0
+				var b := Basis(Vector3.UP, a.yaw) * Basis(Vector3.RIGHT, wig)
+				var open := clampf((u - 0.45) / 0.1, 0.0, 1.0)
+				# once empty the shell slumps a little; the silk is torn at the head end
+				var sc: Vector3 = Vector3(1.0 - 0.08 * open, 1.0 - 0.22 * clampf((u - 0.7) / 0.2, 0.0, 1.0), 1.0) * a.s
+				var tone := lerpf(1.0, 0.72, clampf(u / 0.2, 0.0, 1.0)) if u < 0.6 else lerpf(0.72, 0.95, clampf((u - 0.6) / 0.15, 0.0, 1.0))
+				cocoons.append([Transform3D(b.scaled(sc), a.p + Vector3(0, 0.3, 0)), Color(tone, tone, tone)])
+				var peel := clampf((u - 0.72) / 0.13, 0.0, 1.0)
+				if u > 0.5 and peel < 1.0:
+					var skin := (ep.callow as Transform3D) * Transform3D(Basis.from_scale(Vector3(1.15, 0.75, 0.8)), Vector3(-0.15, 0.4, 0))
+					silk.append([skin, 0.5 * (1.0 - peel)])
+				if peel > 0.0:
+					# the shed pupal skin, a crumpled pale scrap beside the cocoon
+					silk.append([Transform3D(Basis.from_scale(Vector3(0.32, 0.18, 0.28) * a.s * peel), a.p + (ep.side as Vector3) * 0.9 * a.s + Vector3(0, 0.2, 0)), 0.85])
 	_fill(_fx_egg_mm, eggs)
 	_fill(_fx_larva_mm, larvae)
-	_fill(_fx_cocoon_mm, cocoons)
+	_fx_cocoon_mm.instance_count = cocoons.size()
+	for i in cocoons.size():
+		var c = cocoons[i]
+		_fx_cocoon_mm.set_instance_transform(i, c[0] if c is Array else c)
+		_fx_cocoon_mm.set_instance_color(i, c[1] if c is Array else Color.WHITE)
 	_fill(_fx_soil_mm, soil)
 	_fx_silk_mm.instance_count = silk.size()
 	for i in silk.size():
