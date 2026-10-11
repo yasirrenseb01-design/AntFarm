@@ -312,6 +312,12 @@ func refresh(delta: float, sim_speed: float) -> void:
 	_light.color = _sky_color()
 
 
+## Keeps the trail texture current while the 3D outworld (which shares it) is on screen.
+func tick_pheromones() -> void:
+	if show_pheromones:
+		_update_pheromones(sim.gh / 6 + 1)
+
+
 func redraw_scenery() -> void:
 	_decor.queue_redraw()
 

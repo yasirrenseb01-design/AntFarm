@@ -57,6 +57,10 @@ var egg_acc := 0.0
 var stats := {"dead": 0, "cannibalized": 0, "born": 0, "sugar_in": 0, "protein_in": 0}
 var history: Array = []
 var log_entries: Array = []
+# Recent life-cycle moments for the views to animate ("egg" laid, larva "pupate"d, worker "eclose"d).
+# Not part of the saved state and never read by the simulation itself.
+var events: Array = []
+var event_seq := 0
 
 # derived each colony tick, read by the UI
 var nurses := 0
@@ -593,6 +597,7 @@ func _queen(dt: float) -> void:
 		egg_acc -= 1.0
 		eggs.append({"p": 0.0})
 		protein = maxf(0.0, protein - sp["protein_egg"])
+		_event("egg")
 
 
 func _brood(dt: float, nurse_cap: float) -> void:
@@ -622,6 +627,7 @@ func _brood(dt: float, nurse_cap: float) -> void:
 			if l.p >= 1.0:
 				larvae.remove_at(i)
 				pupae.append({"p": 0.0, "s": _adult_size(l.q)})
+				_event("pupate", pupae[-1].s)
 				if hungriest > i:
 					hungriest -= 1
 				continue
@@ -647,6 +653,7 @@ func _brood(dt: float, nurse_cap: float) -> void:
 				_log("มดงานตัวแรกออกจากรังไหมแล้ว! เป็นมดรุ่นแรกตัวเล็ก (nanitic) จะเปิดปากรังออกไปหาอาหาร", "ok")
 			var nw := _new_worker(0.0)
 			nw.size = pupa.get("s", 1.0)
+			_event("eclose", nw.size)
 			workers.append(nw)
 			stats.born += 1
 			if stats.born <= 3 or stats.born % 25 == 0:
@@ -982,6 +989,13 @@ func remove_spider() -> void:
 
 
 # ---------------------------------------------------------------- log
+
+func _event(kind: String, size := 1.0) -> void:
+	event_seq += 1
+	events.append({"n": event_seq, "k": kind, "s": size})
+	if events.size() > 24:
+		events.pop_front()
+
 
 func _log(text: String, kind: String = "") -> void:
 	var e := {"stamp": "ว.%d %s" % [day(), clock_text()], "text": text, "kind": kind}

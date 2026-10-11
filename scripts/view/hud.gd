@@ -56,6 +56,9 @@ var _cam_surface: Array = []
 var _cam_nest: Array = []
 var _hint: Label
 var _log_dirty := true
+var _view_btns := {}
+var _cam_3d: Array = []          # rotate buttons: both 3D views
+var _cam_out: Array = []
 
 
 func setup(s, w) -> void:
@@ -195,9 +198,10 @@ func _build_top(root: Control) -> void:
 	var views := HBoxContainer.new()
 	views.add_theme_constant_override("separation", 4)
 	var vg := ButtonGroup.new()
-	for pair in [["บนพื้นดิน", "surface"], ["ในรัง 3 มิติ", "nest"]]:
+	for pair in [["พื้นดิน 3 มิติ", "outworld"], ["มุมบน 2 มิติ", "surface"], ["ในรัง 3 มิติ", "nest"]]:
 		var b := _button(pair[0], true, vg)
-		b.button_pressed = pair[1] == "surface"
+		b.button_pressed = pair[1] == "outworld"
+		_view_btns[pair[1]] = b
 		var m: String = pair[1]
 		b.pressed.connect(func():
 			_apply_mode(m)
@@ -308,15 +312,17 @@ func _build_camera_pad(root: Control) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
 	col.add_child(row)
-	for spec in [["−", "zoom_out", "both"], ["+", "zoom_in", "both"], ["⟲", "left", "nest"], ["⟳", "right", "nest"],
-			["เต็มจอ", "reset", "both"]]:
+	for spec in [["−", "zoom_out", "both"], ["+", "zoom_in", "both"], ["⟲", "left", "3d"], ["⟳", "right", "3d"],
+			["มุมบน", "top", "out"], ["เต็มจอ", "reset", "both"]]:
 		var b := _button(spec[0], false)
 		b.custom_minimum_size = Vector2(34, 0)
 		var a: String = spec[1]
 		b.pressed.connect(func(): cam_action.emit(a))
 		row.add_child(b)
-		if spec[2] == "nest":
-			_cam_nest.append(b)
+		if spec[2] == "3d":
+			_cam_3d.append(b)
+		elif spec[2] == "out":
+			_cam_out.append(b)
 	var go := HBoxContainer.new()
 	go.add_theme_constant_override("separation", 4)
 	col.add_child(go)
@@ -465,16 +471,24 @@ func set_cut(v: float) -> void:
 
 
 func _apply_mode(m: String) -> void:
+	var outside := m != "nest"
+	if _view_btns.has(m):
+		_view_btns[m].button_pressed = true
 	for c in _cam_nest:
 		c.visible = m == "nest"
 	for c in _cam_surface:
-		c.visible = m == "surface"
+		c.visible = outside
+	for c in _cam_3d:
+		c.visible = m != "surface"
+	for c in _cam_out:
+		c.visible = m == "outworld"
 	for c in _surface_tools:
-		c.visible = m == "surface"
+		c.visible = outside
 	_cut_row.visible = m == "nest" and not sim.nest.slab and not _xray_btn.button_pressed
 	_xray_btn.visible = m == "nest"
 	_hint.text = ("ลากซ้าย หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูม · ดับเบิลคลิก ไปที่ห้องนั้น · WASD เลื่อน · Q/E หมุน · R/F เอียง"
-		if m == "nest" else "ลากซ้าย (มือ) หรือลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · +/− ซูม")
+		if m == "nest" else "ลากซ้าย (มือ) หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · Q/E หมุน · R/F เอียง"
+		if m == "outworld" else "ลากซ้าย (มือ) หรือลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · +/− ซูม")
 
 
 func _section(parent: Control, title: String) -> VBoxContainer:

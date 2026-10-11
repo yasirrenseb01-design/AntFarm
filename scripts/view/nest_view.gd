@@ -70,6 +70,17 @@ var _mound_n := -1
 var _vol: ImageTexture3D
 var _vol_timer := 0.0
 var _vol_dirty := true
+var _ev_n := -1                    # last simulation life-cycle event seen
+var _anims: Array = []             # life-cycle moments being acted out
+var _fx_egg_mm: MultiMesh
+var _fx_larva_mm: MultiMesh
+var _fx_silk_mm: MultiMesh
+var _fx_cocoon_mm: MultiMesh
+var _carry_cocoon_mm: MultiMesh
+var _queen_xf := Transform3D()
+var _queen_turn := 0.0
+var _queen_turn_t := 0.0
+var _queen_act := -1
 
 
 func setup(s) -> void:
@@ -86,9 +97,6 @@ func setup(s) -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
 	env.glow_intensity = 0.25
-	var we := WorldEnvironment.new()
-	we.environment = env
-	add_child(we)
 
 	var sun := DirectionalLight3D.new()
 	sun.light_color = Color(1.0, 0.93, 0.82)
@@ -100,6 +108,7 @@ func setup(s) -> void:
 	_cam = Camera3D.new()
 	_cam.fov = 38
 	_cam.far = 3000
+	_cam.environment = env           # each 3D view has its own lighting mood
 	add_child(_cam)
 	var lamp := OmniLight3D.new()       # keeper's lamp riding with the camera so the cut face is lit
 	lamp.light_color = Color(1.0, 0.85, 0.7)
@@ -169,6 +178,16 @@ func setup(s) -> void:
 	_pellet_mm = _multimesh(_ellipsoid(0.42, 0.34), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false)
 	_carry_larva_mm = _multimesh(_ellipsoid(1.0, 0.8), _mat_simple(Color(0.93, 0.87, 0.7), 0.35), false)
 	_carry_pellet_mm = _multimesh(_ellipsoid(0.8, 0.65), _mat_simple(Color(0.45, 0.32, 0.2), 0.95), false)
+	_fx_egg_mm = _multimesh(_ellipsoid(0.32, 0.22), _mat_simple(Color(0.96, 0.94, 0.86), 0.25), false)
+	_fx_larva_mm = _multimesh(_ellipsoid(1.0, 0.8), _mat_simple(Color(0.93, 0.87, 0.7), 0.35), false)
+	var silk := StandardMaterial3D.new()
+	silk.albedo_color = Color(0.97, 0.95, 0.9)
+	silk.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	silk.vertex_color_use_as_albedo = true
+	silk.roughness = 0.9
+	_fx_silk_mm = _multimesh(_ellipsoid(1.35, 0.62), silk, true)
+	_fx_cocoon_mm = _multimesh(_ellipsoid(1.35, 0.62), _mat_simple(Color(0.78, 0.62, 0.42), 0.8), false)
+	_carry_cocoon_mm = _multimesh(_ellipsoid(1.35, 0.62), _mat_simple(Color(0.78, 0.62, 0.42), 0.8), false)
 	_queen_mm = _multimesh(AntModel.make(0.0, true, true), ant_mat, true)
 	_queen_mm.use_custom_data = true
 
@@ -277,6 +296,7 @@ func set_active(on: bool) -> void:
 	_cam.current = on
 	if on:
 		_refresh_spots()
+		_ev_n = sim.event_seq          # what happened while we were away is not replayed
 
 
 func refresh(delta: float) -> void:
@@ -310,13 +330,16 @@ func refresh(delta: float) -> void:
 		_spot_timer = 1.5
 		_refresh_spots()
 	# brood and the mound change slowly; rebuild their instances only when something moved
+	_poll_events()
+	_step_anims(delta if speed > 0 else 0.0)
 	var sig := [sim.eggs.size(), sim.larvae.size(), sim.pupae.size(), nest.excavated / 2, snappedf(_plane_w, 0.5),
-		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group]
+		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate")]
 	if sig != _brood_sig:
 		_brood_sig = sig
 		_update_brood()
 	_queen_pose()
 	_update_ants(delta)
+	_draw_anims()
 
 
 ## The cut face needs to know where the plane crosses soil versus open tunnel: give it the voxels.
@@ -640,9 +663,9 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 
 
 func _update_brood() -> void:
-	_pile(_egg_mm, _spots.eggs, sim.eggs, 400, func(_e): return 1.0)
+	_pile(_egg_mm, _spots.eggs, sim.eggs.slice(0, maxi(0, sim.eggs.size() - _pending("egg"))), 400, func(_e): return 1.0)
 	_pile(_larva_mm, _spots.larvae, sim.larvae, 300, func(l): return 0.35 + l.p * 0.65, _spots.larvae_old, _moved)
-	_pile(_pupa_mm, _spots.pupae, sim.pupae, 300, func(p): return p.get("s", 1.0))
+	_pile(_pupa_mm, _spots.pupae, sim.pupae.slice(0, maxi(0, sim.pupae.size() - _pending("pupate"))), 300, func(p): return p.get("s", 1.0))
 	# the crater mound of excavated pellets around the entrance on top of the block
 	var n := mini(nest.excavated / 2, 900)
 	if n == _mound_n:
@@ -662,7 +685,8 @@ func _queen_pose() -> void:
 	var show: bool = sim.queen.alive and qp != Vector3.ZERO and _visible(qp)
 	_queen_mm.instance_count = 1 if show else 0
 	if show:
-		_queen_mm.set_instance_transform(0, Transform3D(Basis(Vector3.UP, sin(_t * 0.15) * 0.3).scaled(Vector3.ONE * 2.3), qp))
+		_queen_xf = Transform3D(Basis(Vector3.UP, sin(_t * 0.15) * 0.3 + _queen_turn).scaled(Vector3.ONE * 2.3), qp)
+		_queen_mm.set_instance_transform(0, _queen_xf)
 		_queen_mm.set_instance_color(0, AntModel.tint(Color(0.075, 0.05, 0.038)))
 
 func _up_at(c: Vector3i) -> Vector3:
@@ -751,6 +775,11 @@ func _queen_room() -> int:
 
 ## What an ant does when it reaches the place it was heading for.
 func _arrive(m: Dictionary) -> void:
+	if m.has("deliver"):
+		m.deliver.done = true                       # the cocoon is set down in the pupa chamber
+		m.erase("deliver")
+		m.carry = false
+		m.item = ""
 	match m.role:
 		"nurse":
 			m.rest = randi_range(30, 140)
@@ -842,9 +871,11 @@ func _spawn_mate(role: String, inside: int) -> bool:
 		"nurse": goal = _brood_room(_larva_group)
 		"attend": goal = _queen_room()
 		"traffic": goal = -1
+	var callow := randf() < float(sim.callow) / maxf(1.0, inside)
+	var born: int = sim.tick - int(randf() * sim.TPD * float(sim.sp["callow_days"])) if callow else -1000000000
 	_mates.append({"cell": c, "prev": c, "from": Vector3(c), "to": Vector3(c), "t": 1.0, "rest": randi_range(0, 30),
-		"up": _up_at(c), "callow": randf() < float(sim.callow) / maxf(1.0, inside), "role": role, "goal": goal,
-		"wander": 0, "carry": false, "size": _sample_size(), "act": ACT_WALK, "act_left": 0.0, "cool": randf() * 4.0,
+		"up": _up_at(c), "born": born, "role": role, "goal": goal,
+		"wander": 0, "carry": false, "item": "", "size": _sample_size(), "act": ACT_WALK, "act_left": 0.0, "cool": randf() * 4.0,
 		"anim": randf() * 100.0, "fed": false})
 	return true
 
@@ -860,6 +891,7 @@ const ACT_LAY := 5
 const ACT_FEED := 6
 const ACT_TEND := 7
 const ACT_CARRY := 8
+const ACT_EMERGE := 12          # a callow just out of its cocoon, legs still folded
 const STILL_ACTS := [ACT_ANTENNATE, ACT_GROOM, ACT_FEED]    # the ant stops walking while doing these
 
 
@@ -941,7 +973,8 @@ func _custom(v: Dictionary, act: int) -> Color:
 
 func _update_ants(delta: float) -> void:
 	var inside: int = sim.workers.size() - sim.out_count
-	var want := clampi(inside - nest.diggers.size(), 0, 250)
+	# a worker still climbing out of its cocoon is drawn by its eclosion, not as a nestmate yet
+	var want := clampi(inside - nest.diggers.size() - _pending("eclose"), 0, 250)
 	var nurses_want := mini(sim.nurses + sim.callow, want / 2 + 1)
 	var attend_want := mini(3, want / 6) if sim.queen.alive else 0
 	var traffic_want := mini(mini(sim.out_count, 4), want)
@@ -961,7 +994,9 @@ func _update_ants(delta: float) -> void:
 		if not _spawn_mate(role, inside):
 			break
 	while _mates.size() > want:
-		_mates.pop_back()
+		var drop: Dictionary = _mates.pop_back()
+		if drop.has("deliver"):
+			drop.deliver.done = true
 	# while larvae are being moved between chambers, a few nurses do the carrying
 	if _moved < sim.larvae.size():
 		var carriers := 0
@@ -971,6 +1006,8 @@ func _update_ants(delta: float) -> void:
 		for m in _mates:
 			if carriers >= 4:
 				break
+			if m.has("script") or m.has("deliver"):
+				continue
 			if m.role == "nurse" or (m.role == "idle" and carriers == 0):
 				m.role = "carry"
 				m.goal = _brood_room(_larva_prev)
@@ -993,22 +1030,36 @@ func _update_ants(delta: float) -> void:
 	var cols := []
 	var cus := []
 	var larva_loads := []
+	var cocoon_loads := []
 	var pellet_loads := []
 	for m in _mates:
 		m.anim += adt
-		_update_activity(m, adt)
-		if not m.act in STILL_ACTS:
-			m.t += dt
-			while m.t >= 1.0 and dt > 0.0:
-				m.t -= 1.0
-				_step_mate(m)
-		var tr := _smooth(m, (m.from as Vector3).lerp(m.to, clampf(m.t, 0.0, 1.0)), m.up, delta, m.size)
+		var path: Vector3
+		if m.has("script"):
+			# hired for a life-cycle moment: walks where the animation needs it
+			m.act = m.script.act
+			m.face = m.script.face
+			path = m.script.pos
+		else:
+			_update_activity(m, adt)
+			if not m.act in STILL_ACTS:
+				m.t += dt
+				while m.t >= 1.0 and dt > 0.0:
+					m.t -= 1.0
+					_step_mate(m)
+			path = (m.from as Vector3).lerp(m.to, clampf(m.t, 0.0, 1.0))
+		var tr := _smooth(m, path, m.up, delta, m.size)
+		m.xf = tr
 		if _visible(tr.origin):
 			xs.append(tr)
-			cols.append(young if m.callow else body)
+			cols.append(_mate_color(m, body, young))
 			cus.append(_custom(m, m.act))
 			if m.carry:
-				larva_loads.append(tr * CARRY_OFFSET)
+				if m.get("item", "") == "cocoon":
+					cocoon_loads.append(tr * CARRY_OFFSET)
+				else:
+					larva_loads.append(tr * CARRY_OFFSET)
+	_emerging(xs, cols, cus, young)
 
 	# diggers come from the simulation; we smooth their hops and show them biting at the dig face
 	var seen := {}
@@ -1050,6 +1101,7 @@ func _update_ants(delta: float) -> void:
 		_ant_mm.set_instance_color(i, cols[i])
 		_ant_mm.set_instance_custom_data(i, cus[i])
 	_fill(_carry_larva_mm, larva_loads)
+	_fill(_carry_cocoon_mm, cocoon_loads)
 	_fill(_carry_pellet_mm, pellet_loads)
 
 	# the queen: rests among her retinue, curls her gaster to lay whenever a new egg appears
@@ -1059,7 +1111,306 @@ func _update_ants(delta: float) -> void:
 	_last_eggs = sim.eggs.size()
 	_queen_lay = maxf(0.0, _queen_lay - adt)
 	if _queen_mm.instance_count > 0:
-		_queen_mm.set_instance_custom_data(0, Color(0.0, ACT_LAY if _queen_lay > 0.0 else ACT_REST, fmod(_queen_anim, 600.0), 0.0))
+		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else ACT_REST)
+		_queen_mm.set_instance_custom_data(0, Color(0.0, qa, fmod(_queen_anim, 600.0), 0.0))
+
+
+# ---------------------------------------------------------------- life-cycle moments
+# The simulation reports each egg laid, larva pupating and worker eclosing (sim.events). At watchable
+# speeds the nest view acts them out: the queen lays and an attendant (or, while founding, the queen
+# herself) carries the egg to the pile; a nurse covers a spinning larva and carries the new cocoon
+# up to the pupa chamber; nurses bite open a cocoon and a pale callow unfolds and stands up.
+
+const MOUTH := Vector3(1.2, 0.32, 0.0)          # mandible tip in the ant model, before scaling
+const GASTER_TIP := Vector3(-1.85, 0.25, 0.0)
+
+
+func _anim_k() -> float:
+	return 1.0 / clampf(sqrt(speed), 1.0, 2.3)
+
+
+func _poll_events() -> void:
+	if _ev_n < 0:
+		_ev_n = sim.event_seq
+	var watch := speed > 0.0 and speed <= 5.0
+	for e in sim.events:
+		if e.n <= _ev_n or not watch:
+			continue
+		var busy := 0
+		for a in _anims:
+			if a.k == e.k:
+				busy += 1
+		match e.k:
+			"egg":
+				if busy < 2:
+					_start_egg()
+			"pupate":
+				if busy < 2:
+					_start_pupate(e.s)
+			"eclose":
+				if busy < 3:
+					_start_eclose(e.s)
+	_ev_n = sim.event_seq
+
+
+func _pending(kind: String) -> int:
+	var n := 0
+	for a in _anims:
+		if a.k == kind and not a.get("done", false):
+			n += 1
+	return n
+
+
+## Nearby nestmates free to help; they must be close, since they walk straight to the spot.
+func _helpers(p: Vector3, n: int, max_d := 6.0) -> Array:
+	var cands := []
+	for m in _mates:
+		if m.has("script") or m.has("deliver") or m.carry or m.role == "carry" or m.role == "traffic":
+			continue
+		var d := Vector3(m.cell).distance_to(p)
+		if d < max_d:
+			cands.append([d, m])
+	cands.sort_custom(func(a, b): return a[0] < b[0])
+	var out := []
+	for c in cands.slice(0, n):
+		out.append(c[1])
+	return out
+
+
+## Take a nestmate off its usual routine and walk it to `goal` (a floor point).
+func _hire(m: Dictionary, goal: Vector3, face: Vector3, act: int) -> void:
+	var from: Vector3 = (m.vp as Vector3) + (m.vu as Vector3) * 0.4 if m.has("vp") else Vector3(m.to)
+	m.script = {"pos": from, "goal": goal + Vector3(0, 0.45, 0), "face": face, "act": act}
+
+
+func _release(m: Dictionary) -> void:
+	if not m.has("script"):
+		return
+	var p: Vector3 = m.script.pos
+	m.erase("script")
+	var c := Vector3i(roundi(p.x), roundi(p.y), roundi(p.z))
+	if nest.walkable(c):
+		m.cell = c
+		m.prev = c
+		m.from = Vector3(c)
+		m.to = Vector3(c)
+		m.t = 1.0
+		m.up = _up_at(c)
+	m.rest = randi_range(20, 80)
+
+
+func _beside(p: Vector3, m: Dictionary, dist := 1.6) -> Vector3:
+	var d: Vector3 = Vector3(m.cell) - p
+	d.y = 0.0
+	if d.length_squared() < 0.01:
+		d = Vector3(randf() - 0.5, 0, randf() - 0.5)
+	return p + d.normalized() * dist
+
+
+func _start_egg() -> void:
+	if not sim.queen.alive or _spots.queen == Vector3.ZERO:
+		return
+	var idx := maxi(0, sim.eggs.size() - 1 - _pending("egg"))
+	var pile: Vector3 = _pile_xf(_spots.eggs, idx, 1.0).origin if not _spots.eggs.is_empty() else _spots.queen
+	var a := {"k": "egg", "t": 0.0, "d": 5.0 * _anim_k(), "pile": pile, "helper": null}
+	var hs := _helpers(_spots.queen, 1, 7.0)
+	if not hs.is_empty():
+		a.helper = hs[0]
+		_hire(a.helper, _beside(_queen_xf * GASTER_TIP, a.helper, 1.2), _queen_xf * GASTER_TIP, ACT_TEND)
+	_anims.append(a)
+
+
+func _start_pupate(s: float) -> void:
+	if _spots.larvae.is_empty():
+		return
+	var p: Vector3 = _pile_xf(_spots.larvae, sim.larvae.size() + _pending("pupate"), 1.0).origin
+	var a := {"k": "pupate", "t": 0.0, "d": 7.0 * _anim_k(), "p": p, "s": s, "helper": null, "carried": false}
+	var hs := _helpers(p, 1)
+	if not hs.is_empty():
+		a.helper = hs[0]
+		_hire(a.helper, _beside(p, a.helper), p, ACT_TEND)
+	_anims.append(a)
+
+
+func _start_eclose(s: float) -> void:
+	if _spots.pupae.is_empty():
+		return
+	var shown: int = sim.pupae.size() - _pending("pupate")
+	var p: Vector3 = _pile_xf(_spots.pupae, maxi(0, shown + _pending("eclose")), s).origin
+	var a := {"k": "eclose", "t": 0.0, "d": 10.0 * _anim_k(), "p": p, "s": s, "helpers": [], "yaw": randf() * TAU}
+	for m in _helpers(p, 2):
+		a.helpers.append(m)
+		_hire(m, _beside(p, m, 1.5 + 0.2 * a.helpers.size()), p, ACT_DIG)
+	_anims.append(a)
+
+
+func _step_anims(adt: float) -> void:
+	_queen_act = -1
+	_queen_turn_t = 0.0
+	var walk := 3.5 / _anim_k()                   # voxels per second for hired helpers
+	for m in _mates:
+		if m.has("script"):
+			m.script.pos = (m.script.pos as Vector3).move_toward(m.script.goal, walk * adt)
+	for a in _anims:
+		a.t += adt
+		var u: float = a.t / a.d
+		match a.k:
+			"egg":
+				var h = a.helper
+				if h != null and not _mates.has(h):
+					a.helper = null
+					h = null
+				if u < 0.3:
+					_queen_act = ACT_LAY
+				elif h == null:
+					# a founding queen turns round and places the egg herself
+					_queen_turn_t = 2.6 if u < 0.8 else 0.0
+					_queen_act = ACT_TEND
+				elif u < 0.4:
+					h.script.act = ACT_TEND
+				elif u < 0.85:
+					h.script.goal = a.pile + Vector3(0, 0.45, 0) + (Vector3(h.cell) - a.pile).normalized() * 1.0
+					h.script.face = a.pile
+					h.script.act = ACT_CARRY
+				else:
+					h.script.act = ACT_TEND
+				if u >= 1.0:
+					a.done = true
+					if h != null:
+						_release(h)
+			"pupate":
+				var h = a.helper
+				if h != null and not _mates.has(h):
+					a.helper = null
+					h = null
+				if u >= 0.6 and not a.carried and h != null:
+					# the nurse lifts the fresh cocoon and carries it up to the pupa chamber
+					a.carried = true
+					_release(h)
+					h.deliver = a
+					h.carry = true
+					h.item = "cocoon"
+					h.goal = _upper[0] if not _upper.is_empty() else _queen_room()
+					h.rest = 0
+					h.wander = 0
+				if a.carried:
+					if h == null or not h.has("deliver") or a.t > a.d + 25.0:
+						a.done = true
+						if h != null and h.has("deliver"):
+							h.erase("deliver")
+							h.carry = false
+							h.item = ""
+				elif u >= 1.0:
+					a.done = true
+					if h != null:
+						_release(h)
+			"eclose":
+				var hs: Array = a.helpers.filter(func(m): return _mates.has(m))
+				a.helpers = hs
+				for m in hs:
+					if u > 0.62:
+						m.script.act = ACT_TEND        # lick and groom the newcomer
+				if u >= 1.0:
+					a.done = true
+					for m in hs:
+						_release(m)
+					_add_mate(Vector3i(roundi(a.p.x), roundi(a.p.y + 0.45), roundi(a.p.z)), "nurse", sim.tick, a.s)
+	_anims = _anims.filter(func(a): return not a.get("done", false))
+	_queen_turn = lerp_angle(_queen_turn, _queen_turn_t, minf(1.0, 3.0 * adt))
+
+
+## Ants still being born are drawn here (pale, legs folded, rolling upright), then join _mates.
+func _emerging(xs: Array, cols: Array, cus: Array, young: Color) -> void:
+	for a in _anims:
+		if a.k != "eclose":
+			continue
+		var u: float = a.t / a.d
+		if u < 0.5:
+			continue
+		var roll := lerpf(1.3, 0.0, clampf((u - 0.62) / 0.25, 0.0, 1.0))
+		var p: Vector3 = a.p + Vector3(0, 0.15 + 0.25 * roll, 0)
+		var b := Basis(Vector3.UP, a.yaw) * Basis(Vector3.RIGHT, roll)
+		var tr := Transform3D(b.scaled(Vector3.ONE * a.s), p)
+		if _visible(p):
+			xs.append(tr)
+			cols.append(young.lightened(0.3))
+			cus.append(Color(0.0, ACT_EMERGE, (u - 0.5) * a.d, 0.0))
+
+
+func _draw_anims() -> void:
+	var eggs := []
+	var larvae := []
+	var silk := []
+	var cocoons := []
+	for a in _anims:
+		var u: float = a.t / a.d
+		match a.k:
+			"egg":
+				var tip: Vector3 = _queen_xf * GASTER_TIP
+				var p := tip
+				var h = a.helper
+				var sc := clampf(0.25 + u / 0.3 * 0.75, 0.25, 1.0)
+				if h == null:
+					var mouth: Vector3 = _queen_xf * MOUTH
+					if u > 0.45:
+						p = tip.lerp(mouth, clampf((u - 0.45) / 0.1, 0.0, 1.0))
+					if u > 0.55:
+						p = mouth.lerp(a.pile, clampf((u - 0.55) / 0.25, 0.0, 1.0))
+				elif u > 0.3 and h.has("xf"):
+					var mouth: Vector3 = h.xf * MOUTH
+					p = tip.lerp(mouth, clampf((u - 0.3) / 0.1, 0.0, 1.0))
+					if u > 0.85:
+						p = mouth.lerp(a.pile, clampf((u - 0.85) / 0.1, 0.0, 1.0))
+				if _visible(p):
+					eggs.append(Transform3D(Basis.from_scale(Vector3.ONE * sc), p))
+			"pupate":
+				if a.carried:
+					continue                       # drawn in the nurse's mandibles
+				var s: float = a.s
+				if _visible(a.p):
+					var lb := Basis(Vector3.UP, a.t * 0.3).scaled(Vector3.ONE * s)
+					if u < 0.6:
+						larvae.append(Transform3D(lb.scaled(Vector3(1.0, 1.0 - 0.15 * sin(a.t * 6.0), 1.0)), a.p + Vector3(0, 0.3, 0)))
+						var cover := clampf(u / 0.6, 0.0, 1.0)
+						silk.append([Transform3D(lb.scaled(Vector3.ONE * (0.55 + 0.5 * cover)), a.p + Vector3(0, 0.3, 0)), 0.15 + 0.7 * cover])
+					else:
+						cocoons.append(Transform3D(lb, a.p + Vector3(0, 0.3, 0)))
+			"eclose":
+				if not _visible(a.p):
+					continue
+				var wig := sin(a.t * 9.0) * 0.18 * clampf(u / 0.15, 0.0, 1.0) if u < 0.5 else 0.0
+				var b := Basis(Vector3.UP, a.yaw) * Basis(Vector3.FORWARD, wig)
+				var open := clampf((u - 0.45) / 0.15, 0.0, 1.0)
+				var shrink := 1.0 - 0.35 * clampf((u - 0.85) / 0.15, 0.0, 1.0)
+				var sc: Vector3 = Vector3(1.0 - 0.25 * open, 1.0 - 0.3 * open, 1.0 + 0.15 * open) * a.s * shrink
+				# the empty shell is pushed aside once the callow is out
+				var p: Vector3 = a.p + Vector3(0, 0.3, 0) + (b.x * -0.9 * open)
+				cocoons.append(Transform3D(b.scaled(sc), p))
+	_fill(_fx_egg_mm, eggs)
+	_fill(_fx_larva_mm, larvae)
+	_fill(_fx_cocoon_mm, cocoons)
+	_fx_silk_mm.instance_count = silk.size()
+	for i in silk.size():
+		_fx_silk_mm.set_instance_transform(i, silk[i][0])
+		_fx_silk_mm.set_instance_color(i, Color(1, 1, 1, silk[i][1]))
+
+
+func _add_mate(c: Vector3i, role: String, born: int, size: float) -> void:
+	var goal := _random_room()
+	match role:
+		"nurse": goal = _brood_room(_larva_group)
+		"attend": goal = _queen_room()
+		"traffic": goal = -1
+	_mates.append({"cell": c, "prev": c, "from": Vector3(c), "to": Vector3(c), "t": 1.0, "rest": randi_range(0, 30),
+		"up": _up_at(c), "born": born, "role": role, "goal": goal,
+		"wander": 0, "carry": false, "item": "", "size": size, "act": ACT_WALK, "act_left": 0.0, "cool": randf() * 4.0,
+		"anim": randf() * 100.0, "fed": false})
+
+
+## Callows are pale and darken over their first days as the cuticle hardens.
+func _mate_color(m: Dictionary, body: Color, young: Color) -> Color:
+	var days: float = float(sim.tick - int(m.get("born", -1000000000))) / sim.TPD
+	return young.lerp(body, clampf(days / float(sim.sp["callow_days"]), 0.0, 1.0))
 
 
 func debug_summary() -> String:
@@ -1071,7 +1422,7 @@ func debug_summary() -> String:
 		acts[m.act] = acts.get(m.act, 0) + 1
 		if m.carry:
 			carrying += 1
-	return "%s %s  roles %s  acts %s  carrying %d  larvae moved %d/%d (%s→%s)  rooms %d  fields %d" % [sim.clock_text(),
+	return "cam %s d%.1f yaw%.2f cut%.1f | %s %s  roles %s  acts %s  carrying %d  larvae moved %d/%d (%s→%s)  rooms %d  fields %d" % [target, cam_dist, yaw, cut_offset, sim.clock_text(),
 		"air>nest" if sim.climate.air > sim.climate.nest + 0.5 else "air<nest", roles, acts, carrying,
 		mini(_moved, sim.larvae.size()), sim.larvae.size(), _larva_prev, _larva_group, _rooms.size(), _fields.size()]
 

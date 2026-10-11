@@ -11,13 +11,15 @@ const Sim := preload("res://scripts/sim/simulation.gd")
 const WorldView := preload("res://scripts/view/world_view.gd")
 const Hud := preload("res://scripts/view/hud.gd")
 const NestView := preload("res://scripts/view/nest_view.gd")
+const OutworldView := preload("res://scripts/view/outworld_view.gd")
 const Store := preload("res://scripts/save_store.gd")
 
 var sim
 var world
 var hud
 var nest_view
-var mode := "surface"
+var outworld
+var mode := "surface"              # "outworld" (3D), "surface" (top-down 2D) or "nest" (3D underground)
 static var next_nest := ""      # "<soil|glass>:<queen|young>": start a fresh colony after the reload
 static var next_slot := 0       # which save slot to open after the reload (0 = the last one played)
 var slot := 1
@@ -83,11 +85,18 @@ func _ready() -> void:
 	nest_view = NestView.new()
 	add_child(nest_view)
 	nest_view.setup(sim)
+	outworld = OutworldView.new()
+	add_child(outworld)
+	outworld.setup(sim, world)
 	hud = Hud.new()
 	add_child(hud)
 	hud.nest_view = nest_view
 	hud.setup(sim, world)
-	hud.view_changed.connect(_set_mode)
+	hud.view_changed.connect(func(m):
+		_set_mode(m)
+		if _persist:
+			_settings["view"] = m
+			Store.save_settings(_settings))
 	hud.cam_action.connect(_cam_action)
 	nest_view.cut_changed.connect(func(v): hud.set_cut(v))
 	hud.current_slot = slot
@@ -106,6 +115,10 @@ func _ready() -> void:
 	_fit_camera()
 	camera.position = _pos_t
 	camera.zoom = Vector2.ONE * _zoom_t
+	var start_view: String = _opts.get("view", _settings.get("view", "outworld"))
+	if start_view != "nest":          # a screenshot of the nest sets its own view below
+		hud._apply_mode(start_view)
+		_set_mode(start_view)
 
 	if _persist and not loaded:
 		_save_now()
@@ -134,6 +147,10 @@ func _process(delta: float) -> void:
 	if mode == "surface":
 		_ease_surface(delta)
 		world.refresh(delta, speed)
+	elif mode == "outworld":
+		world.tick_pheromones()
+	outworld.speed = speed
+	outworld.refresh(delta)
 	nest_view.speed = speed
 	nest_view.refresh(delta)
 	hud.refresh(delta)
@@ -145,7 +162,8 @@ func _set_mode(m: String) -> void:
 	world.visible = surface
 	world.set_process_unhandled_input(surface)
 	camera.enabled = surface
-	nest_view.set_active(not surface)
+	outworld.set_active(m == "outworld")
+	nest_view.set_active(m == "nest")
 
 
 # ---------------------------------------------------------------- saving and time away
@@ -369,7 +387,16 @@ func _clamp_camera() -> void:
 
 ## Camera buttons on the HUD, shared by both views.
 func _cam_action(a: String) -> void:
-	if mode == "surface":
+	if mode == "outworld":
+		match a:
+			"zoom_in": outworld.zoom_by(1.0 / 1.4)
+			"zoom_out": outworld.zoom_by(1.4)
+			"left": outworld.turn_by(0.5)
+			"right": outworld.turn_by(-0.5)
+			"reset": outworld.reset_view()
+			"top": outworld.top_down()
+			"nest": outworld.focus_nest()
+	elif mode == "surface":
 		match a:
 			"zoom_in": surface_zoom(1.5)
 			"zoom_out": surface_zoom(1.0 / 1.5)
@@ -402,6 +429,17 @@ func _take_shot() -> void:
 		camera.zoom = Vector2.ONE * _zoom_t
 		var fc: PackedStringArray = _opts.get("focus", "%d,%d" % [sim.nest_pos.x, sim.nest_pos.y]).split(",")
 		_center_on(Vector2(float(fc[0]), float(fc[1])))
+	if mode == "outworld":
+		for k in ["yaw", "pitch", "dist"]:
+			if _opts.has(k):
+				outworld.set(k + "_t" if k != "dist" else "dist_t", float(_opts[k]))
+		if _opts.has("target"):
+			var tp: PackedStringArray = String(_opts["target"]).split(",")
+			outworld.target_t = Vector3(float(tp[0]), float(tp[1]), float(tp[2]))
+		if _opts.has("at-ant") and not sim.outside.is_empty():
+			var a = sim.outside[int(_opts["at-ant"]) % sim.outside.size()]
+			outworld.target_t = Vector3(a.pos.x, 0, a.pos.y) * outworld.U
+		outworld.snap_camera()
 	if _opts.get("view", "surface") == "nest":
 		hud._apply_mode("nest")
 		_set_mode("nest")
@@ -417,6 +455,18 @@ func _take_shot() -> void:
 		nest_view.snap_camera()
 		if _opts.has("xray"):
 			nest_view.set_xray(true)
+		if _opts.has("look"):
+			nest_view._refresh_spots()
+			nest_view.focus(_opts["look"])
+			nest_view.target = nest_view.target_t
+			nest_view.cam_dist = nest_view.dist_t
+		# act out life-cycle moments on demand: --anim=egg,pupate,eclose
+		for k in String(_opts.get("anim", "")).split(",", false):
+			nest_view._refresh_spots()
+			match k:
+				"egg": nest_view._start_egg()
+				"pupate": nest_view._start_pupate(1.0)
+				"eclose": nest_view._start_eclose(1.0)
 		if _opts.has("target"):
 			var tp: PackedStringArray = String(_opts["target"]).split(",")
 			nest_view.target = Vector3(float(tp[0]), float(tp[1]), float(tp[2]))
