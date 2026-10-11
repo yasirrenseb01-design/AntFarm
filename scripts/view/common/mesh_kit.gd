@@ -544,7 +544,10 @@ static func fly_wings() -> ArrayMesh:
 
 ## Wolf spider (Lycosidae): hairy brown body with a pale median stripe, eight long legs.
 ## Part ids for shaders/spider.gdshader: 0 body, 1-4 left legs front to back, 5-8 right legs.
-static func spider() -> ArrayMesh:
+static func spider() -> Mesh:
+	var m := asset("creatures/wolf_spider")      # tools/blender/build_props.py WHAT=spider
+	if m != null:
+		return m
 	var k = _new()
 	var body := Color(0.27, 0.19, 0.12)
 	var pale := Color(0.55, 0.45, 0.32)

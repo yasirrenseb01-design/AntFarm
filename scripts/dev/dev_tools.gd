@@ -20,6 +20,25 @@ func _take_shot() -> void:
 		camera.zoom = Vector2.ONE * _zoom_t
 		var fc: PackedStringArray = _opts.get("focus", "%d,%d" % [sim.nest_pos.x, sim.nest_pos.y]).split(",")
 		_center_on(Vector2(float(fc[0]), float(fc[1])))
+	if _opts.has("enemy"):
+		# stage a fight: an enemy beside the nest, then let it run for --fight=<ticks>
+		sim.enemies = false
+		sim._spawn_creature(_opts["enemy"])
+		var ep: PackedStringArray = String(_opts.get("enemy-at", "%d,%d" % [sim.nest_pos.x + 120, sim.nest_pos.y + 40])).split(",")
+		sim.creatures[-1].pos = Vector2(float(ep[0]), float(ep[1]))
+		for i in int(_opts.get("fight", "0")):
+			sim.step()
+		var look_at := Vector2.INF
+		if not sim.creatures.is_empty():
+			look_at = sim.creatures[-1].pos
+		else:
+			for f in sim.foods:
+				if String(f.kind).ends_with("_dead"):
+					look_at = f.pos            # the ants won: look at the body
+		if look_at != Vector2.INF and mode == "outworld" and not _opts.has("target"):
+			var cp: Vector2 = look_at
+			outworld.target_t = Vector3(cp.x, 0, cp.y) * outworld.U
+			outworld.target = outworld.target_t     # the camera options below snap to these
 	if _opts.has("food-left"):
 		for f in sim.foods:
 			if f.kind == "cricket":

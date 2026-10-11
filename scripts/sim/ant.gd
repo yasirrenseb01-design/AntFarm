@@ -6,6 +6,7 @@ const SEARCH := 1
 const RETURN := 2
 const HOME := 3
 const UNDERTAKER := 4
+const DEFEND := 5          # answering the alarm: running at an enemy or clinging to it
 
 # castes: workers now; winged gynes (new queens) and males come with the nuptial flight (PART 8)
 const WORKER := 0
@@ -38,6 +39,8 @@ var act := 0            # what it is doing for the view: 0 walk, 2 bite/cut, 3 a
 var meet_cd := 0         # ticks before it will stop for another encounter
 var turn_after := false  # turn round once the current task is done
 var phase := 0.0        # gait phase for leg animation
+var foe := 0            # id of the enemy it is fighting (sim.creatures), 0 = none
+var hurt := 0.0          # 0..1 injuries from enemy bites (a lost leg or antenna); slows it for good
 var dead := false
 
 # view-only smoothing state (the simulation never reads these)

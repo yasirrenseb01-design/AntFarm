@@ -13,6 +13,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 		match v:
 			1:
 				_v1_to_v2(d)
+			2:
+				_v2_to_v3(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -31,3 +33,19 @@ static func _v1_to_v2(d: Dictionary) -> void:
 		creatures.append(c)
 	d["creatures"] = creatures
 	d.erase("spider")
+
+
+## v0.6.0: ants remember the enemy they fight and their injuries; creatures get ids and health;
+## the alarm pheromone field starts empty.
+static func _v2_to_v3(d: Dictionary) -> void:
+	for row in d.workers:
+		row.append(0)
+		row.append(0.0)
+	var id := 1
+	for c in d.creatures:
+		c["id"] = id
+		c["hp"] = 1.0
+		c["held"] = 0
+		id += 1
+	d["next_cid"] = id
+	d["alarm"] = null

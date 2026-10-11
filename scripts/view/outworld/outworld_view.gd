@@ -61,6 +61,7 @@ func setup(s, w) -> void:
 	_prey_mm = _multimesh(_blob_mesh(Vector3(0.75, 0.5, 0.6)), _mat(Color(0.5, 0.33, 0.18), 0.7), false)
 	var sp_mat := ShaderMaterial.new()
 	sp_mat.shader = load("res://shaders/creatures/spider.gdshader")
+	_spider_mat = sp_mat
 	_spider_mm = _multimesh(Props.spider(), sp_mat, false, true)
 
 	var drop := BoxMesh.new()
@@ -82,6 +83,11 @@ func setup(s, w) -> void:
 	sm.albedo_color = Color(0.85, 0.9, 1.0)
 	_splash_mm = _multimesh(ring, sm, true)
 	_dew_mm = _multimesh(_blob_mesh(Vector3(0.15, 0.14, 0.15)), _honey_mat(), false)
+	var mist := StandardMaterial3D.new()
+	mist.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mist.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mist.albedo_color = Color(0.95, 0.97, 1.0, 0.35)
+	_spray_mm = _multimesh(_blob_mesh(Vector3.ONE), mist, false)
 	_soil_mm = _multimesh(_blob_mesh(Vector3(1.0, 0.75, 1.0)), _mat(Color(0.4, 0.29, 0.19), 0.95), false)
 	for i in 320:
 		_rain.append(Vector3(randf() * 400.0, randf() * 60.0, randf() * 250.0))

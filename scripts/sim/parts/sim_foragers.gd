@@ -7,7 +7,7 @@ extends "res://scripts/sim/parts/sim_base.gd"
 func _encounters() -> void:
 	var grid := {}
 	for a: Ant in outside:
-		if a.busy > 0 or a.meet_cd > 0 or a.state == Ant.IN_NEST:
+		if a.busy > 0 or a.meet_cd > 0 or a.state == Ant.IN_NEST or a.state == Ant.DEFEND:
 			continue
 		var k := Vector2i(int(a.pos.x / 6.0), int(a.pos.y / 6.0))
 		var o = grid.get(k)
@@ -73,6 +73,8 @@ func _step_ant(a: Ant) -> void:
 	var spd := _spd
 	if a.carry >= Ant.PROTEIN:
 		spd *= 0.7
+	if a.hurt > 0.0:
+		spd *= 1.0 - 0.35 * a.hurt
 	a.phase += spd * 0.95
 	var pos := a.pos
 	var ci := int(pos.y * INV_CELL) * gw + int(pos.x * INV_CELL)
@@ -82,6 +84,27 @@ func _step_ant(a: Ant) -> void:
 	var drop_p := maxi(2, n)
 	var sense_now := ((a.trip + a.id) % sense_p) < n
 	var drop_now := ((a.trip + a.id) % drop_p) < n
+	if sense_now and not creatures.is_empty():
+		# an enemy close by: mark the spot with alarm pheromone; unladen ants join the fight
+		for c in creatures:
+			if pos.distance_squared_to(c.pos) < 900.0:
+				alarm.deposit_i(ci, 3.0)
+				if not c.get("alarmed", false):
+					c.alarmed = true
+					_log(T.alarm_raised, "bad")
+				if a.carry == Ant.NONE and workers.size() >= 20:
+					a.state = Ant.DEFEND
+					a.foe = c.id
+					return
+				if a.state == Ant.SEARCH:
+					a.state = Ant.HOME            # a young colony avoids the fight: back to the nest
+		if a.carry == Ant.NONE and alarm.read_i(ci) > 0.6:
+			if workers.size() >= 20:
+				a.state = Ant.DEFEND
+				a.foe = 0
+				return
+			if a.state == Ant.SEARCH:
+				a.state = Ant.HOME
 	var st := a.state
 	if st == Ant.SEARCH:
 		if drop_now:

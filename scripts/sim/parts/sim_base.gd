@@ -23,6 +23,7 @@ const INV_CELL := 1.0 / CELL
 const HOME_EVAP := 0.9995
 const FOOD_EVAP := 0.9993
 const RAIN_EVAP := 0.985
+const ALARM_EVAP := 0.97             # alarm pheromone is volatile: gone within a minute or two
 
 var sp: Dictionary = LasiusNiger.DATA
 var rng := RandomNumberGenerator.new()
@@ -32,6 +33,7 @@ var nest: NestVolume
 var diggers_wanted := 0
 var home: Field
 var food: Field
+var alarm: Field                     # alarm pheromone around a fight (formic acid, undecane)
 var gw := 0
 var gh := 0
 var rock := PackedByteArray()
@@ -52,6 +54,7 @@ var humidity := 0.7
 var mold := 0.0
 var heater := false
 var enemies := true
+var _next_cid := 1                 # next creature id
 var creatures: Array = []          # enemies in the outworld: {"kind", "pos", ...} (see parts/sim_enemies.gd)
 var corpses_inside := 0
 var egg_acc := 0.0
@@ -90,6 +93,7 @@ var ant_substep := 1                     # >1 at high game speeds: each ant move
 var _log_home := log(HOME_EVAP)
 var _log_food := log(FOOD_EVAP)
 var _log_rain := log(RAIN_EVAP)
+var _log_alarm := log(ALARM_EVAP)
 
 
 # ---------------------------------------------------------------- setup
@@ -103,6 +107,7 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false) ->
 	gh = int(WORLD.y / CELL)
 	home = Field.new(gw, gh, CELL)
 	food = Field.new(gw, gh, CELL)
+	alarm = Field.new(gw, gh, CELL)
 	rock.resize(gw * gh)
 	rock.fill(0)
 	food_cell.resize(gw * gh)
@@ -361,6 +366,6 @@ func _log(text: String, kind: String = "") -> void:
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 2              # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 3              # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
-	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste"]
+	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt"]

@@ -16,6 +16,11 @@
 - **ศัตรู** `scripts/sim/enemies/<ชนิด>.gd` (static `spawn(sim)`, `step(sim, c) -> bool`, `CHASED`) ลงทะเบียนใน `ENEMY_KINDS` ของ `sim/parts/sim_enemies.gd`;
   ตัวที่อยู่ในกล่องอยู่ใน `sim.creatures` (Dictionary ที่มี `kind`, `pos`, ... ถูกเซฟตรงๆ)
   - ภาพ 3 มิติ: `_update_spider()` ใน `outworld_creatures.gd` (PART 6 จะแยกเป็นไฟล์ละชนิดแบบเดียวกัน); ภาพ 2 มิติ: `_draw_ants()` ใน `world_view.gd`
+- **การต่อสู้** (`sim/parts/sim_enemies.gd`): มดสถานะ `Ant.DEFEND` วิ่งหาศัตรู (`ant.foe` = id) แล้วเกาะ (`busy > 0`)
+  ไปกับตัวศัตรูที่จุดเกาะรอบตัว, ลดพลังชีวิต `hp` ด้วยกรด; สนามกลิ่นเตือนภัย `sim.alarm` (ระเหยเร็ว); ศัตรูกัดกลับผ่าน `sim._bite()`,
+  สะบัดผ่าน `sim._shake_off()`; ตาย → อาหาร `<ชนิด>_dead` ในตารางอาหาร; `ant.hurt` = บาดเจ็บถาวร (เดินช้าลง)
+  - ภาพ: กิจกรรม 13 (เกาะ กัด พ่นกรด) และ 14 (วิ่งตื่นตกใจ) ใน `shaders/ants/ant.gdshader`; กลิ่นเตือนภัยสีแดงในชั้นกลิ่นบนพื้น
+  - ทดสอบภาพ: `--enemy=wolf_spider --fight=<tick>` (จัดศัตรูไว้ข้างรังแล้วเดินเวลา)
 - **วรรณะ** `ant.caste`: `Ant.WORKER` (ตอนนี้ทุกตัว), `Ant.GYNE`, `Ant.MALE` (PART 8)
 - **สายพันธุ์** `scripts/sim/species/lasius_niger.gd` (`sim.sp`): ตัวเลขชีววิทยา + นิสัยเฉพาะ (`founding`, `queen_reserve`, `founding_eggs`,
   `nanitic_size`, `tends_aphids`, `buries_prey`) — โค้ดอ่านจากที่นี่ ไม่เขียนค่าตายตัว
@@ -84,4 +89,6 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
   และ**ไม่บันทึกทับ**; อ่านไม่ได้ → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (บอกผู้เล่นทุกกรณี)
 - รูปแบบ v1→v2 (v0.5.8): มดมี `caste`, แมงมุมตัวเดียว (`spider`) → รายการ `creatures`
+- รูปแบบ v2→v3 (v0.6.0): มดมี `foe`, `hurt`; ศัตรูมี `id`, `hp`, `held`; เพิ่มสนาม `alarm` และ `next_cid`
+- ไฟล์เซฟตัวอย่างของแต่ละรูปแบบอยู่ใน `tests/fixtures/` (สร้างจากโค้ดเวอร์ชันนั้น) — เปลี่ยนรูปแบบครั้งใหม่ให้เพิ่มไฟล์ของรูปแบบล่าสุดก่อนเปลี่ยน
 - ทดสอบโดยไม่แตะเซฟจริง: `--sandbox` ใช้ `user://sandbox/`

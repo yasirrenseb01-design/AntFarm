@@ -10,6 +10,7 @@ extends "res://scripts/dev/dev_tools.gd"
 ##       --look=queen|larvae|pupae|entrance (nest)   --anim=egg,pupate,eclose (act out life-cycle moments)
 ##       --at-ant=<i>|act2|act9|act10 (outworld: look at a forager, or one busy at that kind of food)
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)
+##       --enemy=wolf_spider [--enemy-at=x,y] [--fight=<ticks>] (stage a fight next to the nest)
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
 

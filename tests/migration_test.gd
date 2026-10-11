@@ -1,31 +1,27 @@
 extends SceneTree
-## Every older save format must load and play on exactly as the colony would have.
-## For each past version: run a colony, write it out in that version's shape, migrate it back up,
-## and check both copies stay identical for two more days.
+## Saves written by older versions of the game (tests/fixtures/save_vN.antfarm, made by that version's
+## code) must still load after migration, keep their colony, and play on — and a migrated colony
+## must save and reload exactly like a fresh one. Add a fixture for every new save format.
 ##   godot --headless --path . --script res://tests/migration_test.gd
 
 const SIM := "res://scripts/sim/simulation.gd"
 const MIGRATIONS := "res://scripts/sim/save_migrations.gd"
+const FIXTURES := ["res://tests/fixtures/save_v1.antfarm", "res://tests/fixtures/save_v2.antfarm"]
 
 
-## The current save written as the v1 format (before castes and the creature list).
-func _as_v1(d: Dictionary) -> Dictionary:
-	var o: Dictionary = d.duplicate(true)
-	o["version"] = 1
-	for row in o.workers:
-		row.pop_back()
-	var spiders: Array = o.creatures.filter(func(c): return c.kind == "wolf_spider")
-	var sp: Dictionary = spiders[0].duplicate() if not spiders.is_empty() else {}
-	sp.erase("kind")
-	o["spider"] = sp
-	o.erase("creatures")
-	return o
+func _read(path: String) -> Dictionary:
+	var f := FileAccess.open_compressed(path, FileAccess.READ, FileAccess.COMPRESSION_ZSTD)
+	if f == null:
+		return {}
+	var d = f.get_var()
+	f.close()
+	return d
 
 
 func _print(sim) -> String:
 	var pos := 0.0
 	for w in sim.workers:
-		pos += w.pos.x + w.pos.y * 0.5 + w.age + w.caste
+		pos += w.pos.x + w.pos.y * 0.5 + w.age + w.caste + w.hurt
 	return "tick %d workers %d eggs %d sugar %.6f hum %.6f pos %.4f creatures %d rng %d" % [sim.tick, sim.workers.size(),
 		sim.eggs.size(), sim.sugar, sim.humidity, pos, sim.creatures.size(), sim.rng.state]
 
@@ -34,26 +30,31 @@ func _init() -> void:
 	var Sim = load(SIM)
 	var M = load(MIGRATIONS)
 	var ok := true
-	for seed_value in [5, 11]:
-		var a = Sim.new()
-		a.setup(seed_value, 14, false)
-		# run until a spider is in the box so the creature conversion is exercised too
-		var guard := 0
-		while a.creatures.is_empty() and guard < a.TPD * 20:
-			a.step()
-			guard += 1
-		var v1 := _as_v1(a.to_dict())
-		var had_spider: bool = not v1.spider.is_empty()
-		var b = Sim.new()
-		b.from_dict(M.migrate(v1, Sim.SAVE_VERSION))
-		for i in a.TPD * 2:
-			a.step()
-			b.step()
-		var pa := _print(a)
-		var pb := _print(b)
-		print("seed %d  spider present at save: %s" % [seed_value, had_spider])
-		print("  original: ", pa)
-		print("  migrated: ", pb)
-		ok = ok and pa == pb
+	for path in FIXTURES:
+		var data := _read(path)
+		if data.is_empty():
+			print("missing fixture ", path)
+			ok = false
+			continue
+		var d: Dictionary = data.sim
+		var from_v := int(d.get("version", 1))
+		var workers: int = d.workers.size()
+		var had_spider: bool = not d.get("spider", {}).is_empty() or not d.get("creatures", []).is_empty()
+		var sim = Sim.new()
+		sim.from_dict(M.migrate(d, Sim.SAVE_VERSION))
+		var kept: bool = sim.workers.size() == workers and (sim.creatures.size() > 0) == had_spider
+		# play on for two days (the spider gets its fight), then a save/load round trip must match
+		for i in sim.TPD * 2:
+			sim.step()
+		var copy = Sim.new()
+		copy.from_dict(bytes_to_var(var_to_bytes(sim.to_dict())))     # as written to and read from a file
+		for i in sim.TPD:
+			sim.step()
+			copy.step()
+		var same: bool = _print(sim) == _print(copy)
+		print("%s  v%d -> v%d  workers kept %s  spider kept %s  plays on + round trip identical %s" % [path.get_file(), from_v,
+			Sim.SAVE_VERSION, kept, had_spider, same])
+		print("   ", _print(sim))
+		ok = ok and kept and same
 	print("MIGRATION TEST PASSED" if ok else "MIGRATION TEST FAILED")
 	quit(0 if ok else 1)

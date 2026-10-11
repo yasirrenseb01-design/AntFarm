@@ -7,7 +7,9 @@ render_mode diffuse_burley;
 // Activities: 0 walk/idle, 1 rest, 2 dig, 3 antennate, 4 groom, 5 lay eggs (queen),
 //             6 trophallaxis (mouth-to-mouth feeding), 7 tend brood / attend queen, 8 carry,
 //             9 milk aphids, 10 drink, 11 dead (on its back, legs curled),
-//             12 just eclosed (legs and antennae unfold over the first seconds; z counts from 0).
+//             12 just eclosed (legs and antennae unfold over the first seconds; z counts from 0),
+//             13 fighting: clamped on with the mandibles, gaster curled forward under the body spraying
+//                formic acid, legs braced; 14 alarmed: running in with mandibles agape, antennae forward.
 // y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
 
 uniform float rim_amount = 0.35;
@@ -60,6 +62,10 @@ void vertex() {
 			sw = 0.15 * (li - 1.0);
 			lift = -1.1 - 0.15 * li;
 		}
+		if (act == 13.0) {                                    // braced, pulling back on the grip
+			sw = 0.18 * (1.0 - li) + 0.06 * sin(t * 13.0 + li * 2.0 + side);
+			lift = -0.15;
+		}
 		if (act == 12.0) {                                    // callow: legs pressed to the body, slowly unfolding
 			float fold = 1.0 - clamp(t / 3.0, 0.0, 1.0);
 			sw = mix(sw, 0.35 * (1.0 - li), fold) + 0.12 * sin(t * 5.0 + li * 1.7) * fold;
@@ -82,6 +88,8 @@ void vertex() {
 		if (act == 9.0) { sp = 9.0; amp = 0.35; droop = -0.45; }     // stroking the aphid's back
 		if (act == 10.0) { sp = 3.0; amp = 0.12; droop = -0.4; }
 		if (act == 11.0) { sp = 0.0; amp = 0.0; droop = 0.5; }
+		if (act == 13.0) { sp = 9.0; amp = 0.2; droop = 0.35; }       // swept back, out of the way
+		if (act == 14.0) { sp = 14.0; amp = 0.3; droop = 0.15; }      // held forward, flicking
 		if (act == 12.0) { sp = 3.0; amp = 0.15; droop = -0.9 * (1.0 - clamp(t / 3.0, 0.0, 1.0)); }
 		float a1 = sin(t * sp + side * 1.3) * amp;
 		float a2 = cos(t * sp * 0.73 + side) * amp * 0.6;
@@ -97,6 +105,8 @@ void vertex() {
 		if (act == 4.0) nod = 0.2;
 		if (act == 9.0) nod = -0.2 + 0.05 * sin(t * 3.0);
 		if (act == 10.0) nod = -0.4 + 0.05 * sin(t * 4.0);     // lapping at the drop
+		if (act == 13.0) nod = -0.3 + 0.12 * sin(t * 11.0);    // worrying at the grip
+		if (act == 14.0) nod = 0.12;
 		R = rot_z(nod);
 		if (part == 11.0) {
 			float side = VERTEX.z > 0.0 ? 1.0 : -1.0;
@@ -105,6 +115,8 @@ void vertex() {
 			if (act == 6.0) open = 0.45;
 			if (act == 7.0) open = 0.2 + 0.15 * sin(t * 6.0);
 			if (act == 10.0) open = 0.3;
+			if (act == 13.0) open = 0.25 + 0.2 * max(0.0, sin(t * 11.0));
+			if (act == 14.0) open = 0.6;
 			vec3 mp = vec3(2.85, 0.9, 0.3 * side) * K;
 			VERTEX = mp + rot_y(open * side) * (VERTEX - mp);
 			NORMAL = rot_y(open * side) * NORMAL;
@@ -113,6 +125,8 @@ void vertex() {
 		// gaster: slow breathing pulse; the queen curls hers down to lay
 		piv = vec3(-0.9, 1.05, 0.0) * K;
 		float curl = act == 5.0 ? -0.35 + 0.08 * sin(t * 2.0) : 0.0;
+		if (act == 13.0) curl = -1.05 + 0.1 * sin(t * 7.0);   // tip brought forward between the legs to spray
+		if (act == 14.0) curl = 0.12;
 		float b = 1.0 + 0.018 * sin(t * 1.6);
 		vec3 sc = vec3(b) * (1.0 + full * vec3(0.22, 0.3, 0.32));
 		R = rot_z(curl) * mat3(vec3(sc.x, 0, 0), vec3(0, sc.y, 0), vec3(0, 0, sc.z));
@@ -121,7 +135,7 @@ void vertex() {
 	VERTEX = piv + R * (VERTEX - piv);
 	NORMAL = normalize(R * NORMAL);
 	// whole body: nose down while digging, front up while grooming
-	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.18 : (act == 10.0 ? -0.1 : 0.0));
+	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.18 : (act == 10.0 ? -0.1 : (act == 13.0 ? 0.12 : 0.0)));
 	VERTEX = rot_z(pitch) * VERTEX;
 	NORMAL = rot_z(pitch) * NORMAL;
 }

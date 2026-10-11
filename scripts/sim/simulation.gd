@@ -18,6 +18,7 @@ func step() -> void:
 			_log(T.rain_stop)
 	home.decay(_log_rain if raining else _log_home)
 	food.decay(_log_rain if raining else _log_food)
+	alarm.decay(_log_rain if raining else _log_alarm)
 	var t0 := Time.get_ticks_usec()
 	if tick % COLONY_EVERY == 0:
 		_colony(float(COLONY_EVERY) / TPD)
@@ -42,7 +43,10 @@ func step() -> void:
 		_encounters()
 	for a: Ant in outside:
 		if a.state != Ant.IN_NEST and not a.dead and (n == 1 or a.id % n == phase):
-			_step_ant(a)
+			if a.state == Ant.DEFEND:
+				_step_defender(a)
+			else:
+				_step_ant(a)
 			prof.steps += 1
 	var t3 := Time.get_ticks_usec()
 	if not creatures.is_empty():
@@ -72,7 +76,7 @@ func to_dict() -> Dictionary:
 		out_ids.append(a.id)
 	return {
 		"version": SAVE_VERSION, "species": sp["id"], "rng_seed": rng.seed, "rng_state": rng.state, "tick": tick,
-		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(),
+		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(), "alarm": alarm.to_dict(), "next_cid": _next_cid,
 		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
 		"sugar": sugar, "protein": protein, "humidity": humidity, "mold": mold, "heater": heater, "enemies": enemies,
@@ -99,6 +103,10 @@ func from_dict(d: Dictionary) -> void:
 	home.from_dict(d.home)
 	food = Field.new(gw, gh, CELL)
 	food.from_dict(d.food)
+	alarm = Field.new(gw, gh, CELL)
+	if d.alarm != null:
+		alarm.from_dict(d.alarm)
+	_next_cid = d.next_cid
 	rock = d.rock
 	rocks = d.rocks
 	foods = d.foods

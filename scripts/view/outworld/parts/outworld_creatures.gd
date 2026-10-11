@@ -27,6 +27,7 @@ func _update_ants(delta: float) -> void:
 	var carried := []
 	var dews := []
 	var soil := []
+	var spray := []
 	for a in sim.outside:
 		if a.state == Ant.IN_NEST or a.dead:
 			continue
@@ -50,6 +51,8 @@ func _update_ants(delta: float) -> void:
 		var s: float = ANT_SCALE * a.size
 		var tr := Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), Vector3(p.x, ground_h(p.x, p.y), p.y))
 		var act: int = a.act if a.busy > 0 else 0
+		if a.state == Ant.DEFEND:
+			act = 13 if a.busy > 0 else 14          # clinging and spraying / running in alarmed
 		var pose := _feeding_pose(a, act, s) if act in [2, 9, 10] else {}
 		a.vfeed = move_toward(a.vfeed, 1.0 if not pose.is_empty() else 0.0, delta * 2.5)
 		if not pose.is_empty():
@@ -63,6 +66,10 @@ func _update_ants(delta: float) -> void:
 		xs.append(tr)
 		cols.append(body.lerp(young, clampf(1.0 - a.age / 6.0, 0.0, 1.0)))
 		cus.append(Color(fmod(a.phase, TAU * 64.0), act, fmod(a.anim, 600.0), a.vmv))
+		if act == 13:
+			# formic acid sprayed from the curled gaster tip, under the body
+			var puff := 0.5 + 0.5 * sin(a.anim * 9.0 + a.id)
+			spray.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.12 + 0.18 * puff)), Vector3(0.35, 0.25, 0.0)))
 		if a.carry == Ant.PROTEIN:
 			loads.append(tr * CARRY_OFFSET)
 		elif a.carry == Ant.NONE and a.state == Ant.SEARCH and a.busy <= 0 and a.id % 3 == 0 and _burying(a.pos):
@@ -74,6 +81,9 @@ func _update_ants(delta: float) -> void:
 		_ant_mm.set_instance_transform(i, xs[i])
 		_ant_mm.set_instance_color(i, cols[i])
 		_ant_mm.set_instance_custom_data(i, cus[i])
+	_spray_mm.instance_count = spray.size()
+	for i in spray.size():
+		_spray_mm.set_instance_transform(i, spray[i])
 	_soil_mm.instance_count = soil.size()
 	for i in soil.size():
 		_soil_mm.set_instance_transform(i, soil[i])
@@ -214,7 +224,9 @@ func _update_spider(delta: float) -> void:
 		var f := Vector3(cos(v.a), 0, sin(v.a))
 		f = (f - up * f.dot(up)).normalized()
 		_spider_mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * 0.85), Vector3(p.x, ground_h(p.x, p.y), p.y)))
-		_spider_mm.set_instance_custom_data(i, Color(fmod(s.phase * 0.5, TAU * 64.0), 0, _t, v.mv))
+		var striking := 1.0 if int(s.get("strike", 0)) > 0 else 0.0
+		var struggling := maxf(v.mv, 1.0 if int(s.get("held", 0)) > 0 else 0.0)    # pinned: legs thrash
+		_spider_mm.set_instance_custom_data(i, Color(fmod(s.phase * 0.5, TAU * 64.0), striking, _t, struggling))
 
 
 func _update_rain(delta: float, raining: bool) -> void:

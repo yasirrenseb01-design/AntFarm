@@ -68,6 +68,8 @@ var _aphid_wings: Mesh
 var _dew_mm: MultiMesh              # honeydew droplets an aphid is handing to a milking ant
 var _splash_mm: MultiMesh
 var _soil_mm: MultiMesh             # soil grains in the mandibles of ants burying a carcass
+var _spray_mm: MultiMesh            # formic acid mist from ants fighting an enemy
+var _spider_mat: ShaderMaterial
 var _splash: Array = []             # [position, age]
 
 

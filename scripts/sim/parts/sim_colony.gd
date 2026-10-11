@@ -81,6 +81,27 @@ func _colony(dt: float) -> void:
 		u.carry = Ant.CORPSE
 		corpses_inside -= 1
 
+	# An enemy near the entrance: the alarm spreads inside and workers stream out to defend it.
+	var threatened := false
+	if not creatures.is_empty() and activity > 0.05:
+		var near := false
+		for c in creatures:
+			if c.pos.distance_squared_to(nest_pos) < 40000.0 or alarm.read_i(home.index(nest_pos.x, nest_pos.y)) > 0.5:
+				near = true
+		threatened = near
+		if near and workers.size() >= FIGHT_FROM:
+			var defenders := 0
+			for a in outside:
+				if a.state == Ant.DEFEND:
+					defenders += 1
+			var want := mini(4 + int(workers.size() * 0.15), 40)
+			while defenders < want and not idle.is_empty():
+				var d = idle.pop_back()
+				_send_out(d, Ant.DEFEND)
+				d.foe = 0
+				out_count += 1
+				defenders += 1
+
 	# Recruitment to forage depends on colony need: hungry → many, full stores → few.
 	var need_k := 1.6 if hungry else (0.3 if satiated() else 0.7)
 	if care_short:
@@ -88,6 +109,8 @@ func _colony(dt: float) -> void:
 	# Only a minority of a colony forages at any moment.
 	var max_out := ceili(minf(3.0 + workers.size() * (0.32 if hungry else 0.2), workers.size() * 0.6))
 	var p_exit := 0.005 * (COLONY_EVERY / 10.0) * activity * need_k
+	if threatened and workers.size() < FIGHT_FROM:
+		p_exit = 0.0                      # a young colony keeps its workers in while an enemy prowls outside
 	# A forager arriving with food stirs up nestmates, who leave along its fresh trail.
 	while _recruits > 0 and not idle.is_empty() and out_count < max_out:
 		_send_out(idle.pop_back(), Ant.SEARCH)

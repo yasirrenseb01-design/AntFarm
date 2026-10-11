@@ -9,6 +9,7 @@ const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 
 const PHER_HOME := Color(0.5, 0.66, 1.0)
 const PHER_FOOD := Color(0.98, 0.68, 0.27)
+const PHER_ALARM := Color(1.0, 0.22, 0.18)
 
 var sim
 var tool := "pan"          # "pan" = just look around; other tools place things
@@ -243,6 +244,7 @@ func _draw_items(ci: Node2D) -> void:
 			"honey": Kit.honey(ci, f.pos, left)
 			"cricket": Kit.cricket(ci, f.pos, f.ang, left, f.rotten)
 			"fly": Kit.fly(ci, f.pos, f.ang, left)
+			"wolf_spider_dead": Kit.wolf_spider(ci, f.pos, f.ang, 0.0)
 			_: Kit.ellipse(ci, f.pos, Vector2(f.r, f.r) * 0.6, Color(0.6, 0.45, 0.3))   # a kind with no drawing yet
 
 
@@ -337,14 +339,15 @@ func _update_pheromones(rows: int) -> void:
 			var i := y * w + x
 			var ah := minf(1.0, home.read_i(i) / 3.0) * 0.28
 			var af := minf(1.0, food.read_i(i) / 1.8) * 0.85
-			var s := ah + af
+			var al := minf(1.0, sim.alarm.read_i(i) / 1.5) * 0.9
+			var s := ah + af + al
 			var o := i * 4
 			if s < 0.02:
 				_pher_bytes[o + 3] = 0
 				continue
-			_pher_bytes[o] = int((PHER_HOME.r * ah + PHER_FOOD.r * af) / s * 255.0)
-			_pher_bytes[o + 1] = int((PHER_HOME.g * ah + PHER_FOOD.g * af) / s * 255.0)
-			_pher_bytes[o + 2] = int((PHER_HOME.b * ah + PHER_FOOD.b * af) / s * 255.0)
+			_pher_bytes[o] = int((PHER_HOME.r * ah + PHER_FOOD.r * af + PHER_ALARM.r * al) / s * 255.0)
+			_pher_bytes[o + 1] = int((PHER_HOME.g * ah + PHER_FOOD.g * af + PHER_ALARM.g * al) / s * 255.0)
+			_pher_bytes[o + 2] = int((PHER_HOME.b * ah + PHER_FOOD.b * af + PHER_ALARM.b * al) / s * 255.0)
 			_pher_bytes[o + 3] = int(minf(1.0, s) * 190.0)
 	_pher_img.set_data(w, h, false, Image.FORMAT_RGBA8, _pher_bytes)
 	_pher_tex.update(_pher_img)
