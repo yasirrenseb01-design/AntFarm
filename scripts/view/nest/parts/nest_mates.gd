@@ -33,8 +33,10 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	var moving := step.length() > 0.12 * delta
 	if moving:
 		var want := step.normalized()
+		var old_f: Vector3 = v.vf
 		v.vf = (v.vf as Vector3).slerp(want, minf(1.0, 9.0 * delta)) if (v.vf as Vector3).dot(want) > -0.99 else want
-		v.gait = fmod(v.gait + step.length() / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
+		var turned := old_f.angle_to(v.vf)            # turning takes steps as well as walking does
+		v.gait = fmod(v.gait + (step.length() + turned * 0.9 * scale) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
 	var face: Vector3 = v.get("face", Vector3.INF)
 	if face != Vector3.INF and not moving:
 		var to := face - np

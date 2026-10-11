@@ -13,7 +13,10 @@ render_mode diffuse_burley;
 //             9 milk aphids, 10 drink, 11 dead (on its back, legs curled),
 //             12 just eclosed (legs and antennae unfold over the first seconds; z counts from 0),
 //             13 fighting: clamped on with the mandibles, gaster curled forward under the body spraying
-//                formic acid, legs braced; 14 alarmed: running in with mandibles agape, antennae forward.
+//                formic acid, legs braced; 14 alarmed: running in with mandibles agape, antennae forward;
+//             15 stopped to scan: head and antennae sweep slowly side to side, antennae raised;
+//             16 following a trail: antennae held low, tapping the ground left and right in turn.
+// Walking, the head and gaster sway a little with each step and the gaster is carried clear of the ground.
 // y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
 
 uniform float rim_amount = 0.35;
@@ -179,9 +182,9 @@ void vertex() {
 		// antennae: constant exploratory sweeping; drumming when meeting a nestmate
 		float side = part == 2.0 ? -1.0 : 1.0;
 		piv = vec3(2.7, 1.45, 0.38 * side) * K;
-		float sp = 2.2;
-		float amp = 0.25;
-		float droop = 0.0;
+		float sp = 2.6;
+		float amp = 0.32;
+		float droop = 0.06;                                           // exploring: held up, sweeping wide
 		if (act == 3.0 || act == 6.0) { sp = 11.0; amp = 0.4; droop = -0.15; }
 		if (act == 1.0) { sp = 0.7; amp = 0.1; droop = -0.2; }
 		if (act == 4.0) { sp = 7.0; amp = 0.25; droop = -0.55; }
@@ -192,6 +195,11 @@ void vertex() {
 		if (act == 13.0) { sp = 9.0; amp = 0.2; droop = 0.35; }       // swept back, out of the way
 		if (act == 14.0) { sp = 14.0; amp = 0.3; droop = 0.15; }      // held forward, flicking
 		if (act == 12.0) { sp = 3.0; amp = 0.15; droop = -0.9 * (1.0 - clamp(t / 3.0, 0.0, 1.0)); }
+		if (act == 15.0) { sp = 1.4; amp = 0.45; droop = 0.18; }      // scanning: raised, slow, wide
+		if (act == 16.0) {                                            // on a trail: low, tapping in turn
+			sp = 7.0; amp = 0.14;
+			droop = -0.32 - 0.22 * max(0.0, sin(t * 7.0 + (side > 0.0 ? PI : 0.0)));
+		}
 		float a1 = sin(t * sp + side * 1.3) * amp;
 		float a2 = cos(t * sp * 0.73 + side) * amp * 0.6;
 		R = rot_y(a1 * side) * rot_z(a2 + droop);
@@ -208,7 +216,11 @@ void vertex() {
 		if (act == 10.0) nod = -0.4 + 0.05 * sin(t * 4.0);     // lapping at the drop
 		if (act == 13.0) nod = -0.3 + 0.12 * sin(t * 11.0);    // worrying at the grip
 		if (act == 14.0) nod = 0.12;
-		R = rot_z(nod);
+		if (act == 16.0) nod = -0.07;                                 // nose down to the scent
+		// the head turns a little with each step, and sweeps slowly from side to side when scanning
+		float turn = 0.05 * sin(gait) * mv;
+		if (act == 15.0) { turn = 0.32 * sin(t * 1.4); nod = 0.06 + 0.05 * sin(t * 0.9); }
+		R = rot_y(turn) * rot_z(nod);
 		if (part == 11.0) {
 			float side = VERTEX.z > 0.0 ? 1.0 : -1.0;
 			float open = 0.04;
@@ -228,9 +240,14 @@ void vertex() {
 		float curl = act == 5.0 ? -0.35 + 0.08 * sin(t * 2.0) : 0.0;
 		if (act == 13.0) curl = -1.05 + 0.1 * sin(t * 7.0);   // tip brought forward between the legs to spray
 		if (act == 14.0) curl = 0.12;
+		// carried clear of the ground and swaying against the head as the tripods alternate
+		if (act != 5.0 && act != 11.0 && act != 13.0) {
+			curl += 0.1 + 0.025 * sin(gait * 2.0) * mv;
+			R = rot_y(-0.045 * sin(gait) * mv);
+		}
 		float b = 1.0 + 0.018 * sin(t * 1.6);
 		vec3 sc = vec3(b) * (1.0 + full * vec3(0.22, 0.3, 0.32));
-		R = rot_z(curl) * mat3(vec3(sc.x, 0, 0), vec3(0, sc.y, 0), vec3(0, 0, sc.z));
+		R = R * rot_z(curl) * mat3(vec3(sc.x, 0, 0), vec3(0, sc.y, 0), vec3(0, 0, sc.z));
 		stretch = full;
 	}
 	VERTEX = piv + R * (VERTEX - piv);

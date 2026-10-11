@@ -39,10 +39,14 @@ func _update_ants(delta: float) -> void:
 		var step: Vector2 = a.pos - a.vpos
 		a.vpos += step * kp
 		var moving := step.length_squared() > 0.01
+		var was_ang: float = a.vang
 		if moving:
 			a.vang = lerp_angle(a.vang, step.angle(), ka)
 		elif a.busy > 0:
 			a.vang = lerp_angle(a.vang, a.ang, ka)
+		var turned := absf(wrapf(a.vang - was_ang, -PI, PI))    # turning on the spot takes steps too
+		if turned > 0.004:
+			moving = true
 		a.vmv = lerpf(a.vmv, 1.0 if moving else 0.0, minf(1.0, 10.0 * delta))
 		a.anim += adt
 		var p: Vector2 = a.vpos * U
@@ -54,9 +58,12 @@ func _update_ants(delta: float) -> void:
 		# the distance actually walked over the stride, so planted feet do not slide
 		var pace: float = (0.35 + 0.65 * sim.activity) * (1.0 - 0.35 * a.hurt) * (1.3 if a.state == Ant.DEFEND else 1.0)
 		var stride := AntModel.stride_scale(pace, a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE)
-		a.vgait = fmod(a.vgait + (step * kp).length() * U / (AntModel.stride_len(stride) * s) * TAU, TAU * 64.0)
+		var walked: float = (step * kp).length() * U + turned * 0.9 * s      # feet round the body as it turns
+		a.vgait = fmod(a.vgait + walked / (AntModel.stride_len(stride) * s) * TAU, TAU * 64.0)
 		var tr := Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), Vector3(p.x, ground_h(p.x, p.y), p.y))
 		var act: int = a.act if a.busy > 0 else 0
+		if act == 0 and _on_trail(a):
+			act = 16                     # following a trail: antennae low, tapping the ground left and right
 		if a.state == Ant.DEFEND:
 			act = 13 if a.busy > 0 else 14          # clinging and spraying / running in alarmed
 		var pose := _feeding_pose(a, act, s) if act in [2, 9, 10] else {}
@@ -285,3 +292,11 @@ func _update_ring() -> void:
 		var r := (10.0 if t == "rock" else 24.0) * U
 		_ring.position = hover + Vector3(0, 0.3, 0)
 		_ring.scale = Vector3(r, 1.0, r)
+
+
+## Whether a forager is walking along a scent trail (laden ones lay and follow the food trail home).
+func _on_trail(a) -> bool:
+	if a.carry != Ant.NONE:
+		return true
+	var i: int = int(a.pos.y * sim.INV_CELL) * sim.gw + int(a.pos.x * sim.INV_CELL)
+	return i >= 0 and i < sim.food_cell.size() and sim.food.read_i(i) > 0.4

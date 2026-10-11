@@ -42,6 +42,9 @@ func _rebuild_food_grid() -> void:
 					food_cell[cy * gw + cx] = fi
 
 
+const ACT_SCAN := 15        # standing still, head and antennae sweeping (shaders/ants/ant.gdshader)
+
+
 func _send_out(a: Ant, state: int) -> void:
 	if a.state == Ant.IN_NEST:
 		outside.append(a)
@@ -70,6 +73,14 @@ func _step_ant(a: Ant) -> void:
 				a.ang += PI          # loaded up: turn round and head home
 		return
 	a.trip += n
+	# stop-and-go: a searching ant halts every few seconds to sweep its head and antennae, then walks
+	# on; one walking home along a trail stops far less often
+	if a.state == Ant.SEARCH or a.state == Ant.HOME:
+		var stop_p := 0.004 if a.state == Ant.SEARCH else 0.0012
+		if rng.randf() < stop_p * n:
+			a.busy = rng.randi_range(10, 30)
+			a.act = ACT_SCAN
+			return
 	var spd := _spd
 	if a.carry >= Ant.PROTEIN:
 		spd *= 0.7
