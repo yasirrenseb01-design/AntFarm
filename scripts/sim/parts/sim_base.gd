@@ -279,6 +279,14 @@ func season_life() -> float:
 	return clampf((climate.season_mean() - 6.0) / 6.0, 0.0, 1.0)
 
 
+## Whether the colony is in its winter rest: outdoors, the cold months with a cold nest; indoors,
+## the formicarium cooled down in the fridge. (Not the hour's temperature, which crosses any line daily.)
+func hibernating() -> bool:
+	if scenario == "wild":
+		return climate.season_mean() < 9.0 and climate.nest < 12.0
+	return climate.fridge > 0.5
+
+
 ## Ants are cold-blooded: their metabolism changes ~2.5-fold per 10 °C (Q10), 1.0 at a room's 22 °C.
 ## Below ~8 °C Lasius niger falls into a chill torpor and barely burns anything, which is how a colony
 ## lives through four months of winter on what it stored in autumn.

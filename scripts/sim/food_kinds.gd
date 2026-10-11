@@ -31,8 +31,8 @@ const KINDS := {
 		"found": T.found_spider_dead, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [4.6, 2.2], "buried": true},
 	"ground_beetle_dead": {"type": Ant.PROTEIN, "amt": 22.0, "cap": 22.0, "regen": 0.0, "r": 12.0, "handling": [90, 200, 2],
 		"found": T.found_beetle_dead, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [7.0, 3.0], "buried": true, "big": true},
-	"centipede_dead": {"type": Ant.PROTEIN, "amt": 40.0, "cap": 40.0, "regen": 0.0, "r": 22.0, "handling": [90, 200, 2],
-		"found": T.found_centipede_dead, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [18.0, 1.6], "big": true},     # far too big to bury
+	"centipede_dead": {"type": Ant.PROTEIN, "amt": 16.0, "cap": 16.0, "regen": 0.0, "r": 12.0, "handling": [90, 200, 2],
+		"found": T.found_centipede_dead, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [8.5, 1.1]},     # curled up dead: the straight soil cover would not fit
 }
 
 

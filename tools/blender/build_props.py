@@ -341,7 +341,7 @@ elif WHAT == "centipede":
     if SHOT:
         preview_material()
         view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.5, -1.0, 0.9)))
-        render(SHOT, Vector((1.0, 0, 1.0)), 70.0, view)
+        render(SHOT, Vector((0.0, 0, 0.6)), 36.0, view)
 elif WHAT == "beetle":
     ground_beetle()
     export(OUT + "/creatures/ground_beetle.antmesh")

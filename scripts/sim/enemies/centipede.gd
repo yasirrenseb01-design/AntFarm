@@ -1,31 +1,32 @@
 extends RefCounted
-## Giant centipede (Scolopendra): a fast night hunter. It slips into the outworld after dark, runs down
-## foragers and seizes them with its venom claws (forcipules) — a bite is nearly always fatal. Its long
-## segmented body gives the ants many legs to grab, so a big colony can pin it; it thrashes and throws
-## them off, and leaves before dawn if it can. Registered in parts/sim_enemies.gd ENEMY_KINDS.
+## Stone centipede (Lithobius forficatus, since v0.8.6 — the centipede of temperate gardens; the giant
+## Scolopendra is Mediterranean): 20–30 mm, chestnut, 15 pairs of legs, very fast. It hunts at night out of
+## the litter and from under stones, seizing small insects (ants among them) with its venom claws. Small
+## enough that a crowd of ants can grab its legs and pin it; it writhes free and runs. Registered in
+## parts/sim_enemies.gd ENEMY_KINDS.
 
 const T := preload("res://scripts/sim/text_th.gd")
 const IN_NEST := 0
 
-const NAME := "ตะขาบ"
+const NAME := "ตะขาบหิน"
 const CHASED := T.centipede_chased
 const STATS := {
-	"hp": 1.6,          # bigger and tougher than a wolf spider
-	"armor": 0.3,       # overlapping segment plates
+	"hp": 0.9,          # a little tougher than a spider of its size
+	"armor": 0.2,       # thin, flexible plates
 	"shape": "long",    # the ants grip along its body, not round a centre
-	"length": 110.0,    # px (about 55 mm)
-	"width": 7.0,       # px from the midline to where its legs are seized
-	"r": 12.0,          # px: ants within this of their grip point latch on
-	"hold": 14,         # many legs to grab
-	"pin": 9,
-	"flee_at": 0.4,
-	"speed": 0.95,      # px per tick: fast
-	"bite": 0.03,
-	"lethal": 0.85,     # venom: a bite kills far more often than it maims
-	"shake": 0.0025,    # writhes hard
+	"length": 50.0,     # px (about 25 mm)
+	"width": 4.0,       # px from the midline to where its legs are seized
+	"r": 8.0,           # px: ants within this of their grip point latch on
+	"hold": 10,         # 15 pairs of legs to grab
+	"pin": 6,
+	"flee_at": 0.5,     # runs as soon as it is badly mobbed
+	"speed": 1.15,      # px per tick: one of the fastest things in the leaf litter
+	"bite": 0.025,
+	"lethal": 0.55,     # its venom is weak, but an ant is small
+	"shake": 0.002,     # writhes free
 	"carcass": "centipede_dead",
 	"night": true,      # only comes out in the dark, leaves at dawn
-	"rate": 0.2,        # chance per day of one turning up (about once a week; counted over the night only)
+	"rate": 0.3,        # common in gardens (counted over the night only)
 }
 
 
@@ -33,11 +34,11 @@ static func spawn(sim) -> Dictionary:
 	var world: Vector2 = sim.WORLD
 	var side: int = sim.rng.randi_range(0, 3)
 	var t: float = sim.rng.randf()
-	var starts := [Vector2(t * world.x, -40), Vector2(world.x + 40, t * world.y),
-		Vector2(t * world.x, world.y + 40), Vector2(-40, t * world.y)]
+	var starts := [Vector2(t * world.x, -30), Vector2(world.x + 30, t * world.y),
+		Vector2(t * world.x, world.y + 30), Vector2(-30, t * world.y)]
 	var start: Vector2 = starts[side]
 	var c := {"pos": start, "ang": (world * 0.5 - start).angle(), "life": sim.TPD * 0.5, "kills": 0,
-		"exit": start + (start - world * 0.5).normalized() * 120.0, "phase": 0.0}
+		"exit": start + (start - world * 0.5).normalized() * 70.0, "phase": 0.0}
 	sim._log(T.centipede_arrives, "bad")
 	return c
 

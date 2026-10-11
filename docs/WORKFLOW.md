@@ -11,13 +11,13 @@
    - ของชิ้นใหม่: ดูทั้งมุมต่ำและมุมบน, เทียบขนาดกับตาราง "ขนาดจริง" ใน BIOLOGY.md
    - ระบบที่กระทบการอยู่รอดของรัง: `tests/year_run.gd -- wild 0 1100 alone <seed>` อย่างน้อย 2 seed + แบบดูแล
 6. **ปล่อยเวอร์ชัน** — เพิ่ม `config/version` ใน `project.godot`, เขียน `CHANGELOG.md`, รัน `tools/build.ps1`, commit + push
-7. **ของที่ยังไม่ทำ** — ลง "รายการค้าง" ใน `docs/ROADMAP.md` ทันที อย่าเก็บไว้ในหัว
+7. **ของที่ยังไม่ทำ** — ลง `docs/roadmap/BACKLOG.md` ทันที อย่าเก็บไว้ในหัว; PART เสร็จ → ย้ายรายละเอียดไป `docs/roadmap/DONE.md`
 
 ## รายการตรวจก่อนส่ง (ทุกเวอร์ชัน)
 - [ ] `tools/check.ps1` ผ่าน (เปลี่ยนผลจำลองตั้งใจ → `-UpdateBaseline` + บอกใน CHANGELOG)
 - [ ] ดูภาพจริงของสิ่งที่แก้ (ข้อ 5) — ไม่ใช่แค่ test ผ่าน
 - [ ] ขนาดไฟล์: `git ls-files '*.gd' '*.py' | xargs wc -l | sort -rn | head` — เกิน ~500 แยก
-- [ ] เอกสาร: ARCHITECTURE (ชั้นไฟล์, รหัสกิจกรรม, รูปแบบเซฟ), BIOLOGY (ข้อมูล/ขนาดใหม่), ROADMAP (ทำแล้ว/ค้าง)
+- [ ] เอกสาร: ARCHITECTURE (ชั้นไฟล์, รหัสกิจกรรม, รูปแบบเซฟ), BIOLOGY (ข้อมูล/ขนาดใหม่), ROADMAP (สถานะ) + roadmap/BACKLOG (ค้าง/ไอเดีย)
 - [ ] พลาดอะไรในรอบนี้ → เพิ่มใน `docs/LESSONS.md`
 - [ ] เวอร์ชัน + CHANGELOG + `tools/build.ps1` + commit/push
 
@@ -33,6 +33,11 @@
 - ไฟล์ที่แยกแล้วเขียนหัวไฟล์ว่า "split from <ไฟล์เดิม> in vX.Y.Z" และลำดับชั้น เพื่อตามกลับได้ (ตารางใน ARCHITECTURE)
 - สคริปต์ Blender ที่โต: แยกเป็นไฟล์ย่อยแล้วให้ไฟล์หลัก `exec` ตามลำดับ (`tools/blender/props/`, `tools/blender/ant/`)
 - `mesh_kit.gd`: มีโมเดลสำรองแบบเก่าของเพลี้ย/จิ้งหรีด/ต้นไม้ — ลบได้เมื่อแน่ใจว่าไฟล์ Blender ครบทุกที่
+
+## เอกสารที่โตได้
+- `docs/roadmap/BACKLOG.md` เกิน ~300 บรรทัด → แยกเป็น `docs/roadmap/backlog/PART<N>.md` ให้ไฟล์หลักเหลือแค่สารบัญ
+- `CHANGELOG.md` เกิน ~600 บรรทัด → ย้ายเวอร์ชันของ PART ที่เสร็จนานแล้วไป `docs/changelog/PART<N>.md` (ไฟล์หลักเก็บ 2 PART ล่าสุด + ลิงก์)
+- `docs/LESSONS.md` จัดหมวด (การรัน/ความสมจริง/เครื่องมือ) เกิน ~200 บรรทัดค่อยแยกตามหมวด
 
 ## เซฟของผู้เล่น
 - ห้ามแตะเซฟจริง (`%APPDATA%\Godot\app_userdata\AntFarm\saves`) ในการทดสอบ — ใช้ `--sandbox`
