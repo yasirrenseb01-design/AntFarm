@@ -103,6 +103,20 @@ func _step_mate(m: Dictionary) -> void:
 		m.goal = _random_room()
 		m.wander = 3
 		return
+	# getting no nearer (the way in is blocked by the brood, the queen or a nestmate it keeps meeting):
+	# after a few steps this is as close as it gets - it stops here (first workers in a crowded founding
+	# cell used to pace to and fro for ever)
+	if m.get("near_goal", -99) != m.goal or here < int(m.get("near", 1 << 20)):
+		m.near_goal = m.goal
+		m.near = here
+		m.stuck = 0
+	else:
+		m.stuck = int(m.get("stuck", 0)) + 1
+		if m.stuck >= 6:
+			m.stuck = 0
+			m.near = 1 << 20
+			_arrive(m)
+			return
 	var best: Array[Vector3i] = []
 	var floaty: Array[Vector3i] = []
 	var aside: Array[Vector3i] = []
@@ -455,6 +469,20 @@ func trace_near_queen() -> String:
 			var o: Vector3 = (m.xf as Transform3D).origin
 			out.append("%s%s a%d r%d w%d (%.1f,%.1f,%.1f) sep%.2f" % [m.role, "*" if m.has("script") else "", m.act, m.rest, m.wander,
 				o.x, o.y, o.z, (m.get("sep", Vector3.ZERO) as Vector3).length()])
+	return " | ".join(out)
+
+
+## Dev (--trace-mates): every nestmate: role, activity, cell, goal room, carrying what, settle/step state.
+func trace_mates() -> String:
+	var out := []
+	for m in _mates:
+		var o: Vector3 = (m.xf as Transform3D).origin if m.has("xf") else Vector3(m.cell)
+		var line := "w%s %s%s a%d c%s->%s goal%s carry%s/%s r%d w%d t%.2f set%d" % [m.get("wid", -1), m.role,
+			"*" if m.has("script") else "", m.act, m.cell, m.to, m.get("goal", -9), m.carry, m.get("item", ""),
+			m.rest, m.wander, m.t, (m.get("settle", []) as Array).size()]
+		out.append(line + " here%d free%s" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell)])
+	for id in _dig_vis:
+		out.append("dig%d" % id)
 	return " | ".join(out)
 
 

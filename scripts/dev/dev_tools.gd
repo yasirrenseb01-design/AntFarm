@@ -283,6 +283,8 @@ func _take_shot() -> void:
 					outworld.target = outworld.target_t
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(path.get_basename() + "_%d.png" % k)
+			if _opts.has("trace-mates") and mode == "nest":
+				print("%d: %s" % [k, nest_view.trace_mates()])
 			if _opts.has("trace") and mode == "nest":
 				print("%d: brood-overlaps %d mate-overlaps %d who %s | %s" % [k, nest_view.brood_overlaps(), nest_view.mate_overlaps(), nest_view._overlap_who, nest_view.trace_near_queen()])     # who is by the queen, doing what
 		get_tree().quit()

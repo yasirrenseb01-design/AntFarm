@@ -116,7 +116,9 @@ func _update_larva_group() -> void:
 	elif group != _larva_group and _moved >= sim.larvae.size():
 		_larva_prev = _larva_group
 		_larva_group = group
-		_moved = 0
+		# carried only if the day pile and the night pile are in different chambers (a founding nest has one
+		# chamber for both: nobody carries larvae round and round inside it)
+		_moved = 0 if _upper != _lower else 1 << 20
 	_spots.larvae = _room_spots(_upper if _larva_group == "up" else _lower, _spots.all)
 	_spots.larvae_old = _room_spots(_upper if _larva_prev == "up" else _lower, _spots.all)
 
