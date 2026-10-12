@@ -78,7 +78,8 @@ func _update_ants(delta: float) -> void:
 			act += 100                      # a crop full of honeydew swells the gaster
 		xs.append(tr)
 		cols.append(body.lerp(young, clampf(1.0 - a.age / 6.0, 0.0, 1.0)))
-		cus.append(Color(a.vgait, act, fmod(a.anim, 600.0), AntModel.gait_w(a.vmv, stride)))
+		a.vact = AntModel.act_step(a.vact, act, a.anim)                     # poses ease into one another
+		cus.append(Color(a.vgait, AntModel.act_y(a.vact, a.anim), fmod(a.anim, 600.0), AntModel.gait_w(a.vmv, stride)))
 		if act == 13:
 			# formic acid sprayed from the curled gaster tip, under the body
 			var puff := 0.5 + 0.5 * sin(a.anim * 9.0 + a.id)

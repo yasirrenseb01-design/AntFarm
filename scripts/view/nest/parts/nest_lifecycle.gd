@@ -79,7 +79,7 @@ func _start_egg() -> void:
 		return
 	var idx := maxi(0, sim.eggs.size() - 1 - _pending("egg"))
 	var pile: Vector3 = _egg_xf(idx).origin if not _spots.eggs.is_empty() else _spots.queen
-	var a := {"k": "egg", "t": 0.0, "d": 5.0 * _anim_k(), "pile": pile, "helper": null}
+	var a := {"k": "egg", "t": 0.0, "d": 14.0 * _anim_k(), "pile": pile, "helper": null}   # slow enough to watch
 	var hs := _helpers(_spots.queen, 1, 7.0)
 	if not hs.is_empty():
 		a.helper = hs[0]
@@ -131,6 +131,7 @@ func _eclose_parts(a: Dictionary, u: float) -> Dictionary:
 func _step_anims(adt: float) -> void:
 	_queen_act = -1
 	_queen_turn_t = 0.0
+	_queen_step_t = Vector3.ZERO
 	var walk := 3.5 / _anim_k()                   # voxels per second for hired helpers
 	var fresh := []
 	for m in _mates:
@@ -154,12 +155,21 @@ func _step_anims(adt: float) -> void:
 						a.turn0 = _queen_turn
 						var to: Vector3 = (a.pile as Vector3) - _queen_xf.origin
 						a.turn1 = atan2(-to.z, to.x)
-					if u < 0.5:
+					if u < 0.42:
 						_queen_act = ACT_TAKE_EGG
 						_queen_turn_t = a.turn0
-					elif u < 0.9:
-						_queen_act = ACT_TEND
+					elif u < 0.82:
+						# turned to the packet she walks up to it (the egg held out in her mandibles) and sets it down
+						_queen_act = ACT_TEND if u > 0.74 else ACT_WALK
 						_queen_turn_t = a.turn1
+						if u > 0.6:
+							if not a.has("step"):
+								var reach: Vector3 = ((a.pile as Vector3) - _queen_xf * MOUTH_LOW) * Vector3(1, 0, 1)
+								reach -= reach.normalized() * 0.5 if reach.length() > 0.5 else reach
+								a.step = _queen_step + reach.limit_length(3.5)
+							_queen_step_t = a.step
+						else:
+							_queen_step_t = _queen_step
 					else:
 						_queen_act = ACT_REST
 						_queen_turn_t = a.turn0
@@ -260,7 +270,12 @@ func _step_anims(adt: float) -> void:
 						h.item = ""
 	_anims = _anims.filter(func(a): return not a.get("done", false))
 	_anims.append_array(fresh)
-	_queen_turn = lerp_angle(_queen_turn, _queen_turn_t, minf(1.0, 3.0 * adt))
+	# she turns as a heavy queen does, stepping round at most ~1 rad/s and easing out at the end
+	var dturn := wrapf(_queen_turn_t - _queen_turn, -PI, PI)
+	_queen_turn += signf(dturn) * minf(absf(dturn), minf(1.0, 0.1 + 1.8 * absf(dturn)) * adt)
+	# and walks (slowly: ~1.5 units a second) where a moment needs her, back to her spot afterwards
+	var to_step := _queen_step_t - _queen_step
+	_queen_step += to_step.limit_length(minf(1.5, 0.2 + 2.0 * to_step.length()) * adt)
 
 
 ## Ants still being born are drawn here: pulled head first out of the cocoon still wrapped in the
@@ -298,12 +313,12 @@ func _draw_anims() -> void:
 					# to the other there, then rides in her mandibles until she lays it on the packet
 					var mouth: Vector3 = _queen_xf * MOUTH_LOW
 					var under: Vector3 = _queen_xf * TIP_CURLED
-					if u > 0.3:
-						p = tip.lerp(under, clampf((u - 0.3) / 0.1, 0.0, 1.0))
-					if u > 0.42:
-						p = under.lerp(mouth, clampf((u - 0.42) / 0.06, 0.0, 1.0))
-					if u > 0.8:
-						p = mouth.lerp(a.pile + Vector3(0, 0.25, 0), clampf((u - 0.8) / 0.1, 0.0, 1.0))
+					if u > 0.31:
+						p = tip.lerp(under, smoothstep(0.31, 0.37, u))
+					if u > 0.38:
+						p = under.lerp(mouth, smoothstep(0.38, 0.42, u))
+					if u > 0.76:
+						p = mouth.lerp(a.pile + Vector3(0, 0.25, 0), smoothstep(0.76, 0.82, u))
 				elif u > 0.3 and h.has("xf"):
 					var mouth: Vector3 = h.xf * MOUTH
 					p = tip.lerp(mouth, clampf((u - 0.3) / 0.1, 0.0, 1.0))

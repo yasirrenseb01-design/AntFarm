@@ -257,3 +257,40 @@ static func gait_w(mv: float, s: float) -> float:
 ## Instance colour for a body colour (vertex colours carry the 0.55 body multiplier).
 static func tint(body: Color) -> Color:
 	return Color(minf(1.0, body.r / 0.55), minf(1.0, body.g / 0.55), minf(1.0, body.b / 0.55), 1.0)
+
+
+# ---------------------------------------------------------------- easing from one activity's pose to the next
+# The shader picks a pose per activity id; switching ids outright snaps the body (head, gaster, legs) to the
+# new pose in one frame. INSTANCE_CUSTOM.y therefore carries the pose being left too:
+#   whole part = activity code (act + 100 if full, < 128) + 128 x the previous code,
+#   fraction   = how much of the previous pose is still showing (eased 1 -> 0 over ACT_BLEND seconds).
+# A plain integer (no previous, fraction 0) is the old encoding and still works.
+const ACT_BLEND := 0.45          # seconds (animation clock) to ease from one pose into the next
+
+
+## Updates the easing state `st` (x = current code, y = previous code, z = clock when it changed) for
+## this frame's code; returns the new state. Start from Vector3(-1, 0, 0).
+static func act_step(st: Vector3, code: int, clock: float) -> Vector3:
+	if st.x < 0.0:
+		return Vector3(code, code, clock - ACT_BLEND)
+	if int(st.x) == code:
+		return st
+	# changed again while still easing: carry on from whichever pose is showing more
+	var from := st.x if act_left(st, clock) < 0.5 else st.y
+	return Vector3(code, from, clock)
+
+
+## How much of the previous pose still shows (1 -> 0).
+static func act_left(st: Vector3, clock: float) -> float:
+	if clock < st.z:
+		return 0.0                   # the clock was reset (the ant was placed anew)
+	var u := clampf((clock - st.z) / ACT_BLEND, 0.0, 1.0)
+	return 1.0 - u * u * (3.0 - 2.0 * u)
+
+
+## The shader's INSTANCE_CUSTOM.y for an easing state.
+static func act_y(st: Vector3, clock: float) -> float:
+	var left := act_left(st, clock)
+	if left <= 0.001 or int(st.y) == int(st.x):
+		return st.x
+	return st.x + 128.0 * st.y + minf(left, 0.99)

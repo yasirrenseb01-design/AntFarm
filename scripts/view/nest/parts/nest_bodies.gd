@@ -57,7 +57,9 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 
 
 func _custom(v: Dictionary, act: int) -> Color:
-	return Color(v.get("gait", 0.0), act, fmod(v.get("anim", 0.0), 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
+	var clock: float = v.get("anim", 0.0)
+	v.vact = AntModel.act_step(v.get("vact", Vector3(-1, 0, 0)), act, clock)    # poses ease into one another
+	return Color(v.get("gait", 0.0), AntModel.act_y(v.vact, clock), fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
 
 
 const _NEAR := [Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),

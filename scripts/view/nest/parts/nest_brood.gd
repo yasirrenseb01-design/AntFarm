@@ -329,7 +329,7 @@ func _queen_pose() -> void:
 	_queen_mm.instance_count = 1 if show else 0
 	if show:
 		# her heavy gaster hangs below her feet: stand her up on her legs so it rests on the floor, not in it
-		_queen_xf = Transform3D(Basis(Vector3.UP, _queen_turn).scaled(Vector3.ONE * QUEEN_SCALE), qp + Vector3.UP * QUEEN_LIFT)
+		_queen_xf = Transform3D(Basis(Vector3.UP, _queen_turn).scaled(Vector3.ONE * QUEEN_SCALE), qp + Vector3.UP * QUEEN_LIFT + _queen_step)
 		_queen_mm.set_instance_transform(0, _queen_xf)
 		_queen_mm.set_instance_color(0, AntModel.tint(Color(0.075, 0.05, 0.038)))
 		# the cells under her body, for the nestmates' routes

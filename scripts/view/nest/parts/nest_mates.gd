@@ -381,11 +381,14 @@ func _update_ants(delta: float) -> void:
 				_queen_turn_t = _queen_turn + randf_range(0.5, 1.2) * (1.0 if randf() < 0.5 else -1.0)
 		var turned := absf(wrapf(_queen_turn - _queen_prev_turn, -PI, PI))
 		_queen_prev_turn = _queen_turn
+		var walked := (_queen_step - _queen_step_prev).length() / QUEEN_SCALE
+		_queen_step_prev = _queen_step
 		var qs := 0.6                       # short, heavy steps
-		_queen_gait = fmod(_queen_gait + turned * 0.9 / AntModel.stride_len(qs) * TAU, TAU * 64.0)
-		_queen_mv = lerpf(_queen_mv, 1.0 if turned > 0.002 else 0.0, minf(1.0, 8.0 * adt))
+		_queen_gait = fmod(_queen_gait + (turned * 0.9 + walked) / AntModel.stride_len(qs) * TAU, TAU * 64.0)
+		_queen_mv = lerpf(_queen_mv, 1.0 if turned > 0.002 or walked > 0.001 else 0.0, minf(1.0, 8.0 * adt))
 		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else _queen_mode)
-		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, qa, fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs)))
+		_queen_vact = AntModel.act_step(_queen_vact, qa, _queen_anim)     # she eases from one pose into the next
+		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim), fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs)))
 
 
 func debug_summary() -> String:

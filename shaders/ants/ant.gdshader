@@ -2,7 +2,9 @@ shader_type spatial;
 render_mode diffuse_burley;
 // Ant body animation on the GPU. Each vertex carries a body-part id in COLOR.a (see ant_model3d.gd);
 // each instance carries in INSTANCE_CUSTOM:
-//   x = gait phase (radians, advanced by distance walked)   y = activity id
+//   x = gait phase (radians, advanced by distance walked)
+//   y = activity code (id + 100 if full) + 128 x the code being left; fraction = how much of the old pose
+//       still shows (ant_model3d.gd act_y: poses ease into one another instead of snapping)
 //   z = animation clock (seconds, per ant)
 //   w = how much it is walking (fraction, 0..1) + stride scale x 100 (whole part; 0 = normal), see
 //       ant_model3d.gd gait_w(). Walking legs use inverse kinematics on the joints of the Blender model
@@ -86,6 +88,13 @@ float ground_dy(vec3 fw, vec3 upw) {
 	return 0.0;
 }
 
+// Grooming works one side at a time (left antenna, then right, ~2.3 s each): how much the side `side`
+// is being cleaned now, 0..1, eased in and out so the head and leg pass smoothly from one side to the other.
+float groom_w(float t, float side) {
+	float ph = fract(t * 0.22 + (side > 0.0 ? 0.5 : 0.0));
+	return smoothstep(0.0, 0.12, ph) * (1.0 - smoothstep(0.38, 0.5, ph));
+}
+
 // The head's pose (nod, turn) for an activity — the antennae ride on it.
 vec2 head_pose(float act, float t, float gait, float mv) {
 	float nod = 0.0;
@@ -103,31 +112,29 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 	if (act == 15.0) { turn = 0.32 * sin(t * 1.4); nod = 0.06 + 0.05 * sin(t * 0.9); }
 	if (act == 4.0) {
 		// grooming: head bowed and turned to the side being cleaned
-		float gs = fract(t * 0.22) < 0.5 ? -1.0 : 1.0;
 		nod = -0.3;
-		turn = 0.22 * gs;
+		turn = 0.22 * (groom_w(t, 1.0) - groom_w(t, -1.0));
 	}
 	return vec2(nod, turn);
 }
 
-void vertex() {
-	float part = floor(COLOR.a * 16.0 + 0.5);
-	float gait = INSTANCE_CUSTOM.x;
-	float code = floor(INSTANCE_CUSTOM.y + 0.5);
+// The body's pose for one activity code (act + 100 if the crop is full): the vertex V (normal NR) of body
+// part `part` moved for that activity. Called twice while easing from one activity into the next.
+vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, out float stretch_out) {
 	float full = code >= 99.5 ? 1.0 : 0.0;
 	float act = code - full * 100.0;
-	stretch = 0.0;
-	limb = (part >= 2.0 && part <= 9.0) || part == 11.0 ? 1.0 : 0.0;
-	float t = INSTANCE_CUSTOM.z;
-	float mv = INSTANCE_CUSTOM.w;
+	stretch_out = 0.0;
+	float mv = cw;
+	// curling the gaster under the body, an ant first rises on its legs so the gaster clears the floor
+	float hlift = act == 17.0 ? 0.65 * K : (act == 13.0 ? 0.35 * K : 0.0);
 	mat3 R = mat3(1.0);
 	vec3 piv = vec3(0.0);
 
-	float sscale = floor(INSTANCE_CUSTOM.w) / 100.0;
+	float sscale = floor(cw) / 100.0;
 	if (sscale < 0.01) {
 		sscale = 1.0;
 	} else {
-		mv = fract(INSTANCE_CUSTOM.w);
+		mv = fract(cw);
 	}
 	if (part >= 4.0 && part <= 9.0) {
 		// legs: alternating tripods (front+hind of one side with the middle of the other)
@@ -138,7 +145,7 @@ void vertex() {
 		float sw = sin(ph) * 0.42 * mv;
 		float lift = max(0.0, cos(ph)) * 0.32 * mv;
 		bool front = li < 0.5;
-		bool posed = act == 11.0 || act == 12.0 || act == 13.0 || (front && (act == 2.0 || act == 9.0));
+		bool posed = act == 11.0 || act == 12.0 || (front && (act == 2.0 || act == 9.0));
 		if (mv < 0.05) {
 			sw = 0.04 * sin(t * 0.9 + li * 2.0 + side);      // standing: tiny shifts of weight
 		}
@@ -160,7 +167,7 @@ void vertex() {
 		}
 		if (act == 13.0) {                                    // braced, pulling back on the grip
 			sw = 0.18 * (1.0 - li) + 0.06 * sin(t * 13.0 + li * 2.0 + side);
-			lift = -0.15;
+			lift = -0.4;                                      // legs pushed down: standing tall
 		}
 		if (act == 12.0) {                                    // callow: legs pressed to the body, slowly unfolding
 			float fold = 1.0 - clamp(t / 3.0, 0.0, 1.0);
@@ -170,7 +177,7 @@ void vertex() {
 		float hipx = li < 0.5 ? 0.85 : (li < 1.5 ? 0.2 : -0.4);
 		piv = vec3(hipx, 0.85, 0.42 * side) * K;
 		R = rot_y(sw * side) * rot_x(-lift * side);
-		float seg = floor(UV.x + 0.5);
+		float seg = floor(uvx + 0.5);
 		if (!posed && seg > 0.5) {
 			// rest joints of this leg (tools/blender/ant/legs.py LEGS), mesh units
 			vec3 L = li < 0.5 ? vec3(0.85, 0.75, 1.8) : (li < 1.5 ? vec3(0.2, 0.1, -0.1) : vec3(-0.4, -0.65, -2.2));
@@ -196,23 +203,26 @@ void vertex() {
 			if (mv < 0.05) {
 				dx += 0.03 * K * sin(t * 0.9 + li * 2.0 + side);    // standing: tiny shifts of weight
 			}
+			if (act == 13.0) {
+				dx += 0.12 * K * (1.0 - li) + 0.05 * K * sin(t * 13.0 + li * 2.0 + side);   // braced, tugging
+			}
 			vec3 T = F + vec3(dx, 0.0, 0.0);
 			// set the foot down on the real ground under it (rough nest floors, the slope outside)
 			if (ground_mode != 0) {
-				vec3 upw = normalize(MODEL_MATRIX[1].xyz);
-				float sc = length(MODEL_MATRIX[1].xyz);
-				vec3 fw = (MODEL_MATRIX * vec4(T, 1.0)).xyz;
+				vec3 upw = normalize(M[1].xyz);
+				float sc = length(M[1].xyz);
+				vec3 fw = (M * vec4(T, 1.0)).xyz;
 				T.y += clamp(ground_dy(fw, upw) / sc, -0.32, 0.28);
 			}
-			T.y += up;
+			T.y += up - hlift;                               // (the body is raised by hlift below)
 			bool cleaning = false;
 			if (act == 4.0 && front) {
 				// grooming: one front leg at a time draws its antenna through the comb on the leg —
 				// the foot comes up in front of the face and strokes out along the antenna
-				float gs = fract(t * 0.22) < 0.5 ? -1.0 : 1.0;
-				if (side == gs) {
+				float gw = groom_w(t, side);
+				if (gw > 0.0) {
 					float k = 0.5 + 0.5 * sin(t * 7.0);
-					T = vec3(2.7 + 0.6 * k, 1.05 - 0.2 * k, 0.45 * side) * K;
+					T = mix(T, vec3(2.7 + 0.6 * k, 1.05 - 0.2 * k, 0.45 * side) * K, gw);
 					cleaning = true;
 				}
 			}
@@ -230,8 +240,8 @@ void vertex() {
 			vec2 ang = leg_ik(Cy, Ny, Ay, TA, ax);
 			vec3 N2 = Cy + rot_axis(Ny - Cy, ax, ang.x);
 			vec3 A2 = N2 + rot_axis(Ay - Ny, ax, ang.y);
-			vec3 p = H + yaw(VERTEX - H, th);
-			vec3 nn = yaw(NORMAL, th);
+			vec3 p = H + yaw(V - H, th);
+			vec3 nn = yaw(NR, th);
 			if (seg > 3.5) {
 				p = A2 + (p - Ay);
 			} else if (seg > 2.5) {
@@ -241,8 +251,8 @@ void vertex() {
 				p = Cy + rot_axis(p - Cy, ax, ang.x);
 				nn = rot_axis(nn, ax, ang.x);
 			}
-			VERTEX = p;
-			NORMAL = nn;
+			V = p;
+			NR = nn;
 			R = mat3(1.0);
 			piv = vec3(0.0);
 		}
@@ -256,9 +266,7 @@ void vertex() {
 		if (act == 3.0 || act == 6.0) { sp = 11.0; amp = 0.4; droop = -0.15; }
 		if (act == 1.0) { sp = 0.7; amp = 0.1; droop = -0.2; }
 		if (act == 4.0) {
-			float gs = fract(t * 0.22) < 0.5 ? -1.0 : 1.0;
-			if (side == gs) { sp = 7.0; amp = 0.06; droop = -0.75 + 0.12 * sin(t * 7.0); }    // drawn through the leg
-			else { sp = 1.5; amp = 0.12; droop = -0.15; }
+			sp = 1.5; amp = 0.12; droop = -0.15;             // the side being cleaned: see below
 		}
 		if (act == 2.0 || act == 7.0) { sp = 4.0; amp = 0.2; droop = -0.35; }
 		if (act == 9.0) { sp = 9.0; amp = 0.35; droop = -0.45; }     // stroking the aphid's back
@@ -274,14 +282,22 @@ void vertex() {
 		}
 		float a1 = sin(t * sp + side * 1.3) * amp;
 		float a2 = cos(t * sp * 0.73 + side) * amp * 0.6;
+		if (act == 4.0) {
+			// the antenna being cleaned is drawn down through the leg's comb (angles mixed, not speeds,
+			// so it never whips round as one side hands over to the other)
+			float gw = groom_w(t, side);
+			a1 = mix(a1, sin(t * 7.0 + side * 1.3) * 0.06, gw);
+			a2 = mix(a2, cos(t * 5.1 + side) * 0.036, gw);
+			droop = mix(droop, -0.75 + 0.12 * sin(t * 7.0), gw);
+		}
 		// the antenna turns at its socket, and is carried by the head as it nods and turns
 		mat3 Ra = rot_y(a1 * side) * rot_z(a2 + droop);
 		vec2 hp = head_pose(act, t, gait, mv);
 		mat3 Rh = rot_y(hp.y) * rot_z(hp.x);
 		vec3 hpiv = vec3(1.35, 1.15, 0.0) * K;
-		vec3 v1 = piv + Ra * (VERTEX - piv);
-		VERTEX = hpiv + Rh * (v1 - hpiv);
-		NORMAL = Rh * (Ra * NORMAL);
+		vec3 v1 = piv + Ra * (V - piv);
+		V = hpiv + Rh * (v1 - hpiv);
+		NR = Rh * (Ra * NR);
 		R = mat3(1.0);
 		piv = vec3(0.0);
 	} else if (part == 1.0 || part == 11.0) {
@@ -292,7 +308,7 @@ void vertex() {
 		float turn = hp.y;
 		R = rot_y(turn) * rot_z(nod);
 		if (part == 11.0) {
-			float side = VERTEX.z > 0.0 ? 1.0 : -1.0;
+			float side = V.z > 0.0 ? 1.0 : -1.0;
 			float open = 0.04;
 			if (act == 2.0) open = 0.35 + 0.35 * sin(t * 12.0);
 			if (act == 6.0) open = 0.45;
@@ -301,16 +317,17 @@ void vertex() {
 			if (act == 13.0) open = 0.25 + 0.2 * max(0.0, sin(t * 11.0));
 			if (act == 14.0) open = 0.6;
 			vec3 mp = vec3(2.85, 0.9, 0.3 * side) * K;
-			VERTEX = mp + rot_y(open * side) * (VERTEX - mp);
-			NORMAL = rot_y(open * side) * NORMAL;
+			V = mp + rot_y(open * side) * (V - mp);
+			NR = rot_y(open * side) * NR;
 		}
 	} else if (part == 10.0) {
-		// gaster: slow breathing pulse; the queen curls hers down to lay
+		// gaster: slow breathing pulse; the queen curls hers down to lay. rot_z(+) swings the tip down and
+		// forward under the body, rot_z(-) raises it
 		piv = vec3(-0.9, 1.05, 0.0) * K;
-		float curl = act == 5.0 ? -0.35 + 0.08 * sin(t * 2.0) : 0.0;
-		if (act == 13.0) curl = -1.05 + 0.1 * sin(t * 7.0);   // tip brought forward between the legs to spray
-		if (act == 14.0) curl = 0.12;
-		if (act == 17.0) curl = -0.95 + 0.05 * sin(t * 2.0);  // tip brought forward under the body
+		float curl = act == 5.0 ? 0.35 + 0.08 * sin(t * 2.0) : 0.0;
+		if (act == 13.0) curl = 0.8 + 0.08 * sin(t * 7.0);   // tip brought forward between the legs to spray
+		if (act == 14.0) curl = -0.12;                         // alarmed: gaster raised
+		if (act == 17.0) curl = 0.62 + 0.04 * sin(t * 2.0);  // tip brought forward under the body
 		// carried clear of the ground and swaying against the head as the tripods alternate
 		if (act != 5.0 && act != 11.0 && act != 13.0 && act != 17.0) {
 			curl += 0.1 + 0.025 * sin(gait * 2.0) * mv;
@@ -319,14 +336,41 @@ void vertex() {
 		float b = 1.0 + 0.018 * sin(t * 1.6);
 		vec3 sc = vec3(b) * (1.0 + full * vec3(0.22, 0.3, 0.32));
 		R = R * rot_z(curl) * mat3(vec3(sc.x, 0, 0), vec3(0, sc.y, 0), vec3(0, 0, sc.z));
-		stretch = full;
+		stretch_out = full;
 	}
-	VERTEX = piv + R * (VERTEX - piv);
-	NORMAL = normalize(R * NORMAL);
+	V = piv + R * (V - piv);
+	NR = normalize(R * NR);
 	// whole body: nose down while digging, front up while grooming
-	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 : (act == 10.0 ? -0.1 : (act == 13.0 ? 0.12 : (act == 17.0 ? 0.08 : 0.0))));
-	VERTEX = rot_z(pitch) * VERTEX;
-	NORMAL = rot_z(pitch) * NORMAL;
+	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 : (act == 10.0 ? -0.1 : (act == 13.0 ? -0.06 : (act == 17.0 ? -0.1 : 0.0))));
+	V = rot_z(pitch) * V;
+	NR = rot_z(pitch) * NR;
+	V.y += hlift;
+	return V;
+}
+
+void vertex() {
+	float part = floor(COLOR.a * 16.0 + 0.5);
+	limb = (part >= 2.0 && part <= 9.0) || part == 11.0 ? 1.0 : 0.0;
+	// y: code + 128 x the code being left, fraction = how much of the old pose still shows
+	float y = INSTANCE_CUSTOM.y + 0.0005;
+	float whole = floor(y);
+	float left = y - whole - 0.0005;
+	float code = mod(whole, 128.0);
+	float prev = floor(whole / 128.0);
+	vec3 n1 = NORMAL;
+	float s1;
+	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, s1);
+	stretch = s1;
+	if (left > 0.002 && prev != code) {
+		vec3 n0 = NORMAL;
+		float s0;
+		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, s0);
+		v1 = mix(v1, v0, left);
+		n1 = normalize(mix(n1, n0, left) + vec3(0.0, 1e-4, 0.0));
+		stretch = mix(s1, s0, left);
+	}
+	VERTEX = v1;
+	NORMAL = n1;
 }
 
 void fragment() {

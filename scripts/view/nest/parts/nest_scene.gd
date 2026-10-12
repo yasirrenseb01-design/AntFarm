@@ -43,6 +43,7 @@ var _queue: Array = []
 var _ant_mm: MultiMesh
 var _queen_mm: MultiMesh
 var _queen_anim := 0.0
+var _queen_vact := Vector3(-1, 0, 0)    # easing between her poses (AntModel.act_step)
 var _queen_lay := 0.0
 var _last_eggs := 0
 var _egg_mm: MultiMesh
@@ -99,6 +100,9 @@ const QUEEN_LIFT := 0.38      # her model reaches 0.24 below her feet (gaster) x
 const QUEEN_SCALE := 1.75     # her model at this scale is ~9 mm long (a Lasius niger queen: 8-9 mm; workers 3.5-5)
 var _queen_turn := 0.0
 var _queen_turn_t := 0.0
+var _queen_step := Vector3.ZERO      # a few steps away from her spot (carrying an egg to the packet), drawn only
+var _queen_step_t := Vector3.ZERO
+var _queen_step_prev := Vector3.ZERO
 var _queen_mode := 1               # what she is doing between lifecycle moments: ACT_REST/GROOM/ANTENNATE/WALK
 var _queen_mode_left := 0.0
 var _queen_gait := 0.0
