@@ -273,6 +273,37 @@ func _brood_near(p: Vector3) -> Array:
 	return out
 
 
+## From the nearest point of a brood item (a capsule along its long axis; an egg is a point) to a.
+func _brood_offset(a: Vector3, o: Array) -> Vector3:
+	var c: Vector3 = o[0]
+	if o.size() > 2:
+		var ax: Vector3 = o[2]
+		var l2 := ax.length_squared()
+		if l2 > 0.0001:
+			c += ax * clampf((a - c).dot(ax) / l2, -1.0, 1.0)
+	return a - c
+
+
+## Marks the cells an ant could not stand in without being on the brood (`_brood_cells`), so routes go round
+## the egg packet, the larvae and the cocoons. Rebuilt with each brood layout.
+func _mark_brood_cells() -> void:
+	_brood_cells.clear()
+	for bin in _brood_occ.values():
+		for o in bin:
+			var c: Vector3 = o[0]
+			var half: float = (o[3] if o.size() > 3 else o[1]) + 0.45       # + an ant's half width
+			var ext := half + ((o[2] as Vector3).length() if o.size() > 2 else 0.0)
+			for x in range(floori(c.x - ext), ceili(c.x + ext) + 1):
+				for y in range(floori(c.y - 1.0), ceili(c.y + 1.0) + 1):
+					for z in range(floori(c.z - ext), ceili(c.z + ext) + 1):
+						var cell := Vector3i(x, y, z)
+						if _brood_cells.has(cell):
+							continue
+						var d := _brood_offset(Vector3(cell) - Vector3(0, 0.4, 0), o)
+						if absf(d.y) < 1.2 and Vector2(d.x, d.z).length() < half:
+							_brood_cells[cell] = true
+
+
 func _brood_free(p: Vector3, r: float) -> bool:
 	var q := p + Vector3(0, 0.25, 0)
 	var key := Vector3i(floori(p.x / 1.5), floori(p.y / 1.5), floori(p.z / 1.5))
@@ -314,6 +345,7 @@ func _update_brood() -> void:
 	_fill(_bits_mm, bits)
 	_pile(_pupa_mm, _spots.pupae, sim.pupae.slice(0, maxi(0, sim.pupae.size() - _pending("pupate"))), 300, func(p): return p.get("s", 1.0),
 		[], 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
+	_mark_brood_cells()
 	# the crater mound of excavated pellets around the entrance on top of the block
 	var n := mini(nest.excavated / 2, 900)
 	if n == _mound_n:

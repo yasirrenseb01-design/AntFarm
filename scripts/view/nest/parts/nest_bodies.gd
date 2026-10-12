@@ -18,6 +18,16 @@ func _pose(from: Vector3, to: Vector3, t: float, up: Vector3, scale := 1.0) -> T
 	return Transform3D(Basis(f, y, z).scaled(Vector3.ONE * scale), p - up * 0.4)
 
 
+## Turns heading a part of the way (k) toward want. Slerp needs unit vectors and fails (a bad axis) when the
+## two are all but the same or opposite: then it simply takes the new heading.
+func _turn_to(a: Vector3, want: Vector3, k: float) -> Vector3:
+	var u := a.normalized()
+	var d := u.dot(want)
+	if d > 0.9995 or d < -0.99:
+		return want
+	return u.slerp(want, k)
+
+
 ## Eases the drawn ant along its voxel path: position, heading and body tilt follow the hops
 ## smoothly instead of snapping at each cell; distance walked drives the leg gait (radians) and
 ## `mv` (0..1) tells the shader how much the legs should be stepping. If `face` is set the ant
@@ -35,7 +45,7 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	if moving:
 		var want := step.normalized()
 		var old_f: Vector3 = v.vf
-		v.vf = (v.vf as Vector3).slerp(want, minf(1.0, 9.0 * delta)) if (v.vf as Vector3).dot(want) > -0.99 else want
+		v.vf = _turn_to(v.vf, want, minf(1.0, 9.0 * delta))
 		var turned := old_f.angle_to(v.vf)            # turning takes steps as well as walking does
 		v.gait = fmod(v.gait + (step.length() + turned * 0.9 * scale) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
 	var face: Vector3 = v.get("face", Vector3.INF)
@@ -44,7 +54,7 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 		to -= v.vu * to.dot(v.vu)
 		if to.length_squared() > 0.01:
 			var want := to.normalized()
-			v.vf = (v.vf as Vector3).slerp(want, minf(1.0, 5.0 * delta)) if (v.vf as Vector3).dot(want) > -0.99 else want
+			v.vf = _turn_to(v.vf, want, minf(1.0, 5.0 * delta))
 	v.mv = lerpf(v.mv, 1.0 if moving else 0.0, minf(1.0, 8.0 * delta))
 	v.vu = (v.vu as Vector3).lerp(up, minf(1.0, 6.0 * delta)).normalized()
 	v.vp = np
@@ -149,17 +159,6 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 			sep = Vector3.ZERO
 	m.sep = sep
 	return sep
-
-
-## From the nearest point of a brood item (a capsule along its long axis; an egg is a point) to a.
-func _brood_offset(a: Vector3, o: Array) -> Vector3:
-	var c: Vector3 = o[0]
-	if o.size() > 2:
-		var ax: Vector3 = o[2]
-		var l2 := ax.length_squared()
-		if l2 > 0.0001:
-			c += ax * clampf((a - c).dot(ax) / l2, -1.0, 1.0)
-	return a - c
 
 
 ## Whether this nestmate works at the brood itself (its head may go in among the eggs, larvae and cocoons).

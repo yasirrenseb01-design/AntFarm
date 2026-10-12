@@ -116,8 +116,19 @@ func _step_mate(m: Dictionary) -> void:
 		# ants bound for her chamber paced to and fro round her for ever)
 		_arrive(m)
 		return
-	if best.is_empty():
-		best = aside if not aside.is_empty() else floaty
+	# go round the brood: onward onto free floor if there is any, else a step aside round the pile (for a
+	# while - a pile across the whole tunnel has to be crossed in the end)
+	var best_clear := best.filter(func(n): return not _brood_cells.has(n))
+	var aside_clear := aside.filter(func(n): return not _brood_cells.has(n))
+	var detour: int = m.get("detour", 0)
+	if not best_clear.is_empty():
+		best.assign(best_clear)
+		m.detour = 0
+	elif not best.is_empty() and not aside_clear.is_empty() and detour < 8:
+		best.assign(aside_clear)
+		m.detour = detour + 1
+	elif best.is_empty():
+		best.assign(aside_clear if not aside_clear.is_empty() else (aside if not aside.is_empty() else floaty))
 	if here <= 4 and not best.is_empty():
 		# nearly there, and the way on is onto the brood pile or a nestmate: this is near enough
 		# (the chamber's middle is where its brood lies) - stop and pick a free spot here instead

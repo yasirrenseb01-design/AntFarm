@@ -53,6 +53,16 @@
     (polycalic: รังหลัก + รังย่อย) — ใกล้เคียฟนับได้ ~14,650 เนินใน 11.8 เฮกตาร์
   - ความลึก: แหล่งไม่ตรงกัน (ผู้เลี้ยงมดบอกถึง 2 ม. ตอนแล้งร้อน; ส่วนใหญ่อยู่ใน 30 ซม. บน) — ยังไม่เจองานวัดจริงของ *L. niger*
 - ย้ายตัวอ่อนขึ้น-ลงตามอุณหภูมิในแต่ละวัน; ดักแด้เก็บห้องบนที่แห้งกว่า
+- **ใครอยู่ตรงไหนในรัง** (Mersch, Crespi & Keller 2013, *Camponotus fellah* ติดป้ายทุกตัว ติดตาม 41 วัน):
+  มดงานแบ่งเป็น 3 กลุ่มตามตำแหน่ง — พี่เลี้ยง (อยู่กับราชินีและลูกมดแทบตลอด), มดทำความสะอาด (ไปที่กองขยะบ่อย),
+  มดหาอาหาร (อยู่ใกล้ปากรัง); ส่วนใหญ่พบกันเองในกลุ่ม; มดย้ายกลุ่มตามอายุ พี่เลี้ยง → ทำความสะอาด → หาอาหาร
+  (สัดส่วน ~40% พี่เลี้ยง ~30% หาอาหาร มาจากข่าว ยังไม่ได้ตรวจกับบทความเต็ม) — ตรงกับบทบาทในเกม (nurse/attend/traffic)
+- **การจัดกองลูกมด** (Franks & Sendova-Franks 1992, *Temnothorax/Leptothorax*): ลูกมดเป็นกองเดียวเรียงเป็นวงซ้อน —
+  ไข่และตัวอ่อนเล็กอยู่กลาง หนาแน่น, ตัวอ่อนกลางอยู่วงถัดไป, ตัวอ่อนใหญ่อยู่ขอบ ห่างกันมากกว่า; ย้ายรังแล้วก็เรียงแบบเดิมอีก
+  กลไกที่เสนอทีหลัง: รวมกองก่อน แล้วค่อยเว้นระยะ (Sendova-Franks et al.) — ยังไม่เจองานเฉพาะ *L. niger*
+  (ในเกมตอนนี้แยกเป็นกองไข่/ตัวอ่อน/รังไหม ข้างกัน — ดู BACKLOG)
+- **การย้ายลูกมด:** มดตัดใบ ย้ายลูกมดก่อนเชื้อราเมื่อหนาวหรือแห้ง (PLoS ONE 2014); *Camponotus floridanus* (ทดลองคุมอุณหภูมิพื้นด้วยหุ่นยนต์)
+  มดงานเริ่มขนลูกมดหลังจากเจอที่ที่ดีกว่าแล้วเท่านั้น — งานควบคุมของ *L. niger* เองยังหาไม่เจอ
 
 ### ฤดูกาลและการจำศีล (ฉาก "ป่า": ภูมิอากาศเขตอบอุ่นแบบยุโรปกลาง)
 - อากาศเฉลี่ย ~0°C กลางมกราคม ถึง ~19°C กลางกรกฎาคม; ดินลึกไม่กี่ซม. ช้ากว่าอากาศหลายสัปดาห์ (~3°C ถึง ~20°C);
@@ -116,6 +126,11 @@
 - Khuong A. et al. (2016) Stigmergic construction and topochemical information shape ant nest architecture. PNAS 113(5):1303–1308
 - Römer D., Roces F. (2014) Nest enlargement in leaf-cutting ants: relocated brood and fungus trigger the excavation of new chambers. PLoS ONE 9(5)
 - Buhl J. et al. (2004) Self-organized digging activity in ant colonies — ปริมาตรรังตามประชากร
+- Mersch D.P., Crespi A., Keller L. (2013) Tracking individuals shows spatial fidelity is a key regulator of ant social organization. Science 340:1090–1093
+  https://infoscience.epfl.ch/record/187000
+- Franks N.R., Sendova-Franks A.B. (1992) Brood sorting by ants: distributing the workload over the work-surface. Behav Ecol Sociobiol 30:109–123
+  https://dx.doi.org/10.1007/BF00173947 ; กลไกสองขั้น: https://uwe-repository.worktribe.com/output/1057058/brood-sorting-by-ants-two-phases-and-differential-diffusion
+- Römer & Roces / PLoS ONE (2014) การย้ายลูกมดก่อนเชื้อรา: https://doaj.org/article/2d4734c558514f049a79c69545dc0de7
 - Rasse P., Deneubourg J.-L. (2001) Dynamics of nest excavation and nest size regulation of *Lasius niger*. J Insect Behav 14:433–449
   (อ้างถึงผ่านบทความรอง: https://springerlink.bibliotecabuap.elogim.com/10.1007/s00040-018-0657-0)
 - Zoodiversity: "Potential for Transition to a Polygynous-Supercolonial Demography in *Lasius niger*" (กลุ่มรังใกล้เคียฟ, ขนาดเนิน↔ประชากร)
