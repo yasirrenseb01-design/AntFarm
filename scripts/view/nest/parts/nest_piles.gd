@@ -227,8 +227,8 @@ func _pile_key(kind: String, new_pile: bool) -> String:
 ## the queen, and not grown right into a neighbour.
 func _still_lies(pl: Dictionary, s: float) -> bool:
 	var base: Vector3 = pl.base
-	if _queen_mm.instance_count > 0 and _queen_gap(base) < 0.5:
-		return false
+	if _queen_mm.instance_count > 0 and _queen_body_gap(base) < 0.2:
+		return false                    # (her head among the brood, licking it, moves nothing)
 	if _density_at(base + Vector3(0, 0.3, 0)) >= 0.5:
 		return false
 	if not pl.top:

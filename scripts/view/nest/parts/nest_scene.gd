@@ -45,6 +45,7 @@ var _queen_mm: MultiMesh
 var _queen_anim := 0.0
 var _queen_vact := Vector3(-1, 0, 0)    # easing between her poses (AntModel.act_step)
 var _queen_lay := 0.0
+var _care_left := 8.0               # a founding queen alone: seconds until she next goes to tend her brood
 var _last_eggs := 0
 var _egg_mm: MultiMesh
 var _larva_mm: MultiMesh

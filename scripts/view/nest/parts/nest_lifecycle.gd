@@ -86,6 +86,29 @@ func _start_egg() -> void:
 	_anims.append(a)
 
 
+## A founding queen with no workers yet tends her brood herself (claustral founding: she licks the eggs
+## clean, feeds the larvae from her own reserves - trophic eggs and saliva, Janet 1907 - and sees to the
+## cocoons). Now and then she turns to one of them, steps up, works over it with her mouthparts for a while
+## and goes back to her place. Nothing in the pile moves. (How often, and for how long: chosen, not measured.)
+func _start_care() -> void:
+	var kinds := []
+	if _egg_mm.instance_count > 0:
+		kinds.append([_egg_mm, "eggs"])
+	if _larva_mm.instance_count > 0:
+		kinds.append([_larva_mm, "larvae"])
+		kinds.append([_larva_mm, "larvae"])              # (the larvae need her most: fed as well as cleaned)
+	if _pupa_mm.instance_count > 0:
+		kinds.append([_pupa_mm, "pupae"])
+	if kinds.is_empty():
+		return
+	var pick: Array = kinds[randi() % kinds.size()]
+	var mm: MultiMesh = pick[0]
+	var p: Vector3 = mm.get_instance_transform(randi() % mm.instance_count).origin
+	if p.distance_to(_queen_xf.origin) > 9.0:
+		return                                            # (brood carried off to another chamber)
+	_anims.append({"k": "care", "t": 0.0, "d": randf_range(14.0, 22.0) * _anim_k(), "at": p, "what": pick[1]})
+
+
 func _start_pupate(s: float) -> void:
 	if _spots.larvae.is_empty():
 		return
@@ -136,10 +159,38 @@ func _step_anims(adt: float) -> void:
 	for m in _mates:
 		if m.has("script"):
 			m.script.pos = (m.script.pos as Vector3).move_toward(m.script.goal, walk * adt)
+	# a queen on her own goes to her brood every so often (never in the middle of another moment)
+	if sim.workers.is_empty() and _queen_mm.instance_count > 0 and adt > 0.0:
+		_care_left -= adt
+		if _care_left <= 0.0:
+			_care_left = randf_range(12.0, 40.0)
+			if _anims.filter(func(a): return a.k == "egg" or a.k == "care" or (a.k == "eclose" and a.queen)).is_empty():
+				_start_care()
 	for a in _anims:
 		a.t += adt
 		var u: float = a.t / a.d
 		match a.k:
+			"care":
+				if not a.has("turn0"):
+					a.turn0 = _queen_turn
+					var to: Vector3 = (a.at as Vector3) - _queen_xf.origin
+					a.turn1 = atan2(-to.z, to.x)
+					a.step0 = _queen_step
+				if u < 0.82:
+					_queen_turn_t = a.turn1
+					if u > 0.18 and not a.has("step"):
+						# up to it: her mandibles just short of the item
+						var reach: Vector3 = ((a.at as Vector3) - _queen_xf * MOUTH_TAKE) * Vector3(1, 0, 1)
+						reach -= reach.normalized() * 0.35 if reach.length() > 0.35 else reach
+						a.step = _queen_step + reach.limit_length(3.0)
+					_queen_step_t = a.step if a.has("step") else a.step0
+					_queen_act = ACT_TEND if u > 0.32 else ACT_WALK
+				else:
+					_queen_turn_t = a.turn0
+					_queen_step_t = a.step0
+					_queen_act = ACT_WALK if u < 0.97 else ACT_REST
+				if u >= 1.0:
+					a.done = true
 			"egg":
 				var h = a.helper
 				if h != null and not _mates.has(h):
