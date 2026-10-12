@@ -212,6 +212,11 @@ func _take_shot() -> void:
 		if i == 10:
 			fprof.clear()                 # (the first frames load and warm up)
 			nest_view.fprof.clear()
+		if i == 60 and _opts.has("floor-check") and mode == "nest":
+			var diffs := []
+			for s in nest_view._spots.all.slice(0, 30):
+				diffs.append(snappedf(s.y - nest_view._floor_y(s), 0.01))
+			print("spot.y - floor: ", diffs)
 		if i == 60 and _opts.has("hover"):
 			_hover_some_ant(String(_opts["hover"]))
 		elif i > 10 and _opts.has("perf"):

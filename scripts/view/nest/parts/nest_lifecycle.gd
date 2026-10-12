@@ -159,12 +159,12 @@ func _step_anims(adt: float) -> void:
 						_queen_act = ACT_TAKE_EGG
 						_queen_turn_t = a.turn0
 					elif u < 0.82:
-						# turned to the packet she walks up to it (the egg held out in her mandibles) and sets it down
-						_queen_act = ACT_TEND if u > 0.74 else ACT_WALK
+						# turned to the packet she walks up to it (the egg held up in her mandibles) and sets it down
+						_queen_act = ACT_TEND if u > 0.76 else ACT_CARRY
 						_queen_turn_t = a.turn1
 						if u > 0.6:
 							if not a.has("step"):
-								var reach: Vector3 = ((a.pile as Vector3) - _queen_xf * MOUTH_LOW) * Vector3(1, 0, 1)
+								var reach: Vector3 = ((a.pile as Vector3) - _queen_xf * MOUTH_CARRY) * Vector3(1, 0, 1)
 								reach -= reach.normalized() * 0.5 if reach.length() > 0.5 else reach
 								a.step = _queen_step + reach.limit_length(3.5)
 							_queen_step_t = a.step
@@ -311,14 +311,19 @@ func _draw_anims() -> void:
 				if h == null:
 					# with her gaster curled forward the tip comes up under her head: the egg goes from one
 					# to the other there, then rides in her mandibles until she lays it on the packet
-					var mouth: Vector3 = _queen_xf * MOUTH_LOW
+					var take: Vector3 = _queen_xf * MOUTH_TAKE
+					var carry: Vector3 = _queen_xf * MOUTH_CARRY
 					var under: Vector3 = _queen_xf * TIP_CURLED
 					if u > 0.31:
 						p = tip.lerp(under, smoothstep(0.31, 0.37, u))
 					if u > 0.38:
-						p = under.lerp(mouth, smoothstep(0.38, 0.42, u))
+						p = under.lerp(take, smoothstep(0.38, 0.42, u))
+					if u > 0.42:
+						p = take.lerp(carry, smoothstep(0.42, 0.46, u))        # head comes up with it (pose easing)
 					if u > 0.76:
-						p = mouth.lerp(a.pile + Vector3(0, 0.25, 0), smoothstep(0.76, 0.82, u))
+						var down: Vector3 = a.pile + Vector3(0, 0.25, 0)
+						down.y = _floor_cached(a.pile) + 0.2
+						p = carry.lerp(down, smoothstep(0.76, 0.82, u))
 				elif u > 0.3 and h.has("xf"):
 					var mouth: Vector3 = h.xf * MOUTH
 					p = tip.lerp(mouth, clampf((u - 0.3) / 0.1, 0.0, 1.0))

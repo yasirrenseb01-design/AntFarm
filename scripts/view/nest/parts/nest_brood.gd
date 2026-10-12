@@ -139,7 +139,9 @@ func _egg_xf(i: int) -> Transform3D:
 	var a := j * 2.39996
 	var h := 0.2 + 0.42 * (1.0 - r / rmax)
 	var b := Basis(Vector3.UP, _hash(i, 3) * TAU) * Basis(Vector3.BACK, (_hash(i, 4) - 0.5) * 1.2)
-	return Transform3D(b, centre + Vector3(cos(a) * r, h, sin(a) * r))
+	var at := centre + Vector3(cos(a) * r, 0.0, sin(a) * r)
+	at.y = _floor_cached(at) + h                   # on the real floor under it (the spots are only near it)
+	return Transform3D(b, at)
 
 
 func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Callable, old_spots := [], moved := 1 << 20,
@@ -250,10 +252,17 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 		if inner.is_empty():
 			inner = places
 		best = inner[i % inner.size()]
+		best.y = _floor_cached(best)
 		for o in _brood_near(best):
 			if Vector2(o[0].x - best.x, o[0].z - best.z).length() < r + o[1]:
-				lift = maxf(lift, o[0].y - best.y + o[1] * 0.75)
-	var pos := best + Vector3(0, 0.25 * s + lift, 0)
+				# resting on the top of what is under it (top ~ its centre + half its thickness)
+				lift = maxf(lift, float(o[0].y) + float(o[3] if o.size() > 3 else o[1]) - best.y)
+	if lift == 0.0:
+		best.y = _floor_cached(best)               # resting on the real floor under it
+	# a larva lies on the floor (its mesh sits on its origin); a cocoon is centred, so it is raised half its height
+	var shape0: Vector2 = c.get("shape", Vector2(r, r))
+	var rest := 0.6 * s if shape0.y > 0.5 else 0.02 * s
+	var pos := best + Vector3(0, maxf(0.0, lift) + rest, 0)
 	var key := Vector3i(floori(pos.x / 1.5), floori(pos.y / 1.5), floori(pos.z / 1.5))
 	if not _brood_occ.has(key):
 		_brood_occ[key] = []

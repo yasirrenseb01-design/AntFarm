@@ -84,8 +84,9 @@ finish(head)
 for side in (-1, 1):
     ellipsoid("eye", (2.15 + 0.2 * hs, 1.3, 0.8 * side * hs), (0.25 * hs, 0.3 * hs, 0.13), 1, EYE, 12 if HI else 6)
 if QUEEN and HI:
-    for o in [(2.05, 1.86, 0.0), (1.9, 1.82, 0.16), (1.9, 1.82, -0.16)]:
-        ellipsoid("ocellus", o, (0.07, 0.05, 0.07), 1, EYE, 8)
+    # small flat lenses set into the top of the head (domed beads sitting on it read as floating dots)
+    for o in [(2.05, 1.775, 0.0), (1.9, 1.745, 0.16), (1.9, 1.745, -0.16)]:
+        ellipsoid("ocellus", o, (0.065, 0.03, 0.065), 1, EYE, 8)
 
 
 # mandibles: triangular blades crossing in front of the clypeus, a row of teeth on the chewing edge

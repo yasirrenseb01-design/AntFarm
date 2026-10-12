@@ -174,6 +174,7 @@ func refresh(delta: float) -> void:
 	var t0 := Time.get_ticks_usec()
 	if not nest.dirty.is_empty():
 		_vol_dirty = true
+		_floor_cache.clear()            # the floor moved: brood is set down on it afresh
 	for k in nest.dirty:
 		if not _queue.has(k):
 			_queue.append(k)

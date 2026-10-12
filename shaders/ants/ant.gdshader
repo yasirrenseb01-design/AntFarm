@@ -85,12 +85,16 @@ vec2 leg_ik(vec3 C, vec3 N, vec3 A, vec3 TA, out vec3 axis) {
 float ground_dy(vec3 fw, vec3 upw) {
 	if (ground_mode == 1) {
 		float prev = 1.4;
-		for (int i = 0; i < 10; i++) {
+		float dprev = texture(vol, (fw + upw * prev + 0.5) / vol_size).r;
+		for (int i = 1; i < 10; i++) {
 			float s = 1.4 - 0.3 * float(i);
-			if (texture(vol, (fw + upw * s + 0.5) / vol_size).r >= 0.5) {
-				return mix(prev, s, 0.5);     // between the last open sample and the first solid one
+			float d = texture(vol, (fw + upw * s + 0.5) / vol_size).r;
+			if (d >= 0.5) {
+				// where the density crosses 0.5 between the two samples: the same surface the soil mesh shows
+				return mix(prev, s, clamp((0.5 - dprev) / max(d - dprev, 0.001), 0.0, 1.0));
 			}
 			prev = s;
+			dprev = d;
 		}
 		return -1.4;
 	} else if (ground_mode == 2) {

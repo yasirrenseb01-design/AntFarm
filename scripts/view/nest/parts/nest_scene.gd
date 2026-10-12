@@ -92,6 +92,7 @@ var _queen_xf := Transform3D()
 var _mate_frame := 0
 var _brood_cells := {}           # cells with brood on the floor: routes go round them (nest_brood _mark_brood_cells)
 var _ant_shader_mat: ShaderMaterial   # the workers' material (shadow_pose follows the level of detail)
+var _floor_cache := {}          # floor heights under brood spots (see _floor_cached)
 var fprof := {}                 # dev (--perf): microseconds per part of refresh(), summed
 var _brood_occ := {}             # brood laid this layout, binned (see nest_brood _place_brood)
 var _meshing := {}               # chunk -> {"task", "out"}: meshes being made on worker threads
@@ -118,6 +119,46 @@ var _egg_spots: Array = []         # floor beside the queen (not under her) wher
 
 
 # ---------------------------------------------------------------- meshes
+
+## The soil density at a point (trilinear between voxels, as the soil mesh is built from it).
+func _density_at(p: Vector3) -> float:
+	var x := floori(p.x)
+	var y := floori(p.y)
+	var z := floori(p.z)
+	var fx := p.x - x
+	var fy := p.y - y
+	var fz := p.z - z
+	var d00 := lerpf(nest.density(x, y, z), nest.density(x + 1, y, z), fx)
+	var d10 := lerpf(nest.density(x, y + 1, z), nest.density(x + 1, y + 1, z), fx)
+	var d01 := lerpf(nest.density(x, y, z + 1), nest.density(x + 1, y, z + 1), fx)
+	var d11 := lerpf(nest.density(x, y + 1, z + 1), nest.density(x + 1, y + 1, z + 1), fx)
+	return lerpf(lerpf(d00, d10, fy), lerpf(d01, d11, fy), fz)
+
+
+## _floor_y() remembered per spot (a quarter-voxel grid), forgotten whenever the soil changes.
+func _floor_cached(p: Vector3) -> float:
+	var key := Vector3i(roundi(p.x * 4.0), roundi(p.y * 2.0), roundi(p.z * 4.0))
+	var v = _floor_cache.get(key)
+	if v == null:
+		v = _floor_y(p)
+		_floor_cache[key] = v
+	return v
+
+
+## Height of the soil surface (the floor) under a point near it, from the same density the soil mesh shows;
+## p.y if no floor is found within reach.
+func _floor_y(p: Vector3) -> float:
+	var y := p.y + 0.8
+	var dprev := _density_at(Vector3(p.x, y, p.z))
+	for i in 10:
+		var y2 := y - 0.2
+		var d := _density_at(Vector3(p.x, y2, p.z))
+		if d >= 0.5 and dprev < 0.5:
+			return lerpf(y, y2, (0.5 - dprev) / maxf(d - dprev, 0.001))
+		y = y2
+		dprev = d
+	return p.y
+
 
 ## Dev (--perf): adds the time since t0 to fprof[key]; returns now.
 func _nprof(key: String, t0: int) -> int:
@@ -310,6 +351,10 @@ const MOUTH := Vector3(1.2, 0.32, 0.0)          # mandible tip in the ant model,
 const GASTER_TIP := Vector3(-1.85, 0.25, 0.0)
 const TIP_CURLED := Vector3(0.45, 0.12, 0.0)       # the gaster tip brought forward under the thorax (ACT_TAKE_EGG)
 const MOUTH_LOW := Vector3(1.05, 0.12, 0.0)        # mandibles with the head bowed
+# where her mandible tips are (worked out from the shader's head pose): bowed to take the egg (act 17: nod -0.55,
+# body pitched -0.1 and raised 0.65 design units) and head up carrying it (act 8: nod +0.2)
+const MOUTH_TAKE := Vector3(0.94, 0.10, 0.0)
+const MOUTH_CARRY := Vector3(1.10, 0.42, 0.0)
 
 
 func _pending(kind: String) -> int:
