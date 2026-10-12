@@ -116,6 +116,25 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 					reach = QUEEN_R * 0.8
 				if l < reach and l > 0.001:
 					push += d / l * (reach - l)
+	# brood on the floor is in the way too: ants step round the egg packet, the larvae and the cocoons
+	# instead of walking over them; a nurse (or an ant carrying brood) may put its head in among them to
+	# lick, feed or pick one up, but not its body
+	if not _brood_occ.is_empty():
+		var tends := _tends_brood(m)
+		var ar := 0.45 * s                       # an ant's half width (legs bend in round brood)
+		for o in _brood_near(p):
+			for a in [a0, (a0 + a1) * 0.5, a1]:     # head-thorax, waist and gaster
+				var d := _brood_offset(a, o)
+				var dv := d.dot(up)
+				if absf(dv) > 1.2:
+					continue                     # on the wall or ceiling above it
+				d -= up * dv
+				var reach: float = ar + float(o[3] if o.size() > 3 else o[1])
+				if tends and a == a0:
+					reach = float(o[3] if o.size() > 3 else o[1]) + 0.12    # head just touching it
+				var l := d.length()
+				if l < reach and l > 0.001:
+					push += d / l * (reach - l) * 0.5     # (as hard as ant on ant: harder only squeezed them into each other)
 	# The discs above already include last frame's shift, so `push` is what still overlaps: add it on, and
 	# let the shift relax slowly (half-life ~1 s) so an ant drifts back to its path once there is room.
 	var sep: Vector3 = m.get("sep", Vector3.ZERO)
@@ -129,6 +148,63 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 			sep = Vector3.ZERO
 	m.sep = sep
 	return sep
+
+
+## From the nearest point of a brood item (a capsule along its long axis; an egg is a point) to a.
+func _brood_offset(a: Vector3, o: Array) -> Vector3:
+	var c: Vector3 = o[0]
+	if o.size() > 2:
+		var ax: Vector3 = o[2]
+		var l2 := ax.length_squared()
+		if l2 > 0.0001:
+			c += ax * clampf((a - c).dot(ax) / l2, -1.0, 1.0)
+	return a - c
+
+
+## Whether this nestmate works at the brood itself (its head may go in among the eggs, larvae and cocoons).
+func _tends_brood(m: Dictionary) -> bool:
+	return m.get("role", "") in ["nurse", "carry", "attend"] or m.has("script") or m.has("deliver")
+
+
+## How many body parts of nestmates still stand on eggs, larvae or cocoons: dev check (--trace).
+func brood_overlaps() -> int:
+	var n := 0
+	for m in _mates:
+		if not m.has("xf"):
+			continue
+		var x: Transform3D = m.xf
+		var f: Vector3 = x.basis.x.normalized() * (0.7 * float(m.size))
+		# (a nurse's head may be in among the brood; its body may not)
+		for a in ([x.origin, x.origin - f] if _tends_brood(m) else [x.origin + f, x.origin, x.origin - f]):
+			for o in _brood_near(a):
+				var d := _brood_offset(a, o)
+				var dy := d.y
+				d.y = 0.0
+				var half: float = o[3] if o.size() > 3 else o[1]
+				if absf(dy) < 1.2 and d.length() < (0.45 * float(m.size) + half) * 0.75:
+					n += 1
+	return n
+
+
+## How many pairs of nestmates still overlap by more than a third of a body width: dev check (--trace).
+func mate_overlaps() -> int:
+	var n := 0
+	for i in _mates.size():
+		var m: Dictionary = _mates[i]
+		if not m.has("d0"):
+			continue
+		for j in range(i + 1, _mates.size()):
+			var o: Dictionary = _mates[j]
+			if not o.has("d0") or (m.d0 as Vector3).distance_squared_to(o.d0) > 16.0:
+				continue
+			var lim: float = (0.55 * float(m.size) + 0.55 * float(o.size)) * 0.66
+			var hit := false
+			for a in [m.d0, m.d1]:
+				for b in [o.d0, o.d1]:
+					hit = hit or (a as Vector3).distance_to(b) < lim
+			if hit:
+				n += 1
+	return n
 
 
 ## Whether a body standing at p (on a surface whose up is `up`) is in open space, not in the soil.

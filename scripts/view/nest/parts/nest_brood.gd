@@ -168,7 +168,9 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		if not cands.has(src):
 			var centre := _pile_centre(src, kind)
 			cands[src] = {"list": _pile_places(src, centre), "next": 0, "centre": centre,
-				"reach": 0.9 + 0.75 * sqrt(float(n))}      # a compact heap: one layer about this wide, then on top
+				"reach": 0.9 + 0.75 * sqrt(float(n)),
+				# half length and half width of one item (mesh_kit larva ~1.7 x 0.76, cocoon 2.7 x 1.24)
+				"shape": Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62)}      # a compact heap: one layer about this wide, then on top
 		var s: float = scale_fn.call(items[i])
 		var xf := _place_brood(cands[src], s, i)
 		if _visible(xf.origin):
@@ -222,7 +224,8 @@ func _pile_places(spots: Array, centre: Vector3) -> Array:
 
 ## Lay one item of brood down like a real object: on the floor at the first free place (nothing overlapping
 ## it, not under the queen), or — when the floor of the pile is full — on top of the items already there.
-## `_brood_occ` (cleared per layout) holds what has been laid: [centre, radius] binned by 1.5 units.
+## `_brood_occ` (cleared per layout) holds what has been laid, binned by 1.5 units: [centre, packing radius,
+## half its long axis (a vector: the item is a capsule along it), body half width] - eggs only [centre, radius].
 func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	var places: Array = c.list
 	var r := 0.95 * s                        # a larva or cocoon is long (2-2.7 units): keep their ends apart too
@@ -254,8 +257,10 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	var key := Vector3i(floori(pos.x / 1.5), floori(pos.y / 1.5), floori(pos.z / 1.5))
 	if not _brood_occ.has(key):
 		_brood_occ[key] = []
-	_brood_occ[key].append([pos, r])
-	return Transform3D(Basis(Vector3.UP, _hash(i, 3) * TAU).scaled(Vector3.ONE * s), pos)
+	var b := Basis(Vector3.UP, _hash(i, 3) * TAU)
+	var shape: Vector2 = c.get("shape", Vector2(r, r))
+	_brood_occ[key].append([pos, r, b.x * (shape.x - shape.y) * s, shape.y * s])
+	return Transform3D(b.scaled(Vector3.ONE * s), pos)
 
 
 func _brood_near(p: Vector3) -> Array:
