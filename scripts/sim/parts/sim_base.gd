@@ -353,6 +353,7 @@ func add_rock(p: Vector2, r: float) -> bool:
 		var rr := r * (0.86 + 0.18 * sin(s + k * 1.9) + 0.08 * sin(s * 0.7 + k * 3.7))
 		poly.append(p + Vector2.from_angle(a) * rr)
 	rocks.append({"pos": p, "r": r, "poly": poly, "tone": rng.randf()})
+	_restamp_rocks()
 	# ants caught where the stone lands scramble out to its edge
 	for a in outside:
 		var d: Vector2 = a.pos - p
@@ -369,7 +370,43 @@ func add_rock(p: Vector2, r: float) -> bool:
 	for c in creatures:
 		if c.pos.distance_to(p) < r + 6.0:
 			c.pos = p + (c.pos - p).normalized() * (r + 8.0)
+	# a small stone that now touches the new one has become part of a wall: ants on it step off
+	for a in outside:
+		if blocked(a.pos):
+			for rk in rocks:
+				var d: Vector2 = a.pos - rk.pos
+				if d.length() < float(rk.r) + 1.0:
+					a.pos = (rk.pos + (d.normalized() if d.length() > 0.01 else Vector2.RIGHT) * (float(rk.r) + 4.0)).clamp(Vector2(4, 4), WORLD - Vector2(4, 4))
+					break
 	return true
+
+
+## Stones on the floor: a single stone up to CLIMB_R across is climbed over (rock cells = 2: walkable, slower);
+## a larger stone, or stones touching others (a wall or heap the keeper laid), is walked round (cells = 1).
+## Ants climb any small obstacle in nature; the size limit (and walls staying walls) is a choice for the
+## keeper's sake (user, 2026-10-12), not a measured figure.
+const CLIMB_R := 15.0          # px radius (~1.5 cm across)
+
+func _restamp_rocks() -> void:
+	for rk in rocks:
+		var small: bool = float(rk.r) <= CLIMB_R
+		if small:
+			for o in rocks:
+				if not is_same(o, rk) and (o.pos as Vector2).distance_to(rk.pos) < float(o.r) + float(rk.r):
+					small = false
+					break
+		rk.climb = small
+	rock.fill(0)
+	for climbable in [true, false]:              # blocking stones are stamped over climbable ones
+		for rk in rocks:
+			if bool(rk.climb) != climbable:
+				continue
+			var p: Vector2 = rk.pos
+			var r: float = rk.r
+			for cy in range(maxi(0, int((p.y - r) / CELL)), mini(gh - 1, int((p.y + r) / CELL)) + 1):
+				for cx in range(maxi(0, int((p.x - r) / CELL)), mini(gw - 1, int((p.x + r) / CELL)) + 1):
+					if Vector2(cx * CELL + CELL * 0.5, cy * CELL + CELL * 0.5).distance_to(p) <= r:
+						rock[cy * gw + cx] = 2 if climbable else 1
 
 
 func erase_pheromones(p: Vector2, r: float) -> void:
@@ -447,7 +484,7 @@ func _kill(a: Ant, cause := "other") -> void:
 func blocked(p: Vector2) -> bool:
 	if p.x < 3.0 or p.y < 3.0 or p.x > WORLD.x - 3.0 or p.y > WORLD.y - 3.0:
 		return true
-	return rock[home.index(p.x, p.y)] != 0
+	return rock[home.index(p.x, p.y)] == 1           # (2: a small stone, climbed over)
 
 
 # ---------------------------------------------------------------- log

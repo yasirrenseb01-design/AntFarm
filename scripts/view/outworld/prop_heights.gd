@@ -2,13 +2,15 @@ extends RefCounted
 ## How high the litter lying on the outworld floor stands (pebbles, moss, twigs, fallen leaves): a grid of
 ## heights above the ground, so the ants walk up over them (body raised and tilted, feet set on the surface)
 ## instead of through them. Built once from the scenery layout; also handed to the ant shader as a texture.
-## The simulation does not know about it: litter does not block or slow the foragers (the keeper's stones do).
+## The simulation does not know about litter (it neither blocks nor slows the foragers); small single stones are
+## climbed (sim rock cells = 2, slower) and stamped here too (outworld_props _sync_rocks).
 
 const CELL := 0.5                 # grid spacing, outworld units
 var w := 0
 var h := 0
 var size := Vector2.ZERO          # extent in outworld units
 var top := PackedFloat32Array()   # height above the ground per cell
+var _litter := PackedFloat32Array()   # the scenery alone (stones come and go: stamped again over it)
 
 
 func setup(extent: Vector2) -> void:
@@ -64,6 +66,28 @@ func stamp_leaf(centre: Vector2, ang: float, length: float, width: float, curl: 
 		if absf(p.y) > half:
 			return 0.0
 		return lift + 0.18 + p.y * p.y / maxf(0.1, width) * (0.35 + curl) + maxf(0.0, p.x / length) * 0.6)
+
+
+## The scenery is all stamped: keep it, so stones can be stamped again over it when they change.
+func keep_litter() -> void:
+	_litter = top.duplicate()
+
+
+## Back to the scenery alone (before the climbable stones are stamped again).
+func reset_to_litter() -> void:
+	if not _litter.is_empty():
+		top = _litter.duplicate()
+
+
+## A small stone the ants climb over (mesh_kit_base rock(): a dome of this height, base radius r, set 0.6 into the
+## ground; its bumps are left out).
+func stamp_rock(centre: Vector2, r: float, height: float) -> void:
+	stamp(centre, 0.0, r, func(p: Vector2) -> float:
+		var d := p.length() / r
+		if d >= 1.0:
+			return 0.0
+		var phi := acos(pow(d, 1.0 / 0.65))
+		return maxf(0.0, sin(phi) * height - 0.6))
 
 
 ## Height above the ground at (x, z), outworld units (bilinear between cells).

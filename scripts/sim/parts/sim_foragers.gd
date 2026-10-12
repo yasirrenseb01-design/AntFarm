@@ -89,6 +89,8 @@ func _step_ant(a: Ant) -> void:
 	a.phase += spd * 0.95
 	var pos := a.pos
 	var ci := int(pos.y * INV_CELL) * gw + int(pos.x * INV_CELL)
+	if rock[ci] == 2:
+		spd *= 0.6                    # clambering over a small stone
 	# antennae sample the trail a few times per body length; deposits are pulsed every other tick
 	# periods are in ticks of game time, so behaviour per distance walked is the same at any substep
 	var sense_p := maxi(SENSE_EVERY, n)
@@ -323,7 +325,7 @@ func _sense(a: Ant, field: Field, off: float) -> float:
 	if x < 0.0 or y < 0.0 or x >= WORLD.x or y >= WORLD.y:
 		return -1.0
 	var i := int(y * INV_CELL) * gw + int(x * INV_CELL)
-	if rock[i] != 0:
+	if rock[i] == 1:
 		return -1.0
 	return field.read_i(i)
 

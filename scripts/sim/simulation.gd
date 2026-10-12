@@ -120,6 +120,7 @@ func from_dict(d: Dictionary) -> void:
 	_next_cid = d.next_cid
 	rock = d.rock
 	rocks = d.rocks
+	_restamp_rocks()                    # which stones are climbed over is worked out from the stones themselves
 	foods = d.foods
 	corpses = d.corpses
 	workers = []

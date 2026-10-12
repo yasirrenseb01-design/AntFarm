@@ -296,6 +296,7 @@ func _build_scenery() -> void:
 	for m in world._moss:
 		for b in m:
 			_props_h.stamp_cap(b[0] * U, 0.0, Vector2.ONE * b[1] * U, b[1] * U * 0.55 + 0.05)
+	_props_h.keep_litter()
 	for l in world._litter:
 		var mi := MeshInstance3D.new()
 		var ang: float = l.a

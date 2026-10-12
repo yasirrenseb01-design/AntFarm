@@ -24,6 +24,14 @@ func _take_shot() -> void:
 		camera.zoom = Vector2.ONE * _zoom_t
 		var fc: PackedStringArray = _opts.get("focus", "%d,%d" % [sim.nest_pos.x, sim.nest_pos.y]).split(",")
 		_center_on(Vector2(float(fc[0]), float(fc[1])))
+	if _opts.has("rock"):
+		# drop a stone (keeper's tool) and look at it: --rock=<dx>,<dy>,<r> from the nest entrance
+		var rp: PackedStringArray = String(_opts["rock"]).split(",")
+		var at: Vector2 = sim.nest_pos + Vector2(float(rp[0]), float(rp[1]))
+		print("rock placed: ", sim.add_rock(at, float(rp[2]) if rp.size() > 2 else 10.0), " climb ", sim.rocks[-1].get("climb", false))
+		if mode == "outworld":
+			outworld.target_t = Vector3(at.x, 0, at.y) * outworld.U
+			outworld.target = outworld.target_t
 	if _opts.has("enemy"):
 		# stage a fight: an enemy beside the nest, then let it run for --fight=<ticks>
 		sim.enemies = false
