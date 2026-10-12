@@ -84,6 +84,27 @@ func open_colonies() -> void:
 		settings["care"] = on
 		settings_changed.emit(settings))
 	col.add_child(care)
+	var tune := HBoxContainer.new()
+	tune.add_child(_label("เพลงพื้นหลัง", 13, MUTED))
+	var vol := HSlider.new()
+	vol.focus_mode = Control.FOCUS_NONE
+	vol.min_value = 0.0
+	vol.max_value = 1.0
+	vol.step = 0.05
+	vol.value = float(settings.get("music", 0.4))
+	vol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var vol_txt := _label("ปิด" if vol.value <= 0.0 else "%d%%" % roundi(vol.value * 100), 13, INK)
+	vol_txt.custom_minimum_size.x = 44
+	vol.value_changed.connect(func(v):
+		settings["music"] = v
+		vol_txt.text = "ปิด" if v <= 0.0 else "%d%%" % roundi(v * 100)
+		if music != null:
+			music.volume = v
+		settings_changed.emit(settings))
+	tune.add_child(vol)
+	tune.add_child(vol_txt)
+	col.add_child(tune)
 	var foot := HBoxContainer.new()
 	var note := _label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม" % int(Store.MAX_AWAY_DAYS), 12, MUTED)
 	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL

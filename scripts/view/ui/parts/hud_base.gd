@@ -53,6 +53,7 @@ var outworld
 var ant_tip                 # ui/ant_tip.gd
 var _chime: AudioStreamPlayer
 var _fps_label: Label
+var music                   # ui/lofi.gd (null in test runs)
 var _surface_tools: Array = []
 var _cut_row: HBoxContainer
 var _xray_btn: Button

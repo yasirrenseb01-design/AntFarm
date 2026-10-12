@@ -43,7 +43,8 @@ scripts/
                prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader)
     nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
     surface2d/ มุมบน 2 มิติ: world_view.gd, ant_batch.gd, draw_kit.gd
-    ui/        hud.gd + parts/ (base, colonies, controls, panel), ant_tip.gd (ชี้เมาส์ที่มด: กล่องสถานะ — ฉากต่างๆ มี pick_ant())
+    ui/        hud.gd + parts/ (base, colonies, controls, panel), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()),
+               sounds.gd (เสียงเตือน), lofi.gd (เพลงพื้นหลังที่สร้างในโค้ด ทำในเธรดเบื้องหลัง)
 shaders/       ants/, creatures/, terrain/ (+ ground_h.gdshaderinc: ความสูงพื้นข้างนอก ใช้ร่วมพื้นกับสัตว์), plants/
 assets/models/ ants/, prey/, plants/   (ไฟล์ .antmesh/.json ที่ Blender สร้าง — ห้ามแก้มือ ให้รันสคริปต์ Blender ใหม่)
 tools/         build.ps1 (สร้าง + ลบ build เก่าเอง), check.ps1,
