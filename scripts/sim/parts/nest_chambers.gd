@@ -66,7 +66,15 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 			ch.open = true
 			event = "opened"
 	# how big a chamber gets grows with the colony: ~1.5 cm long for a founding queen, up to ~4 cm
-	var cap := clampf(6.0 + workers / 12.0, 6.0, 13.0)        # the first workers soon need more than the founding cell
+	var cap := clampf(7.0 + workers / 12.0, 7.0, 13.0)        # the first workers soon need more than the founding cell
+	# the first workers open up and widen the founding cell they share with the queen and her brood (~0.25 voxel
+	# a worker) - only while it is the nest's one chamber; after that new chambers take the growth
+	for ch in chambers:
+		if chambers.size() == 1 and ch.get("kind", "") == "queen" and ch.get("open", true):
+			var room_for := minf(cap, 6.0 + workers * 0.25)
+			if ch.goal < room_for:
+				ch.goal = minf(room_for, ch.goal + 0.5)
+				return event
 	var planned := 0.0
 	var floor_cap := 0.0
 	for ch in chambers:

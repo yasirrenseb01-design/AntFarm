@@ -83,10 +83,12 @@ func _step_mate(m: Dictionary) -> void:
 	var best: Array[Vector3i] = []
 	var floaty: Array[Vector3i] = []
 	var aside: Array[Vector3i] = []
+	var by_queen := false
 	for d in DIRS:
 		var n := c + d
 		var fn: int = field.get(n, 1 << 20)
 		if _queen_cells.has(n):
+			by_queen = by_queen or fn < here
 			continue                    # the queen lies there: walk round her
 		if fn < here:
 			if nest.walkable(n):
@@ -95,6 +97,11 @@ func _step_mate(m: Dictionary) -> void:
 				floaty.append(n)
 		elif fn <= here + 1 and n != m.prev and nest.walkable(n):
 			aside.append(n)
+	if by_queen and here <= 6:
+		# the middle of the chamber is under the queen: beside her is as far as anyone gets (without this,
+		# ants bound for her chamber paced to and fro round her for ever)
+		_arrive(m)
+		return
 	if best.is_empty():
 		best = aside if not aside.is_empty() else floaty
 	if not best.is_empty():
@@ -268,6 +275,17 @@ func _update_ants(delta: float) -> void:
 			if not near.has(key):
 				near[key] = []
 			near[key].append(m)
+	# workers still being pulled out of their cocoons have bodies too (they stay put; the others step round)
+	for a in _anims:
+		if a.k == "eclose" and a.t / a.d > 0.3:
+			var ep := _eclose_parts(a, a.t / a.d)
+			var cx: Transform3D = ep.callow
+			var cf: Vector3 = cx.basis.x.normalized() * (0.7 * float(a.s))
+			var cbody := {"callow": true, "xf": cx, "size": a.s, "d0": cx.origin + cf, "d1": cx.origin - cf}
+			var ck := Vector3i(floori(cx.origin.x / 3.0), floori(cx.origin.y / 3.0), floori(cx.origin.z / 3.0))
+			if not near.has(ck):
+				near[ck] = []
+			near[ck].append(cbody)
 	_mate_frame += 1
 	for mi in _mates.size():
 		var m: Dictionary = _mates[mi]
@@ -389,6 +407,17 @@ func _update_ants(delta: float) -> void:
 		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else _queen_mode)
 		_queen_vact = AntModel.act_step(_queen_vact, qa, _queen_anim)     # she eases from one pose into the next
 		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim), fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs)))
+
+
+## Dev (--trace): the nestmates within reach of the queen: role, activity, rest/wander left, position.
+func trace_near_queen() -> String:
+	var out := []
+	for m in _mates:
+		if m.has("xf") and (m.xf as Transform3D).origin.distance_to(_spots.queen) < 7.0:
+			var o: Vector3 = (m.xf as Transform3D).origin
+			out.append("%s%s a%d r%d w%d (%.1f,%.1f,%.1f) sep%.2f" % [m.role, "*" if m.has("script") else "", m.act, m.rest, m.wander,
+				o.x, o.y, o.z, (m.get("sep", Vector3.ZERO) as Vector3).length()])
+	return " | ".join(out)
 
 
 func debug_summary() -> String:

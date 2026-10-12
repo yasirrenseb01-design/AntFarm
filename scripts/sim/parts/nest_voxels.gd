@@ -64,8 +64,8 @@ func setup(r: RandomNumberGenerator, glass_slab := false, founding := false) -> 
 		# what a lone queen digs after her mating flight: a short shaft and one small chamber
 		carve_line(Vector3(entrance), Vector3(mid.x, ny - 9, mid.z), 1.0)
 		var fc := Vector3(mid.x + 1, ny - 11, mid.z)
-		carve_room(fc, Vector3(5.0, 2.2, 5.0 - (2.6 if slab else 0.0)))   # ~1.5 cm across
-		chambers.append({"c": fc, "r": 5.0, "goal": 5.0, "kind": "queen"})
+		carve_room(fc, Vector3(6.0, 2.2, 6.0 - (2.6 if slab else 0.0)))   # ~1.8 cm across
+		chambers.append({"c": fc, "r": 6.0, "goal": 6.0, "kind": "queen"})
 		_recount()
 		_bfs()
 		return
