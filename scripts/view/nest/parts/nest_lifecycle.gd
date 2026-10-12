@@ -78,7 +78,7 @@ func _start_egg() -> void:
 	if not sim.queen.alive or _spots.queen == Vector3.ZERO:
 		return
 	var pile: Vector3 = _egg_xf(_next_egg_slot()).origin if not _spots.eggs.is_empty() else _spots.queen
-	var a := {"k": "egg", "t": 0.0, "d": 14.0 * _anim_k(), "pile": pile, "helper": null}   # slow enough to watch
+	var a := {"k": "egg", "t": 0.0, "d": 22.0 * _anim_k(), "pile": pile, "helper": null}   # slow enough to watch
 	var hs := _helpers(_spots.queen, 1, 7.0)
 	if not hs.is_empty():
 		a.helper = hs[0]
@@ -121,6 +121,53 @@ func _start_care(want := "") -> void:
 	# side ~0.36 x its size, a cocoon 0.62 x its size)
 	var contact: float = {"eggs": 0.08, "larvae": 0.25 * sc, "pupae": 0.68 * sc}[pick[1]]
 	_anims.append({"k": "care", "t": 0.0, "d": randf_range(14.0, 22.0) * _anim_k(), "at": p, "what": pick[1], "contact": contact})
+
+
+## A founding queen's own egg, after laying it (`u` = progress of the moment; the steps that follow wait for
+## her: turning a heavy body takes as long as it takes).
+func _queen_egg_moment(a: Dictionary, u: float) -> void:
+	var home: Vector3 = _spots.queen + Vector3.UP * QUEEN_LIFT
+	if not a.has("turn0"):
+		a.turn0 = _queen_turn
+		a.step0 = _queen_step
+		var to: Vector3 = (a.pile as Vector3) - (home + _queen_step)
+		a.turn1 = atan2(-to.z, to.x)
+	if u < 0.34:
+		_queen_act = ACT_TAKE_EGG                         # gaster curled under, head bowed to the tip
+		_queen_turn_t = a.turn0
+		_queen_step_t = a.step0
+		return
+	if not a.has("down_at"):
+		# holding the egg up, she turns to the packet; once facing it she steps up to it
+		_queen_act = ACT_CARRY
+		_queen_turn_t = a.turn1
+		if not a.has("step"):
+			var face := Transform3D(Basis(Vector3.UP, a.turn1).scaled(Vector3.ONE * QUEEN_SCALE), home + _queen_step)
+			var reach: Vector3 = ((a.pile as Vector3) - face * MOUTH_CARRY) * Vector3(1, 0, 1)
+			reach -= reach.normalized() * 0.25 if reach.length() > 0.25 else reach
+			a.step = _queen_step + reach.limit_length(3.5)
+			for k in 8:
+				if _queen_feet_clear(home + (a.step as Vector3), a.turn1):
+					break
+				a.step = _queen_step + ((a.step as Vector3) - _queen_step) * 0.85
+		if absf(wrapf(a.turn1 - _queen_turn, -PI, PI)) < 0.12:
+			a.stepping = true
+		_queen_step_t = a.step if a.get("stepping", false) else a.step0
+		if a.get("stepping", false) and (_queen_step - (a.step as Vector3)).length() < 0.08 and u > 0.4:
+			a.down_at = a.t
+		return
+	var since: float = a.t - a.down_at
+	if since < 2.2:
+		_queen_act = ACT_TEND                             # bowed over the packet: sets it down, a lick
+		_queen_turn_t = a.turn1
+		_queen_step_t = a.step
+		return
+	# back to her place
+	_queen_act = ACT_WALK
+	_queen_turn_t = a.turn0
+	_queen_step_t = a.step0
+	if absf(wrapf(a.turn0 - _queen_turn, -PI, PI)) < 0.03 and (_queen_step - (a.step0 as Vector3)).length() < 0.05:
+		a.done = true
 
 
 ## Whether her six feet (roughly where they stand, in her model) would be on open floor with her centre at
@@ -241,33 +288,13 @@ func _step_anims(adt: float) -> void:
 				if h != null and not _mates.has(h):
 					a.helper = null
 					h = null
-				if u < 0.3:
+				if u < 0.22:
 					_queen_act = ACT_LAY
 				elif h == null:
 					# a founding queen tends her eggs herself: she curls her gaster forward under her body and
-					# takes the egg in her mandibles, turns to face her egg packet, sets it down, turns back
-					if not a.has("turn0"):
-						a.turn0 = _queen_turn
-						var to: Vector3 = (a.pile as Vector3) - _queen_xf.origin
-						a.turn1 = atan2(-to.z, to.x)
-					if u < 0.42:
-						_queen_act = ACT_TAKE_EGG
-						_queen_turn_t = a.turn0
-					elif u < 0.82:
-						# turned to the packet she walks up to it (the egg held up in her mandibles) and sets it down
-						_queen_act = ACT_TEND if u > 0.76 else ACT_CARRY
-						_queen_turn_t = a.turn1
-						if u > 0.6:
-							if not a.has("step"):
-								var reach: Vector3 = ((a.pile as Vector3) - _queen_xf * MOUTH_CARRY) * Vector3(1, 0, 1)
-								reach -= reach.normalized() * 0.5 if reach.length() > 0.5 else reach
-								a.step = _queen_step + reach.limit_length(3.5)
-							_queen_step_t = a.step
-						else:
-							_queen_step_t = _queen_step
-					else:
-						_queen_act = ACT_REST
-						_queen_turn_t = a.turn0
+					# takes the egg in her mandibles, turns (slowly) to face her egg packet, and once facing it
+					# steps up and sets the egg down on it; then she turns back to her place
+					_queen_egg_moment(a, u)
 				elif u < 0.4:
 					h.script.act = ACT_TEND
 				elif u < 0.85:
@@ -276,7 +303,7 @@ func _step_anims(adt: float) -> void:
 					h.script.act = ACT_CARRY
 				else:
 					h.script.act = ACT_TEND
-				if u >= 1.0:
+				if (h != null and u >= 1.0) or a.t > a.d * 1.8:
 					a.done = true
 					if h != null:
 						_release(h)
@@ -366,11 +393,25 @@ func _step_anims(adt: float) -> void:
 	_anims = _anims.filter(func(a): return not a.get("done", false))
 	_anims.append_array(fresh)
 	# she turns as a heavy queen does, stepping round at most ~1 rad/s and easing out at the end
+	# her turning speeds up and slows down gradually (a heavy body: no snapping into or out of a turn), at
+	# most ~0.75 rad/s, braking in time to stop facing where she means to
 	var dturn := wrapf(_queen_turn_t - _queen_turn, -PI, PI)
-	_queen_turn += signf(dturn) * minf(absf(dturn), minf(1.0, 0.1 + 1.8 * absf(dturn)) * adt)
+	var want_v := signf(dturn) * minf(0.75, sqrt(2.0 * 1.0 * absf(dturn)))
+	_queen_turn_v = move_toward(_queen_turn_v, want_v, 1.4 * adt)
+	var dt_turn := _queen_turn_v * adt
+	if absf(dt_turn) > absf(dturn) and signf(dt_turn) == signf(dturn):
+		dt_turn = dturn
+		_queen_turn_v = 0.0
+	_queen_turn += dt_turn
 	# and walks (slowly: ~1.5 units a second) where a moment needs her, back to her spot afterwards
 	var to_step := _queen_step_t - _queen_step
-	_queen_step += to_step.limit_length(minf(1.5, 0.2 + 2.0 * to_step.length()) * adt)
+	var want_w := to_step.normalized() * minf(1.2, sqrt(2.0 * 1.5 * to_step.length())) if to_step.length() > 0.001 else Vector3.ZERO
+	_queen_step_v = _queen_step_v.move_toward(want_w, 2.0 * adt)       # (eases into and out of her steps too)
+	var ds := _queen_step_v * adt
+	if ds.length() > to_step.length():
+		ds = to_step
+		_queen_step_v = Vector3.ZERO
+	_queen_step += ds
 
 
 ## Ants still being born are drawn here: pulled head first out of the cocoon still wrapped in the
@@ -402,23 +443,22 @@ func _draw_anims() -> void:
 				var tip: Vector3 = _queen_xf * GASTER_TIP
 				var p := tip
 				var h = a.helper
-				var sc := clampf(0.25 + u / 0.3 * 0.75, 0.25, 1.0)
+				var sc := clampf(0.25 + u / 0.22 * 0.75, 0.25, 1.0)
 				if h == null:
 					# with her gaster curled forward the tip comes up under her head: the egg goes from one
 					# to the other there, then rides in her mandibles until she lays it on the packet
 					var take: Vector3 = _queen_xf * MOUTH_TAKE
 					var carry: Vector3 = _queen_xf * MOUTH_CARRY
 					var under: Vector3 = _queen_xf * TIP_CURLED
-					if u > 0.31:
-						p = tip.lerp(under, smoothstep(0.31, 0.37, u))
-					if u > 0.38:
-						p = under.lerp(take, smoothstep(0.38, 0.42, u))
-					if u > 0.42:
-						p = take.lerp(carry, smoothstep(0.42, 0.46, u))        # head comes up with it (pose easing)
-					if u > 0.76:
-						var down: Vector3 = a.pile + Vector3(0, 0.25, 0)
-						down.y = _floor_cached(a.pile) + 0.2
-						p = carry.lerp(down, smoothstep(0.76, 0.82, u))
+					if u > 0.22:
+						p = tip.lerp(under, smoothstep(0.22, 0.27, u))
+					if u > 0.28:
+						p = under.lerp(take, smoothstep(0.28, 0.32, u))
+					if u > 0.34:
+						p = take.lerp(carry, smoothstep(0.34, 0.38, u))        # head comes up with it (pose easing)
+					if a.has("down_at"):
+						# set down exactly where it will lie in the packet (no jump when the moment ends)
+						p = carry.lerp(a.pile, smoothstep(0.0, 1.2, a.t - a.down_at))
 				elif u > 0.3 and h.has("xf"):
 					var mouth: Vector3 = h.xf * MOUTH
 					p = tip.lerp(mouth, clampf((u - 0.3) / 0.1, 0.0, 1.0))

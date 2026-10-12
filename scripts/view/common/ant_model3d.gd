@@ -165,7 +165,7 @@ func build(swing := 0.0, queen := false, detailed := true) -> ArrayMesh:
 static var _cache := {}
 # appendage colour relative to the body tint (see limb_gain in shaders/ant.gdshader)
 const WORKER_LIMBS := Vector3(1.7, 1.45, 1.25)
-const QUEEN_LIMBS := Vector3(5.6, 4.6, 2.6)
+const QUEEN_LIMBS := Vector3(7.5, 5.0, 2.3)     # (on her near-black body: dark amber legs, as in reference/ photos)
 
 
 ## The model sculpted in Blender (tools/blender/build_ant.py -> assets/models/ants/*.antmesh) when present,
@@ -266,31 +266,32 @@ static func tint(body: Color) -> Color:
 #   fraction   = how much of the previous pose is still showing (eased 1 -> 0 over ACT_BLEND seconds).
 # A plain integer (no previous, fraction 0) is the old encoding and still works.
 const ACT_BLEND := 0.45          # seconds (animation clock) to ease from one pose into the next
+const QUEEN_BLEND := 1.1         # the queen: a heavy body, her big gaster swung slowly from one pose to the next
 
 
 ## Updates the easing state `st` (x = current code, y = previous code, z = clock when it changed) for
 ## this frame's code; returns the new state. Start from Vector3(-1, 0, 0).
-static func act_step(st: Vector3, code: int, clock: float) -> Vector3:
+static func act_step(st: Vector3, code: int, clock: float, blend := ACT_BLEND) -> Vector3:
 	if st.x < 0.0:
-		return Vector3(code, code, clock - ACT_BLEND)
+		return Vector3(code, code, clock - blend)
 	if int(st.x) == code:
 		return st
 	# changed again while still easing: carry on from whichever pose is showing more
-	var from := st.x if act_left(st, clock) < 0.5 else st.y
+	var from := st.x if act_left(st, clock, blend) < 0.5 else st.y
 	return Vector3(code, from, clock)
 
 
 ## How much of the previous pose still shows (1 -> 0).
-static func act_left(st: Vector3, clock: float) -> float:
+static func act_left(st: Vector3, clock: float, blend := ACT_BLEND) -> float:
 	if clock < st.z:
 		return 0.0                   # the clock was reset (the ant was placed anew)
-	var u := clampf((clock - st.z) / ACT_BLEND, 0.0, 1.0)
+	var u := clampf((clock - st.z) / blend, 0.0, 1.0)
 	return 1.0 - u * u * (3.0 - 2.0 * u)
 
 
 ## The shader's INSTANCE_CUSTOM.y for an easing state.
-static func act_y(st: Vector3, clock: float) -> float:
-	var left := act_left(st, clock)
+static func act_y(st: Vector3, clock: float, blend := ACT_BLEND) -> float:
+	var left := act_left(st, clock, blend)
 	if left <= 0.001 or int(st.y) == int(st.x):
 		return st.x
 	return st.x + 128.0 * st.y + minf(left, 0.99)

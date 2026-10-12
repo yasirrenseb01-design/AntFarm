@@ -438,8 +438,8 @@ func _update_ants(delta: float) -> void:
 		_queen_gait = fmod(_queen_gait + (turned * 0.9 + walked) / AntModel.stride_len(qs) * TAU, TAU * 64.0)
 		_queen_mv = lerpf(_queen_mv, 1.0 if turned > 0.002 or walked > 0.001 else 0.0, minf(1.0, 8.0 * adt))
 		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else _queen_mode)
-		_queen_vact = AntModel.act_step(_queen_vact, qa, _queen_anim)     # she eases from one pose into the next
-		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim), fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs)))
+		_queen_vact = AntModel.act_step(_queen_vact, qa, _queen_anim, AntModel.QUEEN_BLEND)     # she eases slowly from one pose into the next
+		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim, AntModel.QUEEN_BLEND), fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs)))
 	var q_sel: bool = sel_kind == "queen" and _queen_mm.instance_count > 0
 	_sel_queen_mm.instance_count = 1 if q_sel else 0
 	if q_sel:
