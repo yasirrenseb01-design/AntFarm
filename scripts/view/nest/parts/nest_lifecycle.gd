@@ -1,5 +1,5 @@
-extends "res://scripts/view/nest/parts/nest_brood.gd"
-## Nest view, layer 4 of 7: life-cycle moments acted out from sim.events (egg laying, pupation,
+extends "res://scripts/view/nest/parts/nest_piles.gd"
+## Nest view, layer 5 of 8: life-cycle moments acted out from sim.events (egg laying, pupation,
 ## eclosion, carrying the empty cocoon out).
 
 
@@ -77,8 +77,7 @@ func _beside(p: Vector3, m: Dictionary, dist := 1.6) -> Vector3:
 func _start_egg() -> void:
 	if not sim.queen.alive or _spots.queen == Vector3.ZERO:
 		return
-	var idx := maxi(0, sim.eggs.size() - 1 - _pending("egg"))
-	var pile: Vector3 = _egg_xf(idx).origin if not _spots.eggs.is_empty() else _spots.queen
+	var pile: Vector3 = _egg_xf(_next_egg_slot()).origin if not _spots.eggs.is_empty() else _spots.queen
 	var a := {"k": "egg", "t": 0.0, "d": 14.0 * _anim_k(), "pile": pile, "helper": null}   # slow enough to watch
 	var hs := _helpers(_spots.queen, 1, 7.0)
 	if not hs.is_empty():

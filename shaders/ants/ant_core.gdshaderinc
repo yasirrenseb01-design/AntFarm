@@ -379,7 +379,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			if (act == 10.0) open = 0.3;
 			if (act == 13.0) open = 0.25 + 0.2 * max(0.0, sin(t * 11.0));
 			if (act == 14.0) open = 0.6;
-			if (act == 8.0) open = 0.16;                       // gripping the load
+			if (act == 8.0) open = 0.3;                        // gripping the load (open round it, tips on its sides)
 			if (act == 19.0) open = 0.12;
 			if (act == 4.0) open = 0.04 + (0.2 + 0.15 * sin(t * 6.0)) * groom_phase(t).y;    // working over a foreleg
 			vec3 mp = vec3(2.85, 0.9, 0.3 * side) * K;

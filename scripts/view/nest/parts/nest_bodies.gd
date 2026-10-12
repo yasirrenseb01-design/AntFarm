@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_lifecycle.gd"
-## Nest view, layer 5 of 7 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves —
+## Nest view, layer 6 of 8 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves —
 ## easing along its voxel path, turning, the leg cycle, and bodies keeping out of one another (and the queen),
 ## and (moved from nest_mates.gd in v0.8.16) where an ant chooses to stop: a free patch of floor.
 

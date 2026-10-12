@@ -2,7 +2,7 @@ extends "res://scripts/view/nest/parts/nest_mates.gd"
 ## 3D view of the underground nest: the soil block sliced open by a camera-facing cut plane, with
 ## diggers from the simulation, resting nestmates, brood piles and the queen. This file is the top of
 ## the chain: building the scene, switching on/off, the per-frame update and input.
-## Layers: parts/nest_scene <- nest_camera <- nest_brood <- nest_lifecycle <- nest_bodies <- nest_mates <- nest_view (see docs/ARCHITECTURE.md).
+## Layers: parts/nest_scene <- nest_camera <- nest_brood <- nest_piles <- nest_lifecycle <- nest_bodies <- nest_mates <- nest_view (see docs/ARCHITECTURE.md).
 
 
 func setup(s) -> void:

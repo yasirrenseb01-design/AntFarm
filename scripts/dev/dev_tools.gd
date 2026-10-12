@@ -173,6 +173,9 @@ func _take_shot() -> void:
 			nest_view.focus(_opts["look"])
 			nest_view.target = nest_view.target_t
 			nest_view.cam_dist = nest_view.dist_t
+			if _opts.has("dist"):                         # (closer or farther than the view's own choice)
+				nest_view.dist_t = float(_opts["dist"])
+				nest_view.cam_dist = nest_view.dist_t
 		# act out life-cycle moments on demand: --anim=egg,pupate,eclose
 		for k in String(_opts.get("anim", "")).split(",", false):
 			nest_view._refresh_spots()
@@ -286,6 +289,10 @@ func _take_shot() -> void:
 var _pop_prev := []
 var _pop_moves := []
 var _pop_n := 0
+var _brood_prev := []
+var _brood_moved := 0
+var _brood_said := 0
+var _buried_said := 0
 ## Dev (--pops, with --seq): drawn ants that flick back and forth (moved more than 0.2 mm one frame, then
 ## back again the next: two bodies pushing each other, or a pose that cannot settle); prints each one.
 func _count_pops() -> void:
@@ -312,6 +319,45 @@ func _count_pops() -> void:
 				print("pop %d: flick at %s  %.2f mm then %.2f mm back" % [_pop_n, p, was.length() / u, mv.length() / u])
 	_pop_prev = now
 	_pop_moves = moves
+	if mode == "nest":
+		# brood should lie still: count eggs, larvae and cocoons that moved by themselves
+		var bs := []
+		var counts := []
+		for bm in [nest_view._egg_mm, nest_view._larva_mm, nest_view._pupa_mm]:
+			counts.append(bm.instance_count)
+			for i in bm.instance_count:
+				bs.append(bm.get_instance_transform(i).origin)
+		if not _brood_prev.is_empty():
+			for p in bs:
+				var best := INF
+				for q in _brood_prev:
+					best = minf(best, (p as Vector3).distance_squared_to(q))
+				if best > 0.01 and best < 9.0:
+					_brood_moved += 1
+					if _opts.has("trace"):
+						print("  brood item moved %.2f  eggs/larvae/cocoons %s  sim %d/%d/%d" % [sqrt(best), counts, sim.eggs.size(), sim.larvae.size(), sim.pupae.size()])
+			if _brood_moved > 0 and _brood_moved != _brood_said:
+				_brood_said = _brood_moved
+				print("brood moved (running count) %d" % _brood_moved)
+		_brood_prev = bs
+		# and none of it inside the soil: larva and cocoon ends, eggs' middles
+		var buried := 0
+		for bm in [nest_view._larva_mm, nest_view._pupa_mm]:
+			for i in bm.instance_count:
+				var xf: Transform3D = bm.get_instance_transform(i)
+				var up := Vector3(0, 0.25 * xf.basis.get_scale().x, 0)
+				for e in [xf.origin + up, xf.origin + up + xf.basis.x * 0.7, xf.origin + up - xf.basis.x * 0.7]:
+					if nest_view._density_at(e) >= 0.5:
+						buried += 1
+						if _opts.has("trace"):
+							print("  buried %s at %s (y above floor %.2f)" % ["larva" if bm == nest_view._larva_mm else "cocoon", xf.origin, xf.origin.y - nest_view._floor_cached(xf.origin)])
+						break
+		for i in nest_view._egg_mm.instance_count:
+			if nest_view._density_at(nest_view._egg_mm.get_instance_transform(i).origin) >= 0.5:
+				buried += 1
+		if buried != _buried_said:
+			_buried_said = buried
+			print("brood in the soil now: %d" % buried)
 
 
 ## --hover=<role|out|queen>: put the mouse on such an ant, so the hover box shows in the shot.

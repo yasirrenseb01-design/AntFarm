@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_bodies.gd"
-## Nest view, layer 6 of 7: the nestmates walking the real tunnels, their roles and activities,
+## Nest view, layer 7 of 8: the nestmates walking the real tunnels, their roles and activities,
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 
