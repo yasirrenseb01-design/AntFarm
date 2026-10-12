@@ -131,6 +131,9 @@ func _take_shot() -> void:
 	if _opts.has("fridge"):
 		sim.fridge_on = true
 		sim.climate.fridge = 1.0
+	if _opts.has("queen-act"):
+		nest_view._queen_mode = int(_opts["queen-act"])     # hold the queen in one idle activity (pose checks)
+		nest_view._queen_mode_left = 1.0e9
 	if _opts.has("newcolony"):
 		hud._open_new_colony(1, true)
 	var keep := speed

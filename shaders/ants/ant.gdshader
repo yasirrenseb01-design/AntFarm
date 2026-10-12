@@ -20,6 +20,12 @@ render_mode diffuse_burley;
 // y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
 
 uniform float rim_amount = 0.35;
+// where the feet find the ground: 0 a flat floor at the instance origin, 1 the nest's soil (the voxel volume),
+// 2 the outworld floor (ground_h). Each walking foot is set down on the real surface under it.
+uniform int ground_mode = 0;
+uniform sampler3D vol : filter_linear;      // nest: soil density per voxel (as shaders/terrain/soil.gdshader)
+uniform vec3 vol_size = vec3(64.0, 72.0, 64.0);
+#include "res://shaders/terrain/ground_h.gdshaderinc"
 uniform vec3 limb_gain = vec3(1.0);   // appendages are lighter than the body: amber-orange in L. niger queens
 varying float stretch;
 varying float limb;
@@ -61,6 +67,47 @@ vec2 leg_ik(vec3 C, vec3 N, vec3 A, vec3 TA, out vec3 axis) {
 	return vec2(f, t);
 }
 
+// How far (world units, along the ant's up) the real ground lies from a foot placed at fw: + above, - below.
+float ground_dy(vec3 fw, vec3 upw) {
+	if (ground_mode == 1) {
+		float prev = 1.4;
+		for (int i = 0; i < 10; i++) {
+			float s = 1.4 - 0.3 * float(i);
+			if (texture(vol, (fw + upw * s + 0.5) / vol_size).r >= 0.5) {
+				return mix(prev, s, 0.5);     // between the last open sample and the first solid one
+			}
+			prev = s;
+		}
+		return -1.4;
+	} else if (ground_mode == 2) {
+		return ground_h(fw.xz) - fw.y;
+	}
+	return 0.0;
+}
+
+// The head's pose (nod, turn) for an activity — the antennae ride on it.
+vec2 head_pose(float act, float t, float gait, float mv) {
+	float nod = 0.0;
+	if (act == 2.0) nod = -0.35 + 0.25 * sin(t * 10.0);     // biting into the soil
+	if (act == 7.0) nod = -0.28 + 0.12 * sin(t * 4.0);      // licking brood / the queen
+	if (act == 6.0) nod = -0.05 + 0.06 * sin(t * 3.0);      // passing a droplet mouth to mouth
+	if (act == 1.0) nod = 0.03 * sin(t * 0.7);
+	if (act == 9.0) nod = -0.2 + 0.05 * sin(t * 3.0);
+	if (act == 10.0) nod = -0.4 + 0.05 * sin(t * 4.0);     // lapping at the drop
+	if (act == 13.0) nod = -0.3 + 0.12 * sin(t * 11.0);    // worrying at the grip
+	if (act == 14.0) nod = 0.12;
+	if (act == 16.0) nod = -0.07;                           // nose down to the scent
+	float turn = 0.05 * sin(gait) * mv;
+	if (act == 15.0) { turn = 0.32 * sin(t * 1.4); nod = 0.06 + 0.05 * sin(t * 0.9); }
+	if (act == 4.0) {
+		// grooming: head bowed and turned to the side being cleaned
+		float gs = fract(t * 0.22) < 0.5 ? -1.0 : 1.0;
+		nod = -0.3;
+		turn = 0.22 * gs;
+	}
+	return vec2(nod, turn);
+}
+
 void vertex() {
 	float part = floor(COLOR.a * 16.0 + 0.5);
 	float gait = INSTANCE_CUSTOM.x;
@@ -89,7 +136,7 @@ void vertex() {
 		float sw = sin(ph) * 0.42 * mv;
 		float lift = max(0.0, cos(ph)) * 0.32 * mv;
 		bool front = li < 0.5;
-		bool posed = act == 11.0 || act == 12.0 || act == 13.0 || (front && (act == 2.0 || act == 4.0 || act == 9.0));
+		bool posed = act == 11.0 || act == 12.0 || act == 13.0 || (front && (act == 2.0 || act == 9.0));
 		if (mv < 0.05) {
 			sw = 0.04 * sin(t * 0.9 + li * 2.0 + side);      // standing: tiny shifts of weight
 		}
@@ -147,7 +194,26 @@ void vertex() {
 			if (mv < 0.05) {
 				dx += 0.03 * K * sin(t * 0.9 + li * 2.0 + side);    // standing: tiny shifts of weight
 			}
-			vec3 T = F + vec3(dx, up, 0.0);
+			vec3 T = F + vec3(dx, 0.0, 0.0);
+			// set the foot down on the real ground under it (rough nest floors, the slope outside)
+			if (ground_mode != 0) {
+				vec3 upw = normalize(MODEL_MATRIX[1].xyz);
+				float sc = length(MODEL_MATRIX[1].xyz);
+				vec3 fw = (MODEL_MATRIX * vec4(T, 1.0)).xyz;
+				T.y += clamp(ground_dy(fw, upw) / sc, -0.32, 0.28);
+			}
+			T.y += up;
+			bool cleaning = false;
+			if (act == 4.0 && front) {
+				// grooming: one front leg at a time draws its antenna through the comb on the leg —
+				// the foot comes up in front of the face and strokes out along the antenna
+				float gs = fract(t * 0.22) < 0.5 ? -1.0 : 1.0;
+				if (side == gs) {
+					float k = 0.5 + 0.5 * sin(t * 7.0);
+					T = vec3(2.7 + 0.6 * k, 1.05 - 0.2 * k, 0.45 * side) * K;
+					cleaning = true;
+				}
+			}
 			// the coxa swings the whole leg round toward the foothold...
 			vec2 v0 = (F - H).xz;
 			vec2 v1 = (T - H).xz;
@@ -187,7 +253,11 @@ void vertex() {
 		float droop = 0.06;                                           // exploring: held up, sweeping wide
 		if (act == 3.0 || act == 6.0) { sp = 11.0; amp = 0.4; droop = -0.15; }
 		if (act == 1.0) { sp = 0.7; amp = 0.1; droop = -0.2; }
-		if (act == 4.0) { sp = 7.0; amp = 0.25; droop = -0.55; }
+		if (act == 4.0) {
+			float gs = fract(t * 0.22) < 0.5 ? -1.0 : 1.0;
+			if (side == gs) { sp = 7.0; amp = 0.06; droop = -0.75 + 0.12 * sin(t * 7.0); }    // drawn through the leg
+			else { sp = 1.5; amp = 0.12; droop = -0.15; }
+		}
 		if (act == 2.0 || act == 7.0) { sp = 4.0; amp = 0.2; droop = -0.35; }
 		if (act == 9.0) { sp = 9.0; amp = 0.35; droop = -0.45; }     // stroking the aphid's back
 		if (act == 10.0) { sp = 3.0; amp = 0.12; droop = -0.4; }
@@ -202,24 +272,22 @@ void vertex() {
 		}
 		float a1 = sin(t * sp + side * 1.3) * amp;
 		float a2 = cos(t * sp * 0.73 + side) * amp * 0.6;
-		R = rot_y(a1 * side) * rot_z(a2 + droop);
+		// the antenna turns at its socket, and is carried by the head as it nods and turns
+		mat3 Ra = rot_y(a1 * side) * rot_z(a2 + droop);
+		vec2 hp = head_pose(act, t, gait, mv);
+		mat3 Rh = rot_y(hp.y) * rot_z(hp.x);
+		vec3 hpiv = vec3(1.35, 1.15, 0.0) * K;
+		vec3 v1 = piv + Ra * (VERTEX - piv);
+		VERTEX = hpiv + Rh * (v1 - hpiv);
+		NORMAL = Rh * (Ra * NORMAL);
+		R = mat3(1.0);
+		piv = vec3(0.0);
 	} else if (part == 1.0 || part == 11.0) {
 		// head on the neck joint
 		piv = vec3(1.35, 1.15, 0.0) * K;
-		float nod = 0.0;
-		if (act == 2.0) nod = -0.35 + 0.25 * sin(t * 10.0);     // biting into the soil
-		if (act == 7.0) nod = -0.28 + 0.12 * sin(t * 4.0);      // licking brood / the queen
-		if (act == 6.0) nod = -0.05 + 0.06 * sin(t * 3.0);      // passing a droplet mouth to mouth
-		if (act == 1.0) nod = 0.03 * sin(t * 0.7);
-		if (act == 4.0) nod = 0.2;
-		if (act == 9.0) nod = -0.2 + 0.05 * sin(t * 3.0);
-		if (act == 10.0) nod = -0.4 + 0.05 * sin(t * 4.0);     // lapping at the drop
-		if (act == 13.0) nod = -0.3 + 0.12 * sin(t * 11.0);    // worrying at the grip
-		if (act == 14.0) nod = 0.12;
-		if (act == 16.0) nod = -0.07;                                 // nose down to the scent
-		// the head turns a little with each step, and sweeps slowly from side to side when scanning
-		float turn = 0.05 * sin(gait) * mv;
-		if (act == 15.0) { turn = 0.32 * sin(t * 1.4); nod = 0.06 + 0.05 * sin(t * 0.9); }
+		vec2 hp = head_pose(act, t, gait, mv);
+		float nod = hp.x;
+		float turn = hp.y;
 		R = rot_y(turn) * rot_z(nod);
 		if (part == 11.0) {
 			float side = VERTEX.z > 0.0 ? 1.0 : -1.0;
@@ -253,7 +321,7 @@ void vertex() {
 	VERTEX = piv + R * (VERTEX - piv);
 	NORMAL = normalize(R * NORMAL);
 	// whole body: nose down while digging, front up while grooming
-	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.18 : (act == 10.0 ? -0.1 : (act == 13.0 ? 0.12 : 0.0)));
+	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 : (act == 10.0 ? -0.1 : (act == 13.0 ? 0.12 : 0.0)));
 	VERTEX = rot_z(pitch) * VERTEX;
 	NORMAL = rot_z(pitch) * NORMAL;
 }

@@ -88,6 +88,7 @@ var _fx_drop_mm: MultiMesh
 var _bits_mm: MultiMesh            # pieces of prey laid on the larvae for them to feed on
 var _queen_xf := Transform3D()
 var _mate_frame := 0
+var _brood_occ := {}             # brood laid this layout, binned (see nest_brood _place_brood)
 var _meshing := {}               # chunk -> {"task", "out"}: meshes being made on worker threads
 var _queen_cells := {}           # voxel cells the queen's body fills: nestmates walk round them
 # the queen's body as a capsule, in her model's units (scaled by her transform)

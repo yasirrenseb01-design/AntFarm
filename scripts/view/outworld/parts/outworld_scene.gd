@@ -33,6 +33,7 @@ var target_t := Vector3(200, 0, 125)
 var _cam: Camera3D
 var _sun: DirectionalLight3D
 var _fly_wings: StandardMaterial3D
+var _ant_shader_mat: ShaderMaterial
 var _frost := -1.0        # -1 until the first frame (then it starts at the right value)
 var _env: Environment
 var _ground_mat: ShaderMaterial
@@ -184,7 +185,10 @@ func _update_mound() -> void:
 		return
 	_mound = m
 	_mound_r = 3.0 + m * 2.2
-	for mat in [_ground_mat] + _creature_views.values().map(func(cv): return cv.mat):
+	var mats: Array = [_ground_mat] + _creature_views.values().map(func(cv): return cv.mat)
+	if _ant_shader_mat != null:
+		mats.append(_ant_shader_mat)
+	for mat in mats:
 		mat.set_shader_parameter("mound_h", _mound)
 		mat.set_shader_parameter("mound_r", _mound_r)
 		mat.set_shader_parameter("nest_xz", _nest_xz)

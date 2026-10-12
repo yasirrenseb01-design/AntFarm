@@ -161,10 +161,14 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		spots = spots + _spots.all.filter(func(s): return not spots.has(s))
 	var xs := []
 	var cs := []
+	var cands := {}
 	for i in n:
 		# items not yet carried over stay in the old pile
 		var src: Array = spots if (i < moved or old_spots.is_empty()) else old_spots
-		var xf := _pile_xf(src, i, scale_fn.call(items[i]))
+		if not cands.has(src):
+			cands[src] = {"list": _pile_places(src), "next": 0}
+		var s: float = scale_fn.call(items[i])
+		var xf := _place_brood(cands[src], s, i)
 		if _visible(xf.origin):
 			xs.append(xf)
 			cs.append(col_fn.call(items[i]) if col_fn.is_valid() else Color.WHITE)
@@ -175,11 +179,80 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 			mm.set_instance_color(i, cs[i])
 
 
+## Where brood can lie in a pile: every floor spot and four points around it, nearest the pile's middle first.
+func _pile_places(spots: Array) -> Array:
+	if spots.is_empty():
+		return []
+	var centre := Vector3.ZERO
+	for s in spots:
+		centre += s
+	centre /= spots.size()
+	var out := []
+	for s in spots:
+		out.append(s)
+		for o in [Vector3(0.45, 0, 0), Vector3(-0.45, 0, 0), Vector3(0, 0, 0.45), Vector3(0, 0, -0.45)]:
+			out.append(s + o)
+	out.sort_custom(func(a, b): return a.distance_squared_to(centre) < b.distance_squared_to(centre))
+	return out
+
+
+## Lay one item of brood down like a real object: on the floor at the first free place (nothing overlapping
+## it, not under the queen), or — when the floor of the pile is full — on top of the items already there.
+## `_brood_occ` (cleared per layout) holds what has been laid: [centre, radius] binned by 1.5 units.
+func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
+	var places: Array = c.list
+	var r := 0.78 * s                        # footprint of a larva or cocoon (they are ~2-2.7 units long)
+	var best := Vector3.INF
+	var lift := 0.0
+	for k in range(c.next, places.size()):
+		var p: Vector3 = places[k]
+		if _queen_mm.instance_count > 0 and _queen_gap(p) < r + 0.5:
+			continue
+		if _brood_free(p, r):
+			best = p
+			c.next = maxi(c.next, k - 8)      # the places before this are (nearly all) taken
+			break
+	if best == Vector3.INF and not places.is_empty():
+		# the floor is full: lie on top of the pile, resting on whatever is highest there
+		best = places[i % mini(places.size(), 12)]
+		for o in _brood_near(best):
+			if Vector2(o[0].x - best.x, o[0].z - best.z).length() < r + o[1]:
+				lift = maxf(lift, o[0].y - best.y + o[1] * 0.75)
+	var pos := best + Vector3(0, 0.25 * s + lift, 0)
+	var key := Vector3i(floori(pos.x / 1.5), floori(pos.y / 1.5), floori(pos.z / 1.5))
+	if not _brood_occ.has(key):
+		_brood_occ[key] = []
+	_brood_occ[key].append([pos, r])
+	return Transform3D(Basis(Vector3.UP, _hash(i, 3) * TAU).scaled(Vector3.ONE * s), pos)
+
+
+func _brood_near(p: Vector3) -> Array:
+	var out := []
+	var key := Vector3i(floori(p.x / 1.5), floori(p.y / 1.5), floori(p.z / 1.5))
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1, 2]:
+			for dz in [-1, 0, 1]:
+				out.append_array(_brood_occ.get(key + Vector3i(dx, dy, dz), []))
+	return out
+
+
+func _brood_free(p: Vector3, r: float) -> bool:
+	for o in _brood_near(p):
+		if (o[0] as Vector3).distance_to(p + Vector3(0, 0.25, 0)) < (r + o[1]) * 0.92:
+			return false
+	return true
+
+
 func _update_brood() -> void:
+	_brood_occ.clear()                       # larvae, cocoons and eggs share the floor: laid out together
 	var exs := []
 	if not _spots.eggs.is_empty():
 		for i in mini(400, maxi(0, sim.eggs.size() - _pending("egg"))):
 			var xf := _egg_xf(i)
+			var ek := Vector3i(floori(xf.origin.x / 1.5), floori(xf.origin.y / 1.5), floori(xf.origin.z / 1.5))
+			if not _brood_occ.has(ek):
+				_brood_occ[ek] = []
+			_brood_occ[ek].append([xf.origin, 0.3])       # larvae and cocoons are not laid on the eggs
 			if _visible(xf.origin):
 				exs.append(xf)
 	_fill(_egg_mm, exs)
