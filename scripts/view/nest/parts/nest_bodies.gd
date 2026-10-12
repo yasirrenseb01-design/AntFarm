@@ -1,6 +1,7 @@
 extends "res://scripts/view/nest/parts/nest_lifecycle.gd"
 ## Nest view, layer 5 of 7 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves —
-## easing along its voxel path, turning, the leg cycle, and bodies keeping out of one another (and the queen).
+## easing along its voxel path, turning, the leg cycle, and bodies keeping out of one another (and the queen),
+## and (moved from nest_mates.gd in v0.8.16) where an ant chooses to stop: a free patch of floor.
 
 
 func _pose(from: Vector3, to: Vector3, t: float, up: Vector3, scale := 1.0) -> Transform3D:
@@ -167,7 +168,11 @@ func _tends_brood(m: Dictionary) -> bool:
 
 
 ## How many body parts of nestmates still stand on eggs, larvae or cocoons: dev check (--trace).
+var _overlap_who := []
+
+
 func brood_overlaps() -> int:
+	_overlap_who.clear()
 	var n := 0
 	for m in _mates:
 		if not m.has("xf"):
@@ -183,6 +188,7 @@ func brood_overlaps() -> int:
 				var half: float = o[3] if o.size() > 3 else o[1]
 				if absf(dy) < 1.2 and d.length() < (0.45 * float(m.size) + half) * 0.75:
 					n += 1
+					_overlap_who.append("%s/a%d/r%d/s%d" % [m.get("role", "dig"), m.get("act", 0), m.get("rest", 0), (m.get("settle", []) as Array).size()])
 	return n
 
 
@@ -211,3 +217,64 @@ func mate_overlaps() -> int:
 func _open_at(p: Vector3, up: Vector3) -> bool:
 	var c := p + up * 0.6
 	return nest.is_open(Vector3i(roundi(c.x), roundi(c.y), roundi(c.z)))
+
+
+## Whether a nestmate could stand at cell c without being on top of another ant, the brood or the queen.
+func _cell_free(m: Dictionary, c: Vector3i) -> bool:
+	if not nest.walkable(c) or _queen_cells.has(c):
+		return false
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			for dz in [-1, 0, 1]:
+				var o = _mate_cells.get(c + Vector3i(dx, dy, dz))
+				if o != null and not is_same(o, m):
+					return false
+	if not _brood_occ.is_empty():
+		var p := Vector3(c) - _up_at(c) * 0.4
+		for o in _brood_near(p):
+			var d := _brood_offset(p, o)
+			if absf(d.y) < 1.2 and Vector2(d.x, d.z).length() < float(o[3] if o.size() > 3 else o[1]) + 1.1:   # half an ant
+				return false
+	return true
+
+
+## Ants choose where to stop: a free patch of floor near where they were going (a nurse beside the larvae,
+## an attendant beside the queen) rather than on top of a nestmate or the brood. Sets m.settle, the cells
+## to walk there (empty: stay put).
+func _settle(m: Dictionary) -> void:
+	m.settle = []
+	var start: Vector3i = m.cell
+	var near_to := Vector3.INF
+	match m.role:
+		"nurse": near_to = _nearest_spot(Vector3(start), _spots.larvae) if not _spots.larvae.is_empty() else Vector3.INF
+		"attend": near_to = _spots.queen if _spots.queen != Vector3.ZERO else Vector3.INF
+	var score := func(c: Vector3i, depth: int) -> float:
+		return depth * 0.6 + (Vector3(c).distance_to(near_to) if near_to != Vector3.INF else 0.0)
+	var best := start if _cell_free(m, start) else Vector3i(-9999, 0, 0)
+	var best_s: float = score.call(start, 0) if best == start else INF
+	var parent := {start: start}
+	var frontier: Array[Vector3i] = [start]
+	for depth in range(1, 5):
+		var next: Array[Vector3i] = []
+		for c in frontier:
+			for d in DIRS:
+				var n: Vector3i = c + d
+				if parent.has(n) or not nest.walkable(n) or _queen_cells.has(n):
+					continue
+				parent[n] = c
+				next.append(n)
+				if _cell_free(m, n):
+					var s: float = score.call(n, depth)
+					if s < best_s - 0.3:          # (stay put unless somewhere is clearly better)
+						best_s = s
+						best = n
+		frontier = next
+	if best.x == -9999 or best == start:
+		return
+	var path := []
+	var c := best
+	while c != start:
+		path.push_front(c)
+		c = parent[c]
+	m.settle = path
+	_mate_cells[best] = m                    # spoken for: the next ant looks elsewhere

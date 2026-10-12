@@ -176,7 +176,7 @@ func _take_shot() -> void:
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(path.get_basename() + "_%d.png" % k)
 			if _opts.has("trace") and mode == "nest":
-				print("%d: brood-overlaps %d mate-overlaps %d | %s" % [k, nest_view.brood_overlaps(), nest_view.mate_overlaps(), nest_view.trace_near_queen()])     # who is by the queen, doing what
+				print("%d: brood-overlaps %d mate-overlaps %d who %s | %s" % [k, nest_view.brood_overlaps(), nest_view.mate_overlaps(), nest_view._overlap_who, nest_view.trace_near_queen()])     # who is by the queen, doing what
 		get_tree().quit()
 		return
 	await RenderingServer.frame_post_draw

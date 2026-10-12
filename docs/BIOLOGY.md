@@ -41,6 +41,17 @@
   ก็ขุดตรงนั้นมากขึ้นจนกลายเป็นห้อง (Römer & Roces 2014, มดตัดใบ); การก่อสร้างประสานกันด้วยกลิ่นในเนื้อดิน
   (stigmergy) และใช้ขนาดตัวเป็นแม่แบบความสูงเพดาน (Khuong et al. 2016, *L. niger*)
 - ขุดในดิน ปริมาตรรังโตตามจำนวนประชากร (Buhl et al. 2004); ห้องแบนเชื่อมด้วยปล่อง; กองดินรอบปากรัง
+- **ขนาดรังตามประชากร** (ค้นเพิ่ม 2026-10-12):
+  - *L. niger* ขุดช้าลงเรื่อยๆ เมื่อพื้นที่พอกับจำนวนตัว ปริมาตรรังจึงปรับตามขนาดกลุ่มเอง (Rasse & Deneubourg 2001)
+    — ยังหาตัวเลข "ปริมาตรต่อมด 1 ตัว" ของ *L. niger* ไม่ได้ (บทความต้นฉบับเข้าไม่ถึง)
+  - มด *Messor sancta* ทดลองหลายขนาดกลุ่ม: ปริมาตรทรายที่ขุด ≈ แปรผันตรงกับจำนวนมดงาน (Buhl et al. 2004)
+  - เกมใช้ ~22 ช่อง (~74 มม.³) ต่อมดงาน + ลูกมด ¼ (`sim_base.gd target_air`) — เป็นค่าประมาณ ไม่ใช่ค่าวัดจริง
+- **รังในธรรมชาติ:** รังเดี่ยวส่วนใหญ่ไม่เกิน ~10,000 ตัว (ที่ดีมากถึง ~70,000); รังเนินดินในทุ่ง 100 ถึง >10,000 ตัว;
+  เนินดินสูงถึง 40 ซม. กว้าง 60–70 ซม. ในทุ่งหญ้า; ในเมืองรังอยู่ใต้ดินแทบไม่มีเนิน
+  - ขนาดเนินบอกจำนวนประชากรได้ — เส้นผ่านศูนย์กลางดีที่สุด (r² ~0.79) ดีกว่าความสูง (~0.43) (ศึกษาใกล้เคียฟ)
+  - รังห่างกันอย่างน้อย ~3 ม. (งานภาคสนามโปแลนด์); บางพื้นที่เป็นกลุ่มรังหลายเนินเชื่อมด้วยอุโมงค์/ทางเดิน
+    (polycalic: รังหลัก + รังย่อย) — ใกล้เคียฟนับได้ ~14,650 เนินใน 11.8 เฮกตาร์
+  - ความลึก: แหล่งไม่ตรงกัน (ผู้เลี้ยงมดบอกถึง 2 ม. ตอนแล้งร้อน; ส่วนใหญ่อยู่ใน 30 ซม. บน) — ยังไม่เจองานวัดจริงของ *L. niger*
 - ย้ายตัวอ่อนขึ้น-ลงตามอุณหภูมิในแต่ละวัน; ดักแด้เก็บห้องบนที่แห้งกว่า
 
 ### ฤดูกาลและการจำศีล (ฉาก "ป่า": ภูมิอากาศเขตอบอุ่นแบบยุโรปกลาง)
@@ -105,6 +116,10 @@
 - Khuong A. et al. (2016) Stigmergic construction and topochemical information shape ant nest architecture. PNAS 113(5):1303–1308
 - Römer D., Roces F. (2014) Nest enlargement in leaf-cutting ants: relocated brood and fungus trigger the excavation of new chambers. PLoS ONE 9(5)
 - Buhl J. et al. (2004) Self-organized digging activity in ant colonies — ปริมาตรรังตามประชากร
+- Rasse P., Deneubourg J.-L. (2001) Dynamics of nest excavation and nest size regulation of *Lasius niger*. J Insect Behav 14:433–449
+  (อ้างถึงผ่านบทความรอง: https://springerlink.bibliotecabuap.elogim.com/10.1007/s00040-018-0657-0)
+- Zoodiversity: "Potential for Transition to a Polygynous-Supercolonial Demography in *Lasius niger*" (กลุ่มรังใกล้เคียฟ, ขนาดเนิน↔ประชากร)
+  https://ojs.akademperiodyka.org.ua/index.php/Zoodiversity/article/view/673 และ https://ojs.akademperiodyka.org.ua/index.php/Zoodiversity/article/download/502/241
 - ภาพ "Castes and developmental stages present in a Lasius niger colony" (ResearchGate, figure 2 ของบทความ 342742677)
   https://www.researchgate.net/figure/Castes-and-developmental-stages-present-in-a-Lasius-niger-colony-Pictures-were-taken_fig2_342742677
 - ภาพแมงมุมหมาป่า ตะขาบ (Scolopendra — ใช้ถึง v0.8.5) ด้วงดินจากผู้ใช้ (`reference/`)

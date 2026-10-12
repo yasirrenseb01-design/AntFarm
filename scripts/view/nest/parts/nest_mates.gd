@@ -20,6 +20,8 @@ func _arrive(m: Dictionary) -> void:
 		m.item = ""
 		if m.goal == -1:
 			m.goal = _brood_room(_larva_group)
+	if m.role in ["nurse", "attend", "idle", "traffic"]:
+		_settle(m)                                  # find a free patch of floor to stop on
 	match m.role:
 		"nurse":
 			m.rest = randi_range(30, 140)
@@ -57,6 +59,14 @@ func _arrive(m: Dictionary) -> void:
 
 func _step_mate(m: Dictionary) -> void:
 	var c: Vector3i = m.cell
+	var path: Array = m.get("settle", [])
+	if not path.is_empty():
+		var n: Vector3i = path.pop_front()          # stepping to the free spot it chose
+		if nest.walkable(n) and not _queen_cells.has(n):
+			_move_mate(m, n)
+		else:
+			m.settle = []
+		return
 	if m.rest > 0:
 		m.rest -= 1
 		m.from = m.to
@@ -64,9 +74,13 @@ func _step_mate(m: Dictionary) -> void:
 	if m.wander > 0:
 		m.wander -= 1
 		var opts: Array[Vector3i] = []
+		var clear: Array[Vector3i] = []
 		for d in DIRS:
-			if c + d != m.prev and nest.walkable(c + d):
+			if c + d != m.prev and nest.walkable(c + d) and not _queen_cells.has(c + d):
 				opts.append(c + d)
+				if _cell_free(m, c + d):
+					clear.append(c + d)
+		opts = clear                                 # shuffle about only where there is room
 		if not opts.is_empty():
 			_move_mate(m, opts[randi() % opts.size()])
 		return
@@ -104,6 +118,14 @@ func _step_mate(m: Dictionary) -> void:
 		return
 	if best.is_empty():
 		best = aside if not aside.is_empty() else floaty
+	if here <= 4 and not best.is_empty():
+		# nearly there, and the way on is onto the brood pile or a nestmate: this is near enough
+		# (the chamber's middle is where its brood lies) - stop and pick a free spot here instead
+		var clear := best.filter(func(n): return _cell_free(m, n))
+		if clear.is_empty():
+			_arrive(m)
+			return
+		best.assign(clear)
 	if not best.is_empty():
 		_move_mate(m, best[randi() % best.size()])
 
@@ -130,6 +152,7 @@ func _spawn_mate(role: String, inside: int) -> bool:
 		"up": _up_at(c), "born": born, "role": role, "goal": goal,
 		"wander": 0, "carry": false, "item": "", "size": _sample_size(), "act": ACT_WALK, "act_left": 0.0, "cool": randf() * 4.0,
 		"anim": randf() * 100.0, "fed": false})
+	_settle(_mates[-1])                             # not on top of the brood or a nestmate
 	return true
 
 
@@ -178,6 +201,8 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 	m.face = Vector3.INF
 	if m.carry:
 		m.act = ACT_CARRY
+	elif not (m.get("settle", []) as Array).is_empty():
+		m.act = ACT_WALK
 	elif m.rest > 0:
 		if m.role == "nurse" and _rooms.size() > 0:
 			# nurses at the brood pile lick the larvae and regurgitate food to them
@@ -286,6 +311,14 @@ func _update_ants(delta: float) -> void:
 			if not near.has(ck):
 				near[ck] = []
 			near[ck].append(cbody)
+	_mate_cells.clear()
+	for m in _mates:
+		_mate_cells[m.cell] = m
+		var st: Array = m.get("settle", [])
+		if not st.is_empty():
+			_mate_cells[st[-1]] = m
+	for v in _dig_vis.values():
+		_mate_cells[Vector3i(roundi(v.to.x), roundi(v.to.y), roundi(v.to.z))] = v
 	_mate_frame += 1
 	for mi in _mates.size():
 		var m: Dictionary = _mates[mi]
