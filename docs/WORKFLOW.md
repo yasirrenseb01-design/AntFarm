@@ -19,7 +19,7 @@
 - [ ] ขนาดไฟล์: `git ls-files '*.gd' '*.py' | xargs wc -l | sort -rn | head` — เกิน ~500 แยก
 - [ ] เอกสาร: ARCHITECTURE (ชั้นไฟล์, รหัสกิจกรรม, รูปแบบเซฟ), BIOLOGY (ข้อมูล/ขนาดใหม่), ROADMAP (สถานะ) + roadmap/BACKLOG (ค้าง/ไอเดีย)
 - [ ] พลาดอะไรในรอบนี้ → เพิ่มใน `docs/LESSONS.md`
-- [ ] เวอร์ชัน + CHANGELOG + `tools/build.ps1` + commit/push
+- [ ] เวอร์ชัน + CHANGELOG + `tools/dev/release.sh` (ตรวจ+สร้าง เฉพาะเมื่อผ่าน) + commit/push
 
 ## เพิ่มของใหม่
 - อาหารชนิดใหม่: รายการใน `scripts/sim/food_kinds.gd` (+ `_food_<ชนิด>()` ภาพ 3 มิติ, ภาพ 2 มิติ, โมเดล Blender ถ้ามี)

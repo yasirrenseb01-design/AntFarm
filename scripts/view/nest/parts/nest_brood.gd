@@ -204,14 +204,17 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	var r := 0.78 * s                        # footprint of a larva or cocoon (they are ~2-2.7 units long)
 	var best := Vector3.INF
 	var lift := 0.0
-	for k in range(c.next, places.size()):
-		var p: Vector3 = places[k]
-		if _queen_mm.instance_count > 0 and _queen_gap(p) < r + 0.5:
-			continue
-		if _brood_free(p, r):
-			best = p
-			c.next = maxi(c.next, k - 8)      # the places before this are (nearly all) taken
-			break
+	if not c.get("full", false):
+		for k in range(c.next, places.size()):
+			var p: Vector3 = places[k]
+			if _queen_mm.instance_count > 0 and _queen_gap(p) < r + 0.5:
+				continue
+			if _brood_free(p, r):
+				best = p
+				c.next = maxi(c.next, k - 8)      # the places before this are (nearly all) taken
+				break
+		if best == Vector3.INF:
+			c.full = true                      # no floor left in this pile: the rest go on top
 	if best == Vector3.INF and not places.is_empty():
 		# the floor is full: lie on top of the pile, resting on whatever is highest there
 		best = places[i % mini(places.size(), 12)]
@@ -237,9 +240,18 @@ func _brood_near(p: Vector3) -> Array:
 
 
 func _brood_free(p: Vector3, r: float) -> bool:
-	for o in _brood_near(p):
-		if (o[0] as Vector3).distance_to(p + Vector3(0, 0.25, 0)) < (r + o[1]) * 0.92:
-			return false
+	var q := p + Vector3(0, 0.25, 0)
+	var key := Vector3i(floori(p.x / 1.5), floori(p.y / 1.5), floori(p.z / 1.5))
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			for dz in [-1, 0, 1]:
+				var bin = _brood_occ.get(key + Vector3i(dx, dy, dz))
+				if bin == null:
+					continue
+				for o in bin:
+					var lim: float = (r + o[1]) * 0.92
+					if (o[0] as Vector3).distance_squared_to(q) < lim * lim:
+						return false
 	return true
 
 
