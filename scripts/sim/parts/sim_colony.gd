@@ -241,14 +241,26 @@ func _metabolism(dt: float) -> void:
 	_warn("dry", dry, T.warn_dry)
 
 
+const TANK_DAYS := 25.0          # a full water tank lasts about this many days at room temperature
+
 func _moisture(dt: float) -> void:
 	if scenario == "wild":
 		_soil_moisture(dt)
 	else:
-		# Evaporation is proportional to how wet the nest is, so a drying nest slows down
-		# (a watered Ytong/plaster nest lasts 2–3 weeks; a heat mat dries it faster).
+		# The formicarium's water tank keeps the nest damp (water wicks into the plaster/soil) until it runs dry,
+		# ~3.5 weeks at room temperature (keeper kits with a reservoir or a water tube; a heat mat empties it
+		# faster); then the nest dries out, evaporation in proportion to how wet it is. A founding queen's cell is
+		# sealed, so it loses water far more slowly. (Tank length chosen with the user, 2026-10-12.)
 		var k := 0.09 + (0.06 if heater else 0.0) + workers.size() * 0.0002
-		humidity = clampf(humidity * exp(-k * dt), 0.0, 1.0)
+		if founding():
+			k *= 0.3
+		if water > 0.0:
+			humidity += (0.72 - humidity) * (1.0 - exp(-0.6 * dt))
+			water = maxf(0.0, water - dt * k / 0.09 / TANK_DAYS)
+		else:
+			humidity = clampf(humidity * exp(-k * dt), 0.0, 1.0)
+		_warn("lowwater", water > 0.0 and water < 0.15, T.warn_lowwater)
+		_warn("nowater", water <= 0.0, T.warn_nowater)
 	if humidity < sp["humidity_ok_min"]:
 		var p: float = (sp["humidity_ok_min"] - humidity) * 2.0 * dt
 		_cull(eggs, p)

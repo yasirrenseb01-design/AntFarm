@@ -51,6 +51,8 @@ var _crop := Rect2i(0, 0, 1, 1)
 var nest_view
 var outworld
 var ant_tip                 # ui/ant_tip.gd
+var _chime: AudioStreamPlayer
+var _fps_label: Label
 var _surface_tools: Array = []
 var _cut_row: HBoxContainer
 var _xray_btn: Button

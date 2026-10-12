@@ -47,6 +47,7 @@ var outside: Array = []               # workers currently in the outworld (rebui
 var eggs: Array = []
 var larvae: Array = []
 var pupae: Array = []
+var water := 1.0               # the nest's water tank (keeper's formicarium), 0..1: keeps the nest damp while it lasts
 var queen := {"alive": true, "starve": 0.0, "reserve": 0.0}   # reserve: fat body + dissolved wing muscle
 var sugar := 6.0
 var sugar_income := 0.0             # sugar brought home, averaged over about a week (units per week)
@@ -325,7 +326,8 @@ func place_food(kind: String, p: Vector2) -> bool:
 
 
 func add_water() -> void:
-	humidity = minf(1.0, humidity + 0.35)
+	water = 1.0                                   # the keeper fills the nest's water tank
+	humidity = minf(1.0, humidity + 0.2)
 	_log(T.water_added % int(humidity * 100))
 
 
@@ -370,7 +372,7 @@ func add_rock(p: Vector2, r: float) -> bool:
 	for c in creatures:
 		if c.pos.distance_to(p) < r + 6.0:
 			c.pos = p + (c.pos - p).normalized() * (r + 8.0)
-	# a small stone that now touches the new one has become part of a wall: ants on it step off
+	# (ants on a stone that is no longer climbable step off it)
 	for a in outside:
 		if blocked(a.pos):
 			for rk in rocks:
@@ -381,21 +383,14 @@ func add_rock(p: Vector2, r: float) -> bool:
 	return true
 
 
-## Stones on the floor: a single stone up to CLIMB_R across is climbed over (rock cells = 2: walkable, slower);
-## a larger stone, or stones touching others (a wall or heap the keeper laid), is walked round (cells = 1).
-## Ants climb any small obstacle in nature; the size limit (and walls staying walls) is a choice for the
-## keeper's sake (user, 2026-10-12), not a measured figure.
+## Stones on the floor: a stone up to CLIMB_R across is climbed over (rock cells = 2: walkable, slower), however
+## many are laid together (ants climb small obstacles; user, 2026-10-12: a ring of small stones must not trap
+## them); only the big boulders are walked round (cells = 1). The size limit is a chosen figure, not measured.
 const CLIMB_R := 15.0          # px radius (~1.5 cm across)
 
 func _restamp_rocks() -> void:
 	for rk in rocks:
-		var small: bool = float(rk.r) <= CLIMB_R
-		if small:
-			for o in rocks:
-				if not is_same(o, rk) and (o.pos as Vector2).distance_to(rk.pos) < float(o.r) + float(rk.r):
-					small = false
-					break
-		rk.climb = small
+		rk.climb = float(rk.r) <= CLIMB_R
 	rock.fill(0)
 	for climbable in [true, false]:              # blocking stones are stamped over climbable ones
 		for rk in rocks:

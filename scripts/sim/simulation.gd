@@ -86,7 +86,7 @@ func to_dict() -> Dictionary:
 		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(), "alarm": alarm.to_dict(), "next_cid": _next_cid,
 		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
-		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "mold": mold, "heater": heater, "enemies": enemies,
+		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "water": water, "mold": mold, "heater": heater, "enemies": enemies,
 		"creatures": creatures, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
 		"history": history, "log": log_entries, "warned": _warned, "next_id": _next_id,
 		"cannibal_cd": _cannibal_cd, "recruits": _recruits,
@@ -145,6 +145,7 @@ func from_dict(d: Dictionary) -> void:
 	sugar_spend = d.sugar_spend
 	protein = d.protein
 	humidity = d.humidity
+	water = float(d.get("water", 1.0))      # (saves before v0.8.26 had no tank: start it full)
 	mold = d.mold
 	heater = d.heater
 	enemies = d.enemies

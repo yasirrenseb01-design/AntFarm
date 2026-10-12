@@ -143,10 +143,10 @@ func _draw_nest() -> void:
 	_refresh_nest_image()
 
 	c.draw_rect(Rect2(0, 0, w, h), Color(0.08, 0.06, 0.05))
-	# keeper's water reservoir on the left: its level is the nest humidity
+	# keeper's water tank on the left (outdoors: the soil's moisture, the nest humidity)
 	var res := Rect2(6, 22, 26, h - 30)
 	c.draw_rect(res, Color(0.12, 0.1, 0.09))
-	var lvl: float = sim.humidity * (res.size.y - 6)
+	var lvl: float = (sim.humidity if sim.scenario == "wild" else sim.water) * (res.size.y - 6)
 	c.draw_rect(Rect2(res.position.x + 3, res.end.y - 3 - lvl, res.size.x - 6, lvl), Color(0.3, 0.55, 0.8, 0.75))
 	c.draw_rect(res, Color(0.55, 0.5, 0.45, 0.6), false, 1.0)
 	_nest_label(c, "น้ำ", Vector2(8, 16))

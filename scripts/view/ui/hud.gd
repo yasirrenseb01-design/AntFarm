@@ -4,12 +4,13 @@ extends "res://scripts/view/ui/parts/hud_panel.gd"
 ## Layers: parts/hud_base <- hud_colonies <- hud_controls <- hud_panel <- hud.
 
 const AntTip := preload("res://scripts/view/ui/ant_tip.gd")
+const Sounds := preload("res://scripts/view/ui/sounds.gd")
 
 
 func setup(s, w) -> void:
 	sim = s
 	world = w
-	sim.logged.connect(func(_e): _log_dirty = true)
+	sim.logged.connect(_on_logged)
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -20,6 +21,15 @@ func setup(s, w) -> void:
 	_build_panel(root)
 	_build_camera_pad(root)
 	_build_colonies(root)
+	# a soft chime when the keeper must act (water), and the frame rate when asked for (F3)
+	_chime = AudioStreamPlayer.new()
+	_chime.stream = Sounds.chime()
+	_chime.volume_db = -8.0
+	add_child(_chime)
+	_fps_label = _label("", 13, INK)
+	_fps_label.position = Vector2(18, 112)
+	_fps_label.visible = false              # (the keeper's choice is applied once the settings arrive)
+	root.add_child(_fps_label)
 	# hover over an ant for a moment: who it is and what it is doing
 	var tip := AntTip.new()
 	root.add_child(tip)
@@ -27,6 +37,19 @@ func setup(s, w) -> void:
 	ant_tip = tip
 	_apply_mode("surface")
 	refresh(1.0)
+
+
+func _on_logged(e: Dictionary) -> void:
+	_log_dirty = true
+	if e.text in [T.warn_lowwater, T.warn_nowater, T.warn_lowhum] and _chime != null:
+		_chime.play()
+
+
+func _unhandled_key_input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F3:
+		_fps_label.visible = not _fps_label.visible          # show / hide the frame rate
+		settings["show_fps"] = _fps_label.visible
+		settings_changed.emit(settings)
 
 
 # ---------------------------------------------------------------- refresh
@@ -37,6 +60,10 @@ func refresh(delta: float) -> void:
 	var sky := "ฝนตก" if sim.climate.raining() else ("กลางคืน" if sim.sun_height() < -0.05 else "แจ่มใส")
 	_weather.text = "อากาศ %.1f°C · %s · มดออกหากิน %d%%" % [sim.climate.air, sky, int(sim.activity * 100)]
 	_frame += 1
+	if _frame == 2:
+		_fps_label.visible = bool(settings.get("show_fps", false))
+	if _fps_label != null and _fps_label.visible:
+		_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
 	if _frame % 4 == 0 and _nest.is_visible_in_tree():
 		_nest.queue_redraw()
 	if _log_dirty:
