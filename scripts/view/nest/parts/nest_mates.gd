@@ -13,6 +13,9 @@ func _move_mate(m: Dictionary, n: Vector3i) -> void:
 
 ## What an ant does when it reaches the place it was heading for.
 func _arrive(m: Dictionary) -> void:
+	if m.get("leaving", false):
+		m.gone = true                                  # out through the entrance: the outworld draws it now
+		return
 	if m.has("deliver"):
 		m.deliver.done = true                       # cocoon set down, or empty shell taken out
 		m.erase("deliver")
@@ -21,7 +24,13 @@ func _arrive(m: Dictionary) -> void:
 		if m.goal == -1:
 			m.goal = _brood_room(_larva_group)
 	if m.role in ["nurse", "attend", "idle", "traffic"]:
-		_settle(m)                                  # find a free patch of floor to stop on
+		if not _settle(m) and m.role == "idle" and int(m.get("tries", 0)) < 3:
+			# no room in this chamber at all: rest in another one
+			m.tries = int(m.get("tries", 0)) + 1
+			m.goal = _random_room()
+			m.wander = 2
+			return
+		m.tries = 0
 	match m.role:
 		"nurse":
 			m.rest = randi_range(30, 140)
@@ -145,28 +154,6 @@ func _sample_size() -> float:
 	return sim.workers[randi() % sim.workers.size()].size if not sim.workers.is_empty() else 1.0
 
 
-func _spawn_mate(role: String, inside: int) -> bool:
-	if _spots.all.is_empty() or _rooms.is_empty():
-		return false
-	var sp: Vector3 = _spots.all[randi() % _spots.all.size()]
-	var c := Vector3i(roundi(sp.x), roundi(sp.y + 0.45), roundi(sp.z))
-	if not nest.walkable(c):
-		return false
-	var goal := _random_room()
-	match role:
-		"nurse": goal = _brood_room(_larva_group)
-		"attend": goal = _queen_room()
-		"traffic": goal = -1
-	var callow := randf() < float(sim.callow) / maxf(1.0, inside)
-	var born: int = sim.tick - int(randf() * sim.TPD * float(sim.sp["callow_days"])) if callow else -1000000000
-	_mates.append({"cell": c, "prev": c, "from": Vector3(c), "to": Vector3(c), "t": 1.0, "rest": randi_range(0, 30),
-		"up": _up_at(c), "born": born, "role": role, "goal": goal,
-		"wander": 0, "carry": false, "item": "", "size": _sample_size(), "act": ACT_WALK, "act_left": 0.0, "cool": randf() * 4.0,
-		"anim": randf() * 100.0, "fed": false})
-	_settle(_mates[-1])                             # not on top of the brood or a nestmate
-	return true
-
-
 func _begin(m: Dictionary, act: int, secs: float, face := Vector3.INF) -> void:
 	m.act = act
 	m.act_left = secs
@@ -233,31 +220,7 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 
 
 func _update_ants(delta: float) -> void:
-	var inside: int = sim.workers.size() - sim.out_count
-	# a worker still climbing out of its cocoon is drawn by its eclosion, not as a nestmate yet
-	var want := clampi(inside - nest.diggers.size() - _pending("eclose"), 0, 250)
-	var nurses_want := mini(sim.nurses + sim.callow, want / 2 + 1)
-	var attend_want := mini(3, want / 6) if sim.queen.alive else 0
-	var traffic_want := mini(mini(sim.out_count, 4), want)
-	while _mates.size() < want:
-		var counts := {"nurse": 0, "attend": 0, "traffic": 0}
-		for m in _mates:
-			var r: String = "nurse" if m.role == "carry" else m.role
-			if counts.has(r):
-				counts[r] += 1
-		var role := "idle"
-		if counts.attend < attend_want:
-			role = "attend"
-		elif counts.nurse < nurses_want:
-			role = "nurse"
-		elif counts.traffic < traffic_want:
-			role = "traffic"
-		if not _spawn_mate(role, inside):
-			break
-	while _mates.size() > want:
-		var drop: Dictionary = _mates.pop_back()
-		if drop.has("deliver"):
-			drop.deliver.done = true
+	_bind_workers()                         # one drawn nestmate per real worker inside
 	# while larvae are being moved between chambers, a few nurses do the carrying
 	if _moved < sim.larvae.size():
 		var carriers := 0

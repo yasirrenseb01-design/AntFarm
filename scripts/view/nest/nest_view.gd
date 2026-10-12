@@ -208,6 +208,7 @@ func refresh(delta: float) -> void:
 	if sig != _brood_sig:
 		_brood_sig = sig
 		_update_brood()
+		_clear_brood_of_ants()
 	t0 = _nprof("brood layout", t0)
 	_queen_pose()
 	t0 = _nprof("queen", t0)

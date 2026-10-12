@@ -21,6 +21,11 @@
   สะบัดผ่าน `sim._shake_off()`; ตาย → อาหาร `<ชนิด>_dead` ในตารางอาหาร; `ant.hurt` = บาดเจ็บถาวร (เดินช้าลง)
   - ภาพ: กิจกรรม 13 (เกาะ กัด พ่นกรด) และ 14 (วิ่งตื่นตกใจ) ใน `shaders/ants/ant.gdshader`; กลิ่นเตือนภัยสีแดงในชั้นกลิ่นบนพื้น
   - ทดสอบภาพ: `--enemy=wolf_spider --fight=<tick>` (จัดศัตรูไว้ข้างรังแล้วเดินเวลา)
+- **มดรายตัว** (v0.8.22): `ant.task` (`TASK_CALLOW/NURSE/RESERVE/DIG`, ข้างนอก `TASK_OUT`) ตั้งทุกรอบรังใน `sim_colony._colony`;
+  `ant.threshold(TH_*)` เกณฑ์ตอบสนองรายตัว (คำนวณจาก id ไม่ต้องเซฟ) — ตัวที่เกณฑ์ต่ำออกหากิน/ขนศพ/สู้/ขุดก่อน และเลิกเป็นพี่เลี้ยงคนละอายุ
+  - ภาพในรัง: `nest_bodies._bind_workers()` มดที่วาดหนึ่งตัวต่อมดงานจริงที่อยู่ในรัง (`mate.wid`); มดที่ออกไปเดินขึ้นปากรังก่อน,
+    มดที่เพิ่งกลับ (`ant.came_in`) เดินเข้าจากปากรัง; มดขุดวาดแยก (`_dig_vis`) ผูกกับมดหน้าที่ขุดตามลำดับ id
+- **การลากเหยื่อ** (v0.8.20): `Ant.DRAG` (`foe` = seed ของอาหาร, `ang` = ตำแหน่งที่จับ) — `sim_foragers._step_drags()`, อาหารที่มี `drag` ในตาราง
 - **วรรณะ** `ant.caste`: `Ant.WORKER` (ตอนนี้ทุกตัว), `Ant.GYNE`, `Ant.MALE` (PART 10)
 - **สายพันธุ์** `scripts/sim/species/lasius_niger.gd` (`sim.sp`): ตัวเลขชีววิทยา + นิสัยเฉพาะ (`founding`, `queen_reserve`, `founding_eggs`,
   `nanitic_size`, `tends_aphids`, `buries_prey`) — โค้ดอ่านจากที่นี่ ไม่เขียนค่าตายตัว
@@ -34,10 +39,11 @@ scripts/
                ant.gd, climate.gd, nest_volume.gd (+ parts/nest_voxels, nest_chambers), pheromone_field.gd, species/
   view/
     common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset)
-    outworld/  พื้นที่หาอาหาร 3 มิติ: outworld_view.gd + parts/ (scene, props, creatures, camera)
+    outworld/  พื้นที่หาอาหาร 3 มิติ: outworld_view.gd + parts/ (scene, props, creatures, camera),
+               prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader)
     nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
     surface2d/ มุมบน 2 มิติ: world_view.gd, ant_batch.gd, draw_kit.gd
-    ui/        hud.gd + parts/ (base, colonies, controls, panel)
+    ui/        hud.gd + parts/ (base, colonies, controls, panel), ant_tip.gd (ชี้เมาส์ที่มด: กล่องสถานะ — ฉากต่างๆ มี pick_ant())
 shaders/       ants/, creatures/, terrain/ (+ ground_h.gdshaderinc: ความสูงพื้นข้างนอก ใช้ร่วมพื้นกับสัตว์), plants/
 assets/models/ ants/, prey/, plants/   (ไฟล์ .antmesh/.json ที่ Blender สร้าง — ห้ามแก้มือ ให้รันสคริปต์ Blender ใหม่)
 tools/         build.ps1 (สร้าง + ลบ build เก่าเอง), check.ps1,

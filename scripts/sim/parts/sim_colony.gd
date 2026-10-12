@@ -62,6 +62,17 @@ func _activity(t: float) -> float:
 	return maxf(0.0, 1.0 - (t - sp["forage_hot_c"]) / (sp["forage_max_c"] - sp["forage_hot_c"]))
 
 
+## The index in `pool` of the worker readiest for this kind of need (lowest threshold, then lowest id).
+func _eagerest(pool: Array, kind: int) -> int:
+	var best := 0
+	for i in range(1, pool.size()):
+		var t: float = pool[i].threshold(kind)
+		var bt: float = pool[best].threshold(kind)
+		if t < bt or (t == bt and pool[i].id < pool[best].id):
+			best = i
+	return best
+
+
 func _colony(dt: float) -> void:
 	dev = _dev_rate(climate.nest)
 	activity = _activity(climate.surface()) * (0.1 if climate.raining() else 1.0)
@@ -81,13 +92,19 @@ func _colony(dt: float) -> void:
 		if a.state != Ant.IN_NEST:
 			out_count += 1
 			outside.append(a)
+			a.task = Ant.TASK_OUT
 			continue
 		if a.age < sp["callow_days"]:
 			callow += 1
-		elif a.age < forager_age:
+			a.task = Ant.TASK_CALLOW
+		elif a.age < forager_age * (0.5 + 0.5 * a.threshold(Ant.TH_AGE)):     # some turn forager sooner than others
 			nurses += 1
+			a.task = Ant.TASK_NURSE
 		else:
 			idle.append(a)
+			a.task = Ant.TASK_RESERVE
+	# the reserve, eagerest foragers last (pop_back takes them first)
+	idle.sort_custom(func(x, y): return x.threshold(Ant.TH_FORAGE) > y.threshold(Ant.TH_FORAGE) or (x.threshold(Ant.TH_FORAGE) == y.threshold(Ant.TH_FORAGE) and x.id > y.id))
 	# Older ants resting inside still help with brood care when nurses are short.
 	var lpn: float = sp["larvae_per_nurse"]
 	var nurse_cap: float = nurses * lpn + idle.size() * lpn * 0.8 + callow * 1.0
@@ -98,7 +115,7 @@ func _colony(dt: float) -> void:
 
 	# Undertakers carry nestmates that died inside out to the refuse pile.
 	if corpses_inside > 0 and not idle.is_empty() and rng.randf() < 0.5:
-		var u = idle.pop_back()
+		var u = idle.pop_at(_eagerest(idle, Ant.TH_UNDERTAKE))
 		_send_out(u, Ant.UNDERTAKER)
 		u.carry = Ant.CORPSE
 		corpses_inside -= 1
@@ -118,7 +135,7 @@ func _colony(dt: float) -> void:
 					defenders += 1
 			var want := mini(4 + int(workers.size() * 0.15), 40)
 			while defenders < want and not idle.is_empty():
-				var d = idle.pop_back()
+				var d = idle.pop_at(_eagerest(idle, Ant.TH_DEFEND))
 				_send_out(d, Ant.DEFEND)
 				d.foe = 0
 				out_count += 1
@@ -142,7 +159,7 @@ func _colony(dt: float) -> void:
 	for a in idle:
 		if out_count >= max_out:
 			break
-		if rng.randf() < p_exit:
+		if rng.randf() < p_exit / a.threshold(Ant.TH_FORAGE):     # the eager go out more often
 			_send_out(a, Ant.SEARCH)
 			out_count += 1
 
@@ -152,6 +169,11 @@ func _colony(dt: float) -> void:
 	else:
 		var keen := 1.4 if humidity > 0.6 else 1.0
 		diggers_wanted = clampi(int((idle.size() * 0.35 + 1.0) * keen), 1, 40) if workers.size() - out_count > 0 else 0
+	# who digs: the reserve ants still inside most ready to dig (the view shows them at the dig face)
+	var still_in := idle.filter(func(x): return x.state == Ant.IN_NEST)
+	still_in.sort_custom(func(x, y): return x.threshold(Ant.TH_DIG) < y.threshold(Ant.TH_DIG) or (x.threshold(Ant.TH_DIG) == y.threshold(Ant.TH_DIG) and x.id < y.id))
+	for i in mini(diggers_wanted, still_in.size()):
+		still_in[i].task = Ant.TASK_DIG
 
 	_metabolism(dt)
 	_moisture(dt)

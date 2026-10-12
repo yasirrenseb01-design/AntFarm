@@ -83,6 +83,7 @@ func _ready() -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.nest_view = nest_view
+	hud.outworld = outworld
 	hud.setup(sim, world)
 	hud.view_changed.connect(func(m):
 		_set_mode(m)

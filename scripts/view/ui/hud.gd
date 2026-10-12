@@ -3,6 +3,8 @@ extends "res://scripts/view/ui/parts/hud_panel.gd"
 ## cross-section, population chart and journal on the right. This file is the top of the chain.
 ## Layers: parts/hud_base <- hud_colonies <- hud_controls <- hud_panel <- hud.
 
+const AntTip := preload("res://scripts/view/ui/ant_tip.gd")
+
 
 func setup(s, w) -> void:
 	sim = s
@@ -18,6 +20,11 @@ func setup(s, w) -> void:
 	_build_panel(root)
 	_build_camera_pad(root)
 	_build_colonies(root)
+	# hover over an ant for a moment: who it is and what it is doing
+	var tip := AntTip.new()
+	root.add_child(tip)
+	tip.setup(sim, [nest_view, outworld], _display)
+	ant_tip = tip
 	_apply_mode("surface")
 	refresh(1.0)
 

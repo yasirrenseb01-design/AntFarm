@@ -81,6 +81,8 @@ func _update_ants(delta: float) -> void:
 		a.vgait = fmod(a.vgait + walked / (AntModel.stride_len(stride) * s) * TAU, TAU * 64.0)
 		var tr := Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), Vector3(p.x, ground_top(p.x, p.y), p.y))
 		var act: int = a.act if a.busy > 0 else 0
+		if act == 2 and a.carry == Ant.PROTEIN and fmod(a.anim + a.id * 0.37, 7.0) < 3.0:
+			act = 10                     # at a carcass: lapping up its body fluids between bites (adults take only liquids)
 		if hauling:
 			act = 19                     # gripping the item, braced, pulling
 		elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
@@ -354,3 +356,28 @@ func _on_trail(a) -> bool:
 		return true
 	var i: int = int(a.pos.y * sim.INV_CELL) * sim.gw + int(a.pos.x * sim.INV_CELL)
 	return i >= 0 and i < sim.food_cell.size() and sim.food.read_i(i) > 0.4
+
+
+## The forager under the mouse (a screen position) for the hover box (ui/ant_tip.gd), or {}.
+func pick_ant(sp: Vector2) -> Dictionary:
+	var best := {}
+	var best_d := 26.0
+	for a in sim.outside:
+		if a.state == Ant.IN_NEST or a.dead or a.vpos.x == INF:
+			continue
+		var p: Vector2 = a.vpos * U
+		var o := Vector3(p.x, ground_top(p.x, p.y), p.y)
+		if _cam.is_position_behind(o):
+			continue
+		var d := _cam.unproject_position(o).distance_to(sp)
+		if d < best_d:
+			best_d = d
+			var act: int = a.act if a.busy > 0 else 0
+			if a.state == Ant.DRAG:
+				act = 19
+			elif a.state == Ant.DEFEND:
+				act = 13 if a.busy > 0 else 14
+			elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
+				act = 8
+			best = {"kind": "worker", "w": a, "act": act}
+	return best

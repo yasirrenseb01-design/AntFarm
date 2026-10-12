@@ -129,7 +129,7 @@ func _step_ant(a: Ant) -> void:
 			if wanted and f.amt >= 1.0 and not f.rotten:
 				var fp: Vector2 = f.pos
 				if pos.distance_squared_to(fp) < pow(f.r + 2.0 + spd, 2.0):
-					if int(FoodKinds.info(f.kind).get("drag", 0)) > 0 and f.amt >= f.cap - 0.01:
+					if int(FoodKinds.info(f.kind).get("drag", 0)) > 0 and f.amt >= f.cap - 0.01 and not f.get("hauled", false):
 						_start_drag(a, f)          # still whole: take hold of it and haul it home with nestmates
 					else:
 						_pick_up(a, f)
@@ -213,9 +213,10 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 
 
 # ---------------------------------------------------------------- hauling small prey home whole
-# Lasius workers retrieve small prey (a dead fly) whole when nestmates join in: each takes hold, and once
-# enough are pulling the item moves toward the nest, faster with more of them. One alone waits a while for
-# help, then cuts a piece off instead (and its trail home brings the others).
+# Lasius workers retrieve small prey (a dead fly) whole when nestmates join in (cooperative retrieval: ~85% of
+# the prey biomass in L. neoniger, Traniello 1983): each takes hold, and once enough are pulling the item moves
+# toward the nest, faster with more of them; at the entrance it is cut up and carried in in pieces. One alone
+# waits a while for help, then cuts a piece off instead (and its trail home brings the others).
 const DRAG_WAIT := 900           # ticks a lone ant holds on before it gives up and cuts a piece
 
 func _start_drag(a: Ant, f: Dictionary) -> void:
@@ -269,18 +270,15 @@ func _step_drags() -> void:
 			if f.pos.distance_squared_to(f.get("grid_at", f.pos)) > 9.0:
 				f.grid_at = f.pos
 				_food_dirty = true                # foragers smell it where it is now
-			if f.pos.distance_squared_to(nest_pos) < NEST_R * NEST_R:
-				# in through the entrance: the whole item feeds the colony
-				protein = minf(protein_cap(), protein + f.amt)
-				stats.protein_in += int(f.amt)
-				foods.erase(f)
+			if f.pos.distance_squared_to(nest_pos) < pow(NEST_R + f.r, 2.0):
+				# at the entrance: too big for the narrow way in, it is cut up here and carried in piece by
+				# piece (the haulers start on it, and their trail brings nestmates)
+				f.hauled = true
 				_food_dirty = true
-				if activity > 0.2:
-					_recruits += 2
 				for a in crew:
-					a.state = Ant.IN_NEST
-					a.trip = 0
+					a.state = Ant.SEARCH
 					a.foe = 0
+					_pick_up(a, f)
 				continue
 		for a in crew:
 			a.since += 1
@@ -315,6 +313,7 @@ func _arrive(a: Ant) -> void:
 		return
 	a.state = Ant.IN_NEST
 	a.trip = 0
+	a.came_in = tick
 
 
 func _sense(a: Ant, field: Field, off: float) -> float:

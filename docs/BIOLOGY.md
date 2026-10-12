@@ -63,6 +63,14 @@
   ไข่และตัวอ่อนเล็กอยู่กลาง หนาแน่น, ตัวอ่อนกลางอยู่วงถัดไป, ตัวอ่อนใหญ่อยู่ขอบ ห่างกันมากกว่า; ย้ายรังแล้วก็เรียงแบบเดิมอีก
   กลไกที่เสนอทีหลัง: รวมกองก่อน แล้วค่อยเว้นระยะ (Sendova-Franks et al.) — ยังไม่เจองานเฉพาะ *L. niger*
   (ในเกมตอนนี้แยกเป็นกองไข่/ตัวอ่อน/รังไหม ข้างกัน — ดู BACKLOG)
+- **การขนเหยื่อเป็นกลุ่ม:** *L. neoniger* (ญาติใกล้ชิด) ~85% ของน้ำหนักเหยื่อในอาหารถูกขนกลับรังโดยกลุ่มมดงาน (Traniello 1983);
+  ตัวที่เจอปล่อยสารจากลำไส้ส่วนท้าย+ต่อมพิษเรียกเพื่อนใกล้ๆ, ทิ้งทางกลิ่นกลับรังเรียกจากไกล; เริ่มลากเมื่อเพื่อนมาพอ;
+  ลากได้เร็วเฉพาะเหยื่อ ≲130 มก. — *L. niger* เองมีแค่บันทึกสั้นๆ ว่าช่วยกันขนของใหญ่ (Franks 1989, อ้างผ่านเอกสารรอง)
+  **ในเกม (ผู้ใช้ตัดสิน 2026-10-12: ใช้เฉพาะข้อมูลของ *L. niger*):** ไม่มีงานที่วัดการลากเหยื่อเป็นกลุ่มของ *L. niger* โดยตรง
+  → มดตัดชิ้นที่ซากแล้วขนทีละชิ้น (ระบบลาก `drag` มีในโค้ดแต่ไม่มีอาหารชนิดไหนใช้)
+- **กินที่ซาก:** มดงานตัวโตกลืนได้แต่ของเหลว ของแข็งเอาไปให้ตัวอ่อนย่อย (ชีววิทยามดทั่วไป); มดลาดตระเวน *L. niger* ดื่มอาหารโปรตีนเหลว
+  ได้ ~0.5 ไมโครลิตร (งาน scouts ข้างล่าง) และเก็บอาหารเหลวในกระเพาะพักแบบไม่เต็ม แล้วยังดื่มต่อระหว่างทาง (Mailleux et al. 2009)
+  ในเกม: ที่ซากมดสลับกัดตัดชิ้นกับก้มเลียของเหลว (เป็นภาพ; สัดส่วนเวลาเป็นค่าที่ผมกำหนด ไม่มีงานวัด)
 - **การย้ายลูกมด:** มดตัดใบ ย้ายลูกมดก่อนเชื้อราเมื่อหนาวหรือแห้ง (PLoS ONE 2014); *Camponotus floridanus* (ทดลองคุมอุณหภูมิพื้นด้วยหุ่นยนต์)
   มดงานเริ่มขนลูกมดหลังจากเจอที่ที่ดีกว่าแล้วเท่านั้น — งานควบคุมของ *L. niger* เองยังหาไม่เจอ
 
@@ -128,6 +136,11 @@
 - Khuong A. et al. (2016) Stigmergic construction and topochemical information shape ant nest architecture. PNAS 113(5):1303–1308
 - Römer D., Roces F. (2014) Nest enlargement in leaf-cutting ants: relocated brood and fungus trigger the excavation of new chambers. PLoS ONE 9(5)
 - Buhl J. et al. (2004) Self-organized digging activity in ant colonies — ปริมาตรรังตามประชากร
+- Traniello J.F.A. (1983) Social organization and foraging success in *Lasius neoniger*: behavioral and ecological aspects of recruitment communication.
+  https://springerlink.bibliotecabuap.elogim.com/doi/10.1007/BF00388080 ; เปรียบเทียบหลายชนิด: https://springerlink.bibliotecabuap.elogim.com/doi/10.1007/BF02223830
+- Mailleux A.-C., Deneubourg J.-L., Detrain C. (2009) Food transport in ants: do *Lasius niger* foragers maximize their individual load? C R Biol 332:500–506
+  https://comptes-rendus.academie-sciences.fr/biologies/articles/en/10.1016/j.crvi.2008.10.005/
+- How food type and brood influence foraging decisions of *Lasius niger* scouts https://www.researchgate.net/publication/271577449
 - Mersch D.P., Crespi A., Keller L. (2013) Tracking individuals shows spatial fidelity is a key regulator of ant social organization. Science 340:1090–1093
   https://infoscience.epfl.ch/record/187000
 - Franks N.R., Sendova-Franks A.B. (1992) Brood sorting by ants: distributing the workload over the work-surface. Behav Ecol Sociobiol 30:109–123

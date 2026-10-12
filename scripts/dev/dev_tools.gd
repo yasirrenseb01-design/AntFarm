@@ -192,6 +192,8 @@ func _take_shot() -> void:
 		if i == 10:
 			fprof.clear()                 # (the first frames load and warm up)
 			nest_view.fprof.clear()
+		if i == 60 and _opts.has("hover"):
+			_hover_some_ant(String(_opts["hover"]))
 		elif i > 10 and _opts.has("perf"):
 			gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(vrid)
 			cpu_render_ms += RenderingServer.viewport_get_measured_render_time_cpu(vrid)
@@ -252,6 +254,29 @@ func _take_shot() -> void:
 	_save_now()
 	print("saved ", path, "  fps ", Engine.get_frames_per_second(), "  process ms %.2f" % (Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0))
 	get_tree().quit()
+
+
+## --hover=<role|out|queen>: put the mouse on such an ant, so the hover box shows in the shot.
+func _hover_some_ant(what: String) -> void:
+	var p := Vector3.INF
+	if mode == "nest":
+		if what == "queen":
+			p = nest_view._queen_xf.origin
+		else:
+			for m in nest_view._mates:
+				if m.has("xf") and m.role == what and nest_view._visible((m.xf as Transform3D).origin):
+					p = (m.xf as Transform3D).origin
+					break
+		if p != Vector3.INF:
+			hud.ant_tip.test_mouse = nest_view._cam.unproject_position(p)
+	elif mode == "outworld":
+		for a in sim.outside:
+			if a.vpos.x != INF and a.state != sim.Ant.IN_NEST:
+				var q: Vector2 = a.vpos * outworld.U
+				p = Vector3(q.x, outworld.ground_top(q.x, q.y), q.y)
+				if not outworld._cam.is_position_behind(p):
+					hud.ant_tip.test_mouse = outworld._cam.unproject_position(p)
+					break
 
 
 ## A diligent keeper for tests: water when the reservoir runs low, feed in proportion to colony size.

@@ -14,6 +14,21 @@ const WORKER := 0
 const GYNE := 1
 const MALE := 2
 
+# what a worker in the nest is doing (set each colony step; not saved — worked out again after loading)
+const TASK_OUT := 0        # outside (foraging, defending, carrying out the dead, hauling)
+const TASK_CALLOW := 1     # just eclosed, still pale
+const TASK_NURSE := 2      # young: tends the brood and the queen
+const TASK_RESERVE := 3    # older, resting inside: the pool the foragers, undertakers and defenders come from
+const TASK_DIG := 4        # digging the nest
+# individual thresholds (response-threshold model of division of labour, Bonabeau et al. 1996): each worker
+# answers each kind of need at its own level, so some always go first and others hardly ever
+const TH_AGE := 0          # how long it stays a nurse
+const TH_FORAGE := 1
+const TH_UNDERTAKE := 2
+const TH_DEFEND := 3
+const TH_DIG := 4
+const TH_ATTEND := 5       # drawn to the queen (her retinue, in the nest view)
+
 const NONE := 0
 const SUGAR := 1
 const PROTEIN := 2
@@ -38,6 +53,8 @@ var slide := 1.0        # which way it turns to follow a wall (+1 left, -1 right
 var busy := 0           # ticks left standing still doing something (eating, milking aphids, meeting)
 var act := 0            # what it is doing for the view: 0 walk, 2 bite/cut, 3 antennate, 9 milk aphids, 10 drink
 var meet_cd := 0         # ticks before it will stop for another encounter
+var task := TASK_OUT     # (see TASK_*)
+var came_in := -1000000  # tick it last came back into the nest (the view walks it in from the entrance)
 var turn_after := false  # turn round once the current task is done
 var phase := 0.0        # gait phase for leg animation
 var foe := 0            # id of the enemy it is fighting (sim.creatures), 0 = none
@@ -56,6 +73,13 @@ var vflung := false     # set by the simulation when an enemy throws it off (the
 var vright := 0.0       # 3D: seconds left of being thrown, landing on its back and righting itself
 var vfly_from := Vector2.ZERO
 var vact := Vector3(-1, 0, 0)   # 3D: easing from one activity's pose to the next (AntModel.act_step)
+
+
+## This worker's threshold for a kind of need (TH_*), 0.6 (eager) .. 1.4 (reluctant): fixed for life,
+## worked out from its id so nothing extra needs saving.
+func threshold(kind: int) -> float:
+	var h := sin(float(id) * 12.9898 + float(kind) * 78.233) * 43758.5453
+	return 0.6 + 0.8 * (h - floorf(h))
 
 
 func is_out() -> bool:
