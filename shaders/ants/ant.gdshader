@@ -244,7 +244,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			}
 			vec3 T = F + vec3(dx, 0.0, 0.0);
 			// set the foot down on the real ground under it (rough nest floors, the slope outside)
-			if (ground_mode != 0 && probe) {           // (not for shadows: they do not need it)
+			if (ground_mode != 0 && probe && abs(M[1].y) > 0.5 * length(M[1].xyz)) {   // (not for shadows, not on the glass)
 				vec3 upw = normalize(M[1].xyz);
 				float sc = length(M[1].xyz);
 				vec3 fw = (M * vec4(T, 1.0)).xyz;

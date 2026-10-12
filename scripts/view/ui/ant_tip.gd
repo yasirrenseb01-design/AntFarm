@@ -167,4 +167,5 @@ func _act_name(act: int) -> String:
 		17: return "ยกไข่"
 		18: return "ล้มหงาย กำลังพลิกตัว"
 		19: return "ลากเหยื่อ"
+		20: return "ปีนผนังกระจก"
 	return "-"

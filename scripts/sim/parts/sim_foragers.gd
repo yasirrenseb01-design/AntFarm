@@ -169,6 +169,13 @@ func _step_ant(a: Ant) -> void:
 	if a.follow > 0:
 		a.follow -= ant_substep
 	var np := pos + Vector2(cos(a.ang), sin(a.ang)) * spd
+	if a.state == Ant.SEARCH and _at_glass(np) and rng.randf() < WALL_CLIMB_P:
+		# at the glass: up the wall it goes (the view draws the climb), as far as the slippery band near the
+		# top, then back down and away again
+		a.busy = WALL_TICKS
+		a.act = ACT_WALL
+		a.turn_after = true
+		return
 	if blocked(np):
 		a.follow = 24
 		# follow the edge of the obstacle: try headings swinging toward the ant's chosen side
@@ -220,6 +227,17 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 # toward the nest, faster with more of them; at the entrance it is cut up and carried in in pieces. One alone
 # waits a while for help, then cuts a piece off instead (and its trail home brings the others).
 const DRAG_WAIT := 900           # ticks a lone ant holds on before it gives up and cuts a piece
+
+## The glass walls of the box: workers climb smooth vertical glass on their adhesive foot pads (arolia; shown in
+## other ants, e.g. Endlein & Federle 2015) and keepers report L. niger walking up the glass until it reaches the
+## slippery Fluon band painted near the top. How often one climbs and for how long are estimates.
+const ACT_WALL := 20
+const WALL_TICKS := 240          # up to the band and back down
+const WALL_CLIMB_P := 0.12       # chance a searcher that meets the glass walks up it instead of turning
+
+func _at_glass(p: Vector2) -> bool:
+	return p.x < 3.0 or p.y < 3.0 or p.x > WORLD.x - 3.0 or p.y > WORLD.y - 3.0
+
 
 func _start_drag(a: Ant, f: Dictionary) -> void:
 	a.state = Ant.DRAG

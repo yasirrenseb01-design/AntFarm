@@ -83,7 +83,11 @@ func _update_ants(delta: float) -> void:
 		var act: int = a.act if a.busy > 0 else 0
 		if act == 2 and a.carry == Ant.PROTEIN and fmod(a.anim + a.id * 0.37, 7.0) < 3.0:
 			act = 10                     # at a carcass: lapping up its body fluids between bites (adults take only liquids)
-		if hauling:
+		var climbing: bool = a.busy > 0 and a.act == sim.ACT_WALL
+		if climbing:
+			act = 0                      # walking - up the glass and back down (placed below)
+			tr = _on_glass(a, tr, s)
+		elif hauling:
 			act = 19                     # gripping the item, braced, pulling
 		elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
 			act = 8                      # carrying: head up, the load held in the mandibles
@@ -334,6 +338,42 @@ func _update_ring() -> void:
 		var r := (10.0 if t == "rock" else 24.0) * U
 		_ring.position = hover + Vector3(0, 0.3, 0)
 		_ring.scale = Vector3(r, 1.0, r)
+
+
+## A forager climbing the glass wall of the box: up to the slippery band under the rim, a turn, and back down
+## (the simulation holds it still at the foot of the wall meanwhile; ant.busy counts the climb down).
+func _on_glass(a: Ant, floor_tr: Transform3D, s: float) -> Transform3D:
+	var u := 1.0 - float(a.busy) / float(sim.WALL_TICKS)
+	var w: float = sim.WORLD.x * U
+	var d: float = sim.WORLD.y * U
+	var p: Vector2 = a.vpos * U
+	# the nearest wall: where on it, and its inward normal
+	var dists := [p.x, w - p.x, p.y, d - p.y]
+	var k := dists.find(dists.min())
+	var n: Vector3 = [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD][k]
+	var at := Vector3(p.x, 0.0, p.y)
+	match k:
+		0: at.x = 0.05
+		1: at.x = w - 0.05
+		2: at.z = 0.05
+		3: at.z = d - 0.05
+	var base_y := ground_top(at.x, at.z)
+	var band: float = WALL_H - 2.0 - FLUON_BAND - base_y        # how high it gets before the slippery band
+	# up (0..0.45), turning round below the band (0.45..0.55), down again (0.55..1)
+	var climb := smoothstep(0.0, 0.45, u) * (1.0 - smoothstep(0.55, 1.0, u))
+	var h := climb * band
+	var turn := smoothstep(0.45, 0.55, u)                       # head up, then head down
+	var fwd := Vector3.UP.slerp(Vector3.DOWN, turn) if turn < 0.999 else Vector3.DOWN
+	if fwd.length_squared() < 0.01:
+		fwd = Vector3.UP
+	fwd = (fwd - n * fwd.dot(n)).normalized()
+	var on_wall := Transform3D(Basis(fwd, n, fwd.cross(n)).scaled(Vector3.ONE * s), at + Vector3(0, base_y + h, 0))
+	# stepping from the floor onto the glass and back
+	var k2 := smoothstep(0.0, 0.05, u) * (1.0 - smoothstep(0.95, 1.0, u))
+	var b := floor_tr.basis.orthonormalized().slerp(on_wall.basis.orthonormalized(), k2).scaled(Vector3.ONE * s)
+	a.vgait = fmod(a.vgait + absf(band) * 0.02 * (1.0 if turn < 0.01 or turn > 0.99 else 0.4), TAU * 64.0)
+	a.vmv = 1.0
+	return Transform3D(b, floor_tr.origin.lerp(on_wall.origin, k2))
 
 
 ## How far the writhing body of a creature has carried the point p (on or by it) sideways from where the

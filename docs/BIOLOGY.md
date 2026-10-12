@@ -71,6 +71,8 @@
 - **กินที่ซาก:** มดงานตัวโตกลืนได้แต่ของเหลว ของแข็งเอาไปให้ตัวอ่อนย่อย (ชีววิทยามดทั่วไป); มดลาดตระเวน *L. niger* ดื่มอาหารโปรตีนเหลว
   ได้ ~0.5 ไมโครลิตร (งาน scouts ข้างล่าง) และเก็บอาหารเหลวในกระเพาะพักแบบไม่เต็ม แล้วยังดื่มต่อระหว่างทาง (Mailleux et al. 2009)
   ในเกม: ที่ซากมดสลับกัดตัดชิ้นกับก้มเลียของเหลว (เป็นภาพ; สัดส่วนเวลาเป็นค่าที่ผมกำหนด ไม่มีงานวัด)
+- **ปีนพื้นผิวลื่น:** มดเกาะกระจกแนวดิ่งด้วยแผ่นดูด (arolium) ที่ปลายเท้า ขาที่อยู่เหนือจุดศูนย์ถ่วงดึงด้วยแผ่น ขาที่อยู่ล่างดันด้วยขนที่ข้อเท้า
+  (Endlein & Federle 2015, *Oecophylla*); ผู้เลี้ยง *Lasius* เล่าว่าปีนกระจกหนีเก่ง ต้องทา Fluon/แป้ง และมุมกล่องเป็นจุดที่หนีได้บ่อย (ฟอรัม ไม่ใช่งานวิจัย)
 - **การย้ายลูกมด:** มดตัดใบ ย้ายลูกมดก่อนเชื้อราเมื่อหนาวหรือแห้ง (PLoS ONE 2014); *Camponotus floridanus* (ทดลองคุมอุณหภูมิพื้นด้วยหุ่นยนต์)
   มดงานเริ่มขนลูกมดหลังจากเจอที่ที่ดีกว่าแล้วเท่านั้น — งานควบคุมของ *L. niger* เองยังหาไม่เจอ
 
@@ -141,6 +143,8 @@
 - Mailleux A.-C., Deneubourg J.-L., Detrain C. (2009) Food transport in ants: do *Lasius niger* foragers maximize their individual load? C R Biol 332:500–506
   https://comptes-rendus.academie-sciences.fr/biologies/articles/en/10.1016/j.crvi.2008.10.005/
 - How food type and brood influence foraging decisions of *Lasius niger* scouts https://www.researchgate.net/publication/271577449
+- Endlein T., Federle W. (2015) On heels and toes: how ants climb with adhesive pads and tarsal friction hair arrays. PLoS ONE 10(11)
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC4641605 ; ผู้เลี้ยงเรื่อง Fluon: https://formiculture.com/topic/19546-comments-on-design-horizontal-escape-barriers
 - Mersch D.P., Crespi A., Keller L. (2013) Tracking individuals shows spatial fidelity is a key regulator of ant social organization. Science 340:1090–1093
   https://infoscience.epfl.ch/record/187000
 - Franks N.R., Sendova-Franks A.B. (1992) Brood sorting by ants: distributing the workload over the work-surface. Behav Ecol Sociobiol 30:109–123

@@ -108,6 +108,18 @@ func _take_shot() -> void:
 			print("hauler: draggers %d" % sim.outside.filter(func(x): return x.state == sim.Ant.DRAG).size())
 			_watch_food = fly
 			outworld.target_t = Vector3(fly.pos.x, 0, fly.pos.y) * outworld.U
+		elif _opts.get("at-ant", "") == "climber":
+			# run on until a forager starts up the glass wall, then follow it (wall-climb checks)
+			for i in sim.TPD:
+				for a in sim.outside:
+					if a.busy > sim.WALL_TICKS - 20 and a.act == sim.ACT_WALL:
+						_walker = a
+				if _walker != null:
+					break
+				sim.step()
+			print("climber: ", _walker != null)
+			if _walker != null:
+				outworld.target_t = Vector3(_walker.pos.x, 0, _walker.pos.y) * outworld.U + Vector3(0, 8, 0)
 		elif _opts.get("at-ant", "") == "carrier":
 			# run on until a forager is walking home with a load in its mandibles, then follow it (carry pose)
 			if not sim.foods.any(func(f): return f.type == sim.Ant.PROTEIN):
