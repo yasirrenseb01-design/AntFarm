@@ -56,17 +56,6 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	return Transform3D(Basis(f, y, f.cross(y)).scaled(Vector3.ONE * scale), np - v.vu * 0.4)
 
 
-func _nearest_spot(p: Vector3, spots: Array) -> Vector3:
-	var best := Vector3.INF
-	var bd := 9.0
-	for s in spots:
-		var d := p.distance_squared_to(s)
-		if d < bd:
-			bd = d
-			best = s
-	return best
-
-
 func _custom(v: Dictionary, act: int) -> Color:
 	return Color(v.get("gait", 0.0), act, fmod(v.get("anim", 0.0), 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
 

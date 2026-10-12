@@ -15,7 +15,8 @@ render_mode diffuse_burley;
 //             13 fighting: clamped on with the mandibles, gaster curled forward under the body spraying
 //                formic acid, legs braced; 14 alarmed: running in with mandibles agape, antennae forward;
 //             15 stopped to scan: head and antennae sweep slowly side to side, antennae raised;
-//             16 following a trail: antennae held low, tapping the ground left and right in turn.
+//             16 following a trail: antennae held low, tapping the ground left and right in turn;
+//             17 a queen taking her new egg: gaster curled forward under the body, head bowed to meet it.
 // Walking, the head and gaster sway a little with each step and the gaster is carried clear of the ground.
 // y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
 
@@ -97,6 +98,7 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 	if (act == 13.0) nod = -0.3 + 0.12 * sin(t * 11.0);    // worrying at the grip
 	if (act == 14.0) nod = 0.12;
 	if (act == 16.0) nod = -0.07;                           // nose down to the scent
+	if (act == 17.0) nod = -0.55;                           // head bowed under to the gaster tip
 	float turn = 0.05 * sin(gait) * mv;
 	if (act == 15.0) { turn = 0.32 * sin(t * 1.4); nod = 0.06 + 0.05 * sin(t * 0.9); }
 	if (act == 4.0) {
@@ -308,8 +310,9 @@ void vertex() {
 		float curl = act == 5.0 ? -0.35 + 0.08 * sin(t * 2.0) : 0.0;
 		if (act == 13.0) curl = -1.05 + 0.1 * sin(t * 7.0);   // tip brought forward between the legs to spray
 		if (act == 14.0) curl = 0.12;
+		if (act == 17.0) curl = -0.95 + 0.05 * sin(t * 2.0);  // tip brought forward under the body
 		// carried clear of the ground and swaying against the head as the tripods alternate
-		if (act != 5.0 && act != 11.0 && act != 13.0) {
+		if (act != 5.0 && act != 11.0 && act != 13.0 && act != 17.0) {
 			curl += 0.1 + 0.025 * sin(gait * 2.0) * mv;
 			R = rot_y(-0.045 * sin(gait) * mv);
 		}
@@ -321,7 +324,7 @@ void vertex() {
 	VERTEX = piv + R * (VERTEX - piv);
 	NORMAL = normalize(R * NORMAL);
 	// whole body: nose down while digging, front up while grooming
-	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 : (act == 10.0 ? -0.1 : (act == 13.0 ? 0.12 : 0.0)));
+	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 : (act == 10.0 ? -0.1 : (act == 13.0 ? 0.12 : (act == 17.0 ? 0.08 : 0.0))));
 	VERTEX = rot_z(pitch) * VERTEX;
 	NORMAL = rot_z(pitch) * NORMAL;
 }

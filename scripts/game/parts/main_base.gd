@@ -32,7 +32,7 @@ var _overlay: CanvasLayer
 var _overlay_label: Label
 var _overlay_bar: ProgressBar
 var camera: Camera2D
-var speed := 1.0
+var speed := 0.5             # a calm pace to watch the ants by (the HUD offers 0.2× - 5×)
 var _acc := 0.0
 var _panning := false
 var _zoom_t := 1.0

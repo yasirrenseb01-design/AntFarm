@@ -148,9 +148,21 @@ func _step_anims(adt: float) -> void:
 				if u < 0.3:
 					_queen_act = ACT_LAY
 				elif h == null:
-					# a founding queen turns round and places the egg herself
-					_queen_turn_t = 2.6 if u < 0.8 else 0.0
-					_queen_act = ACT_TEND
+					# a founding queen tends her eggs herself: she curls her gaster forward under her body and
+					# takes the egg in her mandibles, turns to face her egg packet, sets it down, turns back
+					if not a.has("turn0"):
+						a.turn0 = _queen_turn
+						var to: Vector3 = (a.pile as Vector3) - _queen_xf.origin
+						a.turn1 = atan2(-to.z, to.x)
+					if u < 0.5:
+						_queen_act = ACT_TAKE_EGG
+						_queen_turn_t = a.turn0
+					elif u < 0.9:
+						_queen_act = ACT_TEND
+						_queen_turn_t = a.turn1
+					else:
+						_queen_act = ACT_REST
+						_queen_turn_t = a.turn0
 				elif u < 0.4:
 					h.script.act = ACT_TEND
 				elif u < 0.85:
@@ -282,11 +294,16 @@ func _draw_anims() -> void:
 				var h = a.helper
 				var sc := clampf(0.25 + u / 0.3 * 0.75, 0.25, 1.0)
 				if h == null:
-					var mouth: Vector3 = _queen_xf * MOUTH
-					if u > 0.45:
-						p = tip.lerp(mouth, clampf((u - 0.45) / 0.1, 0.0, 1.0))
-					if u > 0.55:
-						p = mouth.lerp(a.pile, clampf((u - 0.55) / 0.25, 0.0, 1.0))
+					# with her gaster curled forward the tip comes up under her head: the egg goes from one
+					# to the other there, then rides in her mandibles until she lays it on the packet
+					var mouth: Vector3 = _queen_xf * MOUTH_LOW
+					var under: Vector3 = _queen_xf * TIP_CURLED
+					if u > 0.3:
+						p = tip.lerp(under, clampf((u - 0.3) / 0.1, 0.0, 1.0))
+					if u > 0.42:
+						p = under.lerp(mouth, clampf((u - 0.42) / 0.06, 0.0, 1.0))
+					if u > 0.8:
+						p = mouth.lerp(a.pile + Vector3(0, 0.25, 0), clampf((u - 0.8) / 0.1, 0.0, 1.0))
 				elif u > 0.3 and h.has("xf"):
 					var mouth: Vector3 = h.xf * MOUTH
 					p = tip.lerp(mouth, clampf((u - 0.3) / 0.1, 0.0, 1.0))

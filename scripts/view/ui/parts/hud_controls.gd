@@ -30,9 +30,10 @@ func _build_top(root: Control) -> void:
 	speeds.add_theme_constant_override("separation", 4)
 	speeds.alignment = BoxContainer.ALIGNMENT_CENTER
 	var g := ButtonGroup.new()
-	for pair in [["หยุด", 0.0], ["0.5×", 0.5], ["1×", 1.0], ["5×", 5.0], ["20×", 20.0], ["60×", 60.0]]:
+	# a calm pace for watching (0.5× is where a new game starts); longer stretches pass while the game is closed
+	for pair in [["หยุด", 0.0], ["0.2×", 0.2], ["0.5×", 0.5], ["1×", 1.0], ["2×", 2.0], ["5×", 5.0]]:
 		var b := _button(pair[0], true, g)
-		b.button_pressed = pair[1] == 1.0
+		b.button_pressed = pair[1] == 0.5
 		var v: float = pair[1]
 		b.pressed.connect(func(): speed_changed.emit(v))
 		speeds.add_child(b)

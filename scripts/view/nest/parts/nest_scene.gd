@@ -279,6 +279,7 @@ const ACT_LAY := 5
 const ACT_FEED := 6
 const ACT_TEND := 7
 const ACT_CARRY := 8
+const ACT_TAKE_EGG := 17        # a founding queen curls her gaster under and takes the new egg (shader 17)
 const ACT_EMERGE := 12          # a callow just out of its cocoon, legs still folded
 const STILL_ACTS := [ACT_ANTENNATE, ACT_GROOM, ACT_FEED]    # the ant stops walking while doing these
 
@@ -291,6 +292,8 @@ const STILL_ACTS := [ACT_ANTENNATE, ACT_GROOM, ACT_FEED]    # the ant stops walk
 
 const MOUTH := Vector3(1.2, 0.32, 0.0)          # mandible tip in the ant model, before scaling
 const GASTER_TIP := Vector3(-1.85, 0.25, 0.0)
+const TIP_CURLED := Vector3(0.45, 0.12, 0.0)       # the gaster tip brought forward under the thorax (ACT_TAKE_EGG)
+const MOUTH_LOW := Vector3(1.05, 0.12, 0.0)        # mandibles with the head bowed
 
 
 func _pending(kind: String) -> int:

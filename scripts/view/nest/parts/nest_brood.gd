@@ -143,7 +143,7 @@ func _egg_xf(i: int) -> Transform3D:
 
 
 func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Callable, old_spots := [], moved := 1 << 20,
-		col_fn := Callable()) -> void:
+		col_fn := Callable(), kind := "larvae") -> void:
 	var n := mini(items.size(), max_n)
 	if _queen_mm.instance_count > 0:
 		# not under the queen (a larva is ~2 units long); in a tiny founding chamber keep the spots farthest from her
@@ -166,7 +166,9 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		# items not yet carried over stay in the old pile
 		var src: Array = spots if (i < moved or old_spots.is_empty()) else old_spots
 		if not cands.has(src):
-			cands[src] = {"list": _pile_places(src), "next": 0}
+			var centre := _pile_centre(src, kind)
+			cands[src] = {"list": _pile_places(src, centre), "next": 0, "centre": centre,
+				"reach": 0.9 + 0.75 * sqrt(float(n))}      # a compact heap: one layer about this wide, then on top
 		var s: float = scale_fn.call(items[i])
 		var xf := _place_brood(cands[src], s, i)
 		if _visible(xf.origin):
@@ -179,14 +181,36 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 			mm.set_instance_color(i, cs[i])
 
 
-## Where brood can lie in a pile: every floor spot and four points around it, nearest the pile's middle first.
-func _pile_places(spots: Array) -> Array:
-	if spots.is_empty():
-		return []
+## Where a pile of brood sits, as Lasius nurses sort it: the larvae heaped beside the egg packet near the
+## queen's head (small larvae stay with the eggs), the cocoons in their own heap on the far side of the
+## chamber from her (or wherever their chamber is).
+func _pile_centre(spots: Array, kind: String) -> Vector3:
 	var centre := Vector3.ZERO
 	for s in spots:
 		centre += s
-	centre /= spots.size()
+	centre /= maxi(1, spots.size())
+	var q: Vector3 = _spots.queen
+	if q == Vector3.ZERO or spots.is_empty():
+		return centre
+	var near_q := spots.filter(func(s): return s.distance_to(q) < 8.0)
+	if near_q.is_empty():
+		return centre                           # their own chamber, away from the queen
+	if kind == "larvae" and not _egg_spots.is_empty():
+		var e: Vector3 = _egg_spots[0]
+		var away := (e - q) * Vector3(1, 0, 1)
+		var beside := _nearest_spot(e + (away.normalized() if away.length() > 0.1 else Vector3.RIGHT) * 2.2, spots)
+		return beside if beside != Vector3.INF else centre
+	var far: Vector3 = near_q[0]
+	for s in near_q:
+		if s.distance_to(q) > far.distance_to(q):
+			far = s
+	return far
+
+
+## Where brood can lie in a pile: every floor spot and four points around it, nearest the pile's centre first.
+func _pile_places(spots: Array, centre: Vector3) -> Array:
+	if spots.is_empty():
+		return []
 	var out := []
 	for s in spots:
 		out.append(s)
@@ -201,7 +225,7 @@ func _pile_places(spots: Array) -> Array:
 ## `_brood_occ` (cleared per layout) holds what has been laid: [centre, radius] binned by 1.5 units.
 func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	var places: Array = c.list
-	var r := 0.78 * s                        # footprint of a larva or cocoon (they are ~2-2.7 units long)
+	var r := 0.95 * s                        # a larva or cocoon is long (2-2.7 units): keep their ends apart too
 	var best := Vector3.INF
 	var lift := 0.0
 	if not c.get("full", false):
@@ -209,6 +233,8 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 			var p: Vector3 = places[k]
 			if _queen_mm.instance_count > 0 and _queen_gap(p) < r + 0.5:
 				continue
+			if p.distance_to(c.centre) > c.reach:
+				break                          # the heap is as wide as it gets: go on top instead
 			if _brood_free(p, r):
 				best = p
 				c.next = maxi(c.next, k - 8)      # the places before this are (nearly all) taken
@@ -216,8 +242,11 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 		if best == Vector3.INF:
 			c.full = true                      # no floor left in this pile: the rest go on top
 	if best == Vector3.INF and not places.is_empty():
-		# the floor is full: lie on top of the pile, resting on whatever is highest there
-		best = places[i % mini(places.size(), 12)]
+		# the heap's floor is full: lie on top, resting on whatever is highest there
+		var inner := places.filter(func(p): return p.distance_to(c.centre) <= c.reach and (_queen_mm.instance_count == 0 or _queen_gap(p) >= r + 0.5))
+		if inner.is_empty():
+			inner = places
+		best = inner[i % inner.size()]
 		for o in _brood_near(best):
 			if Vector2(o[0].x - best.x, o[0].z - best.z).length() < r + o[1]:
 				lift = maxf(lift, o[0].y - best.y + o[1] * 0.75)
@@ -269,7 +298,7 @@ func _update_brood() -> void:
 				exs.append(xf)
 	_fill(_egg_mm, exs)
 	# young larvae are tiny; they grow about tenfold in mass before pupating
-	_pile(_larva_mm, _spots.larvae, sim.larvae, 300, func(l): return 0.28 + l.p * 0.8, _spots.larvae_old, _moved)
+	_pile(_larva_mm, _spots.larvae, sim.larvae, 300, func(l): return 0.28 + l.p * 0.8, _spots.larvae_old, _moved, Callable(), "larvae")
 	var bits := []
 	if not sim.larvae.is_empty() and not _spots.larvae.is_empty():
 		for k in mini(16, int(sim.protein * 1.5)):
@@ -279,7 +308,7 @@ func _update_brood() -> void:
 				bits.append(xf)
 	_fill(_bits_mm, bits)
 	_pile(_pupa_mm, _spots.pupae, sim.pupae.slice(0, maxi(0, sim.pupae.size() - _pending("pupate"))), 300, func(p): return p.get("s", 1.0),
-		[], 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)))
+		[], 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
 	# the crater mound of excavated pellets around the entrance on top of the block
 	var n := mini(nest.excavated / 2, 900)
 	if n == _mound_n:
@@ -322,6 +351,17 @@ func _queen_gap(p: Vector3) -> float:
 	var qb: Vector3 = _queen_xf * QUEEN_TAIL
 	var t := clampf((p - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
 	return p.distance_to(qa.lerp(qb, t)) - QUEEN_R
+
+
+func _nearest_spot(p: Vector3, spots: Array) -> Vector3:
+	var best := Vector3.INF
+	var bd := 9.0
+	for s in spots:
+		var d := p.distance_squared_to(s)
+		if d < bd:
+			bd = d
+			best = s
+	return best
 
 
 func _random_room() -> int:
