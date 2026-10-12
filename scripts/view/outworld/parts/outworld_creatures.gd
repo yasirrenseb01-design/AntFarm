@@ -66,7 +66,7 @@ func _update_ants(delta: float) -> void:
 		a.vmv = lerpf(a.vmv, 1.0 if moving else 0.0, minf(1.0, 10.0 * delta))
 		a.anim += adt
 		var p: Vector2 = a.vpos * U
-		var up := ground_n(p.x, p.y)
+		var up := ground_top_n(p.x, p.y)                # over pebbles, twigs and leaves as well as the ground
 		var f := Vector3(cos(a.vang), 0, sin(a.vang))
 		f = (f - up * f.dot(up)).normalized()
 		var s: float = ANT_SCALE * a.size
@@ -79,7 +79,7 @@ func _update_ants(delta: float) -> void:
 			# pulling: the legs step backward when the item goes the way the ant's back is turned
 			walked = (step * kp).dot(Vector2(cos(a.vang), sin(a.vang))) * U
 		a.vgait = fmod(a.vgait + walked / (AntModel.stride_len(stride) * s) * TAU, TAU * 64.0)
-		var tr := Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), Vector3(p.x, ground_h(p.x, p.y), p.y))
+		var tr := Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), Vector3(p.x, ground_top(p.x, p.y), p.y))
 		var act: int = a.act if a.busy > 0 else 0
 		if hauling:
 			act = 19                     # gripping the item, braced, pulling

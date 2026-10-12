@@ -35,6 +35,11 @@ uniform vec3 vol_size = vec3(64.0, 72.0, 64.0);
 // keep the rest pose (zoomed out, where a shadow is a few pixels) - the views set it with the level of detail.
 uniform bool shadow_pose = true;
 #include "res://shaders/terrain/ground_h.gdshaderinc"
+// outworld: litter lying on the ground (pebbles, moss, twigs, leaves), height above it per point
+// (scripts/view/outworld/prop_heights.gd), so feet are set down on top of it too
+uniform sampler2D prop_tex : filter_linear;
+uniform vec2 prop_size = vec2(1.0);
+uniform bool has_props = false;
 uniform vec3 limb_gain = vec3(1.0);   // appendages are lighter than the body: amber-orange in L. niger queens
 varying float stretch;
 varying float limb;
@@ -89,7 +94,8 @@ float ground_dy(vec3 fw, vec3 upw) {
 		}
 		return -1.4;
 	} else if (ground_mode == 2) {
-		return ground_h(fw.xz) - fw.y;
+		float top = has_props ? texture(prop_tex, fw.xz / prop_size).r : 0.0;
+		return ground_h(fw.xz) + top - fw.y;
 	}
 	return 0.0;
 }

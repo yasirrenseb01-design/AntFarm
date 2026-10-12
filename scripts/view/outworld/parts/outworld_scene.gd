@@ -8,6 +8,7 @@ extends Node3D
 const Ant := preload("res://scripts/sim/ant.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
+const PropHeights := preload("res://scripts/view/outworld/prop_heights.gd")
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units
@@ -57,6 +58,7 @@ var _items_timer := 0.0
 var _mound := -1.0
 var _mound_r := 4.0
 var _nest_xz := Vector2.ZERO
+var _props_h = PropHeights.new()     # litter the ants walk up over (pebbles, moss, twigs, leaves)
 var _rot := false
 var _pan := false
 var _painting := false
@@ -92,6 +94,20 @@ func ground_h(x: float, z: float) -> float:
 func ground_n(x: float, z: float) -> Vector3:
 	var e := 0.6
 	return Vector3(ground_h(x - e, z) - ground_h(x + e, z), 2.0 * e, ground_h(x, z - e) - ground_h(x, z + e)).normalized()
+
+
+## The surface an ant walks on: the ground, or the top of the litter lying on it.
+func ground_top(x: float, z: float) -> float:
+	return ground_h(x, z) + (_props_h.at(x, z) if _props_h.w > 0 else 0.0)
+
+
+## Its up direction (an ant on the side of a pebble leans with it, up to a steep climb).
+func ground_top_n(x: float, z: float) -> Vector3:
+	var e := 0.35
+	var n := Vector3(ground_top(x - e, z) - ground_top(x + e, z), 2.0 * e, ground_top(x, z - e) - ground_top(x, z + e)).normalized()
+	if n.y < 0.35:
+		n = (n * Vector3(1, 0, 1)).normalized() * 0.937 + Vector3(0, 0.35, 0)
+	return n.normalized()
 
 
 func _on_ground(px: Vector2, lift := 0.0) -> Vector3:
@@ -268,6 +284,18 @@ func _box(size: Vector3, pos: Vector3, mat: Material) -> void:
 
 ## Litter, pebbles, moss, grass and the crater/midden grains, from the top-down view's layout.
 func _build_scenery() -> void:
+	_props_h.setup(Vector2(sim.WORLD) * U)
+	for l in world._litter:
+		if l.twig:
+			_props_h.stamp_twig(l.p * U, l.a, l.l * 2.0 * U, 0.85, 0.5 + 0.05)
+		else:
+			_props_h.stamp_leaf(l.p * U, l.a, l.l * U, l.w * U, l.curl, 0.05)
+	for p in world._pebbles:
+		var pr: Vector2 = p.r * U
+		_props_h.stamp_cap(p.p * U, p.a, pr, minf(pr.x, pr.y) * 0.65)
+	for m in world._moss:
+		for b in m:
+			_props_h.stamp_cap(b[0] * U, 0.0, Vector2.ONE * b[1] * U, b[1] * U * 0.55 + 0.05)
 	for l in world._litter:
 		var mi := MeshInstance3D.new()
 		var ang: float = l.a
