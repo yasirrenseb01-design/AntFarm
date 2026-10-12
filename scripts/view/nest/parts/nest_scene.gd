@@ -69,6 +69,7 @@ var _rot := false
 var _pan := false
 var _plane_n := Vector3(0, 0, 1)
 var _plane_w := 1e6
+var _frustum: Array[Plane] = []   # the camera's view, refreshed with it: off-screen ants are not drawn
 var _t := 0.0
 signal cut_changed(value: float)
 var _brood_sig: Array = []
@@ -90,6 +91,8 @@ var _bits_mm: MultiMesh            # pieces of prey laid on the larvae for them 
 var _queen_xf := Transform3D()
 var _mate_frame := 0
 var _brood_cells := {}           # cells with brood on the floor: routes go round them (nest_brood _mark_brood_cells)
+var _ant_shader_mat: ShaderMaterial   # the workers' material (shadow_pose follows the level of detail)
+var fprof := {}                 # dev (--perf): microseconds per part of refresh(), summed
 var _brood_occ := {}             # brood laid this layout, binned (see nest_brood _place_brood)
 var _meshing := {}               # chunk -> {"task", "out"}: meshes being made on worker threads
 var _mate_cells := {}           # cell -> the nestmate standing (or about to stand) there, this frame
@@ -115,6 +118,13 @@ var _egg_spots: Array = []         # floor beside the queen (not under her) wher
 
 
 # ---------------------------------------------------------------- meshes
+
+## Dev (--perf): adds the time since t0 to fprof[key]; returns now.
+func _nprof(key: String, t0: int) -> int:
+	var now := Time.get_ticks_usec()
+	fprof[key] = fprof.get(key, 0) + now - t0
+	return now
+
 
 func _mat_vc(rough: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()

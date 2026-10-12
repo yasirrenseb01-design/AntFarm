@@ -54,6 +54,49 @@ func blob(c: Vector3, r: Vector3, col: Color, rot := Basis.IDENTITY, lo := false
 	_add(_sphere_lo if lo else _sphere, Transform3D(rot * Basis.from_scale(r), c), col)
 
 
+## A tube along a curve lying in the x-y plane: radii[i] = (half height, half width) of the cross-section at
+## spine[i], cols[i] its colour; `sides` vertices round each ring, the ends closed to a point. Much lighter
+## than a row of blobs (a larva: ~250 vertices instead of ~1800).
+func tube(spine: Array, radii: Array, cols: Array, sides := 10) -> void:
+	var n := spine.size()
+	var base := _v.size()
+	for i in n:
+		var p: Vector3 = spine[i]
+		var tng: Vector3 = (spine[mini(i + 1, n - 1)] - spine[maxi(i - 1, 0)]).normalized()
+		var up := Vector3(-tng.y, tng.x, 0.0)          # in the curve's plane, square to it
+		var r: Vector2 = radii[i]
+		var col: Color = cols[i]
+		for k in sides:
+			var a := TAU * k / sides
+			var o := up * cos(a) * r.x + Vector3.BACK * sin(a) * r.y
+			_v.append(p + o)
+			_n.append((up * cos(a) / maxf(r.x, 0.01) + Vector3.BACK * sin(a) / maxf(r.y, 0.01)).normalized())
+			_c.append(Color(col.r, col.g, col.b, part / 16.0))
+	for i in n - 1:
+		for k in sides:
+			var a0 := base + i * sides + k
+			var a1 := base + i * sides + (k + 1) % sides
+			var b0 := a0 + sides
+			var b1 := a1 + sides
+			_i.append_array([a0, b0, a1, a1, b0, b1])
+	# the two ends, closed to a point just beyond the last ring
+	for e in [0, n - 1]:
+		var p: Vector3 = spine[e]
+		var out: Vector3 = (spine[e] - spine[1 if e == 0 else n - 2]).normalized()
+		var tip := _v.size()
+		_v.append(p + out * (radii[e] as Vector2).x * 0.8)
+		_n.append(out)
+		var col: Color = cols[e]
+		_c.append(Color(col.r, col.g, col.b, part / 16.0))
+		for k in sides:
+			var a0: int = base + e * sides + k
+			var a1: int = base + e * sides + (k + 1) % sides
+			if e == 0:
+				_i.append_array([tip, a0, a1])
+			else:
+				_i.append_array([tip, a1, a0])
+
+
 func seg(a: Vector3, b: Vector3, r: float, col: Color, joint := true) -> void:
 	var d := b - a
 	if d.length_squared() < 1e-6:

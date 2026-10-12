@@ -141,11 +141,22 @@ func _take_shot() -> void:
 		speed = 0        # hold the clock still; _process keeps rendering
 	var frame_ms := []
 	var last := Time.get_ticks_usec()
+	var vrid := get_viewport().get_viewport_rid()
+	var gpu_ms := 0.0
+	var cpu_render_ms := 0.0
+	if _opts.has("perf"):
+		RenderingServer.viewport_set_measure_render_time(vrid, true)
 	for i in int(_opts.get("frames", "40")):
 		await get_tree().process_frame
 		var now := Time.get_ticks_usec()
 		frame_ms.append((now - last) / 1000.0)
 		last = now
+		if i == 10:
+			fprof.clear()                 # (the first frames load and warm up)
+			nest_view.fprof.clear()
+		elif i > 10 and _opts.has("perf"):
+			gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(vrid)
+			cpu_render_ms += RenderingServer.viewport_get_measured_render_time_cpu(vrid)
 		if _opts.has("live") and i % 120 == 0 and mode == "nest":
 			print(nest_view.debug_summary())
 	speed = keep
@@ -159,6 +170,16 @@ func _take_shot() -> void:
 		avg /= s.size()
 		print("perf: avg %.1f ms (%.0f fps)  p95 %.1f ms  worst %.1f ms  frames over 33 ms: %d" % [avg, 1000.0 / avg,
 			s[int(s.size() * 0.95)], s[-1], s.filter(func(v): return v > 33.3).size()])
+		# where a frame's time goes (per frame, ms): the game's own work, then the renderer
+		var nf := float(s.size())
+		var parts := []
+		for k in fprof:
+			parts.append("%s %.1f" % [k, fprof[k] / 1000.0 / nf])
+		var nparts := []
+		for k in nest_view.fprof:
+			nparts.append("%s %.1f" % [k, nest_view.fprof[k] / 1000.0 / nf])
+		print("perf parts: %s | nest view: %s | render cpu %.1f gpu %.1f" % [", ".join(parts), ", ".join(nparts),
+			cpu_render_ms / nf, gpu_ms / nf])
 	var path: String = _opts["shot"]
 	if _opts.has("seq"):
 		# a strip of frames with the clock running (gait checks): <shot>_0.png, _1.png ...

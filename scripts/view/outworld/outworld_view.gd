@@ -160,6 +160,7 @@ func refresh(delta: float) -> void:
 	if lod != _lod:
 		_lod = lod
 		_ant_mm.mesh = _ant_meshes[lod]
+		_ant_shader_mat.set_shader_parameter("shadow_pose", lod == "hi")   # zoomed out: shadows in the rest pose
 	_update_ants(delta)
 	_update_corpses()
 	_update_creatures(delta)

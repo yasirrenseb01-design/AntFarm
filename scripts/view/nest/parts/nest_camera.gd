@@ -130,6 +130,7 @@ func _update_camera() -> void:
 	var dir := Vector3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw))
 	_cam.position = target + dir * cam_dist
 	_cam.look_at(target, Vector3.UP)
+	_frustum = _cam.get_frustum()
 	if nest.slab:
 		# a glass ant farm is watched through the front pane: show the soil right behind the glass
 		_plane_n = Vector3(0, 0, 1)
@@ -150,6 +151,11 @@ func set_xray(on: bool) -> void:
 
 
 func _visible(p: Vector3) -> bool:
+	# on screen (with a margin for a body and its shadow): what is not is not sent to the graphics card at all -
+	# every ant drawn costs its pose and its shadow passes, seen or not
+	for pl in _frustum:
+		if pl.distance_to(p) > 3.0:
+			return false
 	if xray:
 		return true
 	return _plane_n.dot(p) <= _plane_w + 0.3

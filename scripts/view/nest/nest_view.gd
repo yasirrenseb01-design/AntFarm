@@ -94,6 +94,7 @@ func setup(s) -> void:
 	ant_mat.shader = load("res://shaders/ants/ant.gdshader")
 	_ant_meshes = {"hi": AntModel.make(), "lo": AntModel.make(0.0, false, false)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true)
+	_ant_shader_mat = ant_mat
 	_ant_mm.use_custom_data = true
 	var egg_mat := _mat_simple(Color(0.95, 0.96, 0.95, 0.88), 0.12)     # translucent, glossy white
 	egg_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -170,6 +171,7 @@ func refresh(delta: float) -> void:
 	if not active:
 		return
 	_t += delta
+	var t0 := Time.get_ticks_usec()
 	if not nest.dirty.is_empty():
 		_vol_dirty = true
 	for k in nest.dirty:
@@ -180,12 +182,14 @@ func refresh(delta: float) -> void:
 	if _vol_dirty and _vol_timer <= 0.0:
 		_upload_volume()
 	_pump_chunks(_queue)
+	t0 = _nprof("soil mesh", t0)
 	_ease_camera(delta)
 	_update_camera()
 	var lod := "hi" if cam_dist < 40.0 else "lo"      # detailed ants only when they are big on screen
 	if lod != _lod:
 		_lod = lod
 		_ant_mm.mesh = _ant_meshes[lod]
+		_ant_shader_mat.set_shader_parameter("shadow_pose", lod == "hi")   # zoomed out: shadows in the rest pose
 	_mat.set_shader_parameter("cut_plane", Vector4(_plane_n.x, _plane_n.y, _plane_n.z, _plane_w))
 	_mat.set_shader_parameter("humidity", sim.humidity)
 	_xray_mat.set_shader_parameter("humidity", sim.humidity)
@@ -194,17 +198,24 @@ func refresh(delta: float) -> void:
 		_spot_timer = 1.5
 		_refresh_spots()
 	# brood and the mound change slowly; rebuild their instances only when something moved
+	t0 = _nprof("camera/spots", t0)
 	_poll_events()
 	_step_anims(delta if speed > 0 else 0.0)
+	t0 = _nprof("life-cycle", t0)
 	var sig := [sim.eggs.size(), sim.larvae.size(), sim.pupae.size(), nest.excavated / 2, snappedf(_plane_w, 0.5),
 		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5), sim.tick / 600,
 		snappedf(_queen_turn, 0.12)]          # the queen turning round: the brood round her is laid out again
 	if sig != _brood_sig:
 		_brood_sig = sig
 		_update_brood()
+	t0 = _nprof("brood layout", t0)
 	_queen_pose()
+	t0 = _nprof("queen", t0)
 	_update_ants(delta)
+	t0 = _nprof("nestmates", t0)
 	_draw_anims()
+	_nprof("life-cycle", t0)
+
 
 
 # ---------------------------------------------------------------- input

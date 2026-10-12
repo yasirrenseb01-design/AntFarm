@@ -34,6 +34,14 @@ var _overlay_bar: ProgressBar
 var camera: Camera2D
 var speed := 0.5             # a calm pace to watch the ants by (the HUD offers 0.2× - 5×)
 var _acc := 0.0
+var fprof := {}              # dev (--perf): microseconds spent per part of the frame, summed
+
+
+## Adds the time since t0 to fprof[key]; returns now (the start of the next part).
+func _pt(key: String, t0: int) -> int:
+	var now := Time.get_ticks_usec()
+	fprof[key] = fprof.get(key, 0) + now - t0
+	return now
 var _panning := false
 var _zoom_t := 1.0
 var _pos_t := Vector2.ZERO
@@ -53,7 +61,7 @@ func _set_mode(m: String) -> void:
 # ---------------------------------------------------------------- saving and time away
 
 func _save_now() -> void:
-	if _persist and sim != null:
+	if _persist and sim != null and not _opts.has("testsave"):        # (a grown test colony stays as it was)
 		Store.save(slot, sim)
 		_autosave_t = 0.0
 
@@ -70,6 +78,8 @@ func _go_to(target_slot: int, kind: String) -> void:
 
 ## Work out how much game time passed while the game was closed.
 func _plan_catchup(meta: Dictionary) -> void:
+	if _opts.has("testsave"):
+		return
 	var rate := Store.away_rate(int(_settings.get("away", 3)))
 	var real_s: float = maxf(0.0, Time.get_unix_time_from_system() - float(meta.get("saved_unix", 0.0)))
 	real_s += float(_opts.get("pretend-away", "0")) * 3600.0

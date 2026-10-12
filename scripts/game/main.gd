@@ -16,6 +16,7 @@ extends "res://scripts/dev/dev_tools.gd"
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
 ##   --scenario=keeper|wild (indoor formicarium, or a plot of ground with seasons and predators)
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
+##   --testsave=<name> [--slot=<year>]   open a colony grown by tests/year_run.gd (read-only)
 
 
 func _ready() -> void:
@@ -26,6 +27,11 @@ func _ready() -> void:
 	_persist = not (_opts.has("selftest") or _opts.has("shot")) or _opts.has("sandbox")
 	if _opts.has("sandbox"):
 		Store.base = "user://sandbox/"
+	if _opts.has("testsave"):
+		# a colony grown by tests/year_run.gd: opened read-only, no time-away catch-up
+		Store.base = "user://growtest/%s/" % _opts["testsave"]
+		_persist = true
+		next_slot = int(_opts.get("slot", "1"))
 	var loaded := false
 	if _persist:
 		_settings = Store.settings()
@@ -126,22 +132,28 @@ func _process(delta: float) -> void:
 		_autosave_t += delta
 		if _autosave_t >= 60.0:
 			_save_now()
+	var t0 := Time.get_ticks_usec()
 	if speed > 0:
 		_acc += delta * 60.0 * speed
 		var n := mini(int(_acc), maxi(2, int(speed * 3.0)))
 		_acc = minf(_acc - n, 60.0)
 		for i in n:
 			sim.step()
+	t0 = _pt("sim", t0)
 	if mode == "surface":
 		_ease_surface(delta)
 		world.refresh(delta, speed)
 	elif mode == "outworld":
 		world.tick_pheromones()
+	t0 = _pt("pheromones", t0)
 	outworld.speed = speed
 	outworld.refresh(delta)
+	t0 = _pt("outworld view", t0)
 	nest_view.speed = speed
 	nest_view.refresh(delta)
+	t0 = _pt("nest view", t0)
 	hud.refresh(delta)
+	_pt("hud", t0)
 
 
 func _notification(what: int) -> void:

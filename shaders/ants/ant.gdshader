@@ -28,6 +28,9 @@ uniform float rim_amount = 0.35;
 uniform int ground_mode = 0;
 uniform sampler3D vol : filter_linear;      // nest: soil density per voxel (as shaders/terrain/soil.gdshader)
 uniform vec3 vol_size = vec3(64.0, 72.0, 64.0);
+// Shadows cost a pass (or several) per light: true = shadows follow the animated pose (close up), false = they
+// keep the rest pose (zoomed out, where a shadow is a few pixels) - the views set it with the level of detail.
+uniform bool shadow_pose = true;
 #include "res://shaders/terrain/ground_h.gdshaderinc"
 uniform vec3 limb_gain = vec3(1.0);   // appendages are lighter than the body: amber-orange in L. niger queens
 varying float stretch;
@@ -120,7 +123,7 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 
 // The body's pose for one activity code (act + 100 if the crop is full): the vertex V (normal NR) of body
 // part `part` moved for that activity. Called twice while easing from one activity into the next.
-vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, out float stretch_out) {
+vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, out float stretch_out) {
 	float full = code >= 99.5 ? 1.0 : 0.0;
 	float act = code - full * 100.0;
 	stretch_out = 0.0;
@@ -208,7 +211,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			}
 			vec3 T = F + vec3(dx, 0.0, 0.0);
 			// set the foot down on the real ground under it (rough nest floors, the slope outside)
-			if (ground_mode != 0) {
+			if (ground_mode != 0 && probe) {           // (not for shadows: they do not need it)
 				vec3 upw = normalize(M[1].xyz);
 				float sc = length(M[1].xyz);
 				vec3 fw = (M * vec4(T, 1.0)).xyz;
@@ -350,6 +353,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 
 void vertex() {
 	float part = floor(COLOR.a * 16.0 + 0.5);
+	if (!IN_SHADOW_PASS || shadow_pose) {
 	limb = (part >= 2.0 && part <= 9.0) || part == 11.0 ? 1.0 : 0.0;
 	// y: code + 128 x the code being left, fraction = how much of the old pose still shows
 	float y = INSTANCE_CUSTOM.y + 0.0005;
@@ -359,18 +363,19 @@ void vertex() {
 	float prev = floor(whole / 128.0);
 	vec3 n1 = NORMAL;
 	float s1;
-	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, s1);
+	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS, s1);
 	stretch = s1;
-	if (left > 0.002 && prev != code) {
+	if (left > 0.002 && prev != code && !IN_SHADOW_PASS) {      // (a shadow skips the easing)
 		vec3 n0 = NORMAL;
 		float s0;
-		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, s0);
+		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, true, s0);
 		v1 = mix(v1, v0, left);
 		n1 = normalize(mix(n1, n0, left) + vec3(0.0, 1e-4, 0.0));
 		stretch = mix(s1, s0, left);
 	}
 	VERTEX = v1;
 	NORMAL = n1;
+	}
 }
 
 void fragment() {

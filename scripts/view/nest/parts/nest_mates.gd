@@ -299,6 +299,7 @@ func _update_ants(delta: float) -> void:
 	var pellet_loads := []
 	# where everyone stood last frame, binned by cell: nestmates keep a body width apart instead of
 	# standing inside one another (the queen, much bigger, keeps a wider berth)
+	var tp := Time.get_ticks_usec()                # (dev --perf: where this function's time goes)
 	var near := {}
 	for m in _mates + _dig_vis.values():          # the diggers from the simulation have bodies too
 		if m.has("xf"):
@@ -322,6 +323,10 @@ func _update_ants(delta: float) -> void:
 			if not near.has(ck):
 				near[ck] = []
 			near[ck].append(cbody)
+	tp = _nprof("ants: bins", tp)
+	var us_step := 0
+	var us_smooth := 0
+	var us_apart := 0
 	_mate_cells.clear()
 	for m in _mates:
 		_mate_cells[m.cell] = m
@@ -350,6 +355,7 @@ func _update_ants(delta: float) -> void:
 			m.face = m.script.face
 			path = m.script.pos
 		else:
+			var ta := Time.get_ticks_usec()
 			_update_activity(m, madt)
 			if not m.act in STILL_ACTS:
 				m.t += mdt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0)
@@ -357,10 +363,15 @@ func _update_ants(delta: float) -> void:
 					m.t -= 1.0
 					_step_mate(m)
 			path = (m.from as Vector3).lerp(m.to, clampf(m.t, 0.0, 1.0))
+			us_step += Time.get_ticks_usec() - ta
 		m.stride = AntModel.stride_scale(chill, m.carry)      # shorter, slower steps when cold or laden
+		var tb := Time.get_ticks_usec()
 		var tr := _smooth(m, path, m.up, md, m.size)
+		var tc := Time.get_ticks_usec()
+		us_smooth += tc - tb
 		if _visible(tr.origin):
 			tr.origin += _keep_apart(m, tr.origin, near, md)      # only where anyone can see it
+		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr
 		if m.act == ACT_FEED and _visible(tr.origin):
 			drops.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.8 + 0.3 * sin(m.anim * 3.0))), MOUTH + Vector3(0.2, 0, 0)))
@@ -375,6 +386,10 @@ func _update_ants(delta: float) -> void:
 					shell_loads.append(tr * CARRY_OFFSET * Transform3D(Basis.from_scale(Vector3(0.85, 0.6, 1.1)), Vector3.ZERO))
 				else:
 					larva_loads.append(tr * CARRY_OFFSET)
+	fprof["ants: activity+route"] = fprof.get("ants: activity+route", 0) + us_step
+	fprof["ants: smooth"] = fprof.get("ants: smooth", 0) + us_smooth
+	fprof["ants: keep apart"] = fprof.get("ants: keep apart", 0) + us_apart
+	tp = _nprof("ants: loop (all)", tp)
 	_emerging(xs, cols, cus, young)
 
 	# diggers come from the simulation; we smooth their hops and show them biting at the dig face
@@ -414,6 +429,7 @@ func _update_ants(delta: float) -> void:
 		if not seen.has(id):
 			_dig_vis.erase(id)
 
+	tp = _nprof("ants: diggers", tp)
 	_ant_mm.instance_count = xs.size()
 	for i in xs.size():
 		_ant_mm.set_instance_transform(i, xs[i])
