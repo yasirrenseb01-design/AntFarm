@@ -81,7 +81,10 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		var s: float = scale_fn.call(items[i])
 		var pl: Dictionary = _placed.get(v, {})
 		if not pl.is_empty() and pl.src == src_key and _still_lies(pl, s):
-			var xf := _register_brood(pl.base, pl.b, s, kind, not pl.top)
+			if pl.get("tgen", -1) != _soil_gen:
+				pl.tb = _floor_tilt(pl.base, pl.b, s) if not pl.top else pl.b     # (worked out again only when the soil changes)
+				pl.tgen = _soil_gen
+			var xf := _register_brood(pl.base, pl.tb, s, kind, false)
 			if _visible(xf.origin):
 				xs.append(xf)
 				cs.append(col_fn.call(items[i]) if col_fn.is_valid() else Color.WHITE)
@@ -98,7 +101,7 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 				"shape": Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62), "kind": kind}      # a compact heap: one layer about this wide, then on top
 		var s: float = scale_fn.call(items[i])
 		var xf := _place_brood(cands[src], s, i)
-		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top,
+		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top, "forced": _last_forced,
 			"src": _pile_key(kind, i < moved or old_spots.is_empty())}
 		if _visible(xf.origin):
 			xs.append(xf)
@@ -177,6 +180,7 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 		if best == Vector3.INF:
 			c.full = true                      # no floor left in this pile: the rest go on top
 	var on_top := false
+	var low := INF
 	if best == Vector3.INF and not places.is_empty():
 		# the heap's floor is full: lie on top, resting on whatever is highest there
 		on_top = true
@@ -185,7 +189,6 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 			inner = places
 		# the lowest place on the heap where it lies clear of the walls and roof (from a different place
 		# for each item, so they spread over the heap instead of stacking into a tower)
-		var low := INF
 		var shape: Vector2 = c.get("shape", Vector2(0.86, 0.38))
 		# (the heap first; if nowhere on it is clear of the roof, anywhere on the chamber floor out of her way)
 		var wide := places.filter(func(p): return _queen_mm.instance_count == 0 or _queen_gap(p) >= r + 0.2)
@@ -212,12 +215,14 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	# a larva lies on the floor (its mesh sits on its origin); a cocoon is centred, so it is raised half its height
 	_last_base = best + Vector3(0, maxf(0.0, lift), 0)
 	_last_top = on_top                       # (on the heap: it may touch what it leans on)
+	_last_forced = on_top and low >= 100.0
 	_last_yaw = Basis(Vector3.UP, _hash(i, 3) * TAU + fit)
 	return _register_brood(_last_base, _last_yaw, s, c.get("kind", "larvae"), not on_top)
 
 
 var _last_base := Vector3.ZERO
 var _last_top := false
+var _last_forced := false          # laid where it still touches the soil (nowhere better): left there, not tried again
 var _last_yaw := Basis.IDENTITY
 
 
@@ -234,16 +239,21 @@ func _still_lies(pl: Dictionary, s: float) -> bool:
 	var base: Vector3 = pl.base
 	if _queen_mm.instance_count > 0 and not _queen_busy() and _queen_body_gap(base) < 0.2:
 		return false                    # (nor does she, turning or stepping to it: only where she settles back)
-	if _density_at(base + Vector3(0, 0.3, 0)) >= 0.5:
+	if pl.get("forced", false) and pl.get("gen0", _soil_gen) == _soil_gen:
+		pl.gen0 = _soil_gen
+		return true                     # (it had nowhere clear to go: searching again every layout only costs time)
+	# the soil checks hold until the soil changes or the item grows (checked again then)
+	if pl.get("gen", -1) != _soil_gen or s > float(pl.get("chk_s", 0.0)) * 1.04:
+		pl.gen = _soil_gen
+		pl.chk_s = s
+		pl.clear = _density_at(base + Vector3(0, 0.3, 0)) < 0.5
+		if pl.clear and not pl.top:
+			var shape := Vector2(0.86, 0.38) if String(pl.src).begins_with("larvae") else Vector2(1.35, 0.62)
+			# still on the floor, and not grown into the wall (else the nurses lay it down elsewhere)
+			pl.clear = absf(_floor_cached(base) - base.y) <= 0.3 and _lies_clear(base, pl.b, s, shape)
+	if not pl.clear:
 		return false
-	if not pl.top:
-		if absf(_floor_cached(base) - base.y) > 0.3:
-			return false
-		var shape := Vector2(0.86, 0.38) if String(pl.src).begins_with("larvae") else Vector2(1.35, 0.62)
-		if not _lies_clear(base, pl.b, s, shape):
-			return false                    # grown into the wall: the nurses lay it down elsewhere
-		return _brood_free(base, 0.35 * s)
-	return true
+	return pl.top or _brood_free(base, 0.35 * s)
 
 
 ## Puts one item of brood at `base` (the floor, or the top of what it rests on) into `_brood_occ`.
