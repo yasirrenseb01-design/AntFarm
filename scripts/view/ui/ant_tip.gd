@@ -1,17 +1,18 @@
 extends PanelContainer
-## Hover over an ant for a moment to see who it is: its job in the colony, what it is doing now, its age and
-## size, injuries, and its leanings (the thresholds that decide which work it takes up first). The views find
-## the ant under the mouse (pick_ant); this box only words it.
+## Click an ant to select it: a white outline follows it (drawn by the view) and this box stays open with who it
+## is - its job in the colony, what it is doing now, its age and size, injuries, and its leanings (the thresholds
+## that decide which work it takes up first). Click empty ground or press Esc to let it go. The views find the
+## ant under the mouse (pick_ant) and report the selected one as it is now (info_for).
 
 const Ant := preload("res://scripts/sim/ant.gd")
-const HOVER_S := 0.45            # seconds the mouse rests on an ant before the box opens
 
 var sim
-var views: Array = []            # the 3D views that can be asked pick_ant(screen_pos)
-var _rest := 0.0
-var _last := Vector2.INF
+var views: Array = []            # the 3D views (pick_ant, info_for, can_select, sel_kind / sel_id)
+var sel := {}                    # {"kind": "worker"|"digger"|"queen", "id": worker id (a digger: its own id)}
+var test_mouse := Vector2.INF    # dev (--hover): select the ant at this screen position
+var _press := Vector2.INF
 var _text: Label
-var test_mouse := Vector2.INF  # dev (--hover): a mouse position to use instead of the real one
+var _t := 0.0
 
 
 func setup(s, view_list: Array, font: Font) -> void:
@@ -20,6 +21,7 @@ func setup(s, view_list: Array, font: Font) -> void:
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 50
+	position = Vector2(18, 140)
 	_text = Label.new()
 	if font != null:
 		_text.add_theme_font_override("font", font)
@@ -27,37 +29,70 @@ func setup(s, view_list: Array, font: Font) -> void:
 	add_child(_text)
 
 
-func _process(delta: float) -> void:
-	var mp := get_viewport().get_mouse_position() if test_mouse == Vector2.INF else test_mouse
-	if mp.distance_to(_last) > 4.0:
-		_last = mp
-		_rest = 0.0
-		visible = false
-		return
-	_rest += delta
-	if _rest < HOVER_S:
-		return
-	var hovered := get_viewport().gui_get_hovered_control() if test_mouse == Vector2.INF else null
-	if hovered != null and hovered != self and hovered.mouse_filter == Control.MOUSE_FILTER_STOP:
-		visible = false                       # over the panels, not the colony
-		return
-	if visible and fmod(_rest, 0.5) > delta:
-		return                                # (refresh the words twice a second while it stays open)
-	var info := {}
+func _unhandled_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+		if e.pressed:
+			_press = e.position
+		elif _press != Vector2.INF and _press.distance_to(e.position) < 6.0:      # a click, not a drag
+			_click(e.position)
+			_press = Vector2.INF
+	elif e is InputEventKey and e.pressed and e.keycode == KEY_ESCAPE and not sel.is_empty():
+		_select({})
+
+
+func _active_view():
 	for v in views:
-		if v.active:
-			info = v.pick_ant(mp)
-	if info.is_empty():
-		visible = false
+		if v != null and v.active:
+			return v
+	return null
+
+
+func _click(at: Vector2) -> void:
+	var v = _active_view()
+	if v == null or not v.can_select():
 		return
-	_text.text = describe(info)
-	visible = true
+	_select(v.pick_ant(at))
+
+
+func _select(info: Dictionary) -> void:
+	if info.is_empty():
+		sel = {}
+	elif info.kind == "digger":
+		sel = {"kind": "digger", "id": int(info.get("dig", -1))}
+	elif info.kind == "queen":
+		sel = {"kind": "queen", "id": -1}
+	else:
+		sel = {"kind": "worker", "id": info.w.id if info.get("w") != null else -1}
+	for v in views:
+		if v != null:
+			v.sel_kind = sel.get("kind", "")
+			v.sel_id = int(sel.get("id", -1))
+	visible = not sel.is_empty()
+
+
+func _process(delta: float) -> void:
+	if test_mouse != Vector2.INF:
+		_click(test_mouse)
+		test_mouse = Vector2.INF
+	if sel.is_empty():
+		return
+	_t += delta
+	if _t < 0.25:
+		return                                 # (the words are refreshed four times a second)
+	_t = 0.0
+	var v = _active_view()
+	var info: Dictionary = v.info_for(sel.kind, sel.id) if v != null else {}
+	if info.is_empty() and sel.kind == "worker":
+		# not in this view (gone into the nest, or out): still say who it is and where
+		for w in sim.workers:
+			if w.id == sel.id:
+				info = {"kind": "worker", "w": w, "act": w.act, "elsewhere": "อยู่ในรัง" if w.state == Ant.IN_NEST else "อยู่นอกรัง"}
+	if info.is_empty():
+		_text.text = "มดตัวที่เลือกไม่อยู่แล้ว (ตายหรือไม่อยู่ในมุมนี้)"
+	else:
+		_text.text = describe(info) + ("
+(" + info.elsewhere + " — สลับมุมมองเพื่อดูตัว)" if info.has("elsewhere") else "")
 	reset_size()
-	var at := mp + Vector2(18, 18)
-	var vs := get_viewport_rect().size
-	at.x = minf(at.x, vs.x - size.x - 8.0)
-	at.y = minf(at.y, vs.y - size.y - 8.0)
-	position = at
 
 
 ## The words for an ant found by a view: {"kind": "worker"|"queen"|"digger", "w": Ant or null, "role", "act"}.

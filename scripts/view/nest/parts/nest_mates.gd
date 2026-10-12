@@ -263,6 +263,7 @@ func _update_ants(delta: float) -> void:
 	# where everyone stood last frame, binned by cell: nestmates keep a body width apart instead of
 	# standing inside one another (the queen, much bigger, keeps a wider berth)
 	var tp := Time.get_ticks_usec()                # (dev --perf: where this function's time goes)
+	var sel_at := []                  # the selected ant's transform and pose, for its outline
 	var near := {}
 	for m in _mates + _dig_vis.values():          # the diggers from the simulation have bodies too
 		if m.has("xf"):
@@ -342,6 +343,8 @@ func _update_ants(delta: float) -> void:
 			xs.append(tr)
 			cols.append(_mate_color(m, body, young))
 			cus.append(_custom(m, m.act))
+			if sel_kind == "worker" and int(m.get("wid", -1)) == sel_id:
+				sel_at = [tr, cus[-1]]
 			if m.carry:
 				if m.get("item", "") == "cocoon":
 					cocoon_loads.append(tr * CARRY_OFFSET)
@@ -386,6 +389,8 @@ func _update_ants(delta: float) -> void:
 			xs.append(tr)
 			cols.append(body)
 			cus.append(_custom(v, act))
+			if sel_kind == "digger" and id == sel_id:
+				sel_at = [tr, cus[-1]]
 			if d.carry:
 				pellet_loads.append(tr * CARRY_OFFSET)
 	for id in _dig_vis.keys():
@@ -393,6 +398,10 @@ func _update_ants(delta: float) -> void:
 			_dig_vis.erase(id)
 
 	tp = _nprof("ants: diggers", tp)
+	_sel_mm.instance_count = 1 if not sel_at.is_empty() else 0
+	if not sel_at.is_empty():
+		_sel_mm.set_instance_transform(0, sel_at[0])
+		_sel_mm.set_instance_custom_data(0, sel_at[1])
 	_ant_mm.instance_count = xs.size()
 	for i in xs.size():
 		_ant_mm.set_instance_transform(i, xs[i])
@@ -430,6 +439,11 @@ func _update_ants(delta: float) -> void:
 		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else _queen_mode)
 		_queen_vact = AntModel.act_step(_queen_vact, qa, _queen_anim)     # she eases from one pose into the next
 		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim), fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs)))
+	var q_sel: bool = sel_kind == "queen" and _queen_mm.instance_count > 0
+	_sel_queen_mm.instance_count = 1 if q_sel else 0
+	if q_sel:
+		_sel_queen_mm.set_instance_transform(0, _queen_xf)
+		_sel_queen_mm.set_instance_custom_data(0, _queen_mm.get_instance_custom_data(0))
 
 
 ## Dev (--trace): the nestmates within reach of the queen: role, activity, rest/wander left, position.

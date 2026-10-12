@@ -17,7 +17,10 @@ func _sync_rocks() -> void:
 			rng.seed = int(rk.pos.x * 13 + rk.pos.y)          # the same draw as the mesh's height below
 			_props_h.stamp_rock(rk.pos * U, rk.r * U, rk.r * U * rng.randf_range(0.45, 0.7))
 	if _ant_shader_mat != null and _props_h.w > 0:
-		_ant_shader_mat.set_shader_parameter("prop_tex", _props_h.texture())
+		var tex := _props_h.texture()
+		_ant_shader_mat.set_shader_parameter("prop_tex", tex)
+		if _sel_shader_mat != null:
+			_sel_shader_mat.set_shader_parameter("prop_tex", tex)
 	for rk in sim.rocks:
 		var outline := PackedVector2Array()
 		for p in rk.poly:

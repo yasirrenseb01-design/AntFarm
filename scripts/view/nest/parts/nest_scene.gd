@@ -93,6 +93,10 @@ var _mate_frame := 0
 var _brood_cells := {}           # cells with brood on the floor: routes go round them (nest_brood _mark_brood_cells)
 var _ant_shader_mat: ShaderMaterial   # the workers' material (shadow_pose follows the level of detail)
 var _floor_cache := {}          # floor heights under brood spots (see _floor_cached)
+var sel_kind := ""                # the ant the keeper clicked: "worker" | "digger" | "queen" ("" = none)
+var sel_id := -1                  # its worker id (a digger: the digger's own id)
+var _sel_mm: MultiMesh            # its white outline (shaders/ants/ant_outline.gdshader)
+var _sel_queen_mm: MultiMesh
 var fprof := {}                 # dev (--perf): microseconds per part of refresh(), summed
 var _brood_occ := {}             # brood laid this layout, binned (see nest_brood _place_brood)
 var _meshing := {}               # chunk -> {"task", "out"}: meshes being made on worker threads

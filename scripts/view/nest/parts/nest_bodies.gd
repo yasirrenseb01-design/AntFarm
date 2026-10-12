@@ -435,10 +435,37 @@ func pick_ant(sp: Vector2) -> Dictionary:
 			var d := _screen_gap((v.xf as Transform3D).origin, sp)
 			if d < best_d:
 				best_d = d
-				best = {"kind": "digger", "w": dig_ws[i] if i < dig_ws.size() else null, "act": ACT_CARRY if ds[i].carry else ACT_DIG}
+				best = {"kind": "digger", "w": dig_ws[i] if i < dig_ws.size() else null, "act": ACT_CARRY if ds[i].carry else ACT_DIG,
+					"dig": ds[i].id}
 	if _queen_mm.instance_count > 0 and _screen_gap(_queen_xf.origin, sp) < 46.0:
 		best = {"kind": "queen", "act": _queen_act if _queen_act >= 0 else _queen_mode}
 	return best
+
+
+## The selected ant as it is now (ui/ant_tip.gd): the same fields as pick_ant(), or {} if it is not in the nest.
+func info_for(kind: String, id: int) -> Dictionary:
+	if kind == "queen":
+		return {"kind": "queen", "act": _queen_act if _queen_act >= 0 else _queen_mode} if _queen_mm.instance_count > 0 else {}
+	if kind == "digger":
+		var dig_ws: Array = sim.workers.filter(func(w): return w.task == Ant.TASK_DIG)
+		dig_ws.sort_custom(func(a, b): return a.id < b.id)
+		var ds: Array = nest.diggers.duplicate()
+		ds.sort_custom(func(a, b): return a.id < b.id)
+		for i in ds.size():
+			if ds[i].id == id:
+				return {"kind": "digger", "w": dig_ws[i] if i < dig_ws.size() else null, "act": ACT_CARRY if ds[i].carry else ACT_DIG, "dig": id}
+		return {}
+	for m in _mates:
+		if int(m.get("wid", -1)) == id:
+			for w in sim.workers:
+				if w.id == id:
+					return {"kind": "worker", "w": w, "role": m.role, "act": m.act}
+	return {}
+
+
+## Whether a click may select an ant here (the nest view has no tools).
+func can_select() -> bool:
+	return true
 
 
 func _screen_gap(p: Vector3, sp: Vector2) -> float:

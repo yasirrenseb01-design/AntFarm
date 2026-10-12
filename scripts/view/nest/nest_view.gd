@@ -133,8 +133,19 @@ func setup(s) -> void:
 	ant_mat.set_shader_parameter("vol_size", Vector3(nest.nx, nest.ny, nest.nz))
 	var queen_mat: ShaderMaterial = ant_mat.duplicate()
 	queen_mat.set_shader_parameter("limb_gain", AntModel.QUEEN_LIMBS)
-	_queen_mm = _multimesh(AntModel.make(0.0, true, true), queen_mat, true)
+	var queen_mesh := AntModel.make(0.0, true, true)
+	_queen_mm = _multimesh(queen_mesh, queen_mat, true)
 	_queen_mm.use_custom_data = true
+	# the selection outline: the clicked ant's body drawn again, white, from the inside
+	var outline: Shader = load("res://shaders/ants/ant_outline.gdshader")
+	var sel_mat: ShaderMaterial = ant_mat.duplicate()
+	sel_mat.shader = outline
+	_sel_mm = _multimesh(_ant_meshes.lo, sel_mat, true, false)
+	_sel_mm.use_custom_data = true
+	var selq_mat: ShaderMaterial = queen_mat.duplicate()
+	selq_mat.shader = outline
+	_sel_queen_mm = _multimesh(queen_mesh, selq_mat, true, false)
+	_sel_queen_mm.use_custom_data = true
 
 	if nest.slab:
 		_build_ant_farm_case()
@@ -190,6 +201,7 @@ func refresh(delta: float) -> void:
 	if lod != _lod:
 		_lod = lod
 		_ant_mm.mesh = _ant_meshes[lod]
+		_sel_mm.mesh = _ant_meshes[lod]
 		_ant_shader_mat.set_shader_parameter("shadow_pose", lod == "hi")   # zoomed out: shadows in the rest pose
 	_mat.set_shader_parameter("cut_plane", Vector4(_plane_n.x, _plane_n.y, _plane_n.z, _plane_w))
 	_mat.set_shader_parameter("humidity", sim.humidity)

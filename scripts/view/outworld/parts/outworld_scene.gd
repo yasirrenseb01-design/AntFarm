@@ -9,6 +9,10 @@ const Ant := preload("res://scripts/sim/ant.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const PropHeights := preload("res://scripts/view/outworld/prop_heights.gd")
+var sel_kind := ""                # the ant the keeper clicked ("worker"), and its id
+var sel_id := -1
+var _sel_mm: MultiMesh            # its white outline
+var _sel_shader_mat: ShaderMaterial
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units

@@ -64,6 +64,11 @@ func setup(s, w) -> void:
 	_ant_meshes = {"hi": AntModel.make(), "lo": AntModel.make(0.0, false, false)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
 	_corpse_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
+	var sel_mat: ShaderMaterial = ant_mat.duplicate()       # the selection outline (filled with litter heights below)
+	sel_mat.shader = load("res://shaders/ants/ant_outline.gdshader")
+	_sel_mm = _multimesh(_ant_meshes.lo, sel_mat, true, false)
+	_sel_mm.use_custom_data = true
+	_sel_shader_mat = sel_mat
 	_prey_mm = _multimesh(_blob_mesh(Vector3(0.75, 0.5, 0.6)), _mat(Color(0.5, 0.33, 0.18), 0.7), false)
 	var sp_mat := ShaderMaterial.new()
 	sp_mat.shader = load("res://shaders/creatures/spider.gdshader")
@@ -165,6 +170,7 @@ func refresh(delta: float) -> void:
 	if lod != _lod:
 		_lod = lod
 		_ant_mm.mesh = _ant_meshes[lod]
+		_sel_mm.mesh = _ant_meshes[lod]
 		_ant_shader_mat.set_shader_parameter("shadow_pose", lod == "hi")   # zoomed out: shadows in the rest pose
 	_update_ants(delta)
 	_update_corpses()

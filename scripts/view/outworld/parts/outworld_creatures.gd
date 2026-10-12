@@ -28,6 +28,7 @@ func _update_ants(delta: float) -> void:
 	var dews := []
 	var soil := []
 	var spray := []
+	var sel_at := []                  # the selected ant's transform and pose, for its outline
 	for a in sim.outside:
 		if a.state == Ant.IN_NEST or a.dead:
 			continue
@@ -120,6 +121,8 @@ func _update_ants(delta: float) -> void:
 		cols.append(body.lerp(young, clampf(1.0 - a.age / 6.0, 0.0, 1.0)))
 		a.vact = AntModel.act_step(a.vact, act, a.anim)                     # poses ease into one another
 		cus.append(Color(a.vgait, AntModel.act_y(a.vact, a.anim), fmod(a.anim, 600.0), AntModel.gait_w(a.vmv, stride)))
+		if sel_kind == "worker" and a.id == sel_id:
+			sel_at = [tr, cus[-1]]
 		if act == 13:
 			# formic acid sprayed from the curled gaster tip, under the body
 			var puff := 0.5 + 0.5 * sin(a.anim * 9.0 + a.id)
@@ -130,6 +133,10 @@ func _update_ants(delta: float) -> void:
 			soil.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * 0.38), Vector3(1.4, 0.45, 0)))
 		elif a.carry == Ant.CORPSE:
 			carried.append(tr * Transform3D(Basis(Vector3.RIGHT, PI).scaled(Vector3.ONE * 0.9), Vector3(2.3, 0.95, 0)))
+	_sel_mm.instance_count = 1 if not sel_at.is_empty() else 0
+	if not sel_at.is_empty():
+		_sel_mm.set_instance_transform(0, sel_at[0])
+		_sel_mm.set_instance_custom_data(0, sel_at[1])
 	_ant_mm.instance_count = xs.size()
 	for i in xs.size():
 		_ant_mm.set_instance_transform(i, xs[i])
@@ -414,7 +421,29 @@ func _on_trail(a) -> bool:
 	return i >= 0 and i < sim.food_cell.size() and sim.food.read_i(i) > 0.4
 
 
-## The forager under the mouse (a screen position) for the hover box (ui/ant_tip.gd), or {}.
+## The selected forager as it is now (ui/ant_tip.gd), or {} if it is not out here.
+func info_for(kind: String, id: int) -> Dictionary:
+	if kind != "worker":
+		return {}
+	for a in sim.outside:
+		if a.id == id and a.state != Ant.IN_NEST and not a.dead:
+			var act: int = a.act if a.busy > 0 else 0
+			if a.state == Ant.DRAG:
+				act = 19
+			elif a.state == Ant.DEFEND:
+				act = 13 if a.busy > 0 else 14
+			elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
+				act = 8
+			return {"kind": "worker", "w": a, "act": act}
+	return {}
+
+
+## A click selects an ant only with the hand (camera) tool; the other tools place things.
+func can_select() -> bool:
+	return world.tool == "pan"
+
+
+## The forager under the mouse (a screen position) for the selection (ui/ant_tip.gd), or {}.
 func pick_ant(sp: Vector2) -> Dictionary:
 	var best := {}
 	var best_d := 26.0
