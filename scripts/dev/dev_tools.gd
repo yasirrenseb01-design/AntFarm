@@ -183,6 +183,9 @@ func _take_shot() -> void:
 				"egg": nest_view._start_egg()
 				"pupate": nest_view._start_pupate(1.0)
 				"eclose": nest_view._start_eclose(1.0)
+				"care":
+					nest_view._update_brood()
+					nest_view._start_care(String(_opts.get("care", "eggs")))     # the queen tending her brood
 		if _opts.has("target"):
 			var tp: PackedStringArray = String(_opts["target"]).split(",")
 			nest_view.target = Vector3(float(tp[0]), float(tp[1]), float(tp[2]))
@@ -269,6 +272,12 @@ func _take_shot() -> void:
 					var cp: Vector2 = _watch_creature.pos
 					outworld.target_t = Vector3(cp.x, 0, cp.y) * outworld.U
 					outworld.target = outworld.target_t
+				if _opts.has("follow-queen") and mode == "nest" and nest_view._queen_mm.instance_count > 0:
+					# watch her mouthparts from a fixed angle to her heading (--follow-queen=<radians round from her right side>)
+					nest_view.target_t = nest_view._queen_xf * Vector3(1.15, 0.2, 0.0)
+					nest_view.target = nest_view.target_t
+					nest_view.yaw = nest_view._queen_turn + float(_opts["follow-queen"])
+					nest_view.yaw_t = nest_view.yaw
 				if who != null and mode == "outworld" and who.vpos.x != INF:
 					outworld.target_t = Vector3(who.vpos.x, 0, who.vpos.y) * outworld.U     # follow the ant
 					outworld.target = outworld.target_t

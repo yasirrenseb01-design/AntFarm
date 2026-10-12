@@ -247,7 +247,8 @@ func _update_ants(delta: float) -> void:
 	# cold-blooded: a cool nest slows them, and below ~5 °C they barely stir (winter torpor)
 	var chill := clampf((float(sim.climate.nest) - 3.0) / 15.0, 0.06, 1.0)
 	var dt := delta * cells_per_sec * chill
-	var adt := delta * lerpf(0.25, 1.0, chill) if running else 0.0          # body animation freezes with the clock
+	# body animation freezes with the clock, and below 1x (real time) plays in slow motion with it
+	var adt := delta * minf(speed, 1.0) * lerpf(0.25, 1.0, chill) if running else 0.0
 	if running:
 		_meetings()
 	var body: Color = AntModel.tint(sim.sp["body_color"])
@@ -310,7 +311,7 @@ func _update_ants(delta: float) -> void:
 		var md: float = m.lag
 		m.lag = 0.0
 		var mdt := md * cells_per_sec * chill
-		var madt := md * lerpf(0.25, 1.0, chill) if running else 0.0
+		var madt := md * minf(speed, 1.0) * lerpf(0.25, 1.0, chill) if running else 0.0
 		m.anim += madt
 		var path: Vector3
 		if m.has("script"):

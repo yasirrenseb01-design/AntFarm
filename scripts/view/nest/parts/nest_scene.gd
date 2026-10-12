@@ -45,6 +45,8 @@ var _queen_mm: MultiMesh
 var _queen_anim := 0.0
 var _queen_vact := Vector3(-1, 0, 0)    # easing between her poses (AntModel.act_step)
 var _queen_lay := 0.0
+var _queen_dy := 0.0                # how far she has risen with the floor where she stepped to (see _queen_pose)
+var _queen_pitch := 0.0             # her front tipped up (+) or down with the floor's slope
 var _care_left := 8.0               # a founding queen alone: seconds until she next goes to tend her brood
 var _last_eggs := 0
 var _egg_mm: MultiMesh
@@ -369,6 +371,7 @@ const MOUTH_LOW := Vector3(1.05, 0.12, 0.0)        # mandibles with the head bow
 # body pitched -0.1 and raised 0.65 design units) and head up carrying it (act 8: nod +0.2)
 const MOUTH_TAKE := Vector3(0.94, 0.10, 0.0)
 const MOUTH_CARRY := Vector3(1.15, 0.33, 0.0)
+const TIP_LICK := Vector3(1.185, 0.122, 0.0)       # her mandible tips with the head bowed to lick (ACT_TEND; from the mesh: tip 1.231, 0.333 at rest)
 
 
 func _pending(kind: String) -> int:

@@ -90,7 +90,7 @@ func _start_egg() -> void:
 ## clean, feeds the larvae from her own reserves - trophic eggs and saliva, Janet 1907 - and sees to the
 ## cocoons). Now and then she turns to one of them, steps up, works over it with her mouthparts for a while
 ## and goes back to her place. Nothing in the pile moves. (How often, and for how long: chosen, not measured.)
-func _start_care() -> void:
+func _start_care(want := "") -> void:
 	var kinds := []
 	if _egg_mm.instance_count > 0:
 		kinds.append([_egg_mm, "eggs"])
@@ -102,11 +102,40 @@ func _start_care() -> void:
 	if kinds.is_empty():
 		return
 	var pick: Array = kinds[randi() % kinds.size()]
+	for k in kinds:
+		if k[1] == want:
+			pick = k                                      # (dev --anim=care --care=eggs: that kind)
+	# she goes to the nearest one of that kind (the outside of the egg packet, the near edge of the pile)
 	var mm: MultiMesh = pick[0]
-	var p: Vector3 = mm.get_instance_transform(randi() % mm.instance_count).origin
-	if p.distance_to(_queen_xf.origin) > 9.0:
+	var home: Vector3 = _spots.queen + Vector3.UP * QUEEN_LIFT + _queen_step
+	var p := Vector3.INF
+	var sc := 1.0
+	for i in mm.instance_count:
+		var xf: Transform3D = mm.get_instance_transform(i)
+		if xf.origin.distance_to(home) < p.distance_to(home):
+			p = xf.origin
+			sc = xf.basis.get_scale().x
+	if p == Vector3.INF or p.distance_to(_spots.queen) > 9.0:
 		return                                            # (brood carried off to another chamber)
-	_anims.append({"k": "care", "t": 0.0, "d": randf_range(14.0, 22.0) * _anim_k(), "at": p, "what": pick[1]})
+	# how far from its middle her mandible tips stop: just touching it (egg ~0.3 across, a larva lying on its
+	# side ~0.36 x its size, a cocoon 0.62 x its size)
+	var contact: float = {"eggs": 0.08, "larvae": 0.25 * sc, "pupae": 0.68 * sc}[pick[1]]
+	_anims.append({"k": "care", "t": 0.0, "d": randf_range(14.0, 22.0) * _anim_k(), "at": p, "what": pick[1], "contact": contact})
+
+
+## Whether her six feet (roughly where they stand, in her model) would be on open floor with her centre at
+## `at` facing `turn`, not in the soil of a chamber wall.
+func _queen_feet_clear(at: Vector3, turn: float) -> bool:
+	var xf := Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * QUEEN_SCALE), at)
+	var mid := _floor_cached(at)
+	for f in [Vector3(0.8, 0, 0.85), Vector3(0.8, 0, -0.85), Vector3(-0.1, 0, 1.1), Vector3(-0.1, 0, -1.1),
+			Vector3(-0.85, 0, 1.0), Vector3(-0.85, 0, -1.0)]:
+		var p: Vector3 = xf * f
+		var fl := _floor_cached(p)
+		# a foot can reach ~0.9 above or ~0.6 below where she stands (shader: -0.36..0.6 of her size)
+		if fl - mid > 0.9 or mid - fl > 0.6 or _density_at(Vector3(p.x, fl + 0.15, p.z)) >= 0.5:
+			return false
+	return true
 
 
 func _start_pupate(s: float) -> void:
@@ -176,7 +205,8 @@ func _step_anims(adt: float) -> void:
 			"care":
 				if not a.has("turn0"):
 					a.turn0 = _queen_turn
-					var to: Vector3 = (a.at as Vector3) - _queen_xf.origin
+					# (from where she stands, worked out afresh: her drawn transform may not be set yet)
+					var to: Vector3 = (a.at as Vector3) - (_spots.queen + Vector3.UP * QUEEN_LIFT + _queen_step)
 					a.turn1 = atan2(-to.z, to.x)
 					a.step0 = _queen_step
 				if u < 0.82:
@@ -184,10 +214,16 @@ func _step_anims(adt: float) -> void:
 					if not a.has("step"):
 						# up to it, once she has turned to it: her mouthparts on the item (worked out from the
 						# heading she turns to, not the one she is still turning from)
-						var face := Transform3D(Basis(Vector3.UP, a.turn1).scaled(Vector3.ONE * QUEEN_SCALE), _queen_xf.origin)
-						var reach: Vector3 = ((a.at as Vector3) - face * MOUTH_TAKE) * Vector3(1, 0, 1)
-						reach -= reach.normalized() * 0.15 if reach.length() > 0.15 else reach
+						var face := Transform3D(Basis(Vector3.UP, a.turn1).scaled(Vector3.ONE * QUEEN_SCALE), _spots.queen + Vector3.UP * QUEEN_LIFT + _queen_step)
+						var reach: Vector3 = ((a.at as Vector3) - face * TIP_LICK) * Vector3(1, 0, 1)
+						var stop: float = a.get("contact", 0.3)
+						reach -= reach.normalized() * stop if reach.length() > stop else reach
 						a.step = _queen_step + reach.limit_length(4.0)
+						# not so far that her feet would stand in the chamber wall: step back until they are on its floor
+						for k in 8:
+							if _queen_feet_clear(face.origin + (a.step as Vector3) - _queen_step, a.turn1):
+								break
+							a.step = _queen_step + ((a.step as Vector3) - _queen_step) * 0.85
 					var turned := absf(wrapf(a.turn1 - _queen_turn, -PI, PI)) < 0.15
 					if turned:
 						a.stepping = true

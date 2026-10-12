@@ -256,7 +256,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 				vec3 upw = normalize(M[1].xyz);
 				float sc = length(M[1].xyz);
 				vec3 fw = (M * vec4(T, 1.0)).xyz;
-				T.y += clamp(ground_dy(fw, upw) / sc, -0.32, 0.28);
+				T.y += clamp(ground_dy(fw, upw) / sc, -0.36, 0.6);     // (up a steep chamber edge the foot climbs with it)
 			}
 			T.y += up - hlift;                               // (the body is raised by hlift below)
 			bool cleaning = false;
@@ -328,7 +328,8 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		if (act == 4.0) {
 			sp = 1.5; amp = 0.12; droop = -0.15;             // the side being cleaned: see below
 		}
-		if (act == 2.0 || act == 7.0) { sp = 4.0; amp = 0.2; droop = -0.35; }
+		if (act == 2.0) { sp = 4.0; amp = 0.2; droop = -0.35; }
+		if (act == 7.0) { sp = 4.0; amp = 0.1; droop = 0.06; }       // licking: held forward over the brood, tips tapping it (the head is bowed)
 		if (act == 9.0) { sp = 9.0; amp = 0.35; droop = -0.45; }     // stroking the aphid's back
 		if (act == 10.0) { sp = 3.0; amp = 0.12; droop = -0.4; }
 		if (act == 11.0) { sp = 0.0; amp = 0.0; droop = 0.5; }

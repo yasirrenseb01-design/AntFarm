@@ -153,8 +153,24 @@ func _queen_pose() -> void:
 	var show: bool = sim.queen.alive and qp != Vector3.ZERO and _visible(qp)
 	_queen_mm.instance_count = 1 if show else 0
 	if show:
-		# her heavy gaster hangs below her feet: stand her up on her legs so it rests on the floor, not in it
-		_queen_xf = Transform3D(Basis(Vector3.UP, _queen_turn).scaled(Vector3.ONE * QUEEN_SCALE), qp + Vector3.UP * QUEEN_LIFT + _queen_step)
+		# her heavy gaster hangs below her feet: stand her up on her legs so it rests on the floor, not in it;
+		# and stand on the floor where she is - off her spot (stepping to the brood) a chamber floor curves up
+		# to the walls, so she rises with it and her front tips up or down with its slope (else her face
+		# went into the soil as she bent to the eggs)
+		var home := qp + Vector3.UP * QUEEN_LIFT
+		var at := home + _queen_step
+		var fwd := Vector3(cos(_queen_turn), 0.0, -sin(_queen_turn))
+		var f0 := _floor_cached(home)
+		var fc := _floor_cached(at)
+		var ff := _floor_cached(at + fwd * 1.6)
+		var fb := _floor_cached(at - fwd * 1.6)
+		var want_dy := clampf(fc - f0, -0.6, 0.8) if _queen_step.length() > 0.05 else 0.0
+		var want_pitch := clampf(atan2(ff - fb, 3.2), -0.3, 0.35) if _queen_step.length() > 0.05 else 0.0
+		var k := minf(1.0, 4.0 * get_process_delta_time())
+		_queen_dy = lerpf(_queen_dy, want_dy, k)
+		_queen_pitch = lerpf(_queen_pitch, want_pitch, k)
+		var qbasis := Basis(Vector3.UP, _queen_turn) * Basis(Vector3.BACK, _queen_pitch)
+		_queen_xf = Transform3D(qbasis.scaled(Vector3.ONE * QUEEN_SCALE), at + Vector3.UP * _queen_dy)
 		_queen_mm.set_instance_transform(0, _queen_xf)
 		_queen_mm.set_instance_color(0, AntModel.tint(Color(0.075, 0.05, 0.038)))
 		# the cells under her body, for the nestmates' routes

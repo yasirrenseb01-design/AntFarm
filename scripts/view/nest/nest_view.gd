@@ -214,7 +214,7 @@ func refresh(delta: float) -> void:
 	# brood and the mound change slowly; rebuild their instances only when something moved
 	t0 = _nprof("camera/spots", t0)
 	_poll_events()
-	_step_anims(delta if speed > 0 else 0.0)
+	_step_anims(delta * minf(speed, 1.0) if speed > 0 else 0.0)     # (slowed with the clock below 1x: slow motion)
 	t0 = _nprof("life-cycle", t0)
 	var sig := [sim.eggs.size(), sim.larvae.size(), sim.pupae.size(), nest.excavated / 2, snappedf(_plane_w, 0.5),
 		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5), sim.tick / 600,
