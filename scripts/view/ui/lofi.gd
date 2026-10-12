@@ -1,12 +1,12 @@
 extends Node
-## Background music made in code (no audio files): slow lo-fi pieces, each ~53 s of 16 bars at 72 BPM -
-## jazzy seventh/ninth chords on a soft electric-piano voice, a round bass, a brushed swing beat, a sparse
-## pentatonic tune, and vinyl crackle, all through a warm low-pass. Each piece is new (its own chord
+## Background music made in code (no audio files): slow, easy lo-fi pieces, each ~58 s of 16 bars at 66 BPM -
+## a warm pad, jazzy seventh/ninth chords on a soft electric piano, a round bass, a nylon guitar picking
+## the chords, a breathy flute, a soft brushed beat (not always), and vinyl crackle, through a warm low-pass. Each piece is new (its own chord
 ## progression, key and tune), made on a worker thread while the one before plays.
 ## View-only: uses its own random numbers, never the simulation's.
 
 const RATE := 16000                  # (lo-fi: a low sample rate is part of the sound, and quick to make)
-const BPM := 72.0
+const BPM := 66.0
 const BARS := 16
 
 # chord progressions, one chord per bar: [bass note, voicing] in MIDI notes (C major / A minor family)
@@ -96,66 +96,80 @@ func _play_next() -> void:
 
 
 ## One piece as 16-bit samples (runs on a worker thread: touches nothing but its own arrays).
+## Arranged in four-bar sections so it breathes: it opens on the pad and the piano alone, the nylon guitar
+## and a soft brushed beat come in, a breathy flute wanders over the second half, and it winds down to the
+## pad again. About a third of the pieces have no beat at all.
 static func _compose(seed: int) -> PackedByteArray:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var beat := 60.0 / BPM
 	var bar := beat * 4.0
-	var n := int((bar * BARS + 2.0) * RATE)
+	var n := int((bar * BARS + 3.0) * RATE)
 	var buf := PackedFloat32Array()
 	buf.resize(n)
 	var prog: Array = PROGS[rng.randi() % PROGS.size()]
 	var key := rng.randi_range(-3, 2)
+	var drums := rng.randf() < 0.65
 	for b in BARS:
 		var t0 := b * bar
 		var ch: Array = prog[b % 4]
+		var sec := b / 4                       # 0 intro, 1-2 middle, 3 outro
 		var last_bar := b == BARS - 1
-		# chords: a soft strum on the one, sometimes a quieter touch on the "and" of two
-		for k in (ch[1] as Array).size():
-			var m: int = ch[1][k] + key
-			_piano(buf, t0 + k * 0.018 + rng.randf() * 0.01, _hz(m), bar * (1.6 if last_bar else 1.0), 0.075)
-			if not last_bar and rng.randf() < 0.35:
-				_piano(buf, t0 + beat * 1.5 + k * 0.014, _hz(m), beat * 2.0, 0.035)
-		# bass: root on the one, root or fifth on the "and" of three
+		var notes: Array = ch[1]
+		# a warm pad under everything, two bars to a chord change (held over the bar line, slow in and out)
+		_pad(buf, t0, notes.slice(0, 3).map(func(m): return _hz(m + key)), bar * (2.2 if last_bar else 1.15), 0.035)
+		# electric piano: a soft spread chord on the one (quieter than before; it lets the others through)
+		for k in notes.size():
+			_piano(buf, t0 + k * 0.03 + rng.randf() * 0.012, _hz(notes[k] + key), bar * (1.6 if last_bar else 1.0), 0.05)
+		# bass: long round notes
 		var root: int = ch[0] + key
-		_bass(buf, t0, _hz(root), beat * 2.2, 0.26)
-		if not last_bar:
-			_bass(buf, t0 + beat * 2.5, _hz(root + (7 if rng.randf() < 0.4 else 0)), beat * 1.4, 0.2)
-		# drums (from the second bar; the last bar only the kick)
-		if b > 0:
-			_kick(buf, t0, 0.42)
-			if not last_bar:
-				_kick(buf, t0 + beat * 2.5, 0.32)
-				_snare(buf, t0 + beat, 0.16, rng)
-				_snare(buf, t0 + beat * 3.0, 0.16, rng)
-				for e in 8:                                  # swung eighth-note hats
-					var swing := 0.16 * beat if e % 2 == 1 else 0.0
-					_hat(buf, t0 + e * beat * 0.5 + swing, 0.03 + rng.randf() * 0.025, rng)
-		# a sparse tune over the chords
-		if b >= 4 and not last_bar and rng.randf() < 0.6:
-			for j in rng.randi_range(1, 3):
-				var pos := rng.randi_range(0, 7) * beat * 0.5
-				_bell(buf, t0 + pos, _hz(PENTA[rng.randi() % PENTA.size()] + key), beat * 1.5, 0.05)
-	# vinyl: a faint hiss and the odd crackle
+		_bass(buf, t0, _hz(root), beat * (3.8 if last_bar else 2.6), 0.22)
+		if not last_bar and rng.randf() < 0.5:
+			_bass(buf, t0 + beat * 3.0, _hz(root + 7), beat * 1.0, 0.13)
+		# nylon guitar: a slow broken chord, up and back, in the middle sections
+		if sec in [1, 2] and not last_bar:
+			var arp := [notes[0], notes[1], notes[2], notes[3], notes[2], notes[1]]
+			var start := rng.randi_range(0, 1)
+			for e in range(start, 8):
+				if rng.randf() < 0.82:
+					_pluck(buf, t0 + e * beat * 0.5 + (0.1 * beat if e % 2 == 1 else 0.0), _hz(arp[e % arp.size()] + key + 12), 0.06, rng)
+		# brushed beat, soft, in the middle sections only
+		if drums and sec in [1, 2]:
+			_kick(buf, t0, 0.26)
+			_kick(buf, t0 + beat * 2.5, 0.18)
+			_snare(buf, t0 + beat, 0.06, rng)
+			_snare(buf, t0 + beat * 3.0, 0.06, rng)
+			for e in 8:
+				_hat(buf, t0 + e * beat * 0.5 + (0.16 * beat if e % 2 == 1 else 0.0), 0.012 + rng.randf() * 0.01, rng)
+		# a breathy flute, a few long notes over the second half
+		if b >= 6 and b < BARS - 2 and rng.randf() < 0.55:
+			var pos := rng.randi_range(0, 3) * beat
+			for j in rng.randi_range(1, 2):
+				var len := beat * rng.randf_range(1.0, 2.5)
+				_flute(buf, t0 + pos, _hz(PENTA[rng.randi() % PENTA.size()] + key), len, 0.05, rng)
+				pos += len + beat * 0.5
+	# vinyl: a faint hiss and the odd soft crackle
 	for i in n:
-		buf[i] += rng.randf_range(-1.0, 1.0) * 0.004
-	for c in int(n / RATE * 5):
+		buf[i] += rng.randf_range(-1.0, 1.0) * 0.003
+	for c in int(n / RATE * 3):
 		var i := rng.randi_range(0, n - 4)
-		var a := rng.randf_range(0.02, 0.09) * (1.0 if rng.randf() < 0.5 else -1.0)
+		var a := rng.randf_range(0.01, 0.05) * (1.0 if rng.randf() < 0.5 else -1.0)
 		buf[i] += a
 		buf[i + 1] -= a * 0.6
 		buf[i + 2] += a * 0.25
-	# warm it: a gentle low-pass, fade in and out, and level it
-	var lp := 1.0 - exp(-TAU * 2600.0 / RATE)
+	# warm it: a low-pass (darker than a plain mix), fade in and out, and level it
+	var lp := 1.0 - exp(-TAU * 1900.0 / RATE)
 	var y := 0.0
+	var y2 := 0.0
 	var peak := 0.001
 	for i in n:
 		y += (buf[i] - y) * lp
-		buf[i] = y
-		peak = maxf(peak, absf(y))
-	var gain := 0.8 / peak
-	var fade_in := int(RATE * 0.6)
-	var fade_out := int(RATE * 2.0)
+		y2 += (y - y2) * lp                   # (two poles: a gentler, rounder top end)
+		buf[i] = y2
+		peak = maxf(peak, absf(y2))
+	var gain := 0.6 / peak                     # (the pad fills it out: kept as loud as the old pieces)
+	var fade_in := int(RATE * 2.0)
+	var fade_out := int(RATE * 3.0)
 	var out := PackedByteArray()
 	out.resize(n * 2)
 	for i in n:
@@ -168,32 +182,83 @@ static func _hz(midi: int) -> float:
 	return 440.0 * pow(2.0, (midi - 69) / 12.0)
 
 
+## A pad: each note two slightly detuned sines, swelling in over a second and fading out slowly.
+static func _pad(buf: PackedFloat32Array, at: float, fs: Array, dur: float, amp: float) -> void:
+	var i0 := int(at * RATE)
+	var len := int((dur + 1.5) * RATE)
+	var att := RATE * 1.2
+	var rel := int(dur * RATE)
+	var w := []
+	for f in fs:
+		w.append([TAU * f / RATE, TAU * f * 1.004 / RATE])
+	for i in len:
+		if i0 + i >= buf.size():
+			return
+		var env := minf(1.0, i / att)
+		if i > rel:
+			env *= 1.0 - float(i - rel) / (len - rel)
+		var v := 0.0
+		for p in w:
+			v += sin(p[0] * i) + sin(p[1] * i)
+		buf[i0 + i] += v * env * amp
+
+
+## A nylon-string pluck (Karplus-Strong: a burst of noise round a delay line, softened on every pass).
+static func _pluck(buf: PackedFloat32Array, at: float, f: float, amp: float, rng: RandomNumberGenerator) -> void:
+	var p := maxi(2, int(RATE / f))
+	var line := PackedFloat32Array()
+	line.resize(p)
+	var last := 0.0
+	for k in p:
+		var x := rng.randf_range(-1.0, 1.0)
+		line[k] = (x + last) * 0.5                 # (a softer, rounder attack than raw noise)
+		last = x
+	var i0 := int(at * RATE)
+	var len := int(2.2 * RATE)
+	var k := 0
+	for i in len:
+		if i0 + i >= buf.size():
+			return
+		var nxt := (k + 1) % p
+		var v := line[k]
+		line[k] = 0.4985 * (v + line[nxt])
+		buf[i0 + i] += v * amp
+		k = nxt
+
+
+## A breathy flute: a sine with a touch of its octave, a gentle vibrato once the note settles, and a
+## little breath noise, slow to start and stop.
+static func _flute(buf: PackedFloat32Array, at: float, f: float, dur: float, amp: float, rng: RandomNumberGenerator) -> void:
+	var i0 := int(at * RATE)
+	var len := int((dur + 0.3) * RATE)
+	var ph := 0.0
+	var br := 0.0
+	for i in len:
+		if i0 + i >= buf.size():
+			return
+		var t := float(i) / RATE
+		var env := minf(1.0, t / 0.15) * minf(1.0, (len - i) / (RATE * 0.3))
+		var vib := 1.0 + 0.004 * sin(TAU * 5.0 * t) * minf(1.0, maxf(0.0, t - 0.3) * 3.0)
+		ph += TAU * f * vib / RATE
+		br += (rng.randf_range(-1.0, 1.0) - br) * 0.08
+		buf[i0 + i] += (sin(ph) + 0.12 * sin(ph * 2.0) + br * 0.35) * env * amp
+
+
 ## An electric-piano note: a sine with a fading bell overtone, a slow tremolo, and a release.
 static func _piano(buf: PackedFloat32Array, at: float, f: float, dur: float, amp: float) -> void:
 	var i0 := int(at * RATE)
-	var len := int((dur + 0.4) * RATE)
+	var len := int((dur + 0.6) * RATE)
 	var rel := int(dur * RATE)
 	for i in len:
 		if i0 + i >= buf.size():
 			return
 		var t := float(i) / RATE
-		var env := minf(1.0, t * 150.0) * exp(-t * 1.1)
+		var env := minf(1.0, t * 60.0) * exp(-t * 0.8)
 		if i > rel:
 			env *= 1.0 - float(i - rel) / (len - rel)
 		var ph := TAU * f * t
-		var v := sin(ph) + 0.28 * sin(ph * 2.0) * exp(-t * 3.0) + 0.06 * sin(ph * 3.0 + 0.3) * exp(-t * 6.0)
-		buf[i0 + i] += v * env * amp * (1.0 + 0.12 * sin(TAU * 4.2 * t))
-
-
-## A soft high bell for the tune.
-static func _bell(buf: PackedFloat32Array, at: float, f: float, dur: float, amp: float) -> void:
-	var i0 := int(at * RATE)
-	for i in int(dur * RATE):
-		if i0 + i >= buf.size():
-			return
-		var t := float(i) / RATE
-		var env := minf(1.0, t * 90.0) * exp(-t * 2.4)
-		buf[i0 + i] += (sin(TAU * f * t) + 0.15 * sin(TAU * f * 3.0 * t) * exp(-t * 8.0)) * env * amp
+		var v := sin(ph) + 0.22 * sin(ph * 2.0) * exp(-t * 3.0) + 0.04 * sin(ph * 3.0 + 0.3) * exp(-t * 6.0)
+		buf[i0 + i] += v * env * amp * (1.0 + 0.1 * sin(TAU * 3.6 * t))
 
 
 static func _bass(buf: PackedFloat32Array, at: float, f: float, dur: float, amp: float) -> void:
@@ -203,8 +268,8 @@ static func _bass(buf: PackedFloat32Array, at: float, f: float, dur: float, amp:
 		if i0 + i >= buf.size():
 			return
 		var t := float(i) / RATE
-		var env := minf(1.0, t * 60.0) * exp(-t * 1.4) * minf(1.0, float(len - i) / (RATE * 0.05))
-		buf[i0 + i] += (sin(TAU * f * t) + 0.18 * sin(TAU * f * 2.0 * t)) * env * amp
+		var env := minf(1.0, t * 30.0) * exp(-t * 0.9) * minf(1.0, float(len - i) / (RATE * 0.12))
+		buf[i0 + i] += (sin(TAU * f * t) + 0.12 * sin(TAU * f * 2.0 * t)) * env * amp
 
 
 static func _kick(buf: PackedFloat32Array, at: float, amp: float) -> void:
@@ -214,29 +279,29 @@ static func _kick(buf: PackedFloat32Array, at: float, amp: float) -> void:
 		if i0 + i >= buf.size():
 			return
 		var t := float(i) / RATE
-		ph += TAU * (46.0 + 80.0 * exp(-t * 28.0)) / RATE
-		buf[i0 + i] += sin(ph) * exp(-t * 9.0) * amp
+		ph += TAU * (44.0 + 55.0 * exp(-t * 25.0)) / RATE
+		buf[i0 + i] += sin(ph) * exp(-t * 8.0) * minf(1.0, t * 400.0) * amp
 
 
-## A brushed snare: soft noise with a little body.
+## A brush across the snare: soft, slowly swelling noise.
 static func _snare(buf: PackedFloat32Array, at: float, amp: float, rng: RandomNumberGenerator) -> void:
 	var i0 := int(at * RATE)
 	var y := 0.0
-	for i in int(0.22 * RATE):
+	for i in int(0.3 * RATE):
 		if i0 + i >= buf.size():
 			return
 		var t := float(i) / RATE
-		y += (rng.randf_range(-1.0, 1.0) - y) * 0.45
-		buf[i0 + i] += (y * exp(-t * 16.0) + 0.5 * sin(TAU * 185.0 * t) * exp(-t * 22.0)) * amp
+		y += (rng.randf_range(-1.0, 1.0) - y) * 0.3
+		buf[i0 + i] += y * minf(1.0, t * 40.0) * exp(-t * 11.0) * amp
 
 
 static func _hat(buf: PackedFloat32Array, at: float, amp: float, rng: RandomNumberGenerator) -> void:
 	var i0 := int(at * RATE)
 	var last := 0.0
-	for i in int(0.05 * RATE):
+	for i in int(0.04 * RATE):
 		if i0 + i >= buf.size():
 			return
 		var t := float(i) / RATE
 		var x := rng.randf_range(-1.0, 1.0)
-		buf[i0 + i] += (x - last) * exp(-t * 70.0) * amp       # (high-passed noise)
+		buf[i0 + i] += (x - last) * exp(-t * 80.0) * amp       # (high-passed noise)
 		last = x
