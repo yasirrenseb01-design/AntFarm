@@ -56,6 +56,14 @@ func _lowest_chamber() -> float:
 
 # ---------------------------------------------------------------- chambers
 
+## How deep (voxels below the surface) the nest's lowest chamber reaches for a colony of this size: the nest
+## sinks as the colony grows (nest depth rises with colony size in the ants studied, e.g. Tschinkel 2004;
+## Lasius nests mostly lie in the top ~30 cm with a few deep shafts). The curve is an estimate fitted to this
+## 10.8 cm block: ~1.7 cm founding, ~5 cm at 100 workers, ~6.6 cm at 300, ~8 cm at 1000.
+func target_depth(workers: int) -> float:
+	return minf(11.0 + 22.0 * log(1.0 + workers / 10.0) / log(10.0), ny - 8.0)
+
+
 ## Called by the colony once a day. Chambers grow while brood is crowded; a growing colony also
 ## plans a new chamber a little deeper and sinks a shaft down to it, giving the stacked layout of
 ## Lasius nests (flat chambers in series along vertical shafts).
@@ -65,8 +73,9 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 		if not ch.get("open", true) and is_open(Vector3i(ch.c)):
 			ch.open = true
 			event = "opened"
-	# how big a chamber gets grows with the colony: ~1.5 cm long for a founding queen, up to ~4 cm
-	var cap := clampf(7.0 + workers / 12.0, 7.0, 13.0)        # the first workers soon need more than the founding cell
+	# how big a chamber gets grows with the colony: ~1.5 cm long for a founding queen, up to ~3.3 cm (Lasius
+	# chambers are 1-2 cm wide, 3-5 cm long); a growing colony then adds chambers rather than ever-bigger ones
+	var cap := clampf(7.0 + workers / 12.0, 7.0, 11.0)        # the first workers soon need more than the founding cell
 	# the first workers open up and widen the founding cell they share with the queen and her brood (~0.25 voxel
 	# a worker) - only while it is the nest's one chamber; after that new chambers take the growth
 	for ch in chambers:
@@ -101,14 +110,21 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	for ch in chambers:
 		if not ch.get("open", true):
 			pending += 1
-	if pending > 0 or chambers.size() >= 24 or (chambers.size() >= wanted and not short):
+	# a growing colony sinks its nest deeper (new chambers below the deepest, down a shaft)
+	var deeper := workers >= 20 and ny - _lowest_chamber() < target_depth(workers)
+	var crowded := load > floor_cap * 0.7
+	if pending > 0 or chambers.size() >= 24 or (chambers.size() >= wanted and not short and not crowded and not deeper):
 		return event
 	# a new chamber: beside an existing one on the same level (nests are top-heavy) or a level deeper,
 	# reached by a gallery from the side of the old chamber
+	var deepest: Dictionary = chambers[0]
+	for ch in chambers:
+		if ch.c.y < deepest.c.y:
+			deepest = ch
 	for attempt in 60:
-		var src: Dictionary = chambers[rng.randi() % chambers.size()]
+		var src: Dictionary = deepest if deeper else chambers[rng.randi() % chambers.size()]
 		var depth: float = ny - float(src.c.y)
-		var sideways := rng.randf() < (0.65 if depth < 30.0 else 0.35)
+		var sideways := false if deeper else rng.randf() < (0.65 if depth < 30.0 else 0.35)
 		var ang := rng.randf() * TAU
 		var reach := rng.randf_range(src.goal + 8.0, src.goal + 14.0) if sideways else rng.randf_range(4.0, 12.0)
 		var off := Vector3(cos(ang) * reach, rng.randf_range(-2.0, 1.0) if sideways else -rng.randf_range(8.0, 13.0), sin(ang) * reach)
@@ -120,7 +136,11 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 			continue
 		var ok := true
 		for ch in chambers:
-			if site.distance_to(ch.c) < ch.goal + 9.0:
+			# chambers are flat (~2 voxels high): one 7+ voxels below another clears it whatever its width, so
+			# only chambers on about the same level must keep their width apart (a straight distance against
+			# the old chamber's width ruled out every chamber below a grown one: nests never got deeper)
+			var dd: Vector3 = site - Vector3(ch.c)
+			if absf(dd.y) < 7.0 and Vector2(dd.x, dd.z).length() < ch.goal + 9.0:
 				ok = false
 				break
 		if ok:
