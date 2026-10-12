@@ -131,6 +131,7 @@ func _bite(a: Ant, c: Dictionary) -> void:
 
 
 func _shake_off(a: Ant, c: Dictionary) -> void:
+	a.vflung = true                 # (for the view: thrown clear, it lands on its back and rights itself)
 	a.busy = 0
 	a.hurt = minf(0.9, a.hurt + 0.15)
 	a.pos = (a.pos + (a.pos - c.pos).normalized() * 7.0).clamp(Vector2(4, 4), WORLD - Vector2(4, 4))

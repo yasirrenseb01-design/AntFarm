@@ -13,7 +13,8 @@ const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const U := 1.0 / 3.0                 # simulation px -> units
 const ANT_SCALE := 1.1
 const WALL_H := 42.0
-const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.45, 0.0))
+const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.6, 0.0))   # in the mandibles of a raised head (shader act 8)
+const THROWN_S := 1.6                # seconds: thrown off an enemy, on its back, righted again
 const SIDE_PANEL_PX := 364.0         # the HUD's side panel covers the right of the window
 
 var sim

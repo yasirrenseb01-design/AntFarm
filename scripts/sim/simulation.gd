@@ -43,13 +43,18 @@ func step() -> void:
 		_spd *= n
 	if tick % 4 == 0:
 		_encounters()
+	var hauling := false
 	for a: Ant in outside:
-		if a.state != Ant.IN_NEST and not a.dead and (n == 1 or a.id % n == phase):
+		if a.state == Ant.DRAG:
+			hauling = true                         # moved together with the item they hold, below
+		elif a.state != Ant.IN_NEST and not a.dead and (n == 1 or a.id % n == phase):
 			if a.state == Ant.DEFEND:
 				_step_defender(a)
 			else:
 				_step_ant(a)
 			prof.steps += 1
+	if hauling:
+		_step_drags()
 	var t3 := Time.get_ticks_usec()
 	if not creatures.is_empty():
 		_step_creatures()

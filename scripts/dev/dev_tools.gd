@@ -4,6 +4,8 @@ extends "res://scripts/game/parts/main_camera.gd"
 
 
 var _walker = null          # --at-ant=walker: the forager the camera follows
+var _watch_food = null       # --at-ant=hauler: the prey being hauled home
+var _watch_creature = null   # --watch-fight=<n>: the enemy the camera follows once n ants hold it
 
 # ---------------------------------------------------------------- tools
 
@@ -31,6 +33,18 @@ func _take_shot() -> void:
 		sim.creatures[-1].ang = float(_opts.get("enemy-ang", "3.1"))
 		for i in int(_opts.get("fight", "0")):
 			sim.step()
+		if _opts.has("watch-fight"):
+			# run on until ants are holding the enemy down (and follow it in --seq): fight animation checks
+			for i in sim.TPD:
+				if not sim.creatures.is_empty() and int(sim.creatures[-1].get("held", 0)) >= int(_opts["watch-fight"]):
+					break
+				if i % 60 == 0 and not sim.creatures.is_empty():
+					var cc: Dictionary = sim.creatures[-1]
+					print("  t%d held %d hp %.1f pos %s" % [i, int(cc.get("held", 0)), float(cc.get("hp", 0)), str(cc.pos)])
+				sim.step()
+			if not sim.creatures.is_empty():
+				_watch_creature = sim.creatures[-1]
+			print("watch-fight: creatures %d held %s" % [sim.creatures.size(), str(sim.creatures[-1].get("held", 0)) if not sim.creatures.is_empty() else "-"])
 		var look_at := Vector2.INF
 		if not sim.creatures.is_empty():
 			look_at = sim.creatures[-1].pos
@@ -75,6 +89,30 @@ func _take_shot() -> void:
 					if f.pos.distance_to(found.pos) < f.r + 14.0:
 						at = f.pos
 				outworld.target_t = Vector3(at.x, 0, at.y) * outworld.U + Vector3(0, float(_opts.get("lift", "0")), 0)
+		elif _opts.get("at-ant", "") == "hauler":
+			# drop a dead fly a little way out, run on until nestmates are hauling it home, then follow it
+			sim.place_food("fly", sim.nest_pos + Vector2(110, 50))
+			var fly: Dictionary = sim.foods[-1]
+			for i in sim.TPD:
+				if sim.outside.filter(func(x): return x.state == sim.Ant.DRAG).size() >= 2 or not sim.foods.has(fly):
+					break
+				sim.step()
+			print("hauler: draggers %d" % sim.outside.filter(func(x): return x.state == sim.Ant.DRAG).size())
+			_watch_food = fly
+			outworld.target_t = Vector3(fly.pos.x, 0, fly.pos.y) * outworld.U
+		elif _opts.get("at-ant", "") == "carrier":
+			# run on until a forager is walking home with a load in its mandibles, then follow it (carry pose)
+			if not sim.foods.any(func(f): return f.type == sim.Ant.PROTEIN):
+				sim.place_food("cricket", sim.nest_pos + Vector2(140, 60))
+			for i in sim.TPD:
+				for a in sim.outside:
+					if a.busy <= 0 and a.carry == sim.Ant.PROTEIN and a.pos.distance_to(sim.nest_pos) > 30.0:
+						_walker = a
+				if _walker != null:
+					break
+				sim.step()
+			if _walker != null:
+				outworld.target_t = Vector3(_walker.pos.x, 0, _walker.pos.y) * outworld.U
 		elif _opts.get("at-ant", "") == "walker":
 			# run on until a forager is out walking (not busy), then look at it (gait checks)
 			for i in sim.TPD:
@@ -191,6 +229,14 @@ func _take_shot() -> void:
 		for k in int(_opts["seq"]):
 			for i in int(_opts.get("seq-every", "3")):
 				await get_tree().process_frame
+				if _watch_food != null and mode == "outworld" and sim.foods.has(_watch_food):
+					var fp2: Vector2 = _watch_food.pos
+					outworld.target_t = Vector3(fp2.x, 0, fp2.y) * outworld.U
+					outworld.target = outworld.target_t
+				if _watch_creature != null and mode == "outworld" and sim.creatures.has(_watch_creature):
+					var cp: Vector2 = _watch_creature.pos
+					outworld.target_t = Vector3(cp.x, 0, cp.y) * outworld.U
+					outworld.target = outworld.target_t
 				if who != null and mode == "outworld" and who.vpos.x != INF:
 					outworld.target_t = Vector3(who.vpos.x, 0, who.vpos.y) * outworld.U     # follow the ant
 					outworld.target = outworld.target_t

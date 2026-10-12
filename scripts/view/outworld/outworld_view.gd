@@ -147,6 +147,7 @@ func refresh(delta: float) -> void:
 		_sync_rocks()
 		_sync_foods()
 		_update_mound()
+	_ease_foods(delta)
 	_ground_mat.set_shader_parameter("pher_on", 1.0 if world.show_pheromones else 0.0)
 	var raining: bool = sim.climate.raining()
 	_wet = move_toward(_wet, 1.0 if raining else 0.0, delta * 0.3 * maxf(speed, 0.5))

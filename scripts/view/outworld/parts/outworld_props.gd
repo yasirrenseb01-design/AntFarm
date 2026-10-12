@@ -39,7 +39,7 @@ func _sync_foods() -> void:
 			for s in Props.aphid_spots(f.seed):
 				if s[1] != 2 and (s[0] as Transform3D).origin.y < 10.0:
 					low.append(s[0])
-		_foods[key] = {"node": node, "sig": sig, "low": low}
+		_foods[key] = {"node": node, "sig": sig, "low": low, "at": f.pos}
 	for key in _foods.keys():
 		if not seen.has(key):
 			var node: Node3D = _foods[key].node
@@ -53,6 +53,18 @@ func _sync_foods() -> void:
 		if sim.tick > int(h.until) or sim.tick < int(h.until) - sim.TPD * 4:
 			h.node.queue_free()
 	_husks = _husks.filter(func(h): return sim.tick <= int(h.until) and sim.tick >= int(h.until) - sim.TPD * 4)
+
+
+## Prey being hauled home moves every tick in the simulation: its model follows smoothly (the food models
+## are only rebuilt now and then).
+func _ease_foods(delta: float) -> void:
+	var k := 1.0 - exp(-8.0 * delta)
+	for f in sim.foods:
+		var e: Dictionary = _foods.get(f.seed, {})
+		if e.is_empty() or (f.pos as Vector2).distance_squared_to(e.get("at", f.pos)) < 0.01:
+			continue
+		var node: Node3D = e.node
+		node.position = node.position.lerp(_on_ground(f.pos, 0.0), k)
 
 
 ## What is left of a carcass: the dry, hollow exoskeleton, faded and flattened.

@@ -40,6 +40,11 @@ foreach ($s in $scripts) {
     if ($r -match "(?i)error|TIMEOUT") { Report $s $false (($r -split "`n" | Select-String -Pattern "(?i)error|TIMEOUT" | Select-Object -First 2) -join " ") }
 }
 Report ("{0} scripts" -f $scripts.Count) ($fail -eq 0)
+if ($fail -gt 0) {
+    # a script that does not parse makes Godot hang on a black window: running the tests now only wastes time
+    Write-Host "$fail CHECK(S) FAILED (parse errors: tests not run)" -ForegroundColor Red
+    exit 1
+}
 
 Write-Host "2. tests"
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/save_test.gd") 300

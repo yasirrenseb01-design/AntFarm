@@ -7,7 +7,7 @@ extends "res://scripts/sim/parts/sim_base.gd"
 func _encounters() -> void:
 	var grid := {}
 	for a: Ant in outside:
-		if a.busy > 0 or a.meet_cd > 0 or a.state == Ant.IN_NEST or a.state == Ant.DEFEND:
+		if a.busy > 0 or a.meet_cd > 0 or a.state == Ant.IN_NEST or a.state == Ant.DEFEND or a.state == Ant.DRAG:
 			continue
 		var k := Vector2i(int(a.pos.x / 6.0), int(a.pos.y / 6.0))
 		var o = grid.get(k)
@@ -129,7 +129,10 @@ func _step_ant(a: Ant) -> void:
 			if wanted and f.amt >= 1.0 and not f.rotten:
 				var fp: Vector2 = f.pos
 				if pos.distance_squared_to(fp) < pow(f.r + 2.0 + spd, 2.0):
-					_pick_up(a, f)
+					if int(FoodKinds.info(f.kind).get("drag", 0)) > 0 and f.amt >= f.cap - 0.01:
+						_start_drag(a, f)          # still whole: take hold of it and haul it home with nestmates
+					else:
+						_pick_up(a, f)
 					return
 				near = true
 				_turn_toward(a, fp, 0.15)
@@ -207,6 +210,86 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 		var line: String = FoodKinds.info(f.kind).get("found", "")
 		if line != "":
 			_log(line, "ok")
+
+
+# ---------------------------------------------------------------- hauling small prey home whole
+# Lasius workers retrieve small prey (a dead fly) whole when nestmates join in: each takes hold, and once
+# enough are pulling the item moves toward the nest, faster with more of them. One alone waits a while for
+# help, then cuts a piece off instead (and its trail home brings the others).
+const DRAG_WAIT := 900           # ticks a lone ant holds on before it gives up and cuts a piece
+
+func _start_drag(a: Ant, f: Dictionary) -> void:
+	a.state = Ant.DRAG
+	a.foe = f.seed
+	a.ang = (a.pos - f.pos).angle()          # where round the item it holds on
+	a.since = 0
+	a.busy = 0
+	a.act = 0
+	if not f.found:
+		f.found = true
+		var line: String = FoodKinds.info(f.kind).get("found", "")
+		if line != "":
+			_log(line, "ok")
+
+
+func _step_drags() -> void:
+	var groups := {}
+	for a in outside:
+		if a.state == Ant.DRAG and not a.dead:
+			if not groups.has(a.foe):
+				groups[a.foe] = []
+			groups[a.foe].append(a)
+	for seed in groups:
+		var crew: Array = groups[seed]
+		var f = null
+		for g in foods:
+			if g.seed == seed:
+				f = g
+				break
+		if f == null or f.amt < f.cap - 0.01 or f.rotten:
+			# gone, rotten, or already being cut up: back to foraging (or take a piece)
+			for a in crew:
+				a.state = Ant.SEARCH
+				if f != null and f.amt >= 1.0 and not f.rotten:
+					_pick_up(a, f)
+			continue
+		var need := int(FoodKinds.info(f.kind).get("drag", 2))
+		var hold: float = f.r * 0.55 + 1.0
+		if crew.size() >= need:
+			# pulled home: about a third of walking pace with the crew it needs, a little faster with more
+			var spd: float = _spd / maxi(1, ant_substep) * 0.35 * minf(1.6, float(crew.size()) / need)   # (every tick)
+			var dir: Vector2 = (nest_pos - f.pos).normalized()
+			var np: Vector2 = f.pos
+			for turn in [0.0, 0.6, -0.6, 1.2, -1.2]:
+				var q: Vector2 = f.pos + dir.rotated(turn) * spd
+				if not blocked(q):
+					np = q
+					break
+			f.pos = np
+			if f.pos.distance_squared_to(f.get("grid_at", f.pos)) > 9.0:
+				f.grid_at = f.pos
+				_food_dirty = true                # foragers smell it where it is now
+			if f.pos.distance_squared_to(nest_pos) < NEST_R * NEST_R:
+				# in through the entrance: the whole item feeds the colony
+				protein = minf(protein_cap(), protein + f.amt)
+				stats.protein_in += int(f.amt)
+				foods.erase(f)
+				_food_dirty = true
+				if activity > 0.2:
+					_recruits += 2
+				for a in crew:
+					a.state = Ant.IN_NEST
+					a.trip = 0
+					a.foe = 0
+				continue
+		for a in crew:
+			a.since += 1
+			a.pos = f.pos + Vector2(cos(a.ang), sin(a.ang)) * hold
+			a.phase += _spd / maxi(1, ant_substep) * 0.3
+			if crew.size() < need and a.since > DRAG_WAIT:
+				a.state = Ant.SEARCH                  # nobody came: cut a piece off instead
+				a.foe = 0
+				_pick_up(a, f)
 
 
 func _arrive(a: Ant) -> void:

@@ -63,7 +63,7 @@ var _larva_prev := ""
 var _moved := 1 << 20              # larvae already carried to the current group's rooms
 var _carry_larva_mm: MultiMesh
 var _carry_pellet_mm: MultiMesh
-const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.45, 0.0))
+const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.6, 0.0))   # in the mandibles of a raised head (shader act 8)
 var _spot_timer := 0.0
 var _rot := false
 var _pan := false

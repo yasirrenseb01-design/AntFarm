@@ -19,6 +19,9 @@ render_mode diffuse_burley;
 //             15 stopped to scan: head and antennae sweep slowly side to side, antennae raised;
 //             16 following a trail: antennae held low, tapping the ground left and right in turn;
 //             17 a queen taking her new egg: gaster curled forward under the body, head bowed to meet it.
+// Carrying (8): head raised, mandibles closed on the load, antennae held forward over it.
+// 19 hauling prey with nestmates: head low, mandibles clamped on it, leaning back as it pulls.
+// 18 thrown on its back (the view rolls the body): legs flailing in the air, antennae waving, until it rights itself.
 // Walking, the head and gaster sway a little with each step and the gaster is carried clear of the ground.
 // y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
 
@@ -91,11 +94,26 @@ float ground_dy(vec3 fw, vec3 upw) {
 	return 0.0;
 }
 
-// Grooming works one side at a time (left antenna, then right, ~2.3 s each): how much the side `side`
-// is being cleaned now, 0..1, eased in and out so the head and leg pass smoothly from one side to the other.
-float groom_w(float t, float side) {
-	float ph = fract(t * 0.22 + (side > 0.0 ? 0.5 : 0.0));
+// Grooming runs through a cycle of ~13 s, each step easing into the next: the antennae drawn through the combs
+// on the forelegs (half of it), a foreleg drawn through the mouthparts (a quarter), the gaster wiped with a hind
+// leg (a quarter). x, y, z = how much of each is going on now.
+vec3 groom_phase(float t) {
+	float gp = fract(t * 0.075);
+	float wm = smoothstep(0.45, 0.55, gp) * (1.0 - smoothstep(0.7, 0.8, gp));
+	float wh = smoothstep(0.7, 0.8, gp) * (1.0 - smoothstep(0.92, 1.0, gp));
+	return vec3(1.0 - wm - wh, wm, wh);
+}
+
+// Each step works one side at a time: how much the side `side` is being worked now, 0..1, eased in and out
+// so the head and legs pass smoothly from one side to the other (`rate` = side changes per second / 2).
+float groom_side(float t, float side, float rate) {
+	float ph = fract(t * rate + (side > 0.0 ? 0.5 : 0.0));
 	return smoothstep(0.0, 0.12, ph) * (1.0 - smoothstep(0.38, 0.5, ph));
+}
+
+// The antenna on `side` being drawn through its foreleg's comb (left, then right, ~2.3 s each).
+float groom_w(float t, float side) {
+	return groom_side(t, side, 0.22) * groom_phase(t).x;
 }
 
 // The head's pose (nod, turn) for an activity — the antennae ride on it.
@@ -111,12 +129,17 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 	if (act == 14.0) nod = 0.12;
 	if (act == 16.0) nod = -0.07;                           // nose down to the scent
 	if (act == 17.0) nod = -0.55;                           // head bowed under to the gaster tip
+	if (act == 8.0) nod = 0.2 + 0.03 * sin(gait * 2.0);     // carrying: head up, the load held clear of the ground
+	if (act == 19.0) nod = -0.14 + 0.04 * sin(t * 5.0);     // hauling: tugging at the item
 	float turn = 0.05 * sin(gait) * mv;
 	if (act == 15.0) { turn = 0.32 * sin(t * 1.4); nod = 0.06 + 0.05 * sin(t * 0.9); }
 	if (act == 4.0) {
-		// grooming: head bowed and turned to the side being cleaned
-		nod = -0.3;
-		turn = 0.22 * (groom_w(t, 1.0) - groom_w(t, -1.0));
+		// grooming: head bowed and turned to the side being cleaned; lower still, nibbling, to clean a foreleg
+		vec3 g = groom_phase(t);
+		float mr = (groom_side(t, 1.0, 0.3) - groom_side(t, -1.0, 0.3)) * g.y;
+		float hr = (groom_side(t, 1.0, 0.25) - groom_side(t, -1.0, 0.25)) * g.z;
+		nod = -0.3 * g.x + (-0.42 + 0.06 * sin(t * 6.0)) * g.y - 0.05 * g.z;
+		turn = 0.22 * (groom_w(t, 1.0) - groom_w(t, -1.0)) + 0.12 * mr + 0.08 * hr;
 	}
 	return vec2(nod, turn);
 }
@@ -148,7 +171,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		float sw = sin(ph) * 0.42 * mv;
 		float lift = max(0.0, cos(ph)) * 0.32 * mv;
 		bool front = li < 0.5;
-		bool posed = act == 11.0 || act == 12.0 || (front && (act == 2.0 || act == 9.0));
+		bool posed = act == 11.0 || act == 12.0 || act == 18.0 || (front && (act == 2.0 || act == 9.0));
 		if (mv < 0.05) {
 			sw = 0.04 * sin(t * 0.9 + li * 2.0 + side);      // standing: tiny shifts of weight
 		}
@@ -171,6 +194,10 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		if (act == 13.0) {                                    // braced, pulling back on the grip
 			sw = 0.18 * (1.0 - li) + 0.06 * sin(t * 13.0 + li * 2.0 + side);
 			lift = -0.4;                                      // legs pushed down: standing tall
+		}
+		if (act == 18.0) {                                    // on its back: legs clawing at the air for a hold
+			sw = 0.45 * sin(t * 13.0 + li * 2.1 + side * 1.3);
+			lift = 0.55 + 0.45 * sin(t * 11.0 + li * 1.7 + side);
 		}
 		if (act == 12.0) {                                    // callow: legs pressed to the body, slowly unfolding
 			float fold = 1.0 - clamp(t / 3.0, 0.0, 1.0);
@@ -228,6 +255,22 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 					T = mix(T, vec3(2.7 + 0.6 * k, 1.05 - 0.2 * k, 0.45 * side) * K, gw);
 					cleaning = true;
 				}
+				// ...and, later in the cycle, the foreleg itself is drawn in and out through the mouthparts
+				float gm = groom_side(t, side, 0.3) * groom_phase(t).y;
+				if (gm > 0.0) {
+					float k2 = 0.5 + 0.5 * sin(t * 6.0);
+					T = mix(T, vec3(2.5 + 0.3 * k2, 0.8, 0.3 * side) * K, gm);
+					cleaning = true;
+				}
+			}
+			if (act == 4.0 && li > 1.5) {
+				// a hind leg wipes down the side of the gaster, front to back, one side then the other
+				float gh = groom_side(t, side, 0.25) * groom_phase(t).z;
+				if (gh > 0.0) {
+					float k3 = 0.5 + 0.5 * sin(t * 5.0);
+					T = mix(T, vec3(-1.3 - 1.1 * k3, 0.78 + 0.12 * k3, 0.78 * side) * K, gh);
+					cleaning = true;
+				}
 			}
 			// the coxa swings the whole leg round toward the foothold...
 			vec2 v0 = (F - H).xz;
@@ -279,6 +322,9 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		if (act == 14.0) { sp = 14.0; amp = 0.3; droop = 0.15; }      // held forward, flicking
 		if (act == 12.0) { sp = 3.0; amp = 0.15; droop = -0.9 * (1.0 - clamp(t / 3.0, 0.0, 1.0)); }
 		if (act == 15.0) { sp = 1.4; amp = 0.45; droop = 0.18; }      // scanning: raised, slow, wide
+		if (act == 8.0) { sp = 3.2; amp = 0.16; droop = 0.12; }       // carrying: held forward over the load
+		if (act == 18.0) { sp = 12.0; amp = 0.4; droop = 0.3; }       // on its back: waving
+		if (act == 19.0) { sp = 5.0; amp = 0.15; droop = -0.25; }     // hauling: low over the item
 		if (act == 16.0) {                                            // on a trail: low, tapping in turn
 			sp = 7.0; amp = 0.14;
 			droop = -0.32 - 0.22 * max(0.0, sin(t * 7.0 + (side > 0.0 ? PI : 0.0)));
@@ -319,6 +365,9 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			if (act == 10.0) open = 0.3;
 			if (act == 13.0) open = 0.25 + 0.2 * max(0.0, sin(t * 11.0));
 			if (act == 14.0) open = 0.6;
+			if (act == 8.0) open = 0.16;                       // gripping the load
+			if (act == 19.0) open = 0.12;
+			if (act == 4.0) open = 0.04 + (0.2 + 0.15 * sin(t * 6.0)) * groom_phase(t).y;    // working over a foreleg
 			vec3 mp = vec3(2.85, 0.9, 0.3 * side) * K;
 			V = mp + rot_y(open * side) * (V - mp);
 			NR = rot_y(open * side) * NR;
@@ -336,6 +385,10 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			curl += 0.1 + 0.025 * sin(gait * 2.0) * mv;
 			R = rot_y(-0.045 * sin(gait) * mv);
 		}
+		if (act == 4.0) {
+			// bent round toward the hind leg wiping it
+			R = R * rot_y(0.14 * (groom_side(t, 1.0, 0.25) - groom_side(t, -1.0, 0.25)) * groom_phase(t).z);
+		}
 		float b = 1.0 + 0.018 * sin(t * 1.6);
 		vec3 sc = vec3(b) * (1.0 + full * vec3(0.22, 0.3, 0.32));
 		R = R * rot_z(curl) * mat3(vec3(sc.x, 0, 0), vec3(0, sc.y, 0), vec3(0, 0, sc.z));
@@ -344,7 +397,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 	V = piv + R * (V - piv);
 	NR = normalize(R * NR);
 	// whole body: nose down while digging, front up while grooming
-	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 : (act == 10.0 ? -0.1 : (act == 13.0 ? -0.06 : (act == 17.0 ? -0.1 : 0.0))));
+	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 * groom_phase(t).x : (act == 10.0 ? -0.1 : (act == 13.0 ? -0.06 : (act == 17.0 ? -0.1 : (act == 19.0 ? 0.05 : 0.0)))));
 	V = rot_z(pitch) * V;
 	NR = rot_z(pitch) * NR;
 	V.y += hlift;

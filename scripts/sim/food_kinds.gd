@@ -25,7 +25,8 @@ const KINDS := {
 		"found": T.found_cricket, "rots_after": 6.0, "tool": "จิ้งหรีดตาย", "feed_pose": "carcass",
 		"carcass": [6.4, 2.4], "buried": true, "big": true},
 	"fly": {"type": Ant.PROTEIN, "amt": 6.0, "cap": 6.0, "regen": 0.0, "r": 5.0, "handling": [50, 110, 2],
-		"found": T.found_fly, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [2.2, 1.3], "buried": true},
+		"found": T.found_fly, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [2.2, 1.3], "buried": true,
+		"drag": 2},     # small enough for a few workers to haul home whole (needs this many holding it)
 	# enemies the ants killed (never placed by the keeper)
 	"wolf_spider_dead": {"type": Ant.PROTEIN, "amt": 18.0, "cap": 18.0, "regen": 0.0, "r": 10.0, "handling": [90, 200, 2],
 		"found": T.found_spider_dead, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [4.6, 2.2], "buried": true},

@@ -21,6 +21,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				_v4_to_v5(d)
 			5:
 				_v5_to_v6(d)
+			6:
+				pass        # v0.8.20: ants may be hauling prey (state DRAG); nothing in an older save changes
 		v += 1
 		d["version"] = v
 	return d

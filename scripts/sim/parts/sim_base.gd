@@ -469,6 +469,6 @@ func _log(text: String, kind: String = "") -> void:
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 6              # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 7              # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
 	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt"]

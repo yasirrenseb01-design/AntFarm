@@ -36,11 +36,27 @@ func _update_ants(delta: float) -> void:
 			a.vang = a.ang
 			a.anim = randf() * 50.0
 			a.vgait = randf() * TAU
+		if a.vflung:
+			a.vflung = false
+			a.vright = THROWN_S
+			a.vfly_from = a.vpos
+		var flung := 0.0                                  # 0..1 through being thrown off and righting itself
+		if a.vright > 0.0:
+			a.vright = maxf(0.0, a.vright - adt)
+			flung = 1.0 - a.vright / THROWN_S
 		var step: Vector2 = a.pos - a.vpos
+		if flung > 0.0 and flung < 0.25:
+			step = Vector2.ZERO
+			a.vpos = a.vfly_from.lerp(a.pos, smoothstep(0.0, 1.0, flung / 0.25))    # through the air
+		elif flung >= 0.25 and flung < 0.92:
+			step = Vector2.ZERO                              # on its back where it fell
 		a.vpos += step * kp
 		var moving := step.length_squared() > 0.01
 		var was_ang: float = a.vang
-		if moving:
+		var hauling: bool = a.state == Ant.DRAG
+		if hauling:
+			a.vang = lerp_angle(a.vang, a.ang + PI, ka)      # facing the item it holds, whichever way it goes
+		elif moving:
 			a.vang = lerp_angle(a.vang, step.angle(), ka)
 		elif a.busy > 0:
 			a.vang = lerp_angle(a.vang, a.ang, ka)
@@ -59,13 +75,30 @@ func _update_ants(delta: float) -> void:
 		var pace: float = (0.35 + 0.65 * sim.activity) * (1.0 - 0.35 * a.hurt) * (1.3 if a.state == Ant.DEFEND else 1.0)
 		var stride := AntModel.stride_scale(pace, a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE)
 		var walked: float = (step * kp).length() * U + turned * 0.9 * s      # feet round the body as it turns
+		if hauling:
+			# pulling: the legs step backward when the item goes the way the ant's back is turned
+			walked = (step * kp).dot(Vector2(cos(a.vang), sin(a.vang))) * U
 		a.vgait = fmod(a.vgait + walked / (AntModel.stride_len(stride) * s) * TAU, TAU * 64.0)
 		var tr := Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), Vector3(p.x, ground_h(p.x, p.y), p.y))
 		var act: int = a.act if a.busy > 0 else 0
-		if act == 0 and _on_trail(a):
+		if hauling:
+			act = 19                     # gripping the item, braced, pulling
+		elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
+			act = 8                      # carrying: head up, the load held in the mandibles
+		elif act == 0 and _on_trail(a):
 			act = 16                     # following a trail: antennae low, tapping the ground left and right
 		if a.state == Ant.DEFEND:
 			act = 13 if a.busy > 0 else 14          # clinging and spraying / running in alarmed
+			if a.busy > 0 and _creature_vis.has(a.foe):
+				tr.origin += _writhe_offset(_creature_vis[a.foe], tr.origin)    # carried with the writhing body
+		if flung > 0.0:
+			# thrown clear: over onto its back in the air, legs flailing where it lands, then a roll back upright
+			var roll := PI * smoothstep(0.0, 0.25, flung) + PI * smoothstep(0.7, 0.92, flung)
+			var hop := sin(clampf(flung / 0.25, 0.0, 1.0) * PI) * 2.2 * s
+			var belly := 0.42 * s * (1.0 - cos(roll))          # on its back the body rests on its upper side
+			tr = Transform3D(tr.basis * Basis(Vector3.RIGHT, roll), tr.origin + up * (hop + belly))
+			if flung > 0.08 and flung < 0.8:
+				act = 18
 		var pose := _feeding_pose(a, act, s) if act in [2, 9, 10] else {}
 		a.vfeed = move_toward(a.vfeed, 1.0 if not pose.is_empty() else 0.0, delta * 2.5)
 		if not pose.is_empty():
@@ -252,7 +285,13 @@ func _update_creatures(delta: float) -> void:
 			mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * sc), Vector3(p.x, ground_h(p.x, p.y), p.y)))
 			var striking := 1.0 if int(s.get("strike", 0)) > 0 else 0.0
 			var struggling := maxf(v.mv, 1.0 if int(s.get("held", 0)) > 0 else 0.0)    # pinned: legs thrash
-			mm.set_instance_custom_data(i, Color(fmod(s.phase * cv.gait, TAU * 64.0), striking, _t, struggling))
+			var gait := fmod(s.phase * cv.gait, TAU * 64.0)
+			# w: how much it is walking, + 2 while ants are holding it down (it writhes)
+			mm.set_instance_custom_data(i, Color(gait, striking, _t, v.mv + (2.0 if int(s.get("held", 0)) > 0 else 0.0)))
+			v.xf = mm.get_instance_transform(i)
+			v.kind = kind
+			v.gait = gait
+			v.held = 1.0 if int(s.get("held", 0)) > 0 else 0.0
 	for id in _creature_vis.keys():
 		if not seen.has(id):
 			_creature_vis.erase(id)
@@ -293,6 +332,20 @@ func _update_ring() -> void:
 		var r := (10.0 if t == "rock" else 24.0) * U
 		_ring.position = hover + Vector3(0, 0.3, 0)
 		_ring.scale = Vector3(r, 1.0, r)
+
+
+## How far the writhing body of a creature has carried the point p (on or by it) sideways from where the
+## simulation has it - kept in step with the body wave in shaders/creatures/centipede.gdshader.
+func _writhe_offset(v: Dictionary, p: Vector3) -> Vector3:
+	if v.get("kind", "") != "centipede" or not v.has("xf"):
+		return Vector3.ZERO
+	var xf: Transform3D = v.xf
+	if xf.basis.x.length_squared() < 0.000001:
+		return Vector3.ZERO
+	var x: float = (xf.affine_inverse() * p).x
+	var dz := sin(x * 0.5 - float(v.gait) * 1.4) * 0.45 * float(v.mv) + sin(x * 0.3 + _t * 0.6) * 0.12
+	dz += float(v.held) * (sin(x * 0.55 - _t * 6.0) * 0.6 + sin(_t * 1.7) * 0.012 * (x - 2.0) * (x - 2.0))
+	return xf.basis.z * dz
 
 
 ## Whether a forager is walking along a scent trail (laden ones lay and follow the food trail home).
