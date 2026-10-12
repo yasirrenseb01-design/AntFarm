@@ -146,17 +146,20 @@ static func larva() -> ArrayMesh:
 	var spine := []
 	var radii := []
 	var cols := []
+	# lying on its side on the floor, curved in a shallow C along the ground (the whole length resting on it,
+	# as larvae lie in a brood pile), the small head bent in at the front end
 	for i in n:
 		var t := float(i) / (n - 1)
 		var th := lerpf(-0.75, 0.95, t)              # a shallow arc, not a tight C
-		spine.append(Vector3(sin(th) * 1.15, 0.42 + (1.0 - cos(th)) * 0.55 - 0.08, 0))
 		var r := 0.36 * sin(lerpf(0.35, 2.75, t))    # thick in the middle, tapering to both ends
 		r *= 1.0 + 0.07 * cos(t * PI * 12.0)        # segment ridges
 		r = maxf(r, 0.1)
+		spine.append(Vector3(sin(th) * 1.15, r * 0.95, (1.0 - cos(th)) * 0.55 - 0.18))
 		radii.append(Vector2(r, r * 1.05))
 		cols.append(skin.lerp(gut, 0.5 * smoothstep(0.2, 0.4, t) * (1.0 - smoothstep(0.6, 0.8, t))))
 	k.tube(spine, radii, cols, 10)
-	k.blob(Vector3(1.0, 0.62, 0), Vector3(0.12, 0.12, 0.13), Color(0.9, 0.85, 0.7), Basis.IDENTITY, true)   # head
+	var tip: Vector3 = spine[-1]
+	k.blob(tip + Vector3(0.08, 0.02, 0.06), Vector3(0.12, 0.12, 0.13), Color(0.9, 0.85, 0.7), Basis.IDENTITY, true)   # head
 	return k.commit()
 
 

@@ -81,7 +81,7 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		var s: float = scale_fn.call(items[i])
 		var pl: Dictionary = _placed.get(v, {})
 		if not pl.is_empty() and pl.src == src_key and _still_lies(pl, s):
-			var xf := _register_brood(pl.base, pl.b, s, kind)
+			var xf := _register_brood(pl.base, pl.b, s, kind, not pl.top)
 			if _visible(xf.origin):
 				xs.append(xf)
 				cs.append(col_fn.call(items[i]) if col_fn.is_valid() else Color.WHITE)
@@ -98,7 +98,7 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 				"shape": Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62), "kind": kind}      # a compact heap: one layer about this wide, then on top
 		var s: float = scale_fn.call(items[i])
 		var xf := _place_brood(cands[src], s, i)
-		_placed[_vtag(items[i])] = {"base": _last_base, "b": xf.basis.orthonormalized(), "top": _last_top,
+		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top,
 			"src": _pile_key(kind, i < moved or old_spots.is_empty())}
 		if _visible(xf.origin):
 			xs.append(xf)
@@ -187,8 +187,11 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 		# for each item, so they spread over the heap instead of stacking into a tower)
 		var low := INF
 		var shape: Vector2 = c.get("shape", Vector2(0.86, 0.38))
-		for k in mini(inner.size(), 60):
-			var p: Vector3 = inner[(i + k * 7) % inner.size()]
+		# (the heap first; if nowhere on it is clear of the roof, anywhere on the chamber floor out of her way)
+		var wide := places.filter(func(p): return _queen_mm.instance_count == 0 or _queen_gap(p) >= r + 0.2)
+		var nin := mini(inner.size(), 60)
+		for k in nin + mini(wide.size(), 60):
+			var p: Vector3 = inner[(i + k * 7) % inner.size()] if k < nin else wide[(i + k * 5) % wide.size()]
 			p.y = _floor_cached(p)
 			var l := 0.0
 			for o in _brood_near(p):
@@ -209,11 +212,13 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	# a larva lies on the floor (its mesh sits on its origin); a cocoon is centred, so it is raised half its height
 	_last_base = best + Vector3(0, maxf(0.0, lift), 0)
 	_last_top = on_top                       # (on the heap: it may touch what it leans on)
-	return _register_brood(_last_base, Basis(Vector3.UP, _hash(i, 3) * TAU + fit), s, c.get("kind", "larvae"))
+	_last_yaw = Basis(Vector3.UP, _hash(i, 3) * TAU + fit)
+	return _register_brood(_last_base, _last_yaw, s, c.get("kind", "larvae"), not on_top)
 
 
 var _last_base := Vector3.ZERO
 var _last_top := false
+var _last_yaw := Basis.IDENTITY
 
 
 ## Which pile an item belongs to: larvae have a day pile and a night pile (nurses carry them between).
@@ -227,8 +232,8 @@ func _pile_key(kind: String, new_pile: bool) -> String:
 ## the queen, and not grown right into a neighbour.
 func _still_lies(pl: Dictionary, s: float) -> bool:
 	var base: Vector3 = pl.base
-	if _queen_mm.instance_count > 0 and _queen_body_gap(base) < 0.2:
-		return false                    # (her head among the brood, licking it, moves nothing)
+	if _queen_mm.instance_count > 0 and not _queen_busy() and _queen_body_gap(base) < 0.2:
+		return false                    # (nor does she, turning or stepping to it: only where she settles back)
 	if _density_at(base + Vector3(0, 0.3, 0)) >= 0.5:
 		return false
 	if not pl.top:
@@ -242,15 +247,30 @@ func _still_lies(pl: Dictionary, s: float) -> bool:
 
 
 ## Puts one item of brood at `base` (the floor, or the top of what it rests on) into `_brood_occ`.
-func _register_brood(base: Vector3, b: Basis, s: float, kind: String) -> Transform3D:
+func _register_brood(base: Vector3, b: Basis, s: float, kind: String, on_floor := true) -> Transform3D:
 	var shape: Vector2 = Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62)
+	if on_floor:
+		b = _floor_tilt(base, b, s)          # lying along the slope of a curving chamber floor, not level across it
 	# a larva lies on the floor (its mesh sits on its origin); a cocoon is centred, so it is raised half its height
-	var pos := base + Vector3(0, 0.6 * s if shape.y > 0.5 else 0.02 * s, 0)
+	var pos := base + b.y * (0.6 * s if shape.y > 0.5 else 0.0)
 	var key := Vector3i(floori(pos.x / 1.5), floori(pos.y / 1.5), floori(pos.z / 1.5))
 	if not _brood_occ.has(key):
 		_brood_occ[key] = []
 	_brood_occ[key].append([pos, 0.95 * s, b.x * (shape.x - shape.y) * s, shape.y * s])
 	return Transform3D(b.scaled(Vector3.ONE * s), pos)
+
+
+## The heading `b` tipped to lie flat on the floor around `base` (its slope from four floor heights a body
+## length apart; at most ~35 degrees, beyond that it is a wall).
+func _floor_tilt(base: Vector3, b: Basis, s: float) -> Basis:
+	var d := 0.6 * s
+	var hx := _floor_cached(base + Vector3(d, 0, 0)) - _floor_cached(base - Vector3(d, 0, 0))
+	var hz := _floor_cached(base + Vector3(0, 0, d)) - _floor_cached(base - Vector3(0, 0, d))
+	var n := Vector3(-hx, 2.0 * d, -hz).normalized()
+	if n.y < 0.82:
+		n = Vector3.UP.slerp(n, acos(0.82) / acos(clampf(n.y, -1.0, 1.0)))
+	var x: Vector3 = (b.x - n * b.x.dot(n)).normalized()
+	return Basis(x, n, x.cross(n))
 
 
 ## A turn (radians, added to the item's own heading) that keeps the whole item in the open, both ends and
