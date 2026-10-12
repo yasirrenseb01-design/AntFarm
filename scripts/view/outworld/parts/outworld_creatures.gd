@@ -85,8 +85,9 @@ func _update_ants(delta: float) -> void:
 			act = 10                     # at a carcass: lapping up its body fluids between bites (adults take only liquids)
 		var climbing: bool = a.busy > 0 and a.act == sim.ACT_WALL
 		if climbing:
-			act = 0                      # walking - up the glass and back down (placed below)
-			tr = _on_glass(a, tr, s)
+			var g: Array = _on_glass(a, tr, s)  # up the glass, slipping off the Fluon band, the fall, righting
+			tr = g[0]
+			act = g[1]
 		elif hauling:
 			act = 19                     # gripping the item, braced, pulling
 		elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
@@ -340,9 +341,11 @@ func _update_ring() -> void:
 		_ring.scale = Vector3(r, 1.0, r)
 
 
-## A forager climbing the glass wall of the box: up to the slippery band under the rim, a turn, and back down
-## (the simulation holds it still at the foot of the wall meanwhile; ant.busy counts the climb down).
-func _on_glass(a: Ant, floor_tr: Transform3D, s: float) -> Transform3D:
+## A forager climbing the glass wall of the box: up to the slippery Fluon band under the rim, where its foot pads
+## lose their hold - it slides and drops back to the floor, lands on its back, legs flailing, and rights itself
+## (the simulation holds it at the foot of the wall meanwhile; ant.busy counts the climb down). Returns
+## [transform, activity].
+func _on_glass(a: Ant, floor_tr: Transform3D, s: float) -> Array:
 	var u := 1.0 - float(a.busy) / float(sim.WALL_TICKS)
 	var w: float = sim.WORLD.x * U
 	var d: float = sim.WORLD.y * U
@@ -359,21 +362,34 @@ func _on_glass(a: Ant, floor_tr: Transform3D, s: float) -> Transform3D:
 		3: at.z = d - 0.05
 	var base_y := ground_top(at.x, at.z)
 	var band: float = WALL_H - 2.0 - FLUON_BAND - base_y        # how high it gets before the slippery band
-	# up (0..0.45), turning round below the band (0.45..0.55), down again (0.55..1)
-	var climb := smoothstep(0.0, 0.45, u) * (1.0 - smoothstep(0.55, 1.0, u))
-	var h := climb * band
-	var turn := smoothstep(0.45, 0.55, u)                       # head up, then head down
-	var fwd := Vector3.UP.slerp(Vector3.DOWN, turn) if turn < 0.999 else Vector3.DOWN
-	if fwd.length_squared() < 0.01:
-		fwd = Vector3.UP
-	fwd = (fwd - n * fwd.dot(n)).normalized()
-	var on_wall := Transform3D(Basis(fwd, n, fwd.cross(n)).scaled(Vector3.ONE * s), at + Vector3(0, base_y + h, 0))
-	# stepping from the floor onto the glass and back
-	var k2 := smoothstep(0.0, 0.05, u) * (1.0 - smoothstep(0.95, 1.0, u))
-	var b := floor_tr.basis.orthonormalized().slerp(on_wall.basis.orthonormalized(), k2).scaled(Vector3.ONE * s)
-	a.vgait = fmod(a.vgait + absf(band) * 0.02 * (1.0 if turn < 0.01 or turn > 0.99 else 0.4), TAU * 64.0)
-	a.vmv = 1.0
-	return Transform3D(b, floor_tr.origin.lerp(on_wall.origin, k2))
+	var act := 0
+	if u < 0.55:
+		# up the glass, head first; the last stretch slipping on the band before it lets go
+		var h := smoothstep(0.0, 0.5, u) * band
+		var fwd := Vector3.UP
+		var slip := smoothstep(0.5, 0.55, u)
+		var on_wall := Transform3D(Basis(fwd, n, fwd.cross(n)).scaled(Vector3.ONE * s), at + Vector3(0, base_y + h, 0) + n * 0.3 * slip)
+		var k2 := smoothstep(0.0, 0.05, u)                     # stepping from the floor onto the glass
+		var b := floor_tr.basis.orthonormalized().slerp(on_wall.basis.orthonormalized(), k2).scaled(Vector3.ONE * s)
+		a.vgait = fmod(a.vgait + band * 0.02 * (1.0 - slip), TAU * 64.0)
+		a.vmv = 1.0 - slip
+		return [Transform3D(b, floor_tr.origin.lerp(on_wall.origin, k2)), act]
+	# lost its hold: falls (tumbling away from the glass), lands on its back, flails, rolls upright
+	var f := clampf((u - 0.55) / 0.07, 0.0, 1.0)              # the fall, ~a fifth of a second of game time
+	var land := at + n * 1.2 + Vector3(0, ground_top(at.x + n.x * 1.2, at.z + n.z * 1.2), 0)
+	var top := at + n * 0.3 + Vector3(0, base_y + band, 0)
+	var pos := top.lerp(land, f * f)
+	var roll := PI * smoothstep(0.0, 1.0, f) + PI * smoothstep(0.82, 0.95, u)
+	var flat := Basis(n.cross(Vector3.UP).normalized() if absf(n.y) < 0.9 else Vector3.RIGHT, Vector3.UP, Vector3.ZERO)
+	flat.z = flat.x.cross(flat.y)
+	var on_floor := flat * Basis(Vector3.RIGHT, roll)
+	var hang := Basis(Vector3.UP, n, Vector3.UP.cross(n))
+	var b := hang.slerp(on_floor.orthonormalized(), smoothstep(0.0, 0.6, f))
+	if u > 0.6 and u < 0.88:
+		act = 18                                               # on its back, legs clawing at the air
+	a.vmv = 0.0
+	var belly := 0.42 * s * (1.0 - cos(roll))
+	return [Transform3D(b.scaled(Vector3.ONE * s), pos + Vector3(0, belly, 0)), act]
 
 
 ## How far the writhing body of a creature has carried the point p (on or by it) sideways from where the
