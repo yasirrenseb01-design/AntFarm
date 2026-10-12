@@ -178,24 +178,6 @@ func _queen_gap(p: Vector3) -> float:
 	return p.distance_to(qa.lerp(qb, t)) - QUEEN_R
 
 
-## Like _queen_gap but for her body only (thorax to gaster tip): her head may reach in among the brood to
-## lick or feed it without pushing anything aside.
-func _queen_body_gap(p: Vector3) -> float:
-	var qa: Vector3 = _queen_xf * Vector3(0.5, 0.5, 0.0)
-	var qb: Vector3 = _queen_xf * QUEEN_TAIL
-	var t := clampf((p - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
-	return p.distance_to(qa.lerp(qb, t)) - QUEEN_R
-
-
-## Whether the queen is in the middle of a moment (laying, tending the brood, opening a cocoon): she is off
-## her place, and the brood she brushes past stays where it is.
-func _queen_busy() -> bool:
-	for a in _anims:
-		if a.k == "egg" or a.k == "care" or (a.k == "eclose" and a.get("queen", false)):
-			return true
-	return false
-
-
 func _nearest_spot(p: Vector3, spots: Array) -> Vector3:
 	var best := Vector3.INF
 	var bd := 9.0

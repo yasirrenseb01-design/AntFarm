@@ -31,6 +31,9 @@ func _egg_slots(eggs: Array) -> Array:
 		if not alive.has(v):
 			_slot_egg.erase(_egg_slot[v])
 			_egg_slot.erase(v)
+			if _egg_at.has(v):
+				_freed.eggs.append((_egg_at[v] as Transform3D).origin)     # its larva hatches right there
+				_egg_at.erase(v)
 	var out := []
 	var free := 0
 	for e in eggs:
@@ -75,21 +78,33 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 	# items already lying somewhere stay exactly there (registered first), unless nurses carried their pile
 	# elsewhere or the spot is no longer good (see _still_lies); the rest are laid down
 	var todo := []
+	var tops := []
 	for i in n:
 		var src_key := _pile_key(kind, i < moved or old_spots.is_empty())
 		var v := _vtag(items[i])
 		var s: float = scale_fn.call(items[i])
 		var pl: Dictionary = _placed.get(v, {})
 		if not pl.is_empty() and pl.src == src_key and _still_lies(pl, s):
-			if pl.get("tgen", -1) != _soil_gen:
-				pl.tb = _floor_tilt(pl.base, pl.b, s) if not pl.top else pl.b     # (worked out again only when the soil changes)
-				pl.tgen = _soil_gen
-			var xf := _register_brood(pl.base, pl.tb, s, kind, false)
-			if _visible(xf.origin):
-				xs.append(xf)
-				cs.append(col_fn.call(items[i]) if col_fn.is_valid() else Color.WHITE)
+			if pl.top:
+				tops.append(i)                   # (after everything it could be resting on)
+				continue
+			_keep_at(pl, s, kind, items[i], col_fn, xs, cs)
+		elif pl.is_empty() and _born_at(kind, spots, v):
+			_keep_at(_placed[v], s, kind, items[i], col_fn, xs, cs)    # where the egg / larva it came from lay
 		else:
 			todo.append(i)
+	for i in tops:
+		var pl: Dictionary = _placed[_vtag(items[i])]
+		var s: float = scale_fn.call(items[i])
+		var under := false
+		for o in _brood_near(pl.base):
+			if Vector2(o[0].x - pl.base.x, o[0].z - pl.base.z).length() < 0.95 * s + o[1] and float(o[0].y) < pl.base.y:
+				under = true
+				break
+		if under:
+			_keep_at(pl, s, kind, items[i], col_fn, xs, cs)
+		else:
+			todo.append(i)                       # what it rested on has hatched: it settles onto the floor
 	for i in todo:
 		# items not yet carried over stay in the old pile
 		var src: Array = spots if (i < moved or old_spots.is_empty()) else old_spots
@@ -214,7 +229,7 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 		best.y = _floor_cached(best)               # resting on the real floor under it
 	# a larva lies on the floor (its mesh sits on its origin); a cocoon is centred, so it is raised half its height
 	_last_base = best + Vector3(0, maxf(0.0, lift), 0)
-	_last_top = on_top                       # (on the heap: it may touch what it leans on)
+	_last_top = on_top and lift > 0.05       # (resting on the heap: it may touch what it leans on)
 	_last_forced = on_top and low >= 100.0
 	_last_yaw = Basis(Vector3.UP, _hash(i, 3) * TAU + fit)
 	return _register_brood(_last_base, _last_yaw, s, c.get("kind", "larvae"), not on_top)
@@ -226,35 +241,62 @@ var _last_forced := false          # laid where it still touches the soil (nowhe
 var _last_yaw := Basis.IDENTITY
 
 
+## Draws a kept item where it lies (its tilt to the floor worked out again only when the soil changes).
+func _keep_at(pl: Dictionary, s: float, kind: String, item, col_fn: Callable, xs: Array, cs: Array) -> void:
+	if pl.get("tgen", -1) != _soil_gen:
+		pl.tb = _floor_tilt(pl.base, pl.b, s) if not pl.top else pl.b
+		pl.tgen = _soil_gen
+	var xf := _register_brood(pl.base, pl.tb, s, kind, false)
+	if _visible(xf.origin):
+		xs.append(xf)
+		cs.append(col_fn.call(item) if col_fn.is_valid() else Color.WHITE)
+
+
+## A new larva starts where its egg lay; a new cocoon where its larva spun it, when that is in the cocoon
+## pile's own chamber (a founding cell; with workers a nurse carries it up to the pupa chamber instead).
+## Records it in _placed and returns true, or false (laid down in the pile as usual).
+func _born_at(kind: String, spots: Array, v: int) -> bool:
+	var from: String = "eggs" if kind == "larvae" else ("larvae" if kind == "pupae" else "")
+	if from == "" or _freed[from].is_empty():
+		return false
+	var p: Vector3 = _freed[from][0]
+	if kind == "pupae" and (_nearest_spot(p, spots) == Vector3.INF or _nearest_spot(p, spots).distance_to(p) > 2.0):
+		return false
+	_freed[from].pop_front()
+	p.y = _floor_cached(p)
+	_placed[v] = {"base": p, "b": Basis(Vector3.UP, randf() * TAU), "top": false, "forced": false,
+		"src": _pile_key(kind, true)}
+	return true
+
+
+## The larvae that are gone since the last layout (they pupated, or were eaten): where they lay goes to
+## _freed.larvae for the cocoons, oldest first.
+func _collect_freed_larvae() -> void:
+	var alive := {}
+	for l in sim.larvae:
+		alive[_vtag(l)] = true
+	for v in _placed.keys():
+		var pl: Dictionary = _placed[v]
+		if String(pl.src).begins_with("larvae") and not alive.has(v):
+			_freed.larvae.append(pl.base)
+			_placed.erase(v)
+	while _freed.larvae.size() > 12:
+		_freed.larvae.pop_front()
+
+
 ## Which pile an item belongs to: larvae have a day pile and a night pile (nurses carry them between).
 func _pile_key(kind: String, new_pile: bool) -> String:
 	if kind == "larvae":
-		return kind + (_larva_group if new_pile else _larva_prev)
+		# by the chambers the pile is in (a founding cell has one chamber for both: nothing is carried)
+		return kind + str(_upper if (_larva_group if new_pile else _larva_prev) == "up" else _lower)
 	return kind
 
 
-## Whether an item can stay where it was laid: still on the floor (not dug away or buried), not under
-## the queen, and not grown right into a neighbour.
+## Whether an item stays where it was laid: always - brood moves only when an ant carries it (user,
+## 2026-10-12). The one exception is a cocoon resting on another that has since hatched: it settles down
+## onto the floor (see _pile).
 func _still_lies(pl: Dictionary, s: float) -> bool:
-	var base: Vector3 = pl.base
-	if _queen_mm.instance_count > 0 and not _queen_busy() and _queen_body_gap(base) < 0.2:
-		return false                    # (nor does she, turning or stepping to it: only where she settles back)
-	if pl.get("forced", false) and pl.get("gen0", _soil_gen) == _soil_gen:
-		pl.gen0 = _soil_gen
-		return true                     # (it had nowhere clear to go: searching again every layout only costs time)
-	# the soil checks hold until the soil changes or the item grows (checked again then)
-	if pl.get("gen", -1) != _soil_gen or s > float(pl.get("chk_s", 0.0)) * 1.04:
-		pl.gen = _soil_gen
-		pl.chk_s = s
-		pl.clear = _density_at(base + Vector3(0, 0.3, 0)) < 0.5
-		if pl.clear and not pl.top:
-			var shape := Vector2(0.86, 0.38) if String(pl.src).begins_with("larvae") else Vector2(1.35, 0.62)
-			# still on the floor, and not grown into the wall (else the nurses lay it down elsewhere)
-			pl.clear = absf(_floor_cached(base) - base.y) <= 0.3 and _lies_clear(base, pl.b, s, shape)
-	if not pl.clear:
-		return false
-	return pl.top or _brood_free(base, 0.35 * s)
-
+	return true
 
 ## Puts one item of brood at `base` (the floor, or the top of what it rests on) into `_brood_occ`.
 func _register_brood(base: Vector3, b: Basis, s: float, kind: String, on_floor := true) -> Transform3D:
@@ -375,8 +417,12 @@ func _update_brood() -> void:
 	var exs := []
 	if not _spots.eggs.is_empty():
 		var shown: Array = sim.eggs.slice(0, mini(400, maxi(0, sim.eggs.size() - _pending("egg"))))
-		for slot in _egg_slots(shown):
-			var xf := _egg_xf(slot)
+		var slots := _egg_slots(shown)
+		for j in shown.size():
+			var v: int = shown[j]["_v"]
+			if not _egg_at.has(v):
+				_egg_at[v] = _egg_xf(slots[j])          # laid here; it stays here
+			var xf: Transform3D = _egg_at[v]
 			var ek := Vector3i(floori(xf.origin.x / 1.5), floori(xf.origin.y / 1.5), floori(xf.origin.z / 1.5))
 			if not _brood_occ.has(ek):
 				_brood_occ[ek] = []
@@ -385,7 +431,9 @@ func _update_brood() -> void:
 				exs.append(xf)
 	_fill(_egg_mm, exs)
 	# young larvae are tiny; they grow about tenfold in mass before pupating
+	_collect_freed_larvae()
 	_pile(_larva_mm, _spots.larvae, sim.larvae, 300, func(l): return 0.28 + l.p * 0.8, _spots.larvae_old, _moved, Callable(), "larvae")
+	_freed.eggs.clear()                      # (a hatching larva appears in the same layout as its egg goes)
 	var bits := []
 	if not sim.larvae.is_empty() and not _spots.larvae.is_empty():
 		for k in mini(16, int(sim.protein * 1.5)):

@@ -112,7 +112,10 @@ func _start_care() -> void:
 func _start_pupate(s: float) -> void:
 	if _spots.larvae.is_empty():
 		return
+	_collect_freed_larvae()
 	var p: Vector3 = _pile_xf(_spots.larvae, sim.larvae.size() + _pending("pupate"), 1.0).origin
+	if not _freed.larvae.is_empty():
+		p = _freed.larvae[-1]                # where that larva lay: it spins its cocoon there
 	var a := {"k": "pupate", "t": 0.0, "d": 7.0 * _anim_k(), "p": p, "s": s, "helper": null, "carried": false}
 	var hs := _helpers(p, 1)
 	if not hs.is_empty():
@@ -178,13 +181,19 @@ func _step_anims(adt: float) -> void:
 					a.step0 = _queen_step
 				if u < 0.82:
 					_queen_turn_t = a.turn1
-					if u > 0.18 and not a.has("step"):
-						# up to it: her mandibles just short of the item
-						var reach: Vector3 = ((a.at as Vector3) - _queen_xf * MOUTH_TAKE) * Vector3(1, 0, 1)
-						reach -= reach.normalized() * 0.35 if reach.length() > 0.35 else reach
-						a.step = _queen_step + reach.limit_length(3.0)
-					_queen_step_t = a.step if a.has("step") else a.step0
-					_queen_act = ACT_TEND if u > 0.32 else ACT_WALK
+					if not a.has("step"):
+						# up to it, once she has turned to it: her mouthparts on the item (worked out from the
+						# heading she turns to, not the one she is still turning from)
+						var face := Transform3D(Basis(Vector3.UP, a.turn1).scaled(Vector3.ONE * QUEEN_SCALE), _queen_xf.origin)
+						var reach: Vector3 = ((a.at as Vector3) - face * MOUTH_TAKE) * Vector3(1, 0, 1)
+						reach -= reach.normalized() * 0.15 if reach.length() > 0.15 else reach
+						a.step = _queen_step + reach.limit_length(4.0)
+					var turned := absf(wrapf(a.turn1 - _queen_turn, -PI, PI)) < 0.15
+					if turned:
+						a.stepping = true
+					_queen_step_t = a.step if a.get("stepping", false) else a.step0
+					var there: bool = a.get("stepping", false) and (_queen_step - (a.step as Vector3)).length() < 0.1
+					_queen_act = ACT_TEND if there else ACT_WALK
 				else:
 					_queen_turn_t = a.turn0
 					_queen_step_t = a.step0

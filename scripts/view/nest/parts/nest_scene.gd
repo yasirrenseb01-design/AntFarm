@@ -93,6 +93,8 @@ var _queen_xf := Transform3D()
 var _mate_frame := 0
 var _brood_cells := {}           # cells with brood on the floor: routes go round them (nest_brood _mark_brood_cells)
 var _ant_shader_mat: ShaderMaterial   # the workers' material (shadow_pose follows the level of detail)
+var _egg_at := {}                # egg tag -> where it was laid (it stays there until it hatches)
+var _freed := {"eggs": [], "larvae": []}   # where brood just hatched / pupated lay: the next stage starts there
 var _soil_gen := 0              # bumped whenever the soil changes (cached brood checks are redone)
 var _floor_cache := {}          # floor heights under brood spots (see _floor_cached)
 var sel_kind := ""                # the ant the keeper clicked: "worker" | "digger" | "queen" ("" = none)
