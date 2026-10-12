@@ -82,6 +82,10 @@ func _colony(dt: float) -> void:
 		forager_age = sp["callow_days"]     # the first nanitics start foraging within days of emerging
 
 	var age_k := clampf(0.35 + 0.65 * (climate.nest - 4.0) / 20.0, 0.35, 1.0)     # cold slows ageing
+	var dug := {}                         # who was digging: they keep at it while digging is wanted
+	for a in workers:
+		if a.task == Ant.TASK_DIG:
+			dug[a.id] = true
 	nurses = 0
 	callow = 0
 	out_count = 0
@@ -171,7 +175,10 @@ func _colony(dt: float) -> void:
 		diggers_wanted = clampi(int((idle.size() * 0.35 + 1.0) * keen), 1, 40) if workers.size() - out_count > 0 else 0
 	# who digs: the reserve ants still inside most ready to dig (the view shows them at the dig face)
 	var still_in := idle.filter(func(x): return x.state == Ant.IN_NEST)
-	still_in.sort_custom(func(x, y): return x.threshold(Ant.TH_DIG) < y.threshold(Ant.TH_DIG) or (x.threshold(Ant.TH_DIG) == y.threshold(Ant.TH_DIG) and x.id < y.id))
+	still_in.sort_custom(func(x, y):
+		if dug.has(x.id) != dug.has(y.id):
+			return dug.has(x.id)              # the diggers already at it first (no flicking between jobs)
+		return x.threshold(Ant.TH_DIG) < y.threshold(Ant.TH_DIG) or (x.threshold(Ant.TH_DIG) == y.threshold(Ant.TH_DIG) and x.id < y.id))
 	for i in mini(diggers_wanted, still_in.size()):
 		still_in[i].task = Ant.TASK_DIG
 

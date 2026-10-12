@@ -46,6 +46,7 @@ uniform bool has_props = false;
 uniform vec3 limb_gain = vec3(1.0);   // appendages are lighter than the body: amber-orange in L. niger queens
 varying float stretch;
 varying float limb;
+varying float gband;              // gaster: 1 on the stretched membranes between the plates (a full crop)
 const float K = 0.34;   // model design units -> mesh units
 
 mat3 rot_x(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(1, 0, 0), vec3(0, c, s), vec3(0, -s, c)); }
@@ -429,6 +430,7 @@ void vertex() {
 	float prev = floor(whole / 128.0);
 	vec3 n1 = NORMAL;
 	float s1;
+	gband = smoothstep(0.78, 0.98, 0.5 + 0.5 * sin(VERTEX.x / K * 6.5 + 1.2));   // rest-pose bands along the gaster
 	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS, s1);
 	stretch = s1;
 	if (left > 0.002 && prev != code && !IN_SHADOW_PASS) {      // (a shadow skips the easing)

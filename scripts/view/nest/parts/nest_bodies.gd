@@ -148,8 +148,8 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 					push += d / l * (reach - l) * 0.5     # (as hard as ant on ant: harder only squeezed them into each other)
 	# The discs above already include last frame's shift, so `push` is what still overlaps: add it on, and
 	# let the shift relax slowly (half-life ~1 s) so an ant drifts back to its path once there is room.
-	var sep: Vector3 = m.get("sep", Vector3.ZERO)
-	sep = (sep + push * minf(1.0, 12.0 * delta)) * pow(0.5, delta)
+	var was: Vector3 = m.get("sep", Vector3.ZERO)
+	var sep: Vector3 = (was + push * minf(1.0, 12.0 * delta)) * pow(0.5, delta)
 	sep = sep.limit_length(2.5)
 	# never into the soil: in a cramped chamber ants press together (as real ones do) rather than
 	# through the walls
@@ -157,6 +157,9 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 		sep *= 0.5
 		if not _open_at(p + sep, up):
 			sep = Vector3.ZERO
+	# the shift itself changes no faster than a slow step (~4.5 mm/s): two ants pressed together, or one
+	# squeezed against the wall, used to flick back and forth a millimetre or more every frame
+	sep = was.move_toward(sep, 3.0 * delta)
 	m.sep = sep
 	return sep
 

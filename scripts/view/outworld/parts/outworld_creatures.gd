@@ -108,7 +108,7 @@ func _update_ants(delta: float) -> void:
 			if flung > 0.08 and flung < 0.8:
 				act = 18
 		var pose := _feeding_pose(a, act, s) if act in [2, 9, 10] else {}
-		a.vfeed = move_toward(a.vfeed, 1.0 if not pose.is_empty() else 0.0, delta * 2.5)
+		a.vfeed = move_toward(a.vfeed, 1.0 if not pose.is_empty() else 0.0, delta * 0.9)    # (~1 s: walking up the stem is seen)
 		if not pose.is_empty():
 			a.vpose = pose
 		if a.vfeed > 0.0 and a.vpose is Dictionary and not (a.vpose as Dictionary).is_empty():
@@ -217,7 +217,7 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 			var eb: float = k.carcass[1]
 			var th := atan2(dl.z / eb, dl.x / ea)
 			var n := rot * Vector3(cos(th) / ea, 0, sin(th) / eb).normalized()
-			var p := c + rot * Vector3(ea * cos(th), 0, eb * sin(th)) + n * 1.1 * s
+			var p := c + rot * Vector3(ea * cos(th), 0, eb * sin(th)) * 0.88 + n * 0.55 * s   # head against the body
 			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -n, "up": Vector3.UP}
 	return {}
 

@@ -256,6 +256,8 @@ func _take_shot() -> void:
 		for k in int(_opts["seq"]):
 			for i in int(_opts.get("seq-every", "3")):
 				await get_tree().process_frame
+				if _opts.has("pops"):
+					_count_pops()
 				if _watch_food != null and mode == "outworld" and sim.foods.has(_watch_food):
 					var fp2: Vector2 = _watch_food.pos
 					outworld.target_t = Vector3(fp2.x, 0, fp2.y) * outworld.U
@@ -279,6 +281,37 @@ func _take_shot() -> void:
 	_save_now()
 	print("saved ", path, "  fps ", Engine.get_frames_per_second(), "  process ms %.2f" % (Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0))
 	get_tree().quit()
+
+
+var _pop_prev := []
+var _pop_moves := []
+var _pop_n := 0
+## Dev (--pops, with --seq): drawn ants that flick back and forth (moved more than 0.2 mm one frame, then
+## back again the next: two bodies pushing each other, or a pose that cannot settle); prints each one.
+func _count_pops() -> void:
+	var mm: MultiMesh = nest_view._ant_mm if mode == "nest" else outworld._ant_mm
+	var u := 1.0 / 1.5                                            # world units per mm (both views)
+	var now := []
+	var moves := []
+	for i in mm.instance_count:
+		var p: Vector3 = mm.get_instance_transform(i).origin
+		now.append(p)
+		var best := INF
+		var bj := -1
+		for j in _pop_prev.size():
+			var d: float = p.distance_squared_to(_pop_prev[j])
+			if d < best:
+				best = d
+				bj = j
+		var mv := Vector3.ZERO if bj < 0 else p - (_pop_prev[bj] as Vector3)
+		moves.append(mv)
+		if bj >= 0 and mv.length() < 3.0 * u and mv.length() > 0.2 * u:
+			var was: Vector3 = _pop_moves[bj]
+			if was.length() > 0.2 * u and mv.dot(was) < -0.5 * mv.length() * was.length():
+				_pop_n += 1
+				print("pop %d: flick at %s  %.2f mm then %.2f mm back" % [_pop_n, p, was.length() / u, mv.length() / u])
+	_pop_prev = now
+	_pop_moves = moves
 
 
 ## --hover=<role|out|queen>: put the mouse on such an ant, so the hover box shows in the shot.
