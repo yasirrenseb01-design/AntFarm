@@ -213,15 +213,40 @@ func _ease_sep(m: Dictionary, p: Vector3, up: Vector3, push: Vector3, delta: flo
 	return sep
 
 
+## How far an ant standing on floor cell c must be raised for its body to clear the floor around it (a curving
+## chamber floor can rise above the cell's own height within a body length): cached per cell until the soil
+## changes.
+func _cell_lift(c: Vector3i) -> float:
+	var v = _lift_cache.get(c)
+	if v == null:
+		# along the cell's own up (floor, wall or ceiling): sample a body's span round the cell at belly height
+		# and rise until every sample is in the open
+		var up := _up_at(c)
+		var a := up.cross(Vector3.FORWARD if absf(up.z) < 0.9 else Vector3.RIGHT).normalized()
+		var b := up.cross(a).normalized()
+		var need := 0.0
+		for o in [Vector3.ZERO, a * 0.8, -a * 0.8, b * 0.8, -b * 0.8]:
+			var q: Vector3 = Vector3(c) + o + up * 0.25
+			var k := 0
+			while k < 6 and _density_at(q + up * need) >= 0.5:
+				need += 0.2
+				k += 1
+		v = minf(need, 1.2)
+		_lift_cache[c] = v
+	return v
+
+
 ## How far an ant drawn at `tr` must rise along its up for its body (head, thorax, gaster at belly height)
 ## to be clear of the soil: 0 if it already is (at most ~1.4).
 func _soil_clearance(tr: Transform3D, s: float) -> float:
 	var up := tr.basis.y.normalized()
 	var need := 0.0
-	for q in [Vector3(0.8, 0.3, 0), Vector3(0, 0.3, 0), Vector3(-0.9, 0.3, 0)]:
+	# (a little lower than the belly and a little wider than the body: a margin, so it stays clear as it
+	# shifts a fraction before it is checked again)
+	for q in [Vector3(0.9, 0.2, 0), Vector3(0, 0.2, 0), Vector3(-1.0, 0.2, 0), Vector3(0, 0.2, 0.3), Vector3(0, 0.2, -0.3)]:
 		var p: Vector3 = tr * q
 		var k := 0
-		while k < 7 and _density_at(p + up * (need + 0.0)) >= 0.5:
+		while k < 7 and _density_at(p + up * need) >= 0.5:
 			need += 0.2
 			k += 1
 	return need

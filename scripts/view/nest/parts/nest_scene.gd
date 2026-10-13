@@ -103,6 +103,7 @@ var _egg_at := {}                # egg tag -> where it was laid (it stays there 
 var _freed := {"eggs": [], "larvae": []}   # where brood just hatched / pupated lay: the next stage starts there
 var _anim_drops := []            # droplets drawn by life-cycle moments (trophallaxis), added to the nestmates' drops
 var _soil_gen := 0              # bumped whenever the soil changes (cached brood checks are redone)
+var _lift_cache := {}            # per walkable cell: how far a body standing there is raised (_cell_lift)
 var _floor_cache := {}          # floor heights under brood spots (see _floor_cached)
 var sel_kind := ""                # the ant the keeper clicked: "worker" | "digger" | "queen" ("" = none)
 var sel_id := -1                  # its worker id (a digger: the digger's own id)

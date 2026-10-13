@@ -301,6 +301,7 @@ func _update_ants(delta: float) -> void:
 	# standing inside one another (the queen, much bigger, keeps a wider berth)
 	var tp := Time.get_ticks_usec()                # (dev --perf: where this function's time goes)
 	var sel_at := []                  # the selected ant's transform and pose, for its outline
+	var clr_budget := 20
 	var near := {}
 	for m in _mates + _dig_vis.values():          # the diggers from the simulation have bodies too
 		if m.has("xf"):
@@ -397,10 +398,23 @@ func _update_ants(delta: float) -> void:
 		m.blift = move_toward(float(m.get("blift", 0.0)), want_lift, 1.5 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.blift)
 		# never with its body in the soil: where a chamber floor or wall curves, the cell it walks on can lie
-		# under the drawn surface - lifted clear along its up (worked out a third of the ants a frame, eased)
-		if (_mate_frame + mi) % 3 == 1 or not m.has("clr"):
-			m.clr_t = _soil_clearance(tr, float(m.size))
-		m.clr = move_toward(float(m.get("clr", 0.0)), float(m.clr_t), 2.0 * md)
+		# under the drawn surface - lifted clear along its up (eased)
+		# (worked out again only once it has moved or turned a little: most ants stand still most of the time)
+		# (per cell, worked out once: where it is between the cell it left and the one it is stepping to)
+		var want_clr := lerpf(_cell_lift(Vector3i(roundi(m.from.x), roundi(m.from.y), roundi(m.from.z))),
+			_cell_lift(m.cell), clampf(m.t, 0.0, 1.0))
+		# and its own body where it really stands (pushed off its cell by others, or turned): checked for a few
+		# ants a frame, each again once it has moved a little
+		var ck: Vector3 = m.get("clr_at", Vector3.INF)
+		var cf: Vector3 = m.get("clr_f", Vector3.ZERO)
+		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen 				or cf.dot(tr.basis.x) < 0.97 * cf.length() * tr.basis.x.length()):
+			clr_budget -= 1
+			m.clr_at = tr.origin
+			m.clr_f = tr.basis.x
+			m.clr_gen = _soil_gen
+			m.clr_own = _soil_clearance(tr, float(m.size))
+		want_clr = maxf(want_clr, float(m.get("clr_own", 0.0)))
+		m.clr = move_toward(float(m.get("clr", 0.0)), want_clr, 2.0 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.clr)
 		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr
