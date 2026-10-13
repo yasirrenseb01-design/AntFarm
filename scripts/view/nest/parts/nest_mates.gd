@@ -43,10 +43,9 @@ func _arrive(m: Dictionary) -> void:
 			if randf() < 0.25:
 				m.goal = _random_room()
 		"traffic":
-			# a forager passing through: in at the entrance (crop full of honeydew), down to a chamber
+			# a forager passing through: in at the entrance (crop full of honeydew if it brought some), down to a chamber
 			m.rest = randi_range(2, 10)
 			if m.goal == -1:
-				m.fed = randf() < 0.7
 				m.goal = _random_room()
 			else:
 				m.goal = -1
@@ -199,9 +198,10 @@ func _meetings() -> void:
 			if o == null or is_same(o, m) or o.cool > 0.0 or o.act in STILL_ACTS or o.carry:
 				continue
 			if m.fed or o.fed:
-				_start_feed(m if m.fed else o, o if m.fed else m)       # the one with a full crop gives
-				m.fed = false
-				o.fed = false
+				if not _start_feed(m if m.fed else o, o if m.fed else m):       # the one with a full crop gives
+					var secs := randf_range(1.0, 2.2)                  # (no room to: antennae only)
+					_begin(m, ACT_ANTENNATE, secs, o.vp if o.has("vp") else o.to)
+					_begin(o, ACT_ANTENNATE, secs, m.vp if m.has("vp") else m.to)
 			else:
 				var secs := randf_range(1.0, 2.2)
 				_begin(m, ACT_ANTENNATE, secs, o.vp if o.has("vp") else o.to)
@@ -225,9 +225,18 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 		m.act = ACT_WALK
 	elif m.rest > 0:
 		if m.role == "nurse" and _rooms.size() > 0:
-			# nurses at the brood pile lick the larvae and regurgitate food to them
-			m.act = ACT_FEED if fmod(m.anim + m.cool * 3.0, 11.0) < 4.0 and not sim.larvae.is_empty() else ACT_TEND
-			m.face = _nearest_spot(m.to, _spots.larvae)
+			# nurses at the brood pile lick the larvae and regurgitate food to them - only a larva within reach
+			# of its mouth (else it rests): the droplet is given to a real larva
+			m.larva_chk = float(m.get("larva_chk", 0.0)) - delta
+			if m.larva_chk <= 0.0:
+				m.larva_chk = 1.5
+				m.larva_at = _larva_within((m.vp as Vector3) if m.has("vp") else Vector3(m.to), 2.6 * float(m.size))
+			var lv: Vector3 = m.get("larva_at", Vector3.INF)
+			if lv != Vector3.INF:
+				m.act = ACT_FEED if fmod(m.anim + m.cool * 3.0, 11.0) < 4.0 else ACT_TEND
+				m.face = lv
+			else:
+				m.act = ACT_REST
 		elif m.role == "attend":
 			m.act = ACT_TEND
 			m.face = _spots.queen
@@ -368,8 +377,11 @@ func _update_ants(delta: float) -> void:
 		tr.origin += tr.basis.y.normalized() * float(m.blift)
 		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr
-		if m.act == ACT_FEED and not m.has("script") and _visible(tr.origin):
-			drops.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.8 + 0.3 * sin(m.anim * 3.0))), MOUTH + Vector3(0.2, 0, 0)))
+		if m.act == ACT_FEED and not m.has("script") and _visible(tr.origin) and m.get("larva_at", Vector3.INF) != Vector3.INF:
+			# the droplet between its mandibles and the larva's head end
+			var lm: Vector3 = tr * MOUTH
+			var la: Vector3 = m.larva_at
+			drops.append(Transform3D(Basis.from_scale(Vector3.ONE * (0.6 + 0.2 * sin(m.anim * 3.0))), lm.lerp(la + Vector3(0, 0.25, 0), 0.25)))
 		if _visible(tr.origin):
 			xs.append(tr)
 			cols.append(_mate_color(m, body, young))
@@ -461,16 +473,22 @@ func _update_ants(delta: float) -> void:
 			_queen_mode_left = randf_range(3.0, 9.0)
 			if _queen_mode == ACT_WALK:
 				_queen_turn_t = _queen_turn + randf_range(0.5, 1.2) * (1.0 if randf() < 0.5 else -1.0)
-		var turned := absf(wrapf(_queen_turn - _queen_prev_turn, -PI, PI))
+		var dturn := wrapf(_queen_turn - _queen_prev_turn, -PI, PI)
+		var turned := absf(dturn)
 		_queen_prev_turn = _queen_turn
 		var walked := (_queen_step - _queen_step_prev).length() / QUEEN_SCALE
 		_queen_step_prev = _queen_step
 		var qs := 0.6                       # short, heavy steps
-		_queen_gait = fmod(_queen_gait + (turned * 0.9 + walked) / AntModel.stride_len(qs) * TAU, TAU * 64.0)
-		_queen_mv = lerpf(_queen_mv, 1.0 if turned > 0.002 or walked > 0.001 else 0.0, minf(1.0, 8.0 * adt))
+		# a foot ~1.1 model units out sweeps that far per radian turned: the steps keep pace with the turn
+		var sweep := turned * 1.1
+		_queen_gait = fmod(_queen_gait + (sweep + walked) / AntModel.stride_len(qs) * TAU, TAU * 64.0)
+		var moving := adt > 0.0 and (turned / adt > 0.05 or walked / adt > 0.03)      # (by rate: right at any speed)
+		_queen_mv = lerpf(_queen_mv, 1.0 if moving else 0.0, minf(1.0, 8.0 * adt))
+		var tshare := sweep / maxf(sweep + walked, 0.0001) * signf(dturn) if moving else 0.0
+		_queen_tshare = lerpf(_queen_tshare, tshare, minf(1.0, 6.0 * adt))
 		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else _queen_mode)
 		_queen_vact = AntModel.act_step(_queen_vact, qa, _queen_anim, AntModel.QUEEN_BLEND)     # she eases slowly from one pose into the next
-		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim, AntModel.QUEEN_BLEND), fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs)))
+		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim, AntModel.QUEEN_BLEND), fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs, _queen_tshare)))
 	var q_sel: bool = sel_kind == "queen" and _queen_mm.instance_count > 0
 	_sel_queen_mm.instance_count = 1 if q_sel else 0
 	if q_sel:

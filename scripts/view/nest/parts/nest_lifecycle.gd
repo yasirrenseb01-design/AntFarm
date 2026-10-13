@@ -269,11 +269,11 @@ func _call_nurse(a: Dictionary) -> void:
 ## head with its antennae; the giver opens its mandibles and holds a droplet out between them; the taker laps
 ## at it; a few seconds, then they part. (Lasius: food is shared mouth to mouth - docs/BIOLOGY.md; the
 ## antenna drumming as the begging signal is general ant behaviour, Hoelldobler & Wilson 1990.)
-func _start_feed(giver: Dictionary, taker: Dictionary) -> void:
+func _start_feed(giver: Dictionary, taker: Dictionary) -> bool:
 	if giver.has("script") or taker.has("script") or not giver.has("vp") or not taker.has("vp"):
-		return
+		return false
 	if (taker.vu as Vector3).y < 0.85 or (giver.vu as Vector3).y < 0.85:
-		return                                  # (one is up the chamber wall: they only touch antennae)
+		return false                            # (one is up the chamber wall: they only touch antennae)
 	var tp: Vector3 = taker.vp
 	# where the giver stands: head to head with the taker, on open floor clear of the brood and of other
 	# ants; tried all round the taker, starting from where the giver already is. None: they only antennate.
@@ -294,7 +294,7 @@ func _start_feed(giver: Dictionary, taker: Dictionary) -> void:
 				spot = q
 				break
 	if spot == Vector3.INF or (giver.vp as Vector3).distance_to(spot) > 2.5:
-		return                                  # (no room to meet head to head, or too far to step there)
+		return false                            # (no room to meet head to head, or too far to step there)
 	var a := {"k": "feed", "t": 0.0, "d": randf_range(6.0, 10.0) * _anim_k(), "giver": giver, "taker": taker, "spot": spot}
 	giver.partner = taker
 	taker.partner = giver
@@ -308,7 +308,7 @@ func _start_feed(giver: Dictionary, taker: Dictionary) -> void:
 	giver.script.goal = giver.vp
 	a.p = tp
 	_anims.append(a)
-
+	return true
 
 ## A helper's goal kept on the open chamber floor: on the floor under it, drawn back toward the cocoon
 ## `toward` if it would be inside the soil (else helpers walked into the chamber wall while pulling).
@@ -589,6 +589,7 @@ func _step_anims(adt: float) -> void:
 						r.script.act = ACT_ANTENNATE
 					if u >= 1.0:
 						a.done = true
+						g.fed = false                       # its crop shared out
 						g.erase("partner")
 						r.erase("partner")
 						_release(g)

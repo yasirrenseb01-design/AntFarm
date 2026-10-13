@@ -165,7 +165,7 @@ func build(swing := 0.0, queen := false, detailed := true) -> ArrayMesh:
 static var _cache := {}
 # appendage colour relative to the body tint (see limb_gain in shaders/ant.gdshader)
 const WORKER_LIMBS := Vector3(1.7, 1.45, 1.25)
-const QUEEN_LIMBS := Vector3(7.5, 5.0, 2.3)     # (on her near-black body: dark amber legs, as in reference/ photos)
+const QUEEN_LIMBS := Vector3(5.6, 3.6, 1.8)     # (on her near-black body: dark amber legs, as in reference/ photos)
 
 
 ## The model sculpted in Blender (tools/blender/build_ant.py -> assets/models/ants/*.antmesh) when present,
@@ -250,8 +250,10 @@ static func stride_len(s: float) -> float:
 
 
 ## The shader's INSTANCE_CUSTOM.w: whole part = stride scale x 100, fraction = how much it is walking.
-static func gait_w(mv: float, s: float) -> float:
-	return floorf(s * 100.0) + clampf(mv, 0.0, 0.999)
+## turn: the share of the motion that is turning on the spot, signed (+ = anticlockwise seen from above).
+static func gait_w(mv: float, s: float, turn := 0.0) -> float:
+	var tc := roundi(clampf(absf(turn), 0.0, 1.0) * 8.0) + (9 if turn < 0.0 else 0)
+	return float(tc) * 1000.0 + floorf(s * 100.0) + clampf(mv, 0.0, 0.999)
 
 
 ## Instance colour for a body colour (vertex colours carry the 0.55 body multiplier).

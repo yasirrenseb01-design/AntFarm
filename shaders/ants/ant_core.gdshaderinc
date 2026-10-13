@@ -171,6 +171,12 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 	mat3 R = mat3(1.0);
 	vec3 piv = vec3(0.0);
 
+	// w: whole part = stride x 100 + 1000 x turning code (0..8 = share of the steps that turn the body
+	// anticlockwise in eighths, +9 = clockwise), fraction = how much it is walking
+	float tcode = floor(cw / 1000.0);
+	float tw = mod(tcode, 9.0) / 8.0;
+	float tdir = tcode >= 9.0 ? -1.0 : 1.0;
+	cw -= tcode * 1000.0;
 	float sscale = floor(cw) / 100.0;
 	if (sscale < 0.01) {
 		sscale = 1.0;
@@ -252,7 +258,10 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			if (act == 13.0) {
 				dx += 0.12 * K * (1.0 - li) + 0.05 * K * sin(t * 13.0 + li * 2.0 + side);   // braced, tugging
 			}
-			vec3 T = F + vec3(dx, 0.0, 0.0);
+			// turning on the spot the planted feet sweep round the body (along the circle through each foot),
+			// not straight back as in walking
+			vec2 tg = normalize(vec2(F.z, -F.x)) * tdir;
+			vec3 T = F + vec3(dx * (1.0 - tw) + tg.x * dx * tw, 0.0, tg.y * dx * tw);
 			// set the foot down on the real ground under it (rough nest floors, the slope outside)
 			if (ground_mode != 0 && probe && abs(M[1].y) > 0.5 * length(M[1].xyz)) {   // (not for shadows, not on the glass)
 				vec3 upw = normalize(M[1].xyz);

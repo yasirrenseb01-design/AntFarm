@@ -70,9 +70,24 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	return Transform3D(Basis(f, y, f.cross(y)).scaled(Vector3.ONE * scale), np - v.vu * 0.4)
 
 
+## The nearest larva (drawn) within `reach` of p, or INF.
+func _larva_within(p: Vector3, reach: float) -> Vector3:
+	var best := Vector3.INF
+	var bd := reach
+	for i in _larva_mm.instance_count:
+		var o: Vector3 = _larva_mm.get_instance_transform(i).origin
+		var d := o.distance_to(p)
+		if d < bd:
+			bd = d
+			best = o
+	return best
+
+
 func _custom(v: Dictionary, act: int) -> Color:
 	var clock: float = v.get("anim", 0.0)
 	v.vact = AntModel.act_step(v.get("vact", Vector3(-1, 0, 0)), act, clock)    # poses ease into one another
+	if v.get("fed", false):
+		return Color(v.get("gait", 0.0), AntModel.act_y(v.vact, clock) + 100.0, fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
 	return Color(v.get("gait", 0.0), AntModel.act_y(v.vact, clock), fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
 
 
@@ -385,6 +400,7 @@ func _bind_workers() -> void:
 				continue
 			_add_mate(c, "traffic" if walking_in else "idle", -1000000000, w.size)
 			m = _mates.pop_back()
+			m.fed = walking_in and w.brought == Ant.SUGAR       # back from the aphids: its crop is full
 			if not walking_in:
 				_settle(m)
 		m.wid = w.id

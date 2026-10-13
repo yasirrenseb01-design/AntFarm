@@ -29,7 +29,7 @@ var volume := 0.4:                   # 0..1 (the keeper's setting; 0 = off)
 	set(v):
 		volume = clampf(v, 0.0, 1.0)
 		if _player != null:
-			_player.volume_db = linear_to_db(maxf(volume, 0.0001) * 0.7)
+			_player.volume_db = linear_to_db(maxf(volume, 0.0001) * 1.25)     # (keeper: was too quiet at 0.7)
 			if volume <= 0.0:
 				_player.stop()
 			elif not _player.playing and _next != null:
@@ -177,7 +177,7 @@ static func _compose(seed: int) -> PackedByteArray:
 		y2 += (y - y2) * lp                   # (two poles: a gentler, rounder top end)
 		buf[i] = y2
 		peak = maxf(peak, absf(y2))
-	var gain := 0.6 / peak                     # (the pad fills it out: kept as loud as the old pieces)
+	var gain := 0.75 / peak                    # (the pad fills it out: kept as loud as the old pieces)
 	var fade_in := int(RATE * 2.0)
 	var fade_out := int(RATE * 3.0)
 	var out := PackedByteArray()

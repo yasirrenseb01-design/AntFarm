@@ -174,7 +174,7 @@ func _queen_pose() -> void:
 		var qbasis := Basis(Vector3.UP, _queen_turn) * Basis(Vector3.BACK, _queen_pitch)
 		_queen_xf = Transform3D(qbasis.scaled(Vector3.ONE * QUEEN_SCALE), at + Vector3.UP * _queen_dy)
 		_queen_mm.set_instance_transform(0, _queen_xf)
-		_queen_mm.set_instance_color(0, AntModel.tint(Color(0.042, 0.03, 0.023)))     # near-black, warm brown (a L. niger queen)
+		_queen_mm.set_instance_color(0, AntModel.tint(Color(0.019, 0.015, 0.013)))     # near-black (a L. niger queen: glossy black-brown)
 		# the cells under her body, for the nestmates' routes
 		_queen_cells.clear()
 		var qa: Vector3 = _queen_xf * QUEEN_HEAD

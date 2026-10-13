@@ -55,6 +55,7 @@ var act := 0            # what it is doing for the view: 0 walk, 2 bite/cut, 3 a
 var meet_cd := 0         # ticks before it will stop for another encounter
 var task := TASK_OUT     # (see TASK_*)
 var came_in := -1000000  # tick it last came back into the nest (the view walks it in from the entrance)
+var brought := 0         # (view only, not saved) what it last brought in: SUGAR shows as a swollen gaster inside
 var turn_after := false  # turn round once the current task is done
 var phase := 0.0        # gait phase for leg animation
 var foe := 0            # id of the enemy it is fighting (sim.creatures), 0 = none

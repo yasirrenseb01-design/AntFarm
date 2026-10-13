@@ -209,6 +209,7 @@ func _take_shot() -> void:
 					var best := []
 					for pr in pairs:
 						var n0: int = nest_view._anims.size()
+						pr[1].fed = true
 						nest_view._start_feed(pr[1], pr[2])
 						if nest_view._anims.size() > n0:
 							best = [pr[1], pr[2]]

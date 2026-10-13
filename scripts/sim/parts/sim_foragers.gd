@@ -323,6 +323,7 @@ func _arrive(a: Ant) -> void:
 		if humidity < 0.8:
 			humidity = minf(0.8, humidity + 0.002)
 		stats.protein_in += 1
+	a.brought = a.carry
 	a.carry = Ant.NONE
 	if had and activity > 0.2:
 		_recruits += 2

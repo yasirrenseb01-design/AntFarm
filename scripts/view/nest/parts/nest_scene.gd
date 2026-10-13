@@ -47,6 +47,7 @@ var _queen_vact := Vector3(-1, 0, 0)    # easing between her poses (AntModel.act
 var _queen_lay := 0.0
 var _queen_turn_v := 0.0            # how fast she is turning now (rad/s; eased, see nest_lifecycle)
 var _queen_step_v := Vector3.ZERO   # and walking
+var _queen_tshare := 0.0           # how much of her stepping is turning on the spot (signed; shader gait_w)
 var _queen_dy := 0.0                # how far she has risen with the floor where she stepped to (see _queen_pose)
 var _queen_pitch := 0.0             # her front tipped up (+) or down with the floor's slope
 var _care_left := 8.0               # a founding queen alone: seconds until she next goes to tend her brood
