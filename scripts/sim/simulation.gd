@@ -121,6 +121,11 @@ func from_dict(d: Dictionary) -> void:
 	rock = d.rock
 	rocks = d.rocks
 	_restamp_rocks()                    # which stones are climbed over is worked out from the stones themselves
+	# (not saved: worked out from the nest and the colony as the daily plan does)
+	if nest.entrance_r < 0.0:
+		nest.entrance_r = clampf(1.0 + workers.size() * 0.012, 1.0, 1.7)
+	if nest.work_left < 0:
+		nest.work_left = nest.count_work_left()      # (older saves; it also lays out the paths to the work)
 	foods = d.foods
 	corpses = d.corpses
 	workers = []

@@ -32,6 +32,7 @@ func _new_day() -> void:
 			_log(T.chamber_opened, "ok")
 		"grown":
 			_log(T.chamber_grown)
+	nest.work_left = nest.count_work_left()
 	history.append(_snapshot())
 	if history.size() > 365:
 		history.pop_front()
@@ -168,8 +169,13 @@ func _colony(dt: float) -> void:
 			out_count += 1
 
 	# Excavation: idle workers dig until the nest volume fits the colony; damp soil after rain invites digging.
-	if nest.air >= target_air():
+	if nest.air >= target_air() and nest.work_left <= 0:
 		diggers_wanted = 0
+	elif nest.air >= target_air() and nest.work_at.x < 0:
+		diggers_wanted = 0                    # (what is left cannot be reached from the tunnels)
+	elif nest.air >= target_air():
+		# big enough overall, but a planned chamber or a wider shaft is not finished: a few keep at it
+		diggers_wanted = clampi(int(idle.size() * 0.25) + 2, 2, 6) if workers.size() - out_count > 0 else 0
 	else:
 		var keen := 1.4 if humidity > 0.6 else 1.0
 		diggers_wanted = clampi(int((idle.size() * 0.35 + 1.0) * keen), 1, 40) if workers.size() - out_count > 0 else 0

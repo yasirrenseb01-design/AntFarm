@@ -36,6 +36,11 @@ var excavated := 0                      # bites dumped on the surface
 var chambers: Array = []                # {"c": Vector3, "r": float, "goal": float, "kind": String}
 var diggers: Array = []                 # {"cell", "prev", "carry", "dir", "id"}
 var entrance := Vector3i.ZERO
+var entrance_r := 1.0                   # how wide the entrance shaft is meant to be (widened as traffic grows; daily)
+var entrance_done := 1.0                # the width the entrance shaft was last found dug out to
+var work_left := 0                      # planned soil still to dig (a new chamber, its shaft, a wider shaft; daily)
+var work_at := Vector3i(-1, -1, -1)     # an open voxel at the face of that work (diggers make for it; daily)
+var work_dist := PackedInt32Array()     # steps through open space to work_at per voxel, -1 = not reached (daily)
 var tick := 0
 var rng: RandomNumberGenerator
 var _dist_age := 0
@@ -210,7 +215,7 @@ func depth_cm() -> float:
 func to_dict() -> Dictionary:
 	return {"nx": nx, "ny": ny, "nz": nz, "slab": slab, "rho": rho, "dug_at": dug_at, "dist": dist,
 		"excavated": excavated, "chambers": chambers, "diggers": diggers, "entrance": entrance, "tick": tick,
-		"dist_age": _dist_age, "next_id": _next_id}
+		"dist_age": _dist_age, "next_id": _next_id, "entrance_r": entrance_r, "work_left": work_left, "work_at": work_at, "work_dist": work_dist, "entrance_done": entrance_done}
 
 
 func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
@@ -229,6 +234,11 @@ func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
 	tick = d.tick
 	_dist_age = d.dist_age
 	_next_id = d.next_id
+	entrance_r = float(d.get("entrance_r", -1.0))       # (older saves: worked out by the simulation after loading)
+	work_left = int(d.get("work_left", -1))
+	work_at = d.get("work_at", Vector3i(-1, -1, -1))
+	work_dist = d.get("work_dist", PackedInt32Array())
+	entrance_done = float(d.get("entrance_done", 1.0))
 	# nests dug before v0.8.2 left open voxels at half density, which drew as blocky steps
 	for i in rho.size():
 		if rho[i] < AIR:

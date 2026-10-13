@@ -89,6 +89,9 @@ func _step_mate(m: Dictionary) -> void:
 				if _cell_free(m, c + d):
 					clear.append(c + d)
 		opts = clear                                 # shuffle about only where there is room
+		var on_floor := opts.filter(func(n): return _up_at(n).y > 0.7)
+		if not on_floor.is_empty():
+			opts.assign(on_floor)                    # (and on the floor, not up the walls)
 		if not opts.is_empty():
 			_move_mate(m, opts[randi() % opts.size()])
 		return
@@ -519,6 +522,29 @@ func trace_mates() -> String:
 	for id in _dig_vis:
 		out.append("dig%d" % id)
 	return " | ".join(out)
+
+
+## Dev (--trace-crowd): where the nestmates are: on the ceiling / walls / floor, by the queen, and per chamber.
+func trace_crowd() -> String:
+	var ceil := 0
+	var wall := 0
+	var flr := 0
+	var by_q := 0
+	var walking := 0
+	for m in _mates:
+		var u: Vector3 = m.get("vu", m.up)
+		if u.y < -0.3:
+			ceil += 1
+		elif u.y < 0.7:
+			wall += 1
+		else:
+			flr += 1
+		if m.has("xf") and _queen_mm.instance_count > 0 and _queen_gap((m.xf as Transform3D).origin) < 1.5:
+			by_q += 1
+		if m.act == ACT_WALK:
+			walking += 1
+	return "work %d diggers %d/%d er %.2f | mates %d floor %d wall %d ceiling %d | by queen %d | walking %d | air %d target %d chambers %s" % [nest.work_left, nest.diggers.size(), sim.diggers_wanted, nest.entrance_r, _mates.size(), flr, wall, ceil, by_q, walking,
+		nest.air, sim.target_air(), nest.chambers.map(func(c): return "%s g%.1f%s" % [c.kind, c.goal, "" if c.get("open", true) else "(dig)"])]
 
 
 func debug_summary() -> String:

@@ -114,6 +114,8 @@ func _step_digger(d: Dictionary, target_air: int, humidity: float) -> void:
 		if c == entrance or here <= 0:
 			d.carry = false
 			d.back = true          # head back down to the dig front it came from
+			if work_left > 0 and work_at.x >= 0:
+				d.site = work_at   # (or to the planned work, if any is waiting)
 			d.tries = 0
 			excavated += 1
 			d.dir = Vector3i(0, -1, 0)
@@ -153,10 +155,12 @@ func _step_digger(d: Dictionary, target_air: int, humidity: float) -> void:
 				_move(d, best_n)
 			return
 
-	if air < target_air:
+	if air < target_air or work_left > 0:
 		var best := Vector3i.ZERO
 		var best_p := 0.0
 		for dd in DIRS:
+			if air >= target_air and _plan_at(c + dd) == 0:
+				continue                 # big enough: only the planned work is finished off
 			var p := _dig_chance(c + dd, c, humidity)
 			if p > best_p:
 				best_p = p
@@ -171,11 +175,15 @@ func _step_digger(d: Dictionary, target_air: int, humidity: float) -> void:
 	var cands: Array[Vector3i] = []
 	var weights: Array[float] = []
 	var total := 0.0
+	var to_work: bool = work_left > 0 and work_at.x >= 0 and work_dist.size() == rho.size() and work_dist[idx(c)] >= 0
 	for dd in DIRS:
 		var n := c + dd
-		if not walkable(n):
-			continue
+		var on_way: bool = to_work and inside(n) and work_dist[idx(n)] >= 0 and work_dist[idx(n)] < work_dist[idx(c)]
+		if not walkable(n) and not on_way:
+			continue                     # (on the way to planned work it may cross a tunnel's middle)
 		var w := 1.0 + 6.0 * _dig_signal(n)
+		if on_way:
+			w += 20.0                    # planned work waiting: along the tunnels to its face
 		if dd == d.dir:
 			w += 1.5
 		if dd.y < 0:

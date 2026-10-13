@@ -301,8 +301,12 @@ func _settle(m: Dictionary) -> bool:
 	match m.role:
 		"nurse": near_to = _nearest_spot(Vector3(start), _spots.larvae) if not _spots.larvae.is_empty() else Vector3.INF
 		"attend": near_to = _spots.queen if _spots.queen != Vector3.ZERO else Vector3.INF
+	# a resting ant settles on the floor: walls and the ceiling only if nothing else is free nearby (ants do
+	# walk on them, but a chamber full of ants resting upside down looked chaotic)
 	var score := func(c: Vector3i, depth: int) -> float:
-		return depth * 0.6 + (Vector3(c).distance_to(near_to) if near_to != Vector3.INF else 0.0)
+		var u: Vector3 = _up_at(c)
+		var where := 0.0 if u.y > 0.7 else (2.5 if u.y > -0.3 else 5.0)
+		return depth * 0.6 + where + (Vector3(c).distance_to(near_to) if near_to != Vector3.INF else 0.0)
 	var best := start if _cell_free(m, start) else Vector3i(-9999, 0, 0)
 	var best_s: float = score.call(start, 0) if best == start else INF
 	var parent := {start: start}

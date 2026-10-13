@@ -370,6 +370,8 @@ func _take_shot() -> void:
 									soil_pts += 1
 									which += "%s " % q
 							print("    helper at %s (from cocoon %.2f) act %d body-in-soil %d/3 %s floor-gap %.2f" % [hx.origin, hx.origin.distance_to(an.p), hm.act, soil_pts, which, hx.origin.y - nest_view._floor_cached(hx.origin)])
+			if _opts.has("trace-crowd") and mode == "nest":
+				print("%d: %s" % [k, nest_view.trace_crowd()])
 			if _opts.has("trace-mates") and mode == "nest":
 				print("%d: %s" % [k, nest_view.trace_mates()])
 			if _opts.has("trace") and mode == "nest":

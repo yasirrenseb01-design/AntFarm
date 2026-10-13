@@ -8,6 +8,14 @@ extends "res://scripts/sim/parts/nest_voxels.gd"
 func _plan_at(c: Vector3i) -> int:
 	var p := Vector3(c)
 	var on_shaft := false
+	# the entrance shaft down to the first chamber, widened as more ants use it
+	if not chambers.is_empty() and entrance_r > 1.05:
+		var ea := Vector3(entrance)
+		var eb: Vector3 = chambers[0].c
+		var eab := eb - ea
+		var et := clampf((p - ea).dot(eab) / maxf(eab.length_squared(), 0.001), 0.0, 1.0)
+		if p.distance_to(ea + eab * et) <= entrance_r and p.y < ny - 1:
+			on_shaft = true
 	for ch in chambers:
 		if ch.get("open", true) and chamber_q(p, ch) <= 1.0:
 			return 2
@@ -19,6 +27,100 @@ func _plan_at(c: Vector3i) -> int:
 			if p.distance_to(a + ab * t) <= 1.3:
 				on_shaft = true
 	return 1 if on_shaft else 0
+
+
+## How much planned soil is still solid (in chambers, the shafts to them, the entrance shaft): while any is
+## left a few workers keep digging even when the nest is big enough overall (else a planned chamber
+## was never finished and the colony stayed crowded in the old one). Counted once a day.
+func count_work_left() -> int:
+	var n := 0
+	work_at = Vector3i(-1, -1, -1)
+	var best := [1 << 30]
+	for ch in chambers:
+		# a chamber already found finished at its present size is not looked at again until it grows
+		if ch.get("open", true) and float(ch.get("done", -1.0)) == float(ch.goal):
+			continue
+		var left := _work_in_chamber(ch, best)
+		if left == 0 and ch.get("open", true):
+			ch.done = ch.goal
+		n += left
+	if not chambers.is_empty() and entrance_r > 1.05 and entrance_done != entrance_r:
+		var left := _work_on_line(Vector3(entrance), chambers[0].c, entrance_r, false, best)
+		if left == 0:
+			entrance_done = entrance_r
+		n += left
+	_work_paths()
+	return n
+
+
+## Planned soil still solid in one chamber (and, while it is not reached yet, the shaft to it). Updates the
+## work face in best[0] (dist to the entrance; a new chamber's shaft first).
+func _work_in_chamber(ch: Dictionary, best: Array) -> int:
+	var n := 0
+	if ch.has("from") and not ch.get("open", true):
+		n += _work_on_line(ch.from, ch.c, 1.3, true, best)
+	if not ch.get("open", true):
+		return n
+	var ax := chamber_axes(ch)
+	var m := maxf(ax.x, ax.z) + 1.0
+	var c: Vector3 = ch.c
+	for y in range(maxi(0, floori(c.y - ax.y - 1.0)), mini(ny, ceili(c.y + ax.y + 1.0) + 1)):
+		for z in range(maxi(0, floori(c.z - m)), mini(nz, ceili(c.z + m) + 1)):
+			for x in range(maxi(0, floori(c.x - m)), mini(nx, ceili(c.x + m) + 1)):
+				var v := Vector3i(x, y, z)
+				if rho[idx(v)] >= AIR and (not slab or z >= nz - 3) and chamber_q(Vector3(v), ch) <= 1.0:
+					n += 1
+					_face_at(v, 100000, best)
+	return n
+
+
+## Planned soil still solid along a shaft of radius r from a to b.
+func _work_on_line(a: Vector3, b: Vector3, r: float, first: bool, best: Array) -> int:
+	var n := 0
+	var ab := b - a
+	var lo := Vector3i(floori(minf(a.x, b.x) - r - 1.0), floori(minf(a.y, b.y) - r - 1.0), floori(minf(a.z, b.z) - r - 1.0))
+	var hi := Vector3i(ceili(maxf(a.x, b.x) + r + 1.0), ceili(maxf(a.y, b.y) + r + 1.0), ceili(maxf(a.z, b.z) + r + 1.0))
+	for y in range(maxi(0, lo.y), mini(ny - 1, hi.y + 1)):
+		for z in range(maxi(0, lo.z), mini(nz, hi.z + 1)):
+			for x in range(maxi(0, lo.x), mini(nx, hi.x + 1)):
+				var v := Vector3i(x, y, z)
+				if rho[idx(v)] < AIR or (slab and z < nz - 3):
+					continue
+				var p := Vector3(v)
+				var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+				if p.distance_to(a + ab * t) <= r:
+					n += 1
+					_face_at(v, 0 if first else 100000, best)
+	return n
+
+
+## Keeps in work_at the open voxel beside planned soil v nearest the entrance (pri added: lower goes first).
+func _face_at(v: Vector3i, pri: int, best: Array) -> void:
+	for dd in DIRS:
+		var o: Vector3i = v + dd
+		if inside(o) and is_open(o) and dist[idx(o)] >= 0 and dist[idx(o)] + pri < best[0]:
+			best[0] = dist[idx(o)] + pri
+			work_at = o
+
+
+## Steps from every voxel an ant can walk to (along the walls) to work_at, so diggers walk the tunnels to it.
+func _work_paths() -> void:
+	work_dist.resize(nx * ny * nz)
+	work_dist.fill(-1)
+	if work_at.x < 0 or not inside(work_at) or not is_open(work_at):
+		return
+	work_dist[idx(work_at)] = 0
+	var q: Array[Vector3i] = [work_at]
+	var h := 0
+	while h < q.size():
+		var c: Vector3i = q[h]
+		h += 1
+		var dc: int = work_dist[idx(c)]
+		for dd in DIRS:
+			var n: Vector3i = c + dd
+			if inside(n) and is_open(n) and work_dist[idx(n)] < 0:
+				work_dist[idx(n)] = dc + 1
+				q.append(n)
 
 
 ## Half-axes of a chamber's planned shape: long, wide (across), high. Flat: about two ants high.
@@ -69,6 +171,9 @@ func target_depth(workers: int) -> float:
 ## Lasius nests (flat chambers in series along vertical shafts).
 func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	var event := ""
+	# busier traffic: the entrance shaft is widened from one ant's width toward ~two (L. niger nest entrances are
+	# a few mm across; the rate is chosen)
+	entrance_r = clampf(1.0 + workers * 0.012, 1.0, 1.7)
 	for ch in chambers:
 		if not ch.get("open", true) and is_open(Vector3i(ch.c)):
 			ch.open = true
