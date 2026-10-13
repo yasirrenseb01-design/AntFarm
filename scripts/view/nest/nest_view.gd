@@ -211,6 +211,7 @@ func refresh(delta: float) -> void:
 	if _spot_timer <= 0.0:
 		_spot_timer = 1.5
 		_refresh_spots()
+		_clear_brood_of_ants()        # (and any resting ant whose body lies over the brood gets up)
 	# brood and the mound change slowly; rebuild their instances only when something moved
 	t0 = _nprof("camera/spots", t0)
 	_poll_events()

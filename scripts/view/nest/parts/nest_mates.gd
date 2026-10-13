@@ -346,7 +346,8 @@ func _update_ants(delta: float) -> void:
 			continue
 		var md: float = m.lag
 		m.lag = 0.0
-		var mdt := md * cells_per_sec * chill
+		# (stepping off the brood or a nestmate to a free spot: even a chilled ant does that much)
+		var mdt := md * cells_per_sec * (maxf(chill, 0.35) if not (m.get("settle", []) as Array).is_empty() else chill)
 		var madt := md * minf(speed, 1.0) * lerpf(0.25, 1.0, chill) if running else 0.0
 		m.anim += madt
 		var path: Vector3
@@ -592,7 +593,17 @@ func trace_crowd() -> String:
 	for v in _dig_vis.values():
 		if v.has("xf") and (v.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
 			dtop += 1
-	print("   on top of the block: mates %d diggers %d" % [top, dtop])
+	var in_soil := 0
+	for m in _mates:
+		if m.has("xf"):
+			var x: Transform3D = m.xf
+			var n := 0
+			for q in [Vector3(0.9, 0.45, 0), Vector3(0, 0.45, 0), Vector3(-1.2, 0.45, 0)]:
+				if _density_at(x * q) >= 0.5:
+					n += 1
+			if n >= 2:
+				in_soil += 1
+	print("   in the soil (2 of 3 body points): %d   overlapping pairs: %d" % [in_soil, mate_overlaps()])
 	return "nest %.1fC | by entrance %d | work %d diggers %d/%d er %.2f | mates %d floor %d wall %d ceiling %d | by queen %d | walking %d | air %d target %d chambers %s" % [sim.climate.nest, by_ent, nest.work_left, nest.diggers.size(), sim.diggers_wanted, nest.entrance_r, _mates.size(), flr, wall, ceil, by_q, walking,
 		nest.air, sim.target_air(), nest.chambers.map(func(c): return "%s g%.1f%s" % [c.kind, c.goal, "" if c.get("open", true) else "(dig)"])]
 

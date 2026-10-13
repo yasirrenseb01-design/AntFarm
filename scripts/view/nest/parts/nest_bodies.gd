@@ -190,7 +190,7 @@ func _ease_sep(m: Dictionary, p: Vector3, up: Vector3, push: Vector3, delta: flo
 	var was: Vector3 = m.get("sep", Vector3.ZERO)
 	# standing still it stays where it settled unless it is really squeezed: small pushes that flip with the
 	# neighbours' own shifts (and the soil check on a sloping chamber edge) made resting ants tremble
-	if float(m.get("mv", 1.0)) < 0.15 and push.length() < 0.3:
+	if float(m.get("mv", 1.0)) < 0.15 and push.length() < 0.05:     # (only the tiniest: a bigger overlap is sorted out)
 		return was
 	var sep: Vector3 = (was + push * minf(1.0, 12.0 * delta)) * pow(0.5, delta)
 	sep = sep.limit_length(2.5)
@@ -273,7 +273,7 @@ func mate_overlaps() -> int:
 			var o: Dictionary = _mates[j]
 			if not o.has("d0") or (m.d0 as Vector3).distance_squared_to(o.d0) > 16.0:
 				continue
-			var lim: float = (0.55 * float(m.size) + 0.55 * float(o.size)) * 0.66
+			var lim: float = (0.55 * float(m.size) + 0.55 * float(o.size)) * 0.85     # (bodies visibly inside each other)
 			var hit := false
 			for a in [m.d0, m.d1]:
 				for b in [o.d0, o.d1]:
@@ -356,10 +356,24 @@ func _settle(m: Dictionary) -> bool:
 ## rest in another chamber).
 func _clear_brood_of_ants() -> void:
 	for m in _mates:
-		if m.rest > 0 and not m.has("script") and not m.carry and _brood_cells.has(m.cell):
+		if m.rest > 0 and not m.has("script") and not m.carry and _body_on_brood(m):
 			if not _settle(m):
 				m.goal = _random_room()
 				m.rest = 0
+
+
+## Whether any part of a resting ant's body (head end, middle, gaster; a nurse's head may be among the brood)
+## lies over the brood.
+func _body_on_brood(m: Dictionary) -> bool:
+	if not m.has("xf"):
+		return _brood_cells.has(m.cell)
+	var x: Transform3D = m.xf
+	var f: Vector3 = x.basis.x.normalized() * (0.7 * float(m.size))
+	var pts: Array = [x.origin, x.origin - f] if _tends_brood(m) else [x.origin + f, x.origin, x.origin - f]
+	for q in pts:
+		if _brood_cells.has(Vector3i(roundi(q.x), roundi(q.y - 0.45), roundi(q.z))):
+			return true
+	return false
 
 
 # ---------------------------------------------------------------- one drawn nestmate per real worker
