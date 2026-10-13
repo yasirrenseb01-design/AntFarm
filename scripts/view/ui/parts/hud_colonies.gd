@@ -91,7 +91,7 @@ func open_colonies() -> void:
 	vol.min_value = 0.0
 	vol.max_value = 1.0
 	vol.step = 0.05
-	vol.value = float(settings.get("music", 0.4))
+	vol.value = float(settings.get("music", 0.6))
 	vol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var vol_txt := _label("ปิด" if vol.value <= 0.0 else "%d%%" % roundi(vol.value * 100), 13, INK)

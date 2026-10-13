@@ -6,7 +6,7 @@ extends Node
 ## progression, key and tune), made on a worker thread while the one before plays.
 ## View-only: uses its own random numbers, never the simulation's.
 
-const RATE := 16000                  # (lo-fi: a low sample rate is part of the sound, and quick to make)
+const RATE := 22050                  # (16 kHz sounded dull and muddy once played louder)
 const BPM := 66.0
 const BARS := 16
 
@@ -29,7 +29,7 @@ var volume := 0.4:                   # 0..1 (the keeper's setting; 0 = off)
 	set(v):
 		volume = clampf(v, 0.0, 1.0)
 		if _player != null:
-			_player.volume_db = linear_to_db(maxf(volume, 0.0001) * 1.25)     # (keeper: was too quiet at 0.7)
+			_player.volume_db = linear_to_db(maxf(volume, 0.0001) * 1.0)      # (never above full scale: louder came out distorted)
 			if volume <= 0.0:
 				_player.stop()
 			elif not _player.playing and _next != null:
@@ -127,15 +127,15 @@ static func _compose(seed: int) -> PackedByteArray:
 			var last_bar := b == BARS - 1
 			var notes: Array = ch[1]
 			# a warm pad under everything, two bars to a chord change (held over the bar line, slow in and out)
-			_pad(buf, t0, notes.slice(0, 3).map(func(m): return _hz(m + key)), bar * (2.2 if last_bar else 1.15), 0.035)
+			_pad(buf, t0, notes.slice(0, 3).map(func(m): return _hz(m + key)), bar * (2.2 if last_bar else 1.15), 0.025)
 			# electric piano: a soft spread chord on the one (quieter than before; it lets the others through)
 			for k in notes.size():
 				_piano(buf, t0 + k * 0.03 + rng.randf() * 0.012, _hz(notes[k] + key), bar * (1.6 if last_bar else 1.0), 0.05)
 			# bass: long round notes
 			var root: int = ch[0] + key
-			_bass(buf, t0, _hz(root), beat * (3.8 if last_bar else 2.6), 0.22)
+			_bass(buf, t0, _hz(root), beat * (3.8 if last_bar else 2.6), 0.15)
 			if not last_bar and rng.randf() < 0.5:
-				_bass(buf, t0 + beat * 3.0, _hz(root + 7), beat * 1.0, 0.13)
+				_bass(buf, t0 + beat * 3.0, _hz(root + 7), beat * 1.0, 0.09)
 			# nylon guitar: a slow broken chord, up and back, in the middle sections
 			if sec in [1, 2] and not last_bar:
 				var arp := [notes[0], notes[1], notes[2], notes[3], notes[2], notes[1]]
@@ -145,8 +145,8 @@ static func _compose(seed: int) -> PackedByteArray:
 						_pluck(buf, t0 + e * beat * 0.5 + (0.1 * beat if e % 2 == 1 else 0.0), _hz(arp[e % arp.size()] + key + 12), 0.06, rng)
 			# brushed beat, soft, in the middle sections only
 			if drums and sec in [1, 2]:
-				_kick(buf, t0, 0.26)
-				_kick(buf, t0 + beat * 2.5, 0.18)
+				_kick(buf, t0, 0.17)
+				_kick(buf, t0 + beat * 2.5, 0.12)
 				_snare(buf, t0 + beat, 0.06, rng)
 				_snare(buf, t0 + beat * 3.0, 0.06, rng)
 				for e in 8:
@@ -168,16 +168,19 @@ static func _compose(seed: int) -> PackedByteArray:
 		buf[i + 1] -= a * 0.6
 		buf[i + 2] += a * 0.25
 	# warm it: a low-pass (darker than a plain mix), fade in and out, and level it
-	var lp := 1.0 - exp(-TAU * 1900.0 / RATE)
+	var lp := 1.0 - exp(-TAU * 2800.0 / RATE)
+	var hp := 1.0 - exp(-TAU * 90.0 / RATE)     # (and the rumble under ~90 Hz taken out: it made it sound boomy)
+	var lo := 0.0
 	var y := 0.0
 	var y2 := 0.0
 	var peak := 0.001
 	for i in n:
-		y += (buf[i] - y) * lp
+		lo += (buf[i] - lo) * hp
+		y += (buf[i] - lo - y) * lp
 		y2 += (y - y2) * lp                   # (two poles: a gentler, rounder top end)
 		buf[i] = y2
 		peak = maxf(peak, absf(y2))
-	var gain := 0.75 / peak                    # (the pad fills it out: kept as loud as the old pieces)
+	var gain := 0.85 / peak                    # (levelled to near full scale: loud without pushing it past)
 	var fade_in := int(RATE * 2.0)
 	var fade_out := int(RATE * 3.0)
 	var out := PackedByteArray()
@@ -211,7 +214,7 @@ static func _doc_piece(buf: PackedFloat32Array, rng: RandomNumberGenerator, beat
 		_strings(buf, t0, notes.slice(0, 3).map(func(m): return _hz(m + key)), bar * (2.4 if last_bar else 1.1), swell, table)
 		# a low string drone on the root in the opening and closing bars
 		if sec in [0, 3]:
-			_strings(buf, t0, [_hz(ch[0] + key)], bar * (2.4 if last_bar else 1.1), 0.05, table)
+			_strings(buf, t0, [_hz(ch[0] + key)], bar * (2.4 if last_bar else 1.1), 0.03, table)
 		if sec in [1, 2] and not last_bar:
 			# plucked strings walking under it: root, fifth, root an octave up, a step
 			var walk := [0, 7, 12, 10]

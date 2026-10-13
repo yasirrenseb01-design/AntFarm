@@ -77,7 +77,7 @@ func refresh(delta: float) -> void:
 		var testing := Array(OS.get_cmdline_user_args()).any(func(a): return a.begins_with("--shot") or a.begins_with("--selftest"))
 		if not testing:
 			music = Lofi.new()
-			music.volume = float(settings.get("music", 0.4))
+			music.volume = float(settings.get("music", 0.6))
 			add_child(music)
 	if _fps_label != null and _fps_label.visible:
 		_fps_label.text = "%d FPS · จริง %.1f×" % [Engine.get_frames_per_second(), real_speed]

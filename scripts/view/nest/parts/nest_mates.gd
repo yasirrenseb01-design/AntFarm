@@ -124,6 +124,7 @@ func _step_mate(m: Dictionary) -> void:
 			m.stuck = 0
 			m.near = 1 << 20
 			m.crossed = false
+			m.dbg_stuck = here
 			_arrive(m)
 			return
 	var best: Array[Vector3i] = []
@@ -163,7 +164,8 @@ func _step_mate(m: Dictionary) -> void:
 		best.assign(aside_clear)
 		m.detour = detour + 1
 	elif best.is_empty():
-		best.assign(aside_clear if not aside_clear.is_empty() else (aside if not aside.is_empty() else floaty))
+		# onward is only across the open middle (of a wide shaft): take it, rather than step aside for ever
+		best.assign(floaty if not floaty.is_empty() else (aside_clear if not aside_clear.is_empty() else aside))
 	if here <= 4 and not best.is_empty() and not crossing:
 		# nearly there, and the way on is onto the brood pile or a nestmate: this is near enough
 		# (the chamber's middle is where its brood lies) - stop and pick a free spot here instead
@@ -531,6 +533,8 @@ func trace_crowd() -> String:
 	var flr := 0
 	var by_q := 0
 	var walking := 0
+	var by_ent := 0
+	var ent_kinds := {}
 	for m in _mates:
 		var u: Vector3 = m.get("vu", m.up)
 		if u.y < -0.3:
@@ -543,7 +547,20 @@ func trace_crowd() -> String:
 			by_q += 1
 		if m.act == ACT_WALK:
 			walking += 1
-	return "work %d diggers %d/%d er %.2f | mates %d floor %d wall %d ceiling %d | by queen %d | walking %d | air %d target %d chambers %s" % [nest.work_left, nest.diggers.size(), sim.diggers_wanted, nest.entrance_r, _mates.size(), flr, wall, ceil, by_q, walking,
+		if Vector3(m.cell).distance_to(Vector3(nest.entrance)) < 9.0:
+			by_ent += 1
+			var key := "%s rest>0:%s stuck-at:%s here:%s" % [m.role, m.rest > 0, m.get("dbg_stuck", -1), (_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1)]
+			ent_kinds[key] = ent_kinds.get(key, 0) + 1
+	var top := 0
+	for m in _mates:
+		if m.has("xf") and (m.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
+			top += 1
+	var dtop := 0
+	for v in _dig_vis.values():
+		if v.has("xf") and (v.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
+			dtop += 1
+	print("   on top of the block: mates %d diggers %d" % [top, dtop])
+	return "nest %.1fC | by entrance %d | work %d diggers %d/%d er %.2f | mates %d floor %d wall %d ceiling %d | by queen %d | walking %d | air %d target %d chambers %s" % [sim.climate.nest, by_ent, nest.work_left, nest.diggers.size(), sim.diggers_wanted, nest.entrance_r, _mates.size(), flr, wall, ceil, by_q, walking,
 		nest.air, sim.target_air(), nest.chambers.map(func(c): return "%s g%.1f%s" % [c.kind, c.goal, "" if c.get("open", true) else "(dig)"])]
 
 

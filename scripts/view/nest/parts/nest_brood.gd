@@ -21,18 +21,33 @@ func _floor_cells(ch: Dictionary) -> Array:
 
 ## Breadth-first distances from one cell through open space: lets nest ants walk the real tunnels.
 func _field_from(start: Vector3i) -> Dictionary:
+	# Steps to `start` through the open nest, a step along a wall costing 1 and one across open air (the middle
+	# of a wide shaft) 3: ants keep to the walls, but can still get everywhere (a field along the walls only
+	# left parts of the nest cut off; one through the air ignored that ants walk on surfaces, and a widened
+	# shaft then sent them sideways for ever beside its open middle)
 	var f := {start: 0}
-	var q: Array[Vector3i] = [start]
-	var head := 0
-	while head < q.size():
-		var c := q[head]
-		head += 1
-		var dc: int = f[c]
-		for d in DIRS:
-			var n := c + d
-			if not f.has(n) and nest.is_open(n):
-				f[n] = dc + 1
-				q.append(n)
+	var buckets := {0: [start]}
+	var cur := 0
+	var left := 1
+	while left > 0:
+		var b: Array = buckets.get(cur, [])
+		buckets.erase(cur)
+		for c in b:
+			left -= 1
+			if int(f[c]) != cur:
+				continue
+			for d in DIRS:
+				var n: Vector3i = c + d
+				if not nest.is_open(n):
+					continue
+				var nd := cur + (1 if nest.walkable(n) else 3)
+				if nd < int(f.get(n, 1 << 30)):
+					f[n] = nd
+					if not buckets.has(nd):
+						buckets[nd] = []
+					buckets[nd].append(n)
+					left += 1
+		cur += 1
 	return f
 
 
