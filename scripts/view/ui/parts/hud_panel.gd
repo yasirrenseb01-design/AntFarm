@@ -176,10 +176,23 @@ func _draw_nest() -> void:
 		# nestmates: the same ants that walk the 3D nest, or a few resting in the chambers
 		var body: Color = sim.sp["body_color"]
 		if not nest_view._mates.is_empty():
-			for m in nest_view._mates:
-				var p: Vector3 = m.get("vp", m.to)
-				var f: Vector3 = m.get("vf", Vector3.RIGHT)
-				Kit.ant(c, to_screen.call(p), atan2(-f.y, f.x if absf(f.x) > 0.01 else 0.01), 0.32 * s, m.get("gait", 0.0), Ant.NONE, body, false)
+			if nest_view._mates.size() <= 40:
+				for m in nest_view._mates:
+					var p: Vector3 = m.get("vp", m.to)
+					var f: Vector3 = m.get("vf", Vector3.RIGHT)
+					Kit.ant(c, to_screen.call(p), atan2(-f.y, f.x if absf(f.x) > 0.01 else 0.01), 0.32 * s, m.get("gait", 0.0), Ant.NONE, body, false)
+			else:
+				# a big colony: each ant a short dash along its heading, all drawn in one go (a drawn ant each,
+				# with legs, was thousands of draw calls a frame for the little cross-section)
+				var segs := PackedVector2Array()
+				for m in nest_view._mates:
+					var p: Vector3 = m.get("vp", m.to)
+					var f: Vector3 = m.get("vf", Vector3.RIGHT)
+					var q: Vector2 = to_screen.call(p)
+					var d := Vector2(f.x, -f.y).normalized() * 0.6 * s if absf(f.x) + absf(f.y) > 0.01 else Vector2(0.6 * s, 0)
+					segs.append(q - d)
+					segs.append(q + d)
+				c.draw_multiline(segs, body.darkened(0.2), maxf(1.5, 0.45 * s))
 		else:
 			var all: Array = sp.get("all", [])
 			var inside: int = mini(30, sim.workers.size() - sim.out_count)

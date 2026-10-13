@@ -396,11 +396,13 @@ func _brood_offset(a: Vector3, o: Array) -> Vector3:
 ## the egg packet, the larvae and the cocoons. Rebuilt with each brood layout.
 func _mark_brood_cells() -> void:
 	_brood_cells.clear()
+	_brood_wide.clear()
 	for bin in _brood_occ.values():
 		for o in bin:
 			var c: Vector3 = o[0]
 			var half: float = (o[3] if o.size() > 3 else o[1]) + 0.45       # + an ant's half width
-			var ext := half + ((o[2] as Vector3).length() if o.size() > 2 else 0.0)
+			var wide: float = half + 0.65                                    # + a body width (where to stop)
+			var ext := wide + ((o[2] as Vector3).length() if o.size() > 2 else 0.0)
 			for x in range(floori(c.x - ext), ceili(c.x + ext) + 1):
 				for y in range(floori(c.y - 1.0), ceili(c.y + 1.0) + 1):
 					for z in range(floori(c.z - ext), ceili(c.z + ext) + 1):
@@ -408,8 +410,12 @@ func _mark_brood_cells() -> void:
 						if _brood_cells.has(cell):
 							continue
 						var d := _brood_offset(Vector3(cell) - Vector3(0, 0.4, 0), o)
-						if absf(d.y) < 1.2 and Vector2(d.x, d.z).length() < half:
-							_brood_cells[cell] = true
+						if absf(d.y) < 1.2:
+							var l := Vector2(d.x, d.z).length()
+							if l < wide:
+								_brood_wide[cell] = true
+							if l < half:
+								_brood_cells[cell] = true
 
 
 func _brood_free(p: Vector3, r: float) -> bool:

@@ -106,30 +106,31 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 	var r := 0.55 * s
 	var push := Vector3.ZERO
 	var key := Vector3i(floori(p.x / 3.0), floori(p.y / 3.0), floori(p.z / 3.0))
+	var partner = m.get("partner")
+	var callow_ok: bool = m.has("script")
+	var s9 := 9.0 * s * s
+	var side: Vector3 = (m.xf as Transform3D).basis.z if m.has("xf") else Vector3.RIGHT
 	for off in _NEAR:
 		var bin = near.get(key + off)
 		if bin == null:
 			continue
 		for o in bin:
-			if o == m or (o.has("callow") and m.has("script")) or is_same(o, m.get("partner")):   # (feeding partners touch heads)
+			# (is_same: `==` on two dictionaries compares every field - it was most of this function's time)
+			if is_same(o, m) or is_same(o, partner) or (callow_ok and o.has("callow")):   # (feeding partners touch heads)
 				continue                 # (the nurses pulling a callow out of its cocoon hold on to it)
 			var oc: Vector3 = (o.xf as Transform3D).origin
-			if p.distance_squared_to(oc) > 9.0 * s * s:
+			if p.distance_squared_to(oc) > s9:
 				continue
 			var reach: float = r + 0.55 * float(o.size)
 			var rr := reach * reach
-			for a in [a0, a1]:
-				for b in [o.d0, o.d1]:
-					# overlap is judged by the true distance (one ant may be on the wall, the other on
-					# the floor); the push itself stays in this ant's floor plane
-					var d: Vector3 = a - b
-					var l2 := d.length_squared()
-					if l2 < rr and l2 > 0.000001:
-						var l := sqrt(l2)
-						var dir := d - up * d.dot(up)
-						if dir.length_squared() < 0.0001:
-							dir = (m.xf as Transform3D).basis.z if m.has("xf") else Vector3.RIGHT
-						push += dir.normalized() * (reach - l) * 0.5
+			var b0: Vector3 = o.d0
+			var b1: Vector3 = o.d1
+			# overlap is judged by the true distance (one ant may be on the wall, the other on the floor);
+			# the push itself stays in this ant's floor plane (head-thorax and gaster discs, each against each)
+			push += _disc_push(a0 - b0, rr, reach, up, side)
+			push += _disc_push(a0 - b1, rr, reach, up, side)
+			push += _disc_push(a1 - b0, rr, reach, up, side)
+			push += _disc_push(a1 - b1, rr, reach, up, side)
 	if _queen_mm.instance_count > 0:
 		var qa: Vector3 = _queen_xf * QUEEN_HEAD
 		var qb: Vector3 = _queen_xf * QUEEN_TAIL
@@ -151,7 +152,7 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 	# brood on the floor is in the way too: ants step round the egg packet, the larvae and the cocoons
 	# instead of walking over them; a nurse (or an ant carrying brood) may put its head in among them to
 	# lick, feed or pick one up, but not its body
-	if not _brood_occ.is_empty() and not _on_brood(m):
+	if not _brood_occ.is_empty() and not _on_brood(m) and _brood_wide.has(Vector3i(roundi(p.x), roundi(p.y - 0.45), roundi(p.z))):   # (only near the brood)
 		var tends := _tends_brood(m)
 		var ar := 0.45 * s                       # an ant's half width (legs bend in round brood)
 		for o in _brood_near(p):
@@ -167,6 +168,23 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 				var l := d.length()
 				if l < reach and l > 0.001:
 					push += d / l * (reach - l) * 0.5     # (as hard as ant on ant: harder only squeezed them into each other)
+	m.ka_push = push
+	return _ease_sep(m, p, up, push, delta)
+
+
+## How far one disc pair (centres d apart) pushes this ant, in its floor plane (zero unless they overlap).
+static func _disc_push(d: Vector3, rr: float, reach: float, up: Vector3, side: Vector3) -> Vector3:
+	var l2 := d.length_squared()
+	if l2 >= rr or l2 <= 0.000001:
+		return Vector3.ZERO
+	var dir := d - up * d.dot(up)
+	if dir.length_squared() < 0.0001:
+		dir = side
+	return dir.normalized() * (reach - sqrt(l2)) * 0.5
+
+
+## The shift that keeps a body clear of the others, eased toward what still overlaps (`push`).
+func _ease_sep(m: Dictionary, p: Vector3, up: Vector3, push: Vector3, delta: float) -> Vector3:
 	# The discs above already include last frame's shift, so `push` is what still overlaps: add it on, and
 	# let the shift relax slowly (half-life ~1 s) so an ant drifts back to its path once there is room.
 	var was: Vector3 = m.get("sep", Vector3.ZERO)
@@ -282,13 +300,7 @@ func _cell_free(m: Dictionary, c: Vector3i) -> bool:
 				var o = _mate_cells.get(c + Vector3i(dx, dy, dz))
 				if o != null and not is_same(o, m):
 					return false
-	if not _brood_occ.is_empty():
-		var p := Vector3(c) - _up_at(c) * 0.4
-		for o in _brood_near(p):
-			var d := _brood_offset(p, o)
-			if absf(d.y) < 1.2 and Vector2(d.x, d.z).length() < float(o[3] if o.size() > 3 else o[1]) + 1.1:   # half an ant
-				return false
-	return true
+	return not _brood_wide.has(c)              # (not within a body width of the brood: marked with the layout)
 
 
 ## Ants choose where to stop: a free patch of floor near where they were going (a nurse beside the larvae,

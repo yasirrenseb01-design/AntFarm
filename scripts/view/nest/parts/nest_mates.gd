@@ -375,9 +375,24 @@ func _update_ants(delta: float) -> void:
 				m.sep = (m.get("sep", Vector3.ZERO) as Vector3).move_toward(Vector3.ZERO, 3.0 * md)   # (feeding: stands where it stepped to)
 				tr.origin += m.sep
 			else:
-				tr.origin += _keep_apart(m, tr.origin, near, md)      # only where anyone can see it
+				# worked out for a third of the ants each frame, each on its own turn (with the time since its
+				# last turn); between, it keeps the shift it has (eased slowly anyway) - the costliest part of
+				# the nest view with hundreds of ants
+				m.ka_t = float(m.get("ka_t", 0.0)) + md
+				if (_mate_frame + mi) % 3 == 0 or not m.has("sep"):
+					tr.origin += _keep_apart(m, tr.origin, near, minf(m.ka_t, 0.25))
+					m.ka_t = 0.0
+				else:
+					tr.origin += m.sep
 		# crossing the brood pile: up on top of it (eased, so it climbs on and steps down)
-		var want_lift := _brood_top(tr.origin) if _on_brood(m) else 0.0
+		var want_lift := 0.0
+		if _on_brood(m):
+			# (how high the brood is under it, worked out again only when it moves on a cell or the brood changes)
+			var bkey: Array = [m.cell, _brood_occ.size()]
+			if m.get("btop_key", []) != bkey:
+				m.btop_key = bkey
+				m.btop = _brood_top(tr.origin)
+			want_lift = m.btop
 		m.blift = move_toward(float(m.get("blift", 0.0)), want_lift, 1.5 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.blift)
 		us_apart += Time.get_ticks_usec() - tc
@@ -430,7 +445,12 @@ func _update_ants(delta: float) -> void:
 			v.size = _sample_size()
 		var tr := _smooth(v, (v.from as Vector3).lerp(v.to, clampf(v.t, 0.0, 1.0)), v.up, delta, v.size)
 		if _visible(tr.origin):
-			tr.origin += _keep_apart(v, tr.origin, near, delta)
+			v.ka_t = float(v.get("ka_t", 0.0)) + delta
+			if (_mate_frame + id) % 3 == 0 or not v.has("sep"):
+				tr.origin += _keep_apart(v, tr.origin, near, minf(v.ka_t, 0.25))   # (a third each frame, as above)
+				v.ka_t = 0.0
+			else:
+				tr.origin += v.sep
 		v.xf = tr
 		if _visible(tr.origin):
 			var act := ACT_CARRY if d.carry else (ACT_DIG if v.still > 0.25 else ACT_WALK)
@@ -450,11 +470,24 @@ func _update_ants(delta: float) -> void:
 	if not sel_at.is_empty():
 		_sel_mm.set_instance_transform(0, sel_at[0])
 		_sel_mm.set_instance_custom_data(0, sel_at[1])
-	_ant_mm.instance_count = xs.size()
+	# written as one buffer (a call per instance per field was a millisecond or more with hundreds of ants)
+	if _ant_mm.instance_count != xs.size():
+		_ant_mm.instance_count = xs.size()
+	var buf := PackedFloat32Array()
+	buf.resize(xs.size() * 20)
+	var k := 0
 	for i in xs.size():
-		_ant_mm.set_instance_transform(i, xs[i])
-		_ant_mm.set_instance_color(i, cols[i])
-		_ant_mm.set_instance_custom_data(i, cus[i])
+		var x: Transform3D = xs[i]
+		var c: Color = cols[i]
+		var u: Color = cus[i]
+		buf[k] = x.basis.x.x; buf[k + 1] = x.basis.y.x; buf[k + 2] = x.basis.z.x; buf[k + 3] = x.origin.x
+		buf[k + 4] = x.basis.x.y; buf[k + 5] = x.basis.y.y; buf[k + 6] = x.basis.z.y; buf[k + 7] = x.origin.y
+		buf[k + 8] = x.basis.x.z; buf[k + 9] = x.basis.y.z; buf[k + 10] = x.basis.z.z; buf[k + 11] = x.origin.z
+		buf[k + 12] = c.r; buf[k + 13] = c.g; buf[k + 14] = c.b; buf[k + 15] = c.a
+		buf[k + 16] = u.r; buf[k + 17] = u.g; buf[k + 18] = u.b; buf[k + 19] = u.a
+		k += 20
+	if xs.size() > 0:
+		_ant_mm.buffer = buf
 	_fill(_carry_larva_mm, larva_loads)
 	_fill(_carry_cocoon_mm, cocoon_loads)
 	_fill(_carry_shell_mm, shell_loads)

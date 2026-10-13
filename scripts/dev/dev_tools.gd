@@ -278,6 +278,20 @@ func _take_shot() -> void:
 		for v in s:
 			avg += v
 		avg /= s.size()
+		var counts := {}
+		var stack: Array = [get_tree().root]
+		while not stack.is_empty():
+			var nd: Node = stack.pop_back()
+			stack.append_array(nd.get_children())
+			if nd is GeometryInstance3D and nd.is_visible_in_tree():
+				var key := nd.get_class()
+				if nd is MultiMeshInstance3D and nd.multimesh != null:
+					counts[key + " inst"] = counts.get(key + " inst", 0) + nd.multimesh.instance_count
+				counts[key] = counts.get(key, 0) + 1
+		print("visible geometry: ", counts)
+		print("engine: process %.1f ms  draw calls %d  objects %d  primitives %d" % [Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
+			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)])
 		print("perf: avg %.1f ms (%.0f fps)  p95 %.1f ms  worst %.1f ms  frames over 33 ms: %d" % [avg, 1000.0 / avg,
 			s[int(s.size() * 0.95)], s[-1], s.filter(func(v): return v > 33.3).size()])
 		# where a frame's time goes (per frame, ms): the game's own work, then the renderer
