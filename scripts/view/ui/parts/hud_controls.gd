@@ -37,6 +37,15 @@ func _build_top(root: Control) -> void:
 		var v: float = pair[1]
 		b.pressed.connect(func(): speed_changed.emit(v))
 		speeds.add_child(b)
+	# developer speeds (F10 shows / hides them): fast-forward for testing, not for watching
+	for pair in [["20×", 20.0], ["50×", 50.0], ["100×", 100.0]]:
+		var b := _button(pair[0], true, g)
+		var v: float = pair[1]
+		b.pressed.connect(func(): speed_changed.emit(v))
+		b.visible = false
+		b.tooltip_text = "ความเร็วสำหรับนักพัฒนา (F10 ซ่อน/แสดง)"
+		speeds.add_child(b)
+		_dev_speed_buttons.append(b)
 	var wrap := CenterContainer.new()
 	wrap.add_child(speeds)
 	row.add_child(wrap)

@@ -233,9 +233,15 @@ func _take_shot() -> void:
 		nest_view._queen_mode_left = 1.0e9
 	if _opts.has("newcolony"):
 		hud._open_new_colony(1, true)
-	var keep := speed
+	if _opts.has("dev-speeds"):
+		for b in hud._dev_speed_buttons:
+			b.visible = true                 # (as F10 does)
+	var keep := float(_opts.get("speed", str(speed)))     # (--speed=<x>: run --live at that speed)
 	if not _opts.has("live"):
 		speed = 0        # hold the clock still; _process keeps rendering
+	else:
+		speed = keep
+		sim.ant_substep = 1 if keep <= 5 else (2 if keep <= 20 else 4)
 	var frame_ms := []
 	var last := Time.get_ticks_usec()
 	var vrid := get_viewport().get_viewport_rid()

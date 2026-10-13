@@ -53,6 +53,8 @@ var outworld
 var ant_tip                 # ui/ant_tip.gd
 var _chime: AudioStreamPlayer
 var _fps_label: Label
+var _dev_speed_buttons: Array = []   # 20× 50× 100× (F10)
+var real_speed := 0.0               # the speed the game is really running at (set by main)
 var music                   # ui/lofi.gd (null in test runs)
 var _surface_tools: Array = []
 var _cut_row: HBoxContainer

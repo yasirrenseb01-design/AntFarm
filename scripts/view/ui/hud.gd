@@ -47,6 +47,16 @@ func _on_logged(e: Dictionary) -> void:
 
 
 func _unhandled_key_input(e: InputEvent) -> void:
+	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F10:
+		for b in _dev_speed_buttons:
+			b.visible = not b.visible            # developer fast-forward speeds
+			if not b.visible and b.button_pressed:
+				# (hiding them while one is on drops back to 5×)
+				for o in b.get_parent().get_children():
+					if o is Button and o.text == "5×":
+						o.button_pressed = true
+				speed_changed.emit(5.0)
+		return
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F3:
 		_fps_label.visible = not _fps_label.visible          # show / hide the frame rate
 		settings["show_fps"] = _fps_label.visible
@@ -70,7 +80,7 @@ func refresh(delta: float) -> void:
 			music.volume = float(settings.get("music", 0.4))
 			add_child(music)
 	if _fps_label != null and _fps_label.visible:
-		_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
+		_fps_label.text = "%d FPS · จริง %.1f×" % [Engine.get_frames_per_second(), real_speed]
 	if _frame % 4 == 0 and _nest.is_visible_in_tree():
 		_nest.queue_redraw()
 	if _log_dirty:

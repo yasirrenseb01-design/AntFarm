@@ -138,8 +138,19 @@ func _process(delta: float) -> void:
 		_acc += delta * 60.0 * speed
 		var n := mini(int(_acc), maxi(2, int(speed * 3.0)))
 		_acc = minf(_acc - n, 60.0)
+		# fast-forward (developer speeds) runs as fast as the machine allows: at most ~30 ms of simulation a
+		# frame, so the picture stays usable; the steps not taken are dropped, not owed (determinism is per step)
+		var budget := t0 + (30000 if speed > 5.0 else 1000000)
+		var done := 0
 		for i in n:
 			sim.step()
+			done += 1
+			if Time.get_ticks_usec() > budget:
+				_acc = 0.0
+				break
+		# the speed actually reached (steps a second / 60), shown with the frame rate (F3)
+		if delta > 0.0:
+			hud.real_speed = lerpf(hud.real_speed, done / delta / 60.0, minf(1.0, 2.0 * delta))
 	t0 = _pt("sim", t0)
 	if mode == "surface":
 		_ease_surface(delta)
