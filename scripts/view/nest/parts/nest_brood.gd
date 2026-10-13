@@ -136,11 +136,15 @@ func _egg_xf(i: int) -> Transform3D:
 	var c := i / CLUMP
 	var j := i % CLUMP
 	var centre: Vector3 = spots[(c * 3) % spots.size()]
-	var rmax := 0.3 * pow(float(CLUMP), 0.42)
-	var r := 0.3 * pow(float(j), 0.42)
+	# the first dozen lie side by side on the floor in a spiral from the middle; the rest on top of those
+	# (a packet of a few eggs is one layer: nothing to stack on)
+	var on_top := j >= 12
+	var r := 0.3 * pow(float(j - 12 if on_top else j), 0.42) * (0.8 if on_top else 1.0)
 	var a := j * 2.39996
-	var h := 0.2 + 0.42 * (1.0 - r / rmax)
-	var b := Basis(Vector3.UP, _hash(i, 3) * TAU) * Basis(Vector3.BACK, (_hash(i, 4) - 0.5) * 1.2)
+	var tilt := (_hash(i, 4) - 0.5) * 1.2
+	# resting on its lowest point: an egg (0.32 x 0.2) tipped by `tilt` stands that high on its middle
+	var h := sqrt(pow(0.32 * sin(tilt), 2.0) + pow(0.2 * cos(tilt), 2.0)) + (0.34 if on_top else 0.0)
+	var b := Basis(Vector3.UP, _hash(i, 3) * TAU) * Basis(Vector3.BACK, tilt)
 	var at := centre + Vector3(cos(a) * r, 0.0, sin(a) * r)
 	for k in 4:                                    # never inside the chamber wall: drawn in toward the packet's middle
 		if _density_at(Vector3(at.x, _floor_cached(at) + 0.3, at.z)) < 0.5:

@@ -391,6 +391,7 @@ var _brood_prev := []
 var _brood_moved := 0
 var _brood_said := 0
 var _buried_said := 0
+var _float_said := 0
 ## Dev (--pops, with --seq): drawn ants that flick back and forth (moved more than 0.2 mm one frame, then
 ## back again the next: two bodies pushing each other, or a pose that cannot settle); prints each one.
 func _count_pops() -> void:
@@ -410,9 +411,10 @@ func _count_pops() -> void:
 				bj = j
 		var mv := Vector3.ZERO if bj < 0 else p - (_pop_prev[bj] as Vector3)
 		moves.append(mv)
-		if bj >= 0 and mv.length() < 3.0 * u and mv.length() > 0.2 * u:
+		var pmin := float(_opts.get("pops-min", "0.2"))
+		if bj >= 0 and mv.length() < 3.0 * u and mv.length() > pmin * u:
 			var was: Vector3 = _pop_moves[bj]
-			if was.length() > 0.2 * u and mv.dot(was) < -0.5 * mv.length() * was.length():
+			if was.length() > pmin * u and mv.dot(was) < -0.5 * mv.length() * was.length():
 				_pop_n += 1
 				print("pop %d: flick at %s  %.2f mm then %.2f mm back" % [_pop_n, p, was.length() / u, mv.length() / u])
 	_pop_prev = now
@@ -453,6 +455,26 @@ func _count_pops() -> void:
 		for i in nest_view._egg_mm.instance_count:
 			if nest_view._density_at(nest_view._egg_mm.get_instance_transform(i).origin) >= 0.5:
 				buried += 1
+		# eggs floating: the bottom of an egg more than 0.15 above the floor with no egg under it
+		var floating := 0
+		var eo := []
+		for i in nest_view._egg_mm.instance_count:
+			eo.append(nest_view._egg_mm.get_instance_transform(i).origin)
+		for e in eo:
+			var gap: float = (e as Vector3).y - 0.2 - nest_view._floor_cached(e)
+			if gap > 0.15:
+				var held := false
+				for o in eo:
+					if (o as Vector3).y < (e as Vector3).y - 0.1 and Vector2(o.x - e.x, o.z - e.z).length() < 0.45:
+						held = true
+						break
+				if not held:
+					floating += 1
+					if _opts.has("trace"):
+						print("  floating egg at %s gap %.2f" % [e, gap])
+		if floating != _float_said:
+			_float_said = floating
+			print("eggs floating now: %d of %d" % [floating, eo.size()])
 		if buried != _buried_said:
 			_buried_said = buried
 			print("brood in the soil now: %d" % buried)

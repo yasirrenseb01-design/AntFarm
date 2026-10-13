@@ -140,9 +140,12 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 				var d: Vector3 = a - qa.lerp(qb, t)
 				d -= up * d.dot(up)
 				var l := d.length()
-				var reach := QUEEN_R + r
+				# her legs reach out ~1.9 units to each side along the middle of her body (thorax): no one
+				# stands in them; at her head and gaster ends the body itself is the limit
+				var legs := 0.85 * smoothstep(0.05, 0.25, t) * (1.0 - smoothstep(0.55, 0.75, t))
+				var reach := QUEEN_R + r + legs
 				if attending and a == a0:
-					reach = QUEEN_R * 0.8
+					reach = QUEEN_R * 0.8 + legs * 0.5
 				if l < reach and l > 0.001:
 					push += d / l * (reach - l)
 	# brood on the floor is in the way too: ants step round the egg packet, the larvae and the cocoons
@@ -167,6 +170,10 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 	# The discs above already include last frame's shift, so `push` is what still overlaps: add it on, and
 	# let the shift relax slowly (half-life ~1 s) so an ant drifts back to its path once there is room.
 	var was: Vector3 = m.get("sep", Vector3.ZERO)
+	# standing still it stays where it settled unless it is really squeezed: small pushes that flip with the
+	# neighbours' own shifts (and the soil check on a sloping chamber edge) made resting ants tremble
+	if float(m.get("mv", 1.0)) < 0.15 and push.length() < 0.3:
+		return was
 	var sep: Vector3 = (was + push * minf(1.0, 12.0 * delta)) * pow(0.5, delta)
 	sep = sep.limit_length(2.5)
 	# never into the soil: in a cramped chamber ants press together (as real ones do) rather than
@@ -177,7 +184,13 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 			sep = Vector3.ZERO
 	# the shift itself changes no faster than a slow step (~4.5 mm/s): two ants pressed together, or one
 	# squeezed against the wall, used to flick back and forth a millimetre or more every frame
+	# eased (not only rate-limited): pressed in a crowd the push each frame flips to and fro a little - the
+	# body follows only its average, and ignores changes too small to see (else it trembled on the spot)
+	var target := sep
+	sep = was.lerp(target, 1.0 - exp(-2.5 * delta))
 	sep = was.move_toward(sep, 3.0 * delta)
+	if (sep - was).length() < 0.004 and (target - was).length() < 0.08:
+		sep = was
 	m.sep = sep
 	return sep
 
