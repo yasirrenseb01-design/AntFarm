@@ -130,7 +130,7 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 	# brood on the floor is in the way too: ants step round the egg packet, the larvae and the cocoons
 	# instead of walking over them; a nurse (or an ant carrying brood) may put its head in among them to
 	# lick, feed or pick one up, but not its body
-	if not _brood_occ.is_empty():
+	if not _brood_occ.is_empty() and not _on_brood(m):
 		var tends := _tends_brood(m)
 		var ar := 0.45 * s                       # an ant's half width (legs bend in round brood)
 		for o in _brood_near(p):
@@ -162,6 +162,25 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 	sep = was.move_toward(sep, 3.0 * delta)
 	m.sep = sep
 	return sep
+
+
+## Whether this nestmate is walking across the brood pile (its way on led over it: no way round). Real
+## ants climb over the brood in a crowded chamber (user's choice, 2026-10-13); it is not pushed off sideways.
+func _on_brood(m: Dictionary) -> bool:
+	return m.has("cell") and _brood_cells.has(m.cell) and not m.has("script")    # (diggers have no cell: never); stays up if it stops there
+
+
+## How high the brood under p reaches above the floor (0 if none): an ant crossing the pile walks on top of
+## it - eggs, larvae and cocoons are firm enough to step on.
+func _brood_top(p: Vector3) -> float:
+	var top := 0.0
+	var f := _floor_cached(p)
+	for o in _brood_near(p):
+		var d := _brood_offset(p, o)
+		var half: float = float(o[3] if o.size() > 3 else o[1])
+		if Vector2(d.x, d.z).length() < half + 0.15:
+			top = maxf(top, float(o[0].y) + half - f)
+	return top
 
 
 ## Whether this nestmate works at the brood itself (its head may go in among the eggs, larvae and cocoons).

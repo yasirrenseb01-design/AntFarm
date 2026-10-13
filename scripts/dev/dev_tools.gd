@@ -272,6 +272,13 @@ func _take_shot() -> void:
 					var cp: Vector2 = _watch_creature.pos
 					outworld.target_t = Vector3(cp.x, 0, cp.y) * outworld.U
 					outworld.target = outworld.target_t
+				if _opts.has("follow-crossing") and mode == "nest":
+					# watch a nestmate up on the brood pile (crossing it), once one is
+					for m in nest_view._mates:
+						if float(m.get("blift", 0.0)) > 0.05 and m.has("xf"):
+							nest_view.target_t = (m.xf as Transform3D).origin
+							nest_view.target = nest_view.target_t
+							break
 				if _opts.has("follow-queen") and mode == "nest" and nest_view._queen_mm.instance_count > 0:
 					# watch her mouthparts from a fixed angle to her heading (--follow-queen=<radians round from her right side>)
 					nest_view.target_t = nest_view._queen_xf * Vector3(1.15, 0.2, 0.0)

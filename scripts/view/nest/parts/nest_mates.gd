@@ -107,14 +107,21 @@ func _step_mate(m: Dictionary) -> void:
 	# after a few steps this is as close as it gets - it stops here (first workers in a crowded founding
 	# cell used to pace to and fro for ever)
 	if m.get("near_goal", -99) != m.goal or here < int(m.get("near", 1 << 20)):
+		if m.get("near_goal", -99) != m.goal:
+			m.crossed = false
 		m.near_goal = m.goal
 		m.near = here
 		m.stuck = 0
 	else:
 		m.stuck = int(m.get("stuck", 0)) + 1
-		if m.stuck >= 6:
+		if m.stuck >= 6 and int(m.get("cross", 0)) == 0 and not m.get("crossed", false):
+			m.cross = 8                       # no way round: it climbs over the brood pile (user, 2026-10-13)
+			m.crossed = true
+			m.stuck = 0
+		elif m.stuck >= 6:
 			m.stuck = 0
 			m.near = 1 << 20
+			m.crossed = false
 			_arrive(m)
 			return
 	var best: Array[Vector3i] = []
@@ -141,7 +148,10 @@ func _step_mate(m: Dictionary) -> void:
 		return
 	# go round the brood: onward onto free floor if there is any, else a step aside round the pile (for a
 	# while - a pile across the whole tunnel has to be crossed in the end)
-	var best_clear := best.filter(func(n): return not _brood_cells.has(n))
+	var crossing := int(m.get("cross", 0)) > 0
+	if crossing:
+		m.cross = int(m.cross) - 1
+	var best_clear := best if crossing else best.filter(func(n): return not _brood_cells.has(n))
 	var aside_clear := aside.filter(func(n): return not _brood_cells.has(n))
 	var detour: int = m.get("detour", 0)
 	if not best_clear.is_empty():
@@ -152,7 +162,7 @@ func _step_mate(m: Dictionary) -> void:
 		m.detour = detour + 1
 	elif best.is_empty():
 		best.assign(aside_clear if not aside_clear.is_empty() else (aside if not aside.is_empty() else floaty))
-	if here <= 4 and not best.is_empty():
+	if here <= 4 and not best.is_empty() and not crossing:
 		# nearly there, and the way on is onto the brood pile or a nestmate: this is near enough
 		# (the chamber's middle is where its brood lies) - stop and pick a free spot here instead
 		var clear := best.filter(func(n): return _cell_free(m, n))
@@ -350,6 +360,10 @@ func _update_ants(delta: float) -> void:
 		us_smooth += tc - tb
 		if _visible(tr.origin):
 			tr.origin += _keep_apart(m, tr.origin, near, md)      # only where anyone can see it
+		# crossing the brood pile: up on top of it (eased, so it climbs on and steps down)
+		var want_lift := _brood_top(tr.origin) if _on_brood(m) else 0.0
+		m.blift = move_toward(float(m.get("blift", 0.0)), want_lift, 1.5 * md)
+		tr.origin += tr.basis.y.normalized() * float(m.blift)
 		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr
 		if m.act == ACT_FEED and _visible(tr.origin):
@@ -480,7 +494,7 @@ func trace_mates() -> String:
 		var line := "w%s %s%s a%d c%s->%s goal%s carry%s/%s r%d w%d t%.2f set%d" % [m.get("wid", -1), m.role,
 			"*" if m.has("script") else "", m.act, m.cell, m.to, m.get("goal", -9), m.carry, m.get("item", ""),
 			m.rest, m.wander, m.t, (m.get("settle", []) as Array).size()]
-		out.append(line + " here%d free%s" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell)])
+		out.append(line + " here%d free%s lift%.2f" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell), float(m.get("blift", 0.0))])
 	for id in _dig_vis:
 		out.append("dig%d" % id)
 	return " | ".join(out)
