@@ -135,7 +135,8 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 	float nod = 0.0;
 	if (act == 2.0) nod = -0.35 + 0.25 * sin(t * 10.0);     // biting into the soil
 	if (act == 7.0) nod = -0.28 + 0.12 * sin(t * 4.0);      // licking brood / the queen
-	if (act == 6.0) nod = -0.05 + 0.06 * sin(t * 3.0);      // passing a droplet mouth to mouth
+	if (act == 6.0) nod = 0.08 + 0.03 * sin(t * 3.0);       // giving: head a little raised, the droplet held out between open mandibles
+	if (act == 21.0) nod = -0.12 + 0.05 * sin(t * 5.0);     // taking: head lower, mouthparts working at the droplet
 	if (act == 1.0) nod = 0.03 * sin(t * 0.7);
 	if (act == 9.0) nod = -0.2 + 0.05 * sin(t * 3.0);
 	if (act == 10.0) nod = -0.4 + 0.05 * sin(t * 4.0);     // lapping at the drop
@@ -324,7 +325,9 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		float sp = 2.6;
 		float amp = 0.32;
 		float droop = 0.06;                                           // exploring: held up, sweeping wide
-		if (act == 3.0 || act == 6.0) { sp = 11.0; amp = 0.4; droop = -0.15; }
+		if (act == 3.0) { sp = 11.0; amp = 0.4; droop = -0.15; }
+		if (act == 6.0) { sp = 6.0; amp = 0.18; droop = 0.05; }       // giving: antennae held up, slow strokes
+		if (act == 21.0) { sp = 13.0; amp = 0.3; droop = -0.05; }     // taking: drumming the giver's head (the begging signal)
 		if (act == 1.0) { sp = 0.7; amp = 0.1; droop = -0.2; }
 		if (act == 4.0) {
 			sp = 1.5; amp = 0.12; droop = -0.15;             // the side being cleaned: see below
@@ -377,6 +380,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			float open = 0.04;
 			if (act == 2.0) open = 0.35 + 0.35 * sin(t * 12.0);
 			if (act == 6.0) open = 0.45;
+			if (act == 21.0) open = 0.15 + 0.1 * sin(t * 9.0);
 			if (act == 7.0) open = 0.2 + 0.15 * sin(t * 6.0);
 			if (act == 10.0) open = 0.3;
 			if (act == 13.0) open = 0.25 + 0.2 * max(0.0, sin(t * 11.0));
@@ -413,7 +417,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 	V = piv + R * (V - piv);
 	NR = normalize(R * NR);
 	// whole body: nose down while digging, front up while grooming
-	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 * groom_phase(t).x : (act == 10.0 ? -0.1 : (act == 13.0 ? -0.06 : (act == 17.0 ? -0.1 : (act == 19.0 ? 0.05 : 0.0)))));
+	float pitch = act == 2.0 ? -0.12 : (act == 4.0 ? 0.06 * groom_phase(t).x : (act == 10.0 ? -0.1 : (act == 13.0 ? -0.06 : (act == 17.0 ? -0.1 : (act == 19.0 ? 0.05 : (act == 6.0 ? 0.04 : (act == 21.0 ? -0.04 : 0.0)))))));
 	V = rot_z(pitch) * V;
 	NR = rot_z(pitch) * NR;
 	V.y += hlift;

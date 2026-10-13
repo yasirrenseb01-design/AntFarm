@@ -192,6 +192,29 @@ func _take_shot() -> void:
 							print("ECLOSE anims ", nest_view._anims.map(func(x): return [x.k, x.get("p")]), " helpers ", nest_view._anims[-1].get("helpers", []).size() if not nest_view._anims.is_empty() else -1)
 					else:
 						nest_view._start_eclose(1.0)
+				"feed":
+					# the two nearest nestmates meet and share a droplet (trophallaxis)
+					for w in 90:
+						await get_tree().process_frame
+						if nest_view._mates.filter(func(m): return m.has("vp")).size() >= 2:
+							break
+					var ms: Array = nest_view._mates.filter(func(m): return m.has("vp") and not m.has("script") and not nest_view._on_brood(m))
+					var pairs := []
+					for i in ms.size():
+						for j in range(i + 1, ms.size()):
+							var d: float = (ms[i].vp as Vector3).distance_to(ms[j].vp)
+							if d > 0.5 and d < 6.0:
+								pairs.append([d, ms[i], ms[j]])
+					pairs.sort_custom(func(x, y): return x[0] < y[0])
+					var best := []
+					for pr in pairs:
+						var n0: int = nest_view._anims.size()
+						nest_view._start_feed(pr[1], pr[2])
+						if nest_view._anims.size() > n0:
+							best = [pr[1], pr[2]]
+							break
+					if _opts.has("trace"):
+						print("FEED mates %d free %d pair %s anims %d" % [nest_view._mates.size(), ms.size(), not best.is_empty(), nest_view._anims.size()])
 				"care":
 					nest_view._update_brood()
 					nest_view._start_care(String(_opts.get("care", "eggs")))     # the queen tending her brood
@@ -284,6 +307,16 @@ func _take_shot() -> void:
 				if _opts.has("follow-anim") and mode == "nest":
 					# watch a life-cycle moment (--follow-anim=eclose|pupate|egg|care) where it happens
 					for an in nest_view._anims:
+						if an.k == "feed" and _opts["follow-anim"] == "feed" and an.giver.has("xf") and an.taker.has("xf"):
+							# between the two mouths, looking across the pair (side view of the exchange)
+							var gm: Vector3 = (an.giver.xf as Transform3D) * nest_view.MOUTH
+							var tm: Vector3 = (an.taker.xf as Transform3D) * nest_view.MOUTH
+							nest_view.target_t = (gm + tm) * 0.5
+							nest_view.target = nest_view.target_t
+							var ax: Vector3 = gm - tm
+							nest_view.yaw = atan2(-ax.z, ax.x) + float(_opts.get("side", "1.57"))
+							nest_view.yaw_t = nest_view.yaw
+							break
 						if an.k == _opts["follow-anim"] and an.has("p"):
 							nest_view.target_t = an.p
 							nest_view.target = nest_view.target_t
@@ -309,6 +342,23 @@ func _take_shot() -> void:
 			if _opts.has("trace") and mode == "nest":
 				for an in nest_view._anims:
 					print("  anim %s u %.2f p %s vis %s cocoons-fx %d" % [an.k, an.t / an.d, an.get("p"), nest_view._visible(an.get("p", Vector3.ZERO)), nest_view._fx_cocoon_mm.instance_count])
+					if an.k == "feed" and an.giver.has("xf") and an.taker.has("xf"):
+						var gx: Transform3D = an.giver.xf
+						var tx: Transform3D = an.taker.xf
+						var gmo: Vector3 = gx * nest_view.MOUTH
+						var tmo: Vector3 = tx * nest_view.MOUTH
+						print("    mouths %.2f apart; giver faces taker %.2f, taker faces giver %.2f; heads %.2f apart" % [gmo.distance_to(tmo),
+							gx.basis.x.normalized().dot((tx.origin - gx.origin).normalized()), tx.basis.x.normalized().dot((gx.origin - tx.origin).normalized()),
+							(gx * Vector3(0.9, 0.4, 0)).distance_to(tx * Vector3(0.9, 0.4, 0))])
+					if an.k == "feed":
+						for side_k in ["giver", "taker"]:
+							var q: Dictionary = an[side_k]
+							if q.has("vf") and q.get("face") is Vector3 and q.face != Vector3.INF:
+								var want3: Vector3 = (q.face as Vector3) - (q.vp as Vector3)
+								want3.y = 0.0
+								print("    %s vf %s want %s mv %.2f face %s" % [side_k, q.vf, want3.normalized(), q.get("mv", 0.0), q.face])
+							var mm: Dictionary = an[side_k]
+							print("    %s xf %s pos %s goal %s act %d in-mates %s" % [side_k, (mm.xf as Transform3D).origin if mm.has("xf") else null, mm.script.pos if mm.has("script") else null, mm.script.goal if mm.has("script") else null, mm.act, nest_view._mates.has(mm)])
 					for hm in an.get("helpers", []):
 						if hm.has("xf"):
 							var hx: Transform3D = hm.xf

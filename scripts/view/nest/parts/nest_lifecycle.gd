@@ -265,6 +265,51 @@ func _call_nurse(a: Dictionary) -> void:
 		_hire(c, _beside(a.p, c, 1.6), a.p, ACT_TEND)
 
 
+## Trophallaxis: `giver` (crop full of honeydew) and `taker` meet head to head. The taker drums the giver's
+## head with its antennae; the giver opens its mandibles and holds a droplet out between them; the taker laps
+## at it; a few seconds, then they part. (Lasius: food is shared mouth to mouth - docs/BIOLOGY.md; the
+## antenna drumming as the begging signal is general ant behaviour, Hoelldobler & Wilson 1990.)
+func _start_feed(giver: Dictionary, taker: Dictionary) -> void:
+	if giver.has("script") or taker.has("script") or not giver.has("vp") or not taker.has("vp"):
+		return
+	if (taker.vu as Vector3).y < 0.85 or (giver.vu as Vector3).y < 0.85:
+		return                                  # (one is up the chamber wall: they only touch antennae)
+	var tp: Vector3 = taker.vp
+	# where the giver stands: head to head with the taker, on open floor clear of the brood and of other
+	# ants; tried all round the taker, starting from where the giver already is. None: they only antennate.
+	# origin to origin: both mandible tips (MOUTH, x size) plus the droplet between them (~0.3 across)
+	var gap: float = MOUTH.x * (float(giver.size) + float(taker.size)) + 0.28
+	var d0: Vector3 = (giver.vp as Vector3) - tp
+	d0.y = 0.0
+	var base_ang := atan2(-d0.z, d0.x) if d0.length() > 0.01 else 0.0
+	var spot := Vector3.INF
+	if not _brood_cells.has(Vector3i(roundi(tp.x), roundi(tp.y - 0.45), roundi(tp.z))):
+		for k in 12:
+			var ang := base_ang + (k / 2) * 0.5 * (1.0 if k % 2 == 0 else -1.0)
+			var q: Vector3 = tp + Basis(Vector3.UP, ang).x * gap
+			var fl := _floor_cached(q)
+			q.y = fl + 0.45
+			var cell := Vector3i(roundi(q.x), roundi(fl), roundi(q.z))
+			if absf(fl + 0.45 - tp.y) < 0.6 and _density_at(q) < 0.5 and not _brood_cells.has(cell) 					and not _brood_cells.has(cell + Vector3i(0, 1, 0)) and _brood_free(Vector3(q.x, fl, q.z), 0.5):
+				spot = q
+				break
+	if spot == Vector3.INF or (giver.vp as Vector3).distance_to(spot) > 2.5:
+		return                                  # (no room to meet head to head, or too far to step there)
+	var a := {"k": "feed", "t": 0.0, "d": randf_range(6.0, 10.0) * _anim_k(), "giver": giver, "taker": taker, "spot": spot}
+	giver.partner = taker
+	taker.partner = giver
+	giver.sep = Vector3.ZERO
+	taker.sep = Vector3.ZERO
+	_hire(taker, tp - Vector3(0, 0.45, 0) + (taker.vu as Vector3) * 0.0, giver.vp, ACT_ANTENNATE)
+	taker.script.pos = tp
+	taker.script.goal = tp
+	_hire(giver, giver.vp - Vector3(0, 0.45, 0), tp, ACT_ANTENNATE)
+	giver.script.pos = giver.vp
+	giver.script.goal = giver.vp
+	a.p = tp
+	_anims.append(a)
+
+
 ## A helper's goal kept on the open chamber floor: on the floor under it, drawn back toward the cocoon
 ## `toward` if it would be inside the soil (else helpers walked into the chamber wall while pulling).
 func _open_floor_goal(goal: Vector3, toward: Vector3, fallback: Vector3) -> Vector3:
@@ -515,6 +560,42 @@ func _step_anims(adt: float) -> void:
 						# nobody to take it yet: the empty cocoon lies where it was until a nurse comes for it
 						# (brood and its leftovers move only when an ant carries them)
 						fresh.append({"k": "husk", "t": 0.0, "d": 1e9, "p": a.p, "yaw": a.yaw, "s": a.s})
+			"feed":
+				var g = a.giver
+				var r = a.taker
+				if not _mates.has(g) or not _mates.has(r) or not g.has("script") or not r.has("script"):
+					a.done = true
+					for m in [g, r]:
+						m.erase("partner")
+						if _mates.has(m):
+							_release(m)
+				else:
+					# the giver steps in until the two mouths meet (heads ~2 mandible-lengths apart, not overlapping)
+					var rp: Vector3 = r.script.pos
+					g.script.goal = a.spot
+					g.script.face = rp
+					r.script.face = g.script.pos
+					var met: bool = (g.script.pos as Vector3).distance_to(g.script.goal) < 0.08
+					if u < 0.12 or not met:
+						g.script.act = ACT_ANTENNATE
+						r.script.act = ACT_ANTENNATE
+						if not met:
+							a.t = minf(a.t, 0.12 * a.d)    # (the exchange starts once they are face to face)
+					elif u < 0.9:
+						g.script.act = ACT_FEED
+						r.script.act = ACT_TAKE
+					else:
+						g.script.act = ACT_ANTENNATE
+						r.script.act = ACT_ANTENNATE
+					if u >= 1.0:
+						a.done = true
+						g.erase("partner")
+						r.erase("partner")
+						_release(g)
+						_release(r)
+						r.cool = randf_range(8.0, 14.0)
+						g.cool = randf_range(8.0, 14.0)
+						a.p = rp
 			"husk":
 				var h = a.get("helper")
 				if h != null and not _mates.has(h):
@@ -585,6 +666,7 @@ func _emerging(xs: Array, cols: Array, cus: Array, young: Color) -> void:
 
 
 func _draw_anims() -> void:
+	var drops_fx := []
 	var eggs := []
 	var larvae := []
 	var silk := []
@@ -640,6 +722,15 @@ func _draw_anims() -> void:
 						silk.append([Transform3D(lb.scaled(Vector3.ONE * (0.55 + 0.5 * cover)), a.p + Vector3(0, 0.3, 0)), 0.15 + 0.7 * cover])
 					else:
 						cocoons.append(Transform3D(lb, a.p + Vector3(0, 0.3, 0)))
+			"feed":
+				var g = a.giver
+				var r = a.taker
+				if u > 0.12 and u < 0.9 and _mates.has(g) and _mates.has(r) and g.has("xf") and r.has("xf") and g.act == ACT_FEED:
+					# one droplet held between the two mouths, shrinking as it is taken
+					var mid: Vector3 = ((g.xf as Transform3D) * MOUTH + (r.xf as Transform3D) * MOUTH) * 0.5
+					var left := 1.0 - (u - 0.12) / 0.78
+					if _visible(mid):
+						drops_fx.append(Transform3D(Basis.from_scale(Vector3.ONE * (0.35 + 0.45 * left) * (1.0 + 0.08 * sin(a.t * 6.0))), mid))
 			"husk":
 				if _visible(a.p):
 					var hb := Basis(Vector3.UP, a.yaw)
@@ -663,6 +754,7 @@ func _draw_anims() -> void:
 				if peel > 0.0:
 					# the shed pupal skin, a crumpled pale scrap beside the cocoon
 					silk.append([Transform3D(Basis.from_scale(Vector3(0.32, 0.18, 0.28) * a.s * peel), a.p + (ep.side as Vector3) * 0.9 * a.s + Vector3(0, 0.2, 0)), 0.85])
+	_anim_drops = drops_fx
 	_fill(_fx_egg_mm, eggs)
 	_fill(_fx_larva_mm, larvae)
 	_fx_cocoon_mm.instance_count = cocoons.size()

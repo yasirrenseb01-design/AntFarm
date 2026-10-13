@@ -96,7 +96,7 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 		if bin == null:
 			continue
 		for o in bin:
-			if o == m or (o.has("callow") and m.has("script")):
+			if o == m or (o.has("callow") and m.has("script")) or is_same(o, m.get("partner")):   # (feeding partners touch heads)
 				continue                 # (the nurses pulling a callow out of its cocoon hold on to it)
 			var oc: Vector3 = (o.xf as Transform3D).origin
 			if p.distance_squared_to(oc) > 9.0 * s * s:

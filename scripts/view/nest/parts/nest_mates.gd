@@ -199,9 +199,7 @@ func _meetings() -> void:
 			if o == null or is_same(o, m) or o.cool > 0.0 or o.act in STILL_ACTS or o.carry:
 				continue
 			if m.fed or o.fed:
-				var secs := randf_range(3.0, 6.0)
-				_begin(m, ACT_FEED, secs, o.vp if o.has("vp") else o.to)
-				_begin(o, ACT_FEED, secs, m.vp if m.has("vp") else m.to)
+				_start_feed(m if m.fed else o, o if m.fed else m)       # the one with a full crop gives
 				m.fed = false
 				o.fed = false
 			else:
@@ -359,14 +357,18 @@ func _update_ants(delta: float) -> void:
 		var tc := Time.get_ticks_usec()
 		us_smooth += tc - tb
 		if _visible(tr.origin):
-			tr.origin += _keep_apart(m, tr.origin, near, md)      # only where anyone can see it
+			if m.has("partner"):
+				m.sep = (m.get("sep", Vector3.ZERO) as Vector3).move_toward(Vector3.ZERO, 3.0 * md)   # (feeding: stands where it stepped to)
+				tr.origin += m.sep
+			else:
+				tr.origin += _keep_apart(m, tr.origin, near, md)      # only where anyone can see it
 		# crossing the brood pile: up on top of it (eased, so it climbs on and steps down)
 		var want_lift := _brood_top(tr.origin) if _on_brood(m) else 0.0
 		m.blift = move_toward(float(m.get("blift", 0.0)), want_lift, 1.5 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.blift)
 		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr
-		if m.act == ACT_FEED and _visible(tr.origin):
+		if m.act == ACT_FEED and not m.has("script") and _visible(tr.origin):
 			drops.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.8 + 0.3 * sin(m.anim * 3.0))), MOUTH + Vector3(0.2, 0, 0)))
 		if _visible(tr.origin):
 			xs.append(tr)
@@ -439,6 +441,7 @@ func _update_ants(delta: float) -> void:
 	_fill(_carry_larva_mm, larva_loads)
 	_fill(_carry_cocoon_mm, cocoon_loads)
 	_fill(_carry_shell_mm, shell_loads)
+	drops.append_array(_anim_drops)
 	_fill(_fx_drop_mm, drops)
 	_fill(_carry_pellet_mm, pellet_loads)
 

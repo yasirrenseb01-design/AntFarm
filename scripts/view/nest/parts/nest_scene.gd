@@ -99,6 +99,7 @@ var _brood_cells := {}           # cells with brood on the floor: routes go roun
 var _ant_shader_mat: ShaderMaterial   # the workers' material (shadow_pose follows the level of detail)
 var _egg_at := {}                # egg tag -> where it was laid (it stays there until it hatches)
 var _freed := {"eggs": [], "larvae": []}   # where brood just hatched / pupated lay: the next stage starts there
+var _anim_drops := []            # droplets drawn by life-cycle moments (trophallaxis), added to the nestmates' drops
 var _soil_gen := 0              # bumped whenever the soil changes (cached brood checks are redone)
 var _floor_cache := {}          # floor heights under brood spots (see _floor_cached)
 var sel_kind := ""                # the ant the keeper clicked: "worker" | "digger" | "queen" ("" = none)
@@ -352,11 +353,12 @@ const ACT_ANTENNATE := 3
 const ACT_GROOM := 4
 const ACT_LAY := 5
 const ACT_FEED := 6
+const ACT_TAKE := 21            # taking a droplet from a nestmate (trophallaxis, the receiving side; shader 21)
 const ACT_TEND := 7
 const ACT_CARRY := 8
 const ACT_TAKE_EGG := 17        # a founding queen curls her gaster under and takes the new egg (shader 17)
 const ACT_EMERGE := 12          # a callow just out of its cocoon, legs still folded
-const STILL_ACTS := [ACT_ANTENNATE, ACT_GROOM, ACT_FEED]    # the ant stops walking while doing these
+const STILL_ACTS := [ACT_ANTENNATE, ACT_GROOM, ACT_FEED, ACT_TAKE]    # the ant stops walking while doing these
 
 
 # ---------------------------------------------------------------- life-cycle moments
