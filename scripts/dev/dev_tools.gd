@@ -363,7 +363,13 @@ func _take_shot() -> void:
 					for hm in an.get("helpers", []):
 						if hm.has("xf"):
 							var hx: Transform3D = hm.xf
-							print("    helper at %s (from cocoon %.2f) facing %s act %d" % [hx.origin, hx.origin.distance_to(an.p), hx.basis.x.normalized(), hm.act])
+							var soil_pts := 0
+							var which := ""
+							for q in [Vector3(0.9, 0.45, 0), Vector3(0, 0.45, 0), Vector3(-1.2, 0.45, 0), Vector3(0, -0.1, 0)]:
+								if nest_view._density_at(hx * q) >= 0.5:
+									soil_pts += 1
+									which += "%s " % q
+							print("    helper at %s (from cocoon %.2f) act %d body-in-soil %d/3 %s floor-gap %.2f" % [hx.origin, hx.origin.distance_to(an.p), hm.act, soil_pts, which, hx.origin.y - nest_view._floor_cached(hx.origin)])
 			if _opts.has("trace-mates") and mode == "nest":
 				print("%d: %s" % [k, nest_view.trace_mates()])
 			if _opts.has("trace") and mode == "nest":
