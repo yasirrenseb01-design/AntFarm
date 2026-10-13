@@ -218,9 +218,10 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			sw = mix(sw, 0.35 * (1.0 - li), fold) + 0.12 * sin(t * 5.0 + li * 1.7) * fold;
 			lift = mix(lift, 1.25, fold);
 		}
+		float tuck = act == 12.0 ? 1.0 - 0.6 * (1.0 - clamp(t / 3.0, 0.0, 1.0)) : 1.0;   // folded legs drawn in to the body
 		float hipx = li < 0.5 ? 0.85 : (li < 1.5 ? 0.2 : -0.4);
 		piv = vec3(hipx, 0.85, 0.42 * side) * K;
-		R = rot_y(sw * side) * rot_x(-lift * side);
+		R = rot_y(sw * side) * rot_x(-lift * side) * tuck;
 		float seg = floor(uvx + 0.5);
 		if (!posed && seg > 0.5) {
 			// rest joints of this leg (tools/blender/ant/legs.py LEGS), mesh units

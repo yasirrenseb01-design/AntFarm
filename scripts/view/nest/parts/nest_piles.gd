@@ -284,6 +284,22 @@ func _collect_freed_larvae() -> void:
 		_freed.larvae.pop_front()
 
 
+## A cocoon gone from its pile since the last layout (its ant has come out): where it lay and how it was
+## turned, so the eclosion is acted out on that very cocoon. [] if none.
+func _take_freed_pupa() -> Array:
+	var alive := {}
+	for p in sim.pupae:
+		alive[_vtag(p)] = true
+	var out := []
+	for v in _placed.keys():
+		var pl: Dictionary = _placed[v]
+		if String(pl.src) == "pupae" and not alive.has(v):
+			_placed.erase(v)
+			if out.is_empty():
+				out = [pl.base, pl.get("tb", pl.b)]
+	return out
+
+
 ## Which pile an item belongs to: larvae have a day pile and a night pile (nurses carry them between).
 func _pile_key(kind: String, new_pile: bool) -> String:
 	if kind == "larvae":

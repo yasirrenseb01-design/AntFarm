@@ -185,6 +185,49 @@ func _queen_feet_clear(at: Vector3, turn: float) -> bool:
 	return true
 
 
+## A founding queen opening her first cocoons: she steps up until her mandibles are at the cocoon's head end,
+## bites the silk open, then backs away a little at each tug as the callow comes out (her mouth on its head),
+## and goes back to her place.
+func _queen_eclose(a: Dictionary, u: float, ep: Dictionary, callow_head: Vector3) -> void:
+	var home: Vector3 = _spots.queen + Vector3.UP * QUEEN_LIFT
+	if not a.has("q_turn0"):
+		a.q_turn0 = _queen_turn
+		a.q_step0 = _queen_step
+		var d0: Vector3 = (ep.head as Vector3) - (home + _queen_step)
+		a.q_turn = atan2(-d0.z, d0.x)
+	if u >= 0.92:
+		_queen_turn_t = a.q_turn0
+		_queen_step_t = a.q_step0
+		_queen_act = ACT_WALK
+		return
+	var grip: Vector3 = ep.head if u < 0.5 else callow_head
+	_queen_turn_t = a.q_turn
+	var face := Transform3D(Basis(Vector3.UP, a.q_turn).scaled(Vector3.ONE * QUEEN_SCALE), home + _queen_step)
+	var reach: Vector3 = (grip - face * TIP_LICK) * Vector3(1, 0, 1)
+	var want: Vector3 = _queen_step + reach.limit_length(4.0)
+	if not _queen_feet_clear(home + want, a.q_turn):
+		want = _queen_step                  # (no room to step there: she reaches from where she is)
+	var turned := absf(wrapf(a.q_turn - _queen_turn, -PI, PI)) < 0.12
+	_queen_step_t = want if turned else a.q_step0
+	if not turned or (_queen_step - want).length() > 0.15:
+		_queen_act = ACT_WALK
+	else:
+		_queen_act = ACT_DIG if u > 0.18 and u < 0.72 else ACT_TEND
+
+
+## A helper's goal kept on the open chamber floor: on the floor under it, drawn back toward the cocoon
+## `toward` if it would be inside the soil (else helpers walked into the chamber wall while pulling).
+func _open_floor_goal(goal: Vector3, toward: Vector3, fallback: Vector3) -> Vector3:
+	var g := goal
+	for k in 6:
+		var fl := _floor_cached(g)
+		var p := Vector3(g.x, fl + 0.45, g.z)
+		if _density_at(p) < 0.5 and absf(fl - toward.y) < 1.2:
+			return p
+		g = toward.lerp(g, 0.7)
+	return fallback
+
+
 func _start_pupate(s: float) -> void:
 	if _spots.larvae.is_empty():
 		return
@@ -205,9 +248,18 @@ func _start_eclose(s: float) -> void:
 		return
 	var shown: int = sim.pupae.size() - _pending("pupate")
 	var p: Vector3 = _pile_xf(_spots.pupae, maxi(0, shown + _pending("eclose")), s).origin
-	var a := {"k": "eclose", "t": 0.0, "d": 13.0 * _anim_k(), "p": p, "s": s, "helpers": [], "yaw": randf() * TAU,
+	var yaw := randf() * TAU
+	var freed := _take_freed_pupa()
+	if not freed.is_empty():
+		# the very cocoon that hatched, where it lies (its pile entry is gone: drawn here from now on)
+		p = freed[0]
+		var bx: Vector3 = (freed[1] as Basis).x
+		yaw = atan2(-bx.z, bx.x)
+	else:
+		p.y = _floor_cached(p)
+	var a := {"k": "eclose", "t": 0.0, "d": 16.0 * _anim_k(), "p": p, "s": s, "helpers": [], "yaw": yaw,
 		"queen": false}
-	for m in _helpers(p, 2):
+	for m in _helpers(p, 2, 9.0):               # (nurses from a little farther off come to open it)
 		a.helpers.append(m)
 		_hire(m, _beside(p, m, 1.6 + 0.3 * a.helpers.size()), p, ACT_TEND)
 	if a.helpers.is_empty() and sim.queen.alive and _spots.queen != Vector3.ZERO and _spots.queen.distance_to(p) < 8.0:
@@ -221,8 +273,11 @@ func _eclose_parts(a: Dictionary, u: float) -> Dictionary:
 	var s: float = a.s
 	var b := Basis(Vector3.UP, a.yaw)
 	var bx: Vector3 = b.x
-	var head: Vector3 = a.p + Vector3(0, 0.3, 0) + bx * 1.3 * s
-	var pull := clampf((u - 0.5) / 0.22, 0.0, 1.0)
+	var head: Vector3 = a.p + Vector3(0, 0.6 * s, 0) + bx * 1.3 * s
+	# pulled out in tugs (each tug a little way, a pause while the helper takes a new grip), not drawn out
+	# at an even speed
+	var raw := clampf((u - 0.5) / 0.26, 0.0, 1.0) * 5.0
+	var pull := (floorf(raw) + smoothstep(0.0, 0.55, raw - floorf(raw))) / 5.0 if raw < 5.0 else 1.0
 	var roll := lerpf(1.3, 0.0, clampf((u - 0.85) / 0.13, 0.0, 1.0))
 	var origin: Vector3 = a.p + Vector3(0, 0.15 + 0.25 * roll, 0) + bx * (pull * 2.5 * s - 0.4 * s)
 	var callow := Transform3D((b * Basis(Vector3.RIGHT, roll)).scaled(Vector3.ONE * s), origin)
@@ -341,6 +396,7 @@ func _step_anims(adt: float) -> void:
 				for i in hs.size():
 					var m: Dictionary = hs[i]
 					var lift := Vector3(0, 0.45, 0)
+					var before: Vector3 = m.script.goal
 					if i == 0:
 						# at the head end: bites through the silk, then backs away pulling the callow out
 						m.script.goal = (ep.head as Vector3) + (ep.bx as Vector3) * (1.3 * a.s + ep.pull * 2.5 * a.s) + lift - Vector3(0, 0.3, 0)
@@ -350,6 +406,7 @@ func _step_anims(adt: float) -> void:
 						var along: float = -0.2 + ep.pull * 1.6
 						m.script.goal = a.p + (ep.side as Vector3) * (1.7 * a.s) + (ep.bx as Vector3) * along * a.s + lift
 						m.script.face = (ep.callow as Transform3D).origin if u > 0.5 else ep.head
+					m.script.goal = _open_floor_goal(m.script.goal, a.p, before)
 					if u < 0.18:
 						m.script.act = ACT_TEND           # checking the cocoon
 					elif u < 0.72:
@@ -359,9 +416,7 @@ func _step_anims(adt: float) -> void:
 					else:
 						m.script.act = ACT_FEED           # the first meal, mouth to mouth
 				if a.queen and sim.queen.alive:
-					var d: Vector3 = ep.head - _spots.queen
-					_queen_turn_t = atan2(-d.z, d.x)
-					_queen_act = ACT_DIG if (u > 0.18 and u < 0.72) else ACT_TEND
+					_queen_eclose(a, u, ep, callow_head)
 				if u >= 1.0:
 					a.done = true
 					for m in hs:
@@ -496,7 +551,7 @@ func _draw_anims() -> void:
 				# once empty the shell slumps a little; the silk is torn at the head end
 				var sc: Vector3 = Vector3(1.0 - 0.08 * open, 1.0 - 0.22 * clampf((u - 0.7) / 0.2, 0.0, 1.0), 1.0) * a.s
 				var tone := lerpf(1.0, 0.72, clampf(u / 0.2, 0.0, 1.0)) if u < 0.6 else lerpf(0.72, 0.95, clampf((u - 0.6) / 0.15, 0.0, 1.0))
-				cocoons.append([Transform3D(b.scaled(sc), a.p + Vector3(0, 0.3, 0)), Color(tone, tone, tone)])
+				cocoons.append([Transform3D(b.scaled(sc), a.p + Vector3(0, 0.6 * a.s, 0)), Color(tone, tone, tone)])
 				var peel := clampf((u - 0.72) / 0.13, 0.0, 1.0)
 				if u > 0.5 and peel < 1.0:
 					var skin := (ep.callow as Transform3D) * Transform3D(Basis.from_scale(Vector3(1.15, 0.75, 0.8)), Vector3(-0.15, 0.4, 0))

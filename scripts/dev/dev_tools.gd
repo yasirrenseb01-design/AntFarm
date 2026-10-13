@@ -182,7 +182,16 @@ func _take_shot() -> void:
 			match k:
 				"egg": nest_view._start_egg()
 				"pupate": nest_view._start_pupate(1.0)
-				"eclose": nest_view._start_eclose(1.0)
+				"eclose":
+					# a real cocoon in the pile hatches (dev: take one out of the simulation, as hatching does)
+					nest_view._update_brood()
+					if not sim.pupae.is_empty():
+						var pp: Dictionary = sim.pupae.pop_back()
+						nest_view._start_eclose(float(pp.get("s", 1.0)))
+						if _opts.has("trace"):
+							print("ECLOSE anims ", nest_view._anims.map(func(x): return [x.k, x.get("p")]), " helpers ", nest_view._anims[-1].get("helpers", []).size() if not nest_view._anims.is_empty() else -1)
+					else:
+						nest_view._start_eclose(1.0)
 				"care":
 					nest_view._update_brood()
 					nest_view._start_care(String(_opts.get("care", "eggs")))     # the queen tending her brood
@@ -272,6 +281,13 @@ func _take_shot() -> void:
 					var cp: Vector2 = _watch_creature.pos
 					outworld.target_t = Vector3(cp.x, 0, cp.y) * outworld.U
 					outworld.target = outworld.target_t
+				if _opts.has("follow-anim") and mode == "nest":
+					# watch a life-cycle moment (--follow-anim=eclose|pupate|egg|care) where it happens
+					for an in nest_view._anims:
+						if an.k == _opts["follow-anim"] and an.has("p"):
+							nest_view.target_t = an.p
+							nest_view.target = nest_view.target_t
+							break
 				if _opts.has("follow-crossing") and mode == "nest":
 					# watch a nestmate up on the brood pile (crossing it), once one is
 					for m in nest_view._mates:
@@ -290,6 +306,9 @@ func _take_shot() -> void:
 					outworld.target = outworld.target_t
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(path.get_basename() + "_%d.png" % k)
+			if _opts.has("trace") and mode == "nest":
+				for an in nest_view._anims:
+					print("  anim %s u %.2f p %s vis %s cocoons-fx %d" % [an.k, an.t / an.d, an.get("p"), nest_view._visible(an.get("p", Vector3.ZERO)), nest_view._fx_cocoon_mm.instance_count])
 			if _opts.has("trace-mates") and mode == "nest":
 				print("%d: %s" % [k, nest_view.trace_mates()])
 			if _opts.has("trace") and mode == "nest":
