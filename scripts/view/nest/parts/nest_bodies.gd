@@ -213,6 +213,20 @@ func _ease_sep(m: Dictionary, p: Vector3, up: Vector3, push: Vector3, delta: flo
 	return sep
 
 
+## How far an ant drawn at `tr` must rise along its up for its body (head, thorax, gaster at belly height)
+## to be clear of the soil: 0 if it already is (at most ~1.4).
+func _soil_clearance(tr: Transform3D, s: float) -> float:
+	var up := tr.basis.y.normalized()
+	var need := 0.0
+	for q in [Vector3(0.8, 0.3, 0), Vector3(0, 0.3, 0), Vector3(-0.9, 0.3, 0)]:
+		var p: Vector3 = tr * q
+		var k := 0
+		while k < 7 and _density_at(p + up * (need + 0.0)) >= 0.5:
+			need += 0.2
+			k += 1
+	return need
+
+
 ## Whether this nestmate is walking across the brood pile (its way on led over it: no way round). Real
 ## ants climb over the brood in a crowded chamber (user's choice, 2026-10-13); it is not pushed off sideways.
 func _on_brood(m: Dictionary) -> bool:

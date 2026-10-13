@@ -396,6 +396,12 @@ func _update_ants(delta: float) -> void:
 			want_lift = m.btop
 		m.blift = move_toward(float(m.get("blift", 0.0)), want_lift, 1.5 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.blift)
+		# never with its body in the soil: where a chamber floor or wall curves, the cell it walks on can lie
+		# under the drawn surface - lifted clear along its up (worked out a third of the ants a frame, eased)
+		if (_mate_frame + mi) % 3 == 1 or not m.has("clr"):
+			m.clr_t = _soil_clearance(tr, float(m.size))
+		m.clr = move_toward(float(m.get("clr", 0.0)), float(m.clr_t), 2.0 * md)
+		tr.origin += tr.basis.y.normalized() * float(m.clr)
 		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr
 		if m.act == ACT_FEED and not m.has("script") and _visible(tr.origin) and m.get("larva_at", Vector3.INF) != Vector3.INF:
@@ -598,12 +604,12 @@ func trace_crowd() -> String:
 		if m.has("xf"):
 			var x: Transform3D = m.xf
 			var n := 0
-			for q in [Vector3(0.9, 0.45, 0), Vector3(0, 0.45, 0), Vector3(-1.2, 0.45, 0)]:
+			for q in [Vector3(0.8, 0.3, 0), Vector3(0, 0.3, 0), Vector3(-0.9, 0.3, 0)]:   # (belly height, scaled with the ant)
 				if _density_at(x * q) >= 0.5:
 					n += 1
-			if n >= 2:
+			if n >= 1:
 				in_soil += 1
-	print("   in the soil (2 of 3 body points): %d   overlapping pairs: %d" % [in_soil, mate_overlaps()])
+	print("   in the soil (any body point): %d   overlapping pairs: %d" % [in_soil, mate_overlaps()])
 	return "nest %.1fC | by entrance %d | work %d diggers %d/%d er %.2f | mates %d floor %d wall %d ceiling %d | by queen %d | walking %d | air %d target %d chambers %s" % [sim.climate.nest, by_ent, nest.work_left, nest.diggers.size(), sim.diggers_wanted, nest.entrance_r, _mates.size(), flr, wall, ceil, by_q, walking,
 		nest.air, sim.target_air(), nest.chambers.map(func(c): return "%s g%.1f%s" % [c.kind, c.goal, "" if c.get("open", true) else "(dig)"])]
 
