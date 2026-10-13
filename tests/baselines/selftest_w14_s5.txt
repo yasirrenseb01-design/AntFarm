@@ -1,7 +1,7 @@
 ﻿  6       15   5      0     6      8     4   19.4    11.9   74   21.2     1      0
  11       16   6      2     3     10     5   25.7    11.2   75   22.1     1      0
- 16       15   8      2    12      9     7   30.9     2.6   76   22.6     3      0
- 21       17   8      1    21      7     7   25.0     3.3   74   21.3     3      0
- 26       19   7      6    25      7     7   26.8    12.6   71   21.8     3      0
-nest: open 2.3 cmยณ (689 voxels, target 712)  chambers 2  depth 3.5 cm  bites dumped 284  diggers
+ 16       15   6      4    11      9     7   27.2     8.2   75   21.9     3      0
+ 21       17   6      4    14      7     7   20.5    18.1   74   19.9     3      0
+ 26       19   4      6    13      7     6   13.1    10.2   67   20.0     3      0
+nest: open 2.3 cmยณ (684 voxels, target 641)  chambers 2  depth 3.5 cm  bites dumped 279  diggers
 queen alive: true

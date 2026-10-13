@@ -32,6 +32,17 @@ func _update_ants(delta: float) -> void:
 	for a in sim.outside:
 		if a.state == Ant.IN_NEST or a.dead:
 			continue
+		var beyond: bool = a.act == 22 and a.busy > 0
+		if beyond:
+			# off it goes past the edge of the plot (seen for a moment, then out of sight)
+			a.vbeyond += adt
+			if a.vbeyond > BEYOND_SHOW:
+				continue
+		elif a.vbeyond > 0.0:
+			a.vbeyond = 0.0
+			if a.vpos.x != INF:
+				a.vpos += _out_dir(a.pos) * BEYOND_WALK      # back in: it walks in from out there
+		var out_step := _out_dir(a.pos) * BEYOND_WALK * minf(1.0, a.vbeyond / BEYOND_SHOW) if beyond else Vector2.ZERO
 		if a.vpos.x == INF or a.vpos.distance_squared_to(a.pos) > 400.0:
 			a.vpos = a.pos
 			a.vang = a.ang
@@ -45,7 +56,7 @@ func _update_ants(delta: float) -> void:
 		if a.vright > 0.0:
 			a.vright = maxf(0.0, a.vright - adt)
 			flung = 1.0 - a.vright / THROWN_S
-		var step: Vector2 = a.pos - a.vpos
+		var step: Vector2 = a.pos + out_step - a.vpos
 		if flung > 0.0 and flung < 0.25:
 			step = Vector2.ZERO
 			a.vpos = a.vfly_from.lerp(a.pos, smoothstep(0.0, 1.0, flung / 0.25))    # through the air
@@ -170,6 +181,23 @@ func _burying(p: Vector2) -> bool:
 
 ## Where an ant handling food really stands: the simulation only knows it is within reach of the
 ## food's centre, so the view places it on the food itself. {} if no food is close.
+const BEYOND_SHOW := 2.5               # seconds an ant leaving the plot is seen walking off
+const BEYOND_WALK := 18.0              # px it walks out past the edge (and back in from)
+
+## Outward from the plot at its nearest edge.
+func _out_dir(p: Vector2) -> Vector2:
+	var dl := p.x
+	var dr: float = sim.WORLD.x - p.x
+	var dt := p.y
+	var db: float = sim.WORLD.y - p.y
+	var m := minf(minf(dl, dr), minf(dt, db))
+	if m == dl:
+		return Vector2(-1, 0)
+	if m == dr:
+		return Vector2(1, 0)
+	return Vector2(0, -1) if m == dt else Vector2(0, 1)
+
+
 func _feeding_pose(a, act: int, s: float) -> Dictionary:
 	var best = null
 	var bd := 1e9
@@ -426,7 +454,7 @@ func info_for(kind: String, id: int) -> Dictionary:
 	if kind != "worker":
 		return {}
 	for a in sim.outside:
-		if a.id == id and a.state != Ant.IN_NEST and not a.dead:
+		if a.id == id and a.state != Ant.IN_NEST and not a.dead and not (a.act == 22 and a.busy > 0):
 			var act: int = a.act if a.busy > 0 else 0
 			if a.state == Ant.DRAG:
 				act = 19
@@ -448,7 +476,7 @@ func pick_ant(sp: Vector2) -> Dictionary:
 	var best := {}
 	var best_d := 26.0
 	for a in sim.outside:
-		if a.state == Ant.IN_NEST or a.dead or a.vpos.x == INF:
+		if a.state == Ant.IN_NEST or a.dead or a.vpos.x == INF or (a.act == 22 and a.busy > 0):
 			continue
 		var p: Vector2 = a.vpos * U
 		var o := Vector3(p.x, ground_top(p.x, p.y), p.y)

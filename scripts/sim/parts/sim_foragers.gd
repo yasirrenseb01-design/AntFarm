@@ -67,6 +67,8 @@ func _step_ant(a: Ant) -> void:
 	if a.busy > 0:
 		a.busy -= n
 		if a.busy <= 0:
+			if a.act == ACT_AWAY:
+				_back_from_beyond(a)
 			a.act = 0
 			if a.turn_after:
 				a.turn_after = false
@@ -169,7 +171,13 @@ func _step_ant(a: Ant) -> void:
 	if a.follow > 0:
 		a.follow -= ant_substep
 	var np := pos + Vector2(cos(a.ang), sin(a.ang)) * spd
-	if a.state == Ant.SEARCH and _at_glass(np) and rng.randf() < WALL_CLIMB_P:
+	if a.state == Ant.SEARCH and scenario == "wild" and _at_glass(np) and rng.randf() < BEYOND_P:
+		# outdoors the plot has no walls: past its edge the garden goes on (aphid colonies up the plants,
+		# small prey) - the ant forages out of sight for a while and comes back the same way
+		a.busy = rng.randi_range(BEYOND_TICKS[0], BEYOND_TICKS[1])
+		a.act = ACT_AWAY
+		return
+	if a.state == Ant.SEARCH and scenario != "wild" and _at_glass(np) and rng.randf() < WALL_CLIMB_P:
 		# at the glass: up the wall it goes (the view draws the climb), as far as the slippery band near the
 		# top, then back down and away again
 		a.busy = WALL_TICKS
@@ -234,6 +242,34 @@ const DRAG_WAIT := 900           # ticks a lone ant holds on before it gives up 
 const ACT_WALL := 20
 const WALL_TICKS := 240          # up to the band and back down
 const WALL_CLIMB_P := 0.12       # chance a searcher that meets the glass walks up it instead of turning
+
+## Outdoors the colony forages far beyond the plot shown (Lasius niger workers range several metres from the
+## nest; the plot is 60 x 37 cm): a searcher reaching its edge may go on out of sight and return later, often
+## with honeydew or a piece of prey, laying a trail home from where it came back in - so trails to the edge
+## grow where the garden beyond is good, and a bigger colony sends more ants out there. How long a trip takes
+## and how often it brings something back are estimates; the garden beyond has room for more ants the bigger
+## the colony's territory (more ants out there at once find less each).
+const ACT_AWAY := 22
+const BEYOND_P := 0.45
+const BEYOND_TICKS := [90, 220]          # ~35-90 game minutes out of sight
+var _beyond_n := 0                       # ants out beyond the plot now (counted by the colony step)
+
+func _back_from_beyond(a: Ant) -> void:
+	a.turn_after = true                  # back in at the edge: heading inward
+	var room := 15.0 + 0.3 * workers.size()
+	var luck := season_life() * clampf(1.3 - _beyond_n / room, 0.15, 1.0)
+	if rng.randf() >= luck:
+		return                           # nothing found out there this time: it searches on in the plot
+	var sugar_first := _want_sugar or not _want_protein
+	if _want_sugar and _want_protein:
+		sugar_first = rng.randf() < 0.7  # (mostly honeydew: aphids are what the colony lives on)
+	a.carry = Ant.SUGAR if sugar_first else Ant.PROTEIN
+	a.state = Ant.RETURN
+	a.since = 0
+	if not _warned.get("beyond_hint", false):
+		_warned["beyond_hint"] = true
+		_log(T.beyond_food, "ok")
+
 
 func _at_glass(p: Vector2) -> bool:
 	return p.x < 3.0 or p.y < 3.0 or p.x > WORLD.x - 3.0 or p.y > WORLD.y - 3.0

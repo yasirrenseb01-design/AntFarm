@@ -230,7 +230,10 @@ func _metabolism(dt: float) -> void:
 	starving = fed < 0.999
 	sugar = maxf(0.0, sugar - need)
 	# in autumn only a couple of days' food stays in the crops; everything else goes into fat
-	var keep := minf(sugar_cap() * 0.5, workers.size() * sp["sugar_worker"] * 2.0 + 2.0) if winding_down() else sugar_cap() * 0.5
+	# (and from midsummer on outdoors a surplus goes into fat too, not only in autumn when the honeydew is already
+	# drying up: a big colony otherwise entered winter on half the fat it needed and starved in the spring)
+	var late_summer: bool = scenario == "wild" and doy_f() > 172.0
+	var keep := minf(sugar_cap() * 0.5, workers.size() * sp["sugar_worker"] * 2.0 + 2.0) if winding_down() 		else sugar_cap() * (0.25 if late_summer else 0.5)
 	if sugar > keep and fat < fat_cap():
 		# a well-fed colony lays down fat (and full crops) for the lean months, above all in autumn
 		var store := minf(minf(sugar - keep, fat_cap() - fat), workers.size() * 0.15 * dt)
@@ -447,6 +450,10 @@ func _outworld(dt: float) -> void:
 	if foods.size() != before:
 		_food_dirty = true
 
+	_beyond_n = 0
+	for a in outside:
+		if a.act == ACT_AWAY and a.busy > 0:
+			_beyond_n += 1
 	# small insects die or are caught out on open ground far more often than in a closed box
 	var insects := 3.0 if scenario == "wild" else 0.8
 	if rng.randf() < insects * dt * life:

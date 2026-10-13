@@ -73,6 +73,7 @@ var vpose = null
 var vflung := false     # set by the simulation when an enemy throws it off (the view plays the fall; never read by the sim)
 var vright := 0.0       # 3D: seconds left of being thrown, landing on its back and righting itself
 var vfly_from := Vector2.ZERO
+var vbeyond := 0.0      # 3D: seconds since it walked off past the plot (outdoors), -1 = walking back in
 var vact := Vector3(-1, 0, 0)   # 3D: easing from one activity's pose to the next (AntModel.act_step)
 
 

@@ -15,7 +15,7 @@ func _build_top(root: Control) -> void:
 	var title := VBoxContainer.new()
 	title.add_theme_constant_override("separation", 0)
 	title.add_child(_label(sim.sp["name_th"], 22, INK, _display))
-	title.add_child(_label("%s · รังเดี่ยว ราชินี 1 ตัว · กล่อง 60×37 ซม. · v%s" % [sim.sp["name"], ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED))
+	title.add_child(_label("%s · รังเดี่ยว ราชินี 1 ตัว · %s 60×37 ซม. · v%s" % [sim.sp["name"], "แปลงสวน" if sim.scenario == "wild" else "กล่อง", ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED))
 	row.add_child(title)
 
 	var clock := VBoxContainer.new()
@@ -85,7 +85,7 @@ func _build_tools(root: Control) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	panel.add_child(row)
-	var place_label := _label("วางในกล่อง", 12, MUTED)
+	var place_label := _label("วางในแปลง" if sim.scenario == "wild" else "วางในกล่อง", 12, MUTED)
 	row.add_child(place_label)
 	_surface_tools.append(place_label)
 	_cut_row = HBoxContainer.new()

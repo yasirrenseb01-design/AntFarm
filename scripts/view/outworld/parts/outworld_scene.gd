@@ -18,6 +18,7 @@ const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const U := 1.0 / 3.0                 # simulation px -> units
 const ANT_SCALE := 1.1
 const WALL_H := 42.0
+const GARDEN_MARGIN := 110.0          # how far (units) the garden ground is drawn past the plot outdoors
 const FLUON_BAND := 12.0          # the slippery band painted under the rim (~1.8 cm): climbing ants turn back below it
 const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.6, 0.0))   # in the mandibles of a raised head (shader act 8)
 const THROWN_S := 1.6                # seconds: thrown off an enemy, on its back, righted again
@@ -158,13 +159,15 @@ func _multimesh(mesh: Mesh, mat: Material, colors: bool, custom := false) -> Mul
 func _build_ground() -> void:
 	var w: float = sim.WORLD.x * U
 	var d: float = sim.WORLD.y * U
-	var nx := 200
-	var nz := 125
+	# outdoors (no box) the ground runs on past the plot all round
+	var m: float = GARDEN_MARGIN if sim.scenario == "wild" else 0.0
+	var nx := 200 + int(m)
+	var nz := 125 + int(m)
 	var verts := PackedVector3Array()
 	var idx := PackedInt32Array()
 	for j in nz + 1:
 		for i in nx + 1:
-			verts.append(Vector3(w * i / nx, 0, d * j / nz))
+			verts.append(Vector3(-m + (w + 2.0 * m) * i / nx, 0, -m + (d + 2.0 * m) * j / nz))
 	for j in nz:
 		for i in nx:
 			var a := j * (nx + 1) + i
@@ -175,7 +178,7 @@ func _build_ground() -> void:
 	arrays[Mesh.ARRAY_INDEX] = idx
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	mesh.custom_aabb = AABB(Vector3(0, -4, 0), Vector3(w, 10, d))
+	mesh.custom_aabb = AABB(Vector3(-m, -4, -m), Vector3(w + 2.0 * m, 10, d + 2.0 * m))
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	var detail := NoiseTexture2D.new()
@@ -217,6 +220,8 @@ func _update_mound() -> void:
 
 
 func _build_box() -> void:
+	if sim.scenario == "wild":
+		return          # a plot of garden ground: no glass box, no tray, no table (the ground runs on)
 	var w: float = sim.WORLD.x * U
 	var d: float = sim.WORLD.y * U
 	var glass := StandardMaterial3D.new()

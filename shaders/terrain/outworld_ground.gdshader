@@ -30,7 +30,10 @@ void vertex() {
 }
 
 void fragment() {
-	vec2 uv = wp / world_size;
+	vec2 uv0 = wp / world_size;
+	// outdoors the ground goes on past the plot: its soil pattern mirrored there; trails only inside it
+	vec2 uv = 1.0 - abs(1.0 - mod(uv0, 2.0));
+	float inside = step(0.0, uv0.x) * step(uv0.x, 1.0) * step(0.0, uv0.y) * step(uv0.y, 1.0);
 	vec3 c = texture(soil_tex, uv).rgb;
 	vec4 d = texture(damp_tex, uv);
 	c = mix(c, d.rgb, d.a);
@@ -47,7 +50,7 @@ void fragment() {
 	float m = (1.0 - smoothstep(mound_r * 0.9, mound_r * 1.9, dn)) * clamp(mound_h * 2.0, 0.0, 1.0);
 	c = mix(c, vec3(0.5, 0.39, 0.27) * (0.85 + 0.3 * det), m * 0.7);
 	vec4 ph = texture(pher_tex, uv);
-	float pa = ph.a * pher_on;
+	float pa = ph.a * pher_on * inside;
 	c = mix(c, ph.rgb * 0.75, pa * 0.55);
 	c *= mix(0.08, 1.0, smoothstep(0.9, 2.2, dn));     // the dark mouth of the nest
 	// standing water collects in the hollows after a while of rain
