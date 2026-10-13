@@ -42,14 +42,17 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	var np: Vector3 = v.vp.lerp(path_pos, 1.0 - exp(-12.0 * delta))
 	var step: Vector3 = np - v.vp
 	var moving := step.length() > 0.12 * delta
-	if moving:
-		var want := step.normalized()
+	var flat := step - (v.vu as Vector3) * step.dot(v.vu)     # (turn only within the floor's plane: a step up or
+	var face: Vector3 = v.get("face", Vector3.INF)          # down - a lift, the floor rising - never tips it on end)
+	# backing away from what it holds or works at (pulling a callow out): it keeps facing it, walking backwards
+	var backing := face != Vector3.INF and flat.dot(face - np) < 0.0
+	if moving and not backing and flat.length() > 0.02 * delta:
+		var want := flat.normalized()
 		var old_f: Vector3 = v.vf
 		v.vf = _turn_to(v.vf, want, minf(1.0, 9.0 * delta))
 		var turned := old_f.angle_to(v.vf)            # turning takes steps as well as walking does
 		v.gait = fmod(v.gait + (step.length() + turned * 0.9 * scale) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
-	var face: Vector3 = v.get("face", Vector3.INF)
-	if face != Vector3.INF and not moving:
+	if face != Vector3.INF and (not moving or backing):
 		var to := face - np
 		to -= v.vu * to.dot(v.vu)
 		if to.length_squared() > 0.01:

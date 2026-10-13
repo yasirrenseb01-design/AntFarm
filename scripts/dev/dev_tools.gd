@@ -309,6 +309,10 @@ func _take_shot() -> void:
 			if _opts.has("trace") and mode == "nest":
 				for an in nest_view._anims:
 					print("  anim %s u %.2f p %s vis %s cocoons-fx %d" % [an.k, an.t / an.d, an.get("p"), nest_view._visible(an.get("p", Vector3.ZERO)), nest_view._fx_cocoon_mm.instance_count])
+					for hm in an.get("helpers", []):
+						if hm.has("xf"):
+							var hx: Transform3D = hm.xf
+							print("    helper at %s (from cocoon %.2f) facing %s act %d" % [hx.origin, hx.origin.distance_to(an.p), hx.basis.x.normalized(), hm.act])
 			if _opts.has("trace-mates") and mode == "nest":
 				print("%d: %s" % [k, nest_view.trace_mates()])
 			if _opts.has("trace") and mode == "nest":

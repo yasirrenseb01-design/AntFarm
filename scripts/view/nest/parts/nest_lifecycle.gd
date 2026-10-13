@@ -185,6 +185,17 @@ func _queen_feet_clear(at: Vector3, turn: float) -> bool:
 	return true
 
 
+## How far (in steps of a quarter body, up to 3 bodies) the floor runs open from p along heading yaw.
+func _open_run(p: Vector3, yaw: float, s: float) -> int:
+	var bx := Basis(Vector3.UP, yaw).x
+	for k in range(1, 13):
+		var q: Vector3 = p + bx * (0.25 * k * s + 1.35 * s)
+		var fl := _floor_cached(q)
+		if absf(fl - p.y) > 0.8 or _density_at(Vector3(q.x, fl + 0.3, q.z)) >= 0.5:
+			return k
+	return 13
+
+
 ## A founding queen opening her first cocoons: she steps up until her mandibles are at the cocoon's head end,
 ## bites the silk open, then backs away a little at each tug as the callow comes out (her mouth on its head),
 ## and goes back to her place.
@@ -215,16 +226,56 @@ func _queen_eclose(a: Dictionary, u: float, ep: Dictionary, callow_head: Vector3
 		_queen_act = ACT_DIG if u > 0.18 and u < 0.72 else ACT_TEND
 
 
+## No nurse is near a hatching cocoon: the nearest free one walks over by the tunnels (not straight through
+## the soil); once it is close it is taken on as the helper.
+func _call_nurse(a: Dictionary) -> void:
+	var c = a.get("called")
+	if c != null and (not _mates.has(c) or c.has("script") or c.has("deliver") or c.carry):
+		a.erase("called")
+		c = null
+	if c == null:
+		var best = null
+		var bd := INF
+		for m in _mates:
+			if m.has("script") or m.has("deliver") or m.carry or not m.role in ["nurse", "idle", "attend"]:
+				continue
+			var d := Vector3(m.cell).distance_to(a.p)
+			if d < bd:
+				bd = d
+				best = m
+		if best == null:
+			return
+		var room := -1
+		var rd := INF
+		for i in _rooms.size():
+			for sp in _rooms[i].spots:
+				var d: float = (sp as Vector3).distance_to(a.p)
+				if d < rd:
+					rd = d
+					room = i
+		best.goal = room
+		best.rest = 0
+		best.wander = 0
+		best.act_left = 0.0
+		a.called = best
+		return
+	if Vector3(c.cell).distance_to(a.p) < 7.0 or (c.rest > 0 and Vector3(c.cell).distance_to(a.p) < 10.0):
+		a.erase("called")
+		a.helpers.append(c)
+		_hire(c, _beside(a.p, c, 1.6), a.p, ACT_TEND)
+
+
 ## A helper's goal kept on the open chamber floor: on the floor under it, drawn back toward the cocoon
 ## `toward` if it would be inside the soil (else helpers walked into the chamber wall while pulling).
 func _open_floor_goal(goal: Vector3, toward: Vector3, fallback: Vector3) -> Vector3:
-	var g := goal
-	for k in 6:
+	# where it was meant to stand, else the same place on the cocoon's other side - never closer in, which put
+	# helpers on top of the cocoon - else where it already is
+	var mirror := Vector3(2.0 * toward.x - goal.x, goal.y, 2.0 * toward.z - goal.z)
+	for g in [goal, mirror]:
 		var fl := _floor_cached(g)
 		var p := Vector3(g.x, fl + 0.45, g.z)
-		if _density_at(p) < 0.5 and absf(fl - toward.y) < 1.2:
+		if _density_at(p) < 0.5 and _density_at(p + Vector3(0, 0.3, 0)) < 0.5 and absf(fl - toward.y) < 1.2:
 			return p
-		g = toward.lerp(g, 0.7)
 	return fallback
 
 
@@ -257,6 +308,10 @@ func _start_eclose(s: float) -> void:
 		yaw = atan2(-bx.z, bx.x)
 	else:
 		p.y = _floor_cached(p)
+	# the callow comes out at the head end and is drawn ~2.5 bodies along: that way must be open chamber floor
+	# (a cocoon at the edge of the pile is turned round for it - its head end facing into the chamber)
+	if _open_run(p, yaw, s) < _open_run(p, yaw + PI, s):
+		yaw += PI
 	var a := {"k": "eclose", "t": 0.0, "d": 16.0 * _anim_k(), "p": p, "s": s, "helpers": [], "yaw": yaw,
 		"queen": false}
 	for m in _helpers(p, 2, 9.0):               # (nurses from a little farther off come to open it)
@@ -279,7 +334,20 @@ func _eclose_parts(a: Dictionary, u: float) -> Dictionary:
 	var raw := clampf((u - 0.5) / 0.26, 0.0, 1.0) * 5.0
 	var pull := (floorf(raw) + smoothstep(0.0, 0.55, raw - floorf(raw))) / 5.0 if raw < 5.0 else 1.0
 	var roll := lerpf(1.3, 0.0, clampf((u - 0.85) / 0.13, 0.0, 1.0))
-	var origin: Vector3 = a.p + Vector3(0, 0.15 + 0.25 * roll, 0) + bx * (pull * 2.5 * s - 0.4 * s)
+	var origin: Vector3 = a.p + bx * (pull * 2.5 * s - 0.4 * s)
+	# on the floor where it is pulled to (a chamber floor curves), and up over any brood lying there - it is
+	# drawn out over its neighbours, not through them
+	var rise := 0.0
+	if pull > 0.0:
+		for k in [-0.8, 0.0, 0.8]:
+			var q: Vector3 = origin + bx * k * s
+			for o in _brood_near(q):
+				var d := _brood_offset(q, o)
+				var half: float = float(o[3] if o.size() > 3 else o[1])
+				if Vector2(d.x, d.z).length() < half + 0.3 * s:
+					rise = maxf(rise, float(o[0].y) + half - _floor_cached(q))
+	var fl: float = _floor_cached(origin) if pull > 0.0 else float(a.p.y)
+	origin.y = fl + 0.15 + 0.25 * roll + rise
 	var callow := Transform3D((b * Basis(Vector3.RIGHT, roll)).scaled(Vector3.ONE * s), origin)
 	return {"bx": bx, "head": head, "pull": pull, "callow": callow, "side": b.z}
 
@@ -391,6 +459,12 @@ func _step_anims(adt: float) -> void:
 			"eclose":
 				var hs: Array = a.helpers.filter(func(m): return _mates.has(m))
 				a.helpers = hs
+				if hs.is_empty() and not a.queen and float(a.get("wait", 0.0)) < 30.0:
+					a.wait = float(a.get("wait", 0.0)) + adt
+					_call_nurse(a)
+					if a.has("called") and u > 0.15:
+						a.t = 0.15 * a.d                  # the callow waits in its cocoon until a nurse comes to open it
+						u = 0.15
 				var ep := _eclose_parts(a, u)
 				var callow_head: Vector3 = (ep.callow as Transform3D) * MOUTH
 				for i in hs.size():
@@ -437,6 +511,31 @@ func _step_anims(adt: float) -> void:
 						h.rest = 0
 						h.wander = 0
 						fresh.append(shell)
+					else:
+						# nobody to take it yet: the empty cocoon lies where it was until a nurse comes for it
+						# (brood and its leftovers move only when an ant carries them)
+						fresh.append({"k": "husk", "t": 0.0, "d": 1e9, "p": a.p, "yaw": a.yaw, "s": a.s})
+			"husk":
+				var h = a.get("helper")
+				if h != null and not _mates.has(h):
+					a.erase("helper")
+					h = null
+				if h == null and int(a.t * 2.0) % 6 == 0:
+					var hs2 := _helpers(a.p, 1, 9.0)
+					if not hs2.is_empty():
+						a.helper = hs2[0]
+						_hire(a.helper, _beside(a.p, a.helper, 1.4), a.p, ACT_WALK)
+				elif h != null and (h.script.pos as Vector3).distance_to(h.script.goal) < 0.2:
+					_release(h)
+					var shell := {"k": "shell", "t": 0.0, "d": 1e9, "helper": h}
+					h.deliver = shell
+					h.carry = true
+					h.item = "shell"
+					h.goal = -1
+					h.rest = 0
+					h.wander = 0
+					fresh.append(shell)
+					a.done = true
 			"shell":
 				var h = a.helper
 				if not _mates.has(h) or not h.has("deliver") or a.t > 45.0:
@@ -541,6 +640,11 @@ func _draw_anims() -> void:
 						silk.append([Transform3D(lb.scaled(Vector3.ONE * (0.55 + 0.5 * cover)), a.p + Vector3(0, 0.3, 0)), 0.15 + 0.7 * cover])
 					else:
 						cocoons.append(Transform3D(lb, a.p + Vector3(0, 0.3, 0)))
+			"husk":
+				if _visible(a.p):
+					var hb := Basis(Vector3.UP, a.yaw)
+					var hs3: Vector3 = Vector3(0.92, 0.78, 1.0) * a.s
+					cocoons.append([Transform3D(hb.scaled(hs3), a.p + Vector3(0, 0.6 * a.s * 0.78, 0)), Color(0.95, 0.95, 0.95)])
 			"eclose":
 				if not _visible(a.p):
 					continue
