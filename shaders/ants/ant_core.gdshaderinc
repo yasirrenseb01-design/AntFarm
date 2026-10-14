@@ -5,7 +5,9 @@ uniform float outline_w = 0.045;
 #endif
 // Ant body animation on the GPU. Each vertex carries a body-part id in COLOR.a (see ant_model3d.gd);
 // each instance carries in INSTANCE_CUSTOM:
-//   x = gait phase (radians, advanced by distance walked)
+//   x = gait phase (radians, advanced by distance walked, below 512) + 512 x how the body is bent at the waist
+//       and the neck to lie on the ground under it (0 none; else 1 + gaster + 21 x head, 21 steps of 0.04 rad
+//       from -0.4 each: ant_model3d.gd gait_x)
 //   y = activity code (id + 100 if full) + 128 x the code being left; fraction = how much of the old pose
 //       still shows (ant_model3d.gd act_y: poses ease into one another instead of snapping)
 //   z = animation clock (seconds, per ant)
@@ -161,7 +163,7 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 
 // The body's pose for one activity code (act + 100 if the crop is full): the vertex V (normal NR) of body
 // part `part` moved for that activity. Called twice while easing from one activity into the next.
-vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, out float stretch_out) {
+vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec2 bend, out float stretch_out) {
 	float full = code >= 99.5 ? 1.0 : 0.0;
 	float act = code - full * 100.0;
 	stretch_out = 0.0;
@@ -263,11 +265,16 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			vec2 tg = normalize(vec2(F.z, -F.x)) * tdir;
 			vec3 T = F + vec3(dx * (1.0 - tw) + tg.x * dx * tw, 0.0, tg.y * dx * tw);
 			// set the foot down on the real ground under it (rough nest floors, the slope outside)
-			if (ground_mode != 0 && probe && abs(M[1].y) > 0.5 * length(M[1].xyz)) {   // (not for shadows, not on the glass)
+			if (ground_mode != 0 && probe) {                  // (not for shadows)
 				vec3 upw = normalize(M[1].xyz);
 				float sc = length(M[1].xyz);
 				vec3 fw = (M * vec4(T, 1.0)).xyz;
-				T.y += clamp(ground_dy(fw, upw) / sc, -0.36, 0.6);     // (up a steep chamber edge the foot climbs with it)
+				float gd = ground_dy(fw, upw);
+				// (on a wall or the ceiling with no soil under the foot - the glass of a glass nest - it stays put;
+				// on a floor it reaches down for the ground as far as the leg goes)
+				if (gd > -1.35 || abs(M[1].y) > 0.5 * sc) {
+					T.y += clamp(gd / sc, -0.5, 0.6);           // (up a steep chamber edge the foot climbs with it)
+				}
 			}
 			T.y += up - hlift;                               // (the body is raised by hlift below)
 			bool cleaning = false;
@@ -370,7 +377,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		// the antenna turns at its socket, and is carried by the head as it nods and turns
 		mat3 Ra = rot_y(a1 * side) * rot_z(a2 + droop);
 		vec2 hp = head_pose(act, t, gait, mv);
-		mat3 Rh = rot_y(hp.y) * rot_z(hp.x);
+		mat3 Rh = rot_y(hp.y) * rot_z(hp.x + bend.y);
 		vec3 hpiv = vec3(1.35, 1.15, 0.0) * K;
 		vec3 v1 = piv + Ra * (V - piv);
 		V = hpiv + Rh * (v1 - hpiv);
@@ -381,7 +388,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		// head on the neck joint
 		piv = vec3(1.35, 1.15, 0.0) * K;
 		vec2 hp = head_pose(act, t, gait, mv);
-		float nod = hp.x;
+		float nod = hp.x + bend.y;                       // (+ bent at the neck toward the ground under the head)
 		float turn = hp.y;
 		R = rot_y(turn) * rot_z(nod);
 		if (part == 11.0) {
@@ -414,6 +421,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			curl += 0.1 + 0.025 * sin(gait * 2.0) * mv;
 			R = rot_y(-0.045 * sin(gait) * mv);
 		}
+		if (act != 11.0) curl -= bend.x;                       // bent at the waist toward the ground under it
 		if (act == 4.0) {
 			// bent round toward the hind leg wiping it
 			R = R * rot_y(0.14 * (groom_side(t, 1.0, 0.25) - groom_side(t, -1.0, 0.25)) * groom_phase(t).z);
@@ -446,12 +454,20 @@ void vertex() {
 	vec3 n1 = NORMAL;
 	float s1;
 	gband = smoothstep(0.78, 0.98, 0.5 + 0.5 * sin(VERTEX.x / K * 6.5 + 1.2));   // rest-pose bands along the gaster
-	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS, s1);
+	// x: gait + 512 x the bend code (ant_model3d.gd gait_x)
+	float bc = floor(INSTANCE_CUSTOM.x / 512.0);
+	float gait = INSTANCE_CUSTOM.x - bc * 512.0;
+	vec2 bend = vec2(0.0);
+	if (bc > 0.5) {
+		bc -= 1.0;
+		bend = (vec2(mod(bc, 21.0), floor(bc / 21.0)) - 10.0) * 0.04;
+	}
+	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS, bend, s1);
 	stretch = s1;
 	if (left > 0.002 && prev != code && !IN_SHADOW_PASS) {      // (a shadow skips the easing)
 		vec3 n0 = NORMAL;
 		float s0;
-		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, INSTANCE_CUSTOM.x, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, true, s0);
+		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, true, bend, s0);
 		v1 = mix(v1, v0, left);
 		n1 = normalize(mix(n1, n0, left) + vec3(0.0, 1e-4, 0.0));
 		stretch = mix(s1, s0, left);

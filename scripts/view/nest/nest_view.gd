@@ -188,6 +188,7 @@ func refresh(delta: float) -> void:
 		_floor_cache.clear()            # the floor moved: brood is set down on it afresh
 		_lift_cache.clear()
 		_fit_cache.clear()
+		_gfit_cache.clear()
 		_soil_gen += 1
 	for k in nest.dirty:
 		if not _queue.has(k):
@@ -264,3 +265,118 @@ func _unhandled_input(e: InputEvent) -> void:
 			target_t += (-right * e.relative.x + up * e.relative.y) * dist_t * 0.0016
 	elif e is InputEventKey and e.pressed and e.keycode == KEY_HOME:
 		reset_view()
+
+
+# ---------------------------------------------------------------- dev traces (moved from parts/nest_mates.gd in v0.8.56)
+
+## Dev (--trace): the nestmates within reach of the queen: role, activity, rest/wander left, position.
+func trace_near_queen() -> String:
+	var out := []
+	for m in _mates:
+		if m.has("xf") and (m.xf as Transform3D).origin.distance_to(_spots.queen) < 7.0:
+			var o: Vector3 = (m.xf as Transform3D).origin
+			out.append("%s%s a%d r%d w%d (%.1f,%.1f,%.1f) sep%.2f" % [m.role, "*" if m.has("script") else "", m.act, m.rest, m.wander,
+				o.x, o.y, o.z, (m.get("sep", Vector3.ZERO) as Vector3).length()])
+	return " | ".join(out)
+
+
+## Dev (--trace-mates): every nestmate: role, activity, cell, goal room, carrying what, settle/step state.
+func trace_mates() -> String:
+	var out := []
+	for m in _mates:
+		var o: Vector3 = (m.xf as Transform3D).origin if m.has("xf") else Vector3(m.cell)
+		var line := "w%s %s%s a%d c%s->%s goal%s carry%s/%s r%d w%d t%.2f set%d" % [m.get("wid", -1), m.role,
+			"*" if m.has("script") else "", m.act, m.cell, m.to, m.get("goal", -9), m.carry, m.get("item", ""),
+			m.rest, m.wander, m.t, (m.get("settle", []) as Array).size()]
+		out.append(line + " here%d free%s lift%.2f" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell), float(m.get("blift", 0.0))])
+	for id in _dig_vis:
+		out.append("dig%d" % id)
+	return " | ".join(out)
+
+
+## Dev (--trace-crowd, --follow-soil): whether part of a nestmate's body (belly height) is in the soil.
+func _ant_in_soil(m: Dictionary) -> bool:
+	if not m.has("xf"):
+		return false
+	var x: Transform3D = m.xf
+	for q in [Vector3(0.8, 0.3, 0), Vector3(0, 0.3, 0), Vector3(-0.9, 0.3, 0)]:   # (belly height, scaled with the ant)
+		if _density_at(x * q) >= 0.5:
+			return true
+	return false
+
+
+## Dev (--trace-crowd): where the nestmates are: on the ceiling / walls / floor, by the queen, and per chamber.
+func trace_crowd() -> String:
+	var ceil := 0
+	var wall := 0
+	var flr := 0
+	var by_q := 0
+	var walking := 0
+	var by_ent := 0
+	var ent_kinds := {}
+	for m in _mates:
+		var u: Vector3 = m.get("vu", m.up)
+		if u.y < -0.3:
+			ceil += 1
+		elif u.y < 0.7:
+			wall += 1
+		else:
+			flr += 1
+		if m.has("xf") and _queen_mm.instance_count > 0 and _queen_gap((m.xf as Transform3D).origin) < 1.5:
+			by_q += 1
+		if m.act == ACT_WALK:
+			walking += 1
+		if Vector3(m.cell).distance_to(Vector3(nest.entrance)) < 9.0:
+			by_ent += 1
+			var key := "%s rest>0:%s stuck-at:%s here:%s" % [m.role, m.rest > 0, m.get("dbg_stuck", -1), (_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1)]
+			ent_kinds[key] = ent_kinds.get(key, 0) + 1
+	var top := 0
+	for m in _mates:
+		if m.has("xf") and (m.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
+			top += 1
+	var dtop := 0
+	for v in _dig_vis.values():
+		if v.has("xf") and (v.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
+			dtop += 1
+	var in_soil := 0
+	for m in _mates:
+		if _ant_in_soil(m):
+			in_soil += 1
+	# feet that cannot reach the ground (the shader sets each foot down on the ground within ~0.5 of where it would
+	# stand on a flat floor, x the ant's size) and bodies standing clear above the ground
+	var feet_air := 0
+	var lifted := 0
+	for m in _mates:
+		if not m.has("xf") or m.has("script"):
+			continue
+		var x: Transform3D = m.xf
+		var up := x.basis.y.normalized()
+		var sz := x.basis.y.length()
+		var n := 0
+		for fl in [Vector3(0.9, 0, 1.07), Vector3(0.03, 0, 1.07), Vector3(-0.88, 0, 1.07), Vector3(0.9, 0, -1.07), Vector3(0.03, 0, -1.07), Vector3(-0.88, 0, -1.07)]:
+			if _ground_off(x * fl, up) < -0.55 * sz:
+				n += 1
+		if n >= 2:
+			feet_air += 1
+		if _ground_off(x.origin, up) < -0.35 and float(m.get("blift", 0.0)) < 0.05:
+			lifted += 1
+	print("   ants with 2+ feet off the ground: %d   standing clear above it: %d   climbing over a nestmate: %d (in narrow places %d)" % [feet_air, lifted,
+		_mates.filter(func(q): return float(q.get("over", 0.0)) > 0.1).size(), _mates.filter(func(q): return q.get("narrow", false)).size()])
+	var bis := brood_in_soil()
+	print("   in the soil (any body point): %d   overlapping pairs: %d   larvae / cocoons in the soil: %d / %d   larvae off the floor: %d" % [in_soil, mate_overlaps(), bis.x, bis.y, bis.z])
+	return "nest %.1fC | by entrance %d | work %d diggers %d/%d er %.2f | mates %d floor %d wall %d ceiling %d | by queen %d | walking %d | air %d target %d chambers %s" % [sim.climate.nest, by_ent, nest.work_left, nest.diggers.size(), sim.diggers_wanted, nest.entrance_r, _mates.size(), flr, wall, ceil, by_q, walking,
+		nest.air, sim.target_air(), nest.chambers.map(func(c): return "%s g%.1f%s" % [c.kind, c.goal, "" if c.get("open", true) else "(dig)"])]
+
+
+func debug_summary() -> String:
+	var roles := {}
+	var acts := {}
+	var carrying := 0
+	for m in _mates:
+		roles[m.role] = roles.get(m.role, 0) + 1
+		acts[m.act] = acts.get(m.act, 0) + 1
+		if m.carry:
+			carrying += 1
+	return "anims %d cam %s d%.1f yaw%.2f cut%.1f | %s %s  roles %s  acts %s  carrying %d  larvae moved %d/%d (%s→%s)  rooms %d  fields %d" % [_anims.size(), target, cam_dist, yaw, cut_offset, sim.clock_text(),
+		"air>nest" if sim.climate.air > sim.climate.nest + 0.5 else "air<nest", roles, acts, carrying,
+		mini(_moved, sim.larvae.size()), sim.larvae.size(), _larva_prev, _larva_group, _rooms.size(), _fields.size()]

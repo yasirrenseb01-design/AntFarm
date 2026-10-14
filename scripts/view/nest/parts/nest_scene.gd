@@ -104,6 +104,8 @@ var _freed := {"eggs": [], "larvae": []}   # where brood just hatched / pupated 
 var _anim_drops := []            # droplets drawn by life-cycle moments (trophallaxis), added to the nestmates' drops
 var _soil_gen := 0              # bumped whenever the soil changes (cached brood checks are redone)
 var _lift_cache := {}            # per walkable cell: how far a body standing there is raised (_cell_lift)
+var _gfit_cache := {}            # per cell: the ground round it (_ground_ring)
+var _gfit_budget := 0            # ground fits still to work out this frame
 var _fit_cache := {}             # per walkable cell: whether a body can lie there clear of the walls (_cell_fits)
 var _floor_cache := {}          # floor heights under brood spots (see _floor_cached)
 var sel_kind := ""                # the ant the keeper clicked: "worker" | "digger" | "queen" ("" = none)

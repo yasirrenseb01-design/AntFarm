@@ -245,6 +245,17 @@ static func duty(s: float) -> float:
 
 
 ## Body travel per full step cycle, in mesh units: while planted a foot sweeps back 2A as the body moves 2A.
+## The shader's INSTANCE_CUSTOM.x: the gait phase (radians, below 512) + 512 x a code for how the body is bent
+## at its joints to lie on the ground (ant_core.gdshaderinc): 0 none, else 1 + gaster + 21 x head, each in
+## 21 steps of 0.04 radians from -0.4 (gaster: tip raised +; head: raised +).
+static func gait_x(gait: float, bend: Vector2) -> float:
+	if bend == Vector2.ZERO:
+		return gait
+	var g := clampi(roundi(bend.x / 0.04) + 10, 0, 20)
+	var h := clampi(roundi(bend.y / 0.04) + 10, 0, 20)
+	return gait + 512.0 * float(1 + g + 21 * h)
+
+
 static func stride_len(s: float) -> float:
 	return 2.0 * STRIDE_A * s * K / duty(s)
 

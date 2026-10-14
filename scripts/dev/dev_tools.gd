@@ -342,6 +342,29 @@ func _take_shot() -> void:
 							nest_view.target_t = an.p
 							nest_view.target = nest_view.target_t
 							break
+				if _opts.has("follow-fit") and mode == "nest":
+					# watch a nestmate lying on a slope (body tipped and bent to the ground under it), the same one;
+					# seen from its side (--side=<radians round from its right side>)
+					# (--follow-fit=over: one climbing over a nestmate's back instead)
+					var fm = _pushed if _pushed != null and nest_view._mates.has(_pushed) else null
+					if fm == null:
+						for m in nest_view._mates:
+							var g: PackedFloat32Array = m.get("gfit", PackedFloat32Array())
+							var pick: bool = float(m.get("over", 0.0)) > 0.1 if _opts["follow-fit"] == "over" else \
+								(g.size() == 5 and absf(g[1]) + absf(g[2]) + absf(g[3]) > float(_opts.get("fit-min", "0.35")))
+							if pick and nest_view._visible((m.xf as Transform3D).origin):
+								fm = m
+								break
+					if fm != null:
+						_pushed = fm
+						var fx: Transform3D = fm.xf
+						nest_view.target_t = fx.origin
+						nest_view.target = nest_view.target_t
+						var fwd: Vector3 = fx.basis.x
+						nest_view.yaw = atan2(-fwd.z, fwd.x) + float(_opts.get("side", "1.57"))
+						nest_view.yaw_t = nest_view.yaw
+						if i == 0:
+							print("  fitted ant: %s act %d over %.2f" % [fm.gfit, fm.act, float(fm.get("over", 0.0))])
 				if _opts.has("follow-soil") and mode == "nest":
 					# watch a nestmate with part of its body in the soil (the --trace-crowd check), the same one while it lasts
 					var sm = _pushed if _pushed != null and nest_view._mates.has(_pushed) and nest_view._ant_in_soil(_pushed) else null
@@ -453,6 +476,7 @@ func _take_shot() -> void:
 var _pushed = null                # (--follow-pushed: the ant being watched)
 var _pushed_said = null
 var _pop_prev := []
+var _pop_by := {}
 var _pop_moves := []
 var _pop_n := 0
 var _brood_prev := []
@@ -465,6 +489,25 @@ var _float_said := 0
 func _count_pops() -> void:
 	var mm: MultiMesh = nest_view._ant_mm if mode == "nest" else outworld._ant_mm
 	var u := 1.0 / 1.5                                            # world units per mm (both views)
+	if mode == "nest":
+		# each nestmate followed by who it is (matching drawn ants by nearness swapped two that passed close)
+		var pmin2 := float(_opts.get("pops-min", "0.2")) * u
+		for m in nest_view._mates:
+			if not m.has("xf"):
+				continue
+			var p2: Vector3 = (m.xf as Transform3D).origin
+			var id: int = m.get("wid", -1)
+			if _pop_by.has(id):
+				var mv2: Vector3 = p2 - (_pop_by[id][0] as Vector3)
+				var was2: Vector3 = _pop_by[id][1]
+				if mv2.length() < 3.0 * u and mv2.length() > pmin2 and was2.length() > pmin2 and mv2.dot(was2) < -0.5 * mv2.length() * was2.length():
+					_pop_n += 1
+					print("pop %d: flick at %s  %.2f mm then %.2f mm back  (%s act %d over %.2f sep %.2f)" % [_pop_n, p2, was2.length() / u, mv2.length() / u,
+						m.role, m.act, float(m.get("over", 0.0)), (m.get("sep", Vector3.ZERO) as Vector3).length()])
+				_pop_by[id] = [p2, mv2]
+			else:
+				_pop_by[id] = [p2, Vector3.ZERO]
+		mm = MultiMesh.new()                 # (the drawn-ant matching below: skipped in the nest)
 	var now := []
 	var moves := []
 	for i in mm.instance_count:

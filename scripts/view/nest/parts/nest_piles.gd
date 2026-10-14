@@ -241,24 +241,45 @@ var _last_forced := false          # laid where it still touches the soil (nowhe
 var _last_yaw := Basis.IDENTITY
 
 
-## Draws a kept item where it lies (its tilt to the floor worked out again only when the soil changes). Where
-## the floor under it is uneven, a growing larva's ends could dip into it: then it rests a little higher, on
-## the bump (worked out again as it grows) - it never slides across the floor.
+## Draws a kept item where it lies (its tilt to the floor worked out again only when the soil changes). It
+## grows where it lies, resting on the floor: as it grows its underside is set down on the real floor under it
+## (the highest point of the floor under it touches, none is in it) - it never slides across the floor.
 func _keep_at(pl: Dictionary, s: float, kind: String, item, col_fn: Callable, xs: Array, cs: Array) -> void:
-	var sk := snappedf(s, 0.05)
+	var sk := snappedf(s, 0.04)
 	if pl.get("tgen", -1) != _soil_gen or pl.get("ts", -1.0) != sk:
 		pl.tb = _floor_tilt(pl.base, pl.b, _grown(kind, s)) if not pl.top else pl.b     # (as it was laid: see _brood_xf)
 		pl.tgen = _soil_gen
 		pl.ts = sk
-		pl.lift = 0.0
-		var up: Vector3 = (pl.tb as Basis).y.normalized()
-		var xf0 := _register_brood(pl.base, pl.tb, s, kind, false, false)
-		while pl.lift < 0.3 and _soil_pts(xf0.translated(up * pl.lift), kind) > 0:
-			pl.lift += 0.03
-	var xf := _register_brood(pl.base + (pl.tb as Basis).y.normalized() * float(pl.lift), pl.tb, s, kind, false)
+		pl.lift = 0.0 if pl.top else _rest_on_floor(_register_brood(pl.base, pl.tb, s, kind, false, false), kind)
+	var xf := _register_brood(pl.base + Vector3(0, float(pl.lift), 0), pl.tb, s, kind, false)
 	if _visible(xf.origin):
 		xs.append(xf)
 		cs.append(col_fn.call(item) if col_fn.is_valid() else Color.WHITE)
+
+
+## How far an item drawn at `xf` must be raised (or lowered: -) for its underside to rest on the floor under it.
+func _rest_on_floor(xf: Transform3D, kind: String) -> float:
+	var lift := -INF
+	for q in (_larva_under() if kind == "larvae" else _COCOON_UNDER):
+		var w: Vector3 = xf * q
+		lift = maxf(lift, _floor_cached(w) - w.y)
+	return clampf(lift, -0.4, 0.4) if lift > -INF else 0.0
+
+
+## The underside of a larva lying at its origin (size 1): the bottom of its curved body at seven places.
+static var _larva_under_cache: Array = []
+static func _larva_under() -> Array:
+	if _larva_under_cache.is_empty():
+		for i in 7:
+			var t := float(i) / 6.0
+			var th := lerpf(-0.75, 0.95, t)
+			var r := maxf(0.36 * sin(lerpf(0.35, 2.75, t)), 0.1)
+			_larva_under_cache.append(Vector3(sin(th) * 1.15, r * 0.95 - r, (1.0 - cos(th)) * 0.55 - 0.18))
+	return _larva_under_cache
+
+
+const _COCOON_UNDER := [Vector3(0, -0.62, 0), Vector3(0.7, -0.53, 0), Vector3(-0.7, -0.53, 0), Vector3(1.1, -0.35, 0),
+	Vector3(-1.1, -0.35, 0), Vector3(0, -0.53, 0.32), Vector3(0, -0.53, -0.32)]
 
 
 ## A new larva starts where its egg lay; a new cocoon where its larva spun it, when that is in the cocoon
@@ -437,12 +458,16 @@ const _COCOON_PTS := [Vector3(1.25, 0, 0), Vector3(-1.25, 0, 0), Vector3(0.9, 0.
 	Vector3(0, 0.58, 0), Vector3(0, 0, 0.58), Vector3(0, 0, -0.58), Vector3(0, 0.4, 0.4), Vector3(0, 0.4, -0.4)]
 
 
-## Dev (--trace-crowd): how many larvae and cocoons drawn have some part of them in the soil.
-func brood_in_soil() -> Vector2i:
-	var out := Vector2i.ZERO
+## Dev (--trace-crowd): how many larvae and cocoons drawn have some part of them in the soil (x, y), and how
+## many lie off the floor (z: the larvae on the floor whose underside is more than a little above it).
+func brood_in_soil() -> Vector3i:
+	var out := Vector3i.ZERO
 	for i in _larva_mm.instance_count:
-		if _soil_pts(_larva_mm.get_instance_transform(i), "larvae") > 0:
+		var xf := _larva_mm.get_instance_transform(i)
+		if _soil_pts(xf, "larvae") > 0:
 			out.x += 1
+		if _rest_on_floor(xf, "larvae") < -0.08 and _brood_near(xf.origin).size() <= 1:
+			out.z += 1
 	for i in _pupa_mm.instance_count:
 		if _soil_pts(_pupa_mm.get_instance_transform(i), "pupae") > 0:
 			out.y += 1

@@ -100,9 +100,10 @@ func _larva_within(p: Vector3, reach: float) -> Vector3:
 func _custom(v: Dictionary, act: int) -> Color:
 	var clock: float = v.get("anim", 0.0)
 	v.vact = AntModel.act_step(v.get("vact", Vector3(-1, 0, 0)), act, clock)    # poses ease into one another
+	var gx := AntModel.gait_x(v.get("gait", 0.0), v.get("bend", Vector2.ZERO))       # (and the waist and neck bent to the ground)
 	if v.get("fed", false):
-		return Color(v.get("gait", 0.0), AntModel.act_y(v.vact, clock) + 100.0, fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
-	return Color(v.get("gait", 0.0), AntModel.act_y(v.vact, clock), fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
+		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
+	return Color(gx, AntModel.act_y(v.vact, clock), fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
 
 
 const _NEAR := [Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),
@@ -124,6 +125,10 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 	var callow_ok: bool = m.has("script")
 	var s9 := 9.0 * s * s
 	var side: Vector3 = (m.xf as Transform3D).basis.z if m.has("xf") else Vector3.RIGHT
+	# meeting another ant in a narrow tunnel there is no room to step aside: a walking ant climbs over its back
+	# (over a resting one, or - two passing - the one with the higher id), as real ants do in their galleries
+	var walking: bool = int(m.get("rest", 1)) == 0 and float(m.get("mv", 0.0)) > 0.3 and not m.has("script")
+	var over := 0.0
 	for off in _NEAR:
 		var bin = near.get(key + off)
 		if bin == null:
@@ -137,6 +142,22 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 				continue
 			var reach: float = r + 0.55 * float(o.size)
 			var rr := reach * reach
+			if float(o.get("over", 0.0)) > 0.25 and is_same(o.get("over_on"), m):
+				continue                 # (it is climbing over this one: on its back, not pushing it aside)
+			if walking and (m.get("narrow", false) or o.get("narrow", false)) and not o.has("callow") \
+					and (int(o.get("rest", 1)) > 0 or int(m.get("wid", 0)) > int(o.get("wid", 0))):
+				var hit := false
+				for a in [a0, a1]:
+					for b in [o.d0, o.d1]:
+						var d: Vector3 = a - b
+						d -= up * d.dot(up)
+						hit = hit or d.length_squared() < rr
+				if hit:
+					var top := 0.5 * float(o.size) + 0.1 + float(o.get("over", 0.0))
+					if top > over:
+						over = top
+						m.over_on = o
+					continue
 			var b0: Vector3 = o.d0
 			var b1: Vector3 = o.d1
 			# overlap is judged by the true distance (one ant may be on the wall, the other on the floor);
@@ -183,6 +204,15 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 				if l < reach and l > 0.001:
 					push += d / l * (reach - l) * 0.5     # (as hard as ant on ant: harder only squeezed them into each other)
 	m.ka_push = push
+	# (held a moment after the last touch, so it climbs on and steps down once - not up and down every time the
+	# two bodies just touch or part)
+	if over > 0.0:
+		m.over_want = minf(over, 0.8)
+		m.over_hold = 0.6
+	else:
+		m.over_hold = float(m.get("over_hold", 0.0)) - delta
+		if float(m.over_hold) <= 0.0:
+			m.over_want = 0.0
 	return _ease_sep(m, p, up, push, delta)
 
 
@@ -287,6 +317,8 @@ func mate_overlaps() -> int:
 			var o: Dictionary = _mates[j]
 			if not o.has("d0") or (m.d0 as Vector3).distance_squared_to(o.d0) > 16.0:
 				continue
+			if absf(((m.xf as Transform3D).origin - (o.xf as Transform3D).origin).dot(m.up)) > 0.4:
+				continue                 # (one up on the other's back: climbing over it)
 			var lim: float = (0.55 * float(m.size) + 0.55 * float(o.size)) * 0.85     # (bodies visibly inside each other)
 			var hit := false
 			for a in [m.d0, m.d1]:

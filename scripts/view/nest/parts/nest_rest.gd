@@ -71,6 +71,124 @@ func _cell_lift(c: Vector3i) -> float:
 	return v
 
 
+## How an ant lies on the real surface under it, standing on cell c facing `fwd`: [lift along its up, pitch
+## (nose up +), roll, gaster bend (tip up +), head bend (up +)] - its feet on the ground under them, the body
+## tipped to the slope they stand on, the gaster and head bent toward the ground under them (an ant's body is
+## jointed at the waist and the neck). From the ground round the cell (_ground_ring, worked out once per cell);
+## an empty array if that is still to be worked out and this frame's share is used up (the caller keeps what
+## it had).
+func _fit_at(c: Vector3i, fwd: Vector3) -> PackedFloat32Array:
+	var e = _gfit_cache.get(c)
+	if e == null:
+		if _gfit_budget <= 0:
+			return PackedFloat32Array()
+		_gfit_budget -= 1
+		e = _ground_ring(c)
+		_gfit_cache[c] = e
+	var up: Vector3 = e[0]
+	var ref: Vector3 = e[1]
+	var g: PackedFloat32Array = e[2]
+	var a := atan2(up.cross(ref).dot(fwd), ref.dot(fwd))
+	var gf := _ring_at(g, 1, a)
+	var gb := _ring_at(g, 1, a + PI)
+	var gl := _ring_at(g, 1, a - PI * 0.5)             # (its left: forward x up)
+	var gr := _ring_at(g, 1, a + PI * 0.5)
+	var g0 := g[0]
+	# (its middle stays on the ground under it: at the foot of a wall the ground ahead "rises" into the wall -
+	# that tips it nose up, it does not lift it off the floor)
+	var lift := g0 + clampf((gf + gb + gl + gr) * 0.25 - g0, -0.15, 0.2)
+	var slope := (gf - gb) / 1.6
+	var pitch := clampf(atan(slope), -0.6, 0.6)
+	var roll := clampf(atan2(gl - gr, 1.6), -0.5, 0.5)
+	var bt := clampf(atan2(_ring_at(g, 9, a + PI) - (lift - slope * 1.05), 0.55), -0.25, 0.4)
+	var bh := clampf(atan2(_ring_at(g, 9, a) - (lift + slope * 1.05), 0.5), -0.25, 0.35)
+	return PackedFloat32Array([clampf(lift, -0.8, 1.0), pitch, roll, bt, bh])
+
+
+## The ground round cell c, along the cell's up from where a body standing there is drawn (feet level): under
+## its middle, then 8 places round it 0.8 away (under its feet) and 8 places 1.05 away (under its head and
+## gaster tip): [up, a fixed heading round it, the 17 heights]. A drop (nothing within reach) counts as the
+## ground under its middle.
+func _ground_ring(c: Vector3i) -> Array:
+	var up := _up_at(c)
+	var ref := up.cross(Vector3.FORWARD if absf(up.z) < 0.9 else Vector3.RIGHT).normalized()
+	var o := Vector3(c) - up * 0.4
+	var g := PackedFloat32Array()
+	g.resize(17)
+	g[0] = _ground_off(o, up)
+	for k in 8:
+		var d := ref.rotated(up, k * TAU / 8.0)
+		for j in 2:
+			var v := _ground_off(o + d * (0.8 if j == 0 else 1.05), up)
+			g[1 + j * 8 + k] = g[0] if v <= -0.99 else v
+	return [up, ref, g]
+
+
+## The ground height round a cell at angle a (radians round its up from its fixed heading), between the two
+## nearest of the 8 (ring from index i0 of _ground_ring's heights).
+static func _ring_at(g: PackedFloat32Array, i0: int, a: float) -> float:
+	var x := fposmod(a / TAU * 8.0, 8.0)
+	var k := floori(x)
+	return lerpf(g[i0 + k % 8], g[i0 + (k + 1) % 8], x - k)
+
+
+## Where the ground is along `up` from a point p at a body's feet level: + above it (the floor rises there), -
+## below; -1 if there is none within reach (a drop).
+func _ground_off(p: Vector3, up: Vector3) -> float:
+	var s := 0.35
+	if _density_at(p + up * s) < 0.5:
+		while s > -0.95:
+			s -= 0.2
+			if _density_at(p + up * s) >= 0.5:
+				return s + 0.1
+		return -1.0
+	while s < 1.15:
+		s += 0.2
+		if _density_at(p + up * s) < 0.5:
+			return s - 0.1
+	return 1.2
+
+
+## The ground fit (see _fit_at) for an ant drawn at `tr`, from the cell it is over now, eased toward it. What
+## it should be is looked up again only when `fresh` (a third of the ants each frame), and the easing stops
+## once it is there (most ants stand still).
+const _FIT0 := [0.0, 0.0, 0.0, 0.0, 0.0]
+func _fit_for(m: Dictionary, tr: Transform3D, md: float, fresh: bool) -> PackedFloat32Array:
+	var cur: PackedFloat32Array = m.get("gfit", PackedFloat32Array())
+	if fresh or cur.size() != 5:
+		var p := tr.origin + tr.basis.y.normalized() * 0.4
+		var c := Vector3i(roundi(p.x), roundi(p.y), roundi(p.z))
+		if not nest.is_open(c):
+			c = m.cell
+		var want := _fit_at(c, tr.basis.x)
+		if want.size() == 5 and want != m.get("gfit_want", PackedFloat32Array()):
+			m.gfit_want = want
+			m.gfit_still = false
+	var want: PackedFloat32Array = m.get("gfit_want", PackedFloat32Array(_FIT0))
+	if cur.size() != 5:
+		cur = want.duplicate()
+	elif not m.get("gfit_still", false):
+		var k := 1.0 - exp(-7.0 * md)
+		var off := 0.0
+		for i in 5:
+			cur[i] = lerpf(cur[i], want[i], k)
+			off = maxf(off, absf(cur[i] - want[i]))
+		if off < 0.004:
+			m.gfit_still = true
+	m.gfit = cur
+	return cur
+
+
+## `tr` set on the ground as `g` (_fit_at) says: tipped nose up/down and rolled, raised or lowered along its up.
+static func _apply_fit(tr: Transform3D, g: PackedFloat32Array) -> Transform3D:
+	var up := tr.basis.y.normalized()
+	if absf(g[1]) + absf(g[2]) < 0.005:
+		return Transform3D(tr.basis, tr.origin + up * g[0])       # (on a flat floor: only raised or lowered)
+	var b := tr.basis.rotated(tr.basis.z.normalized(), g[1])
+	b = b.rotated(b.x.normalized(), -g[2])
+	return Transform3D(b, tr.origin + up * g[0])
+
+
 ## How far point p must rise along `up` to be out of the soil: 0 if it is already, -1 if rising
 ## MAX_RISE does not clear it (it is in a wall beside or ahead, not under a curving floor).
 const MAX_RISE := 0.8
@@ -86,17 +204,27 @@ func _rise_to_clear(p: Vector3, up: Vector3) -> float:
 ## Points of an ant's body (model units) that must be out of the soil: head, thorax, gaster at belly height
 ## (a little lower than the belly and a little wider than the body: a margin, so it stays clear as it shifts a
 ## fraction before it is checked again).
+const NECK := Vector2(0.46, 0.39)            # the head's and the gaster's joints (model units: ant_core K x design)
+const WAIST := Vector2(-0.31, 0.36)
 const BODY_PTS := [Vector3(0.9, 0.2, 0), Vector3(0, 0.2, 0), Vector3(-1.0, 0.2, 0), Vector3(0, 0.2, 0.3), Vector3(0, 0.2, -0.3)]
 
 
 ## For an ant drawn at `tr`: how far it must rise along its up for its body to clear a curving floor (x), and
 ## how many of its points are in soil that rising does not clear (y: its head or gaster in a wall - lifting
 ## would only float it; a resting ant turns away from the wall instead, see _free_heading).
-func _soil_clearance(tr: Transform3D, s: float) -> Vector2:
+func _soil_clearance(tr: Transform3D, s: float, bend := Vector2.ZERO) -> Vector2:
 	var up := tr.basis.y.normalized()
 	var need := 0.0
 	var stuck := 0
-	for q in BODY_PTS:
+	for i in BODY_PTS.size():
+		var q: Vector3 = BODY_PTS[i]
+		# (the head and gaster as bent at the neck and the waist: see ant_core.gdshaderinc)
+		if i == 0 and bend.y != 0.0:
+			var hq := (Vector2(q.x, q.y) - NECK).rotated(bend.y) + NECK
+			q = Vector3(hq.x, hq.y, q.z)
+		elif i == 2 and bend.x != 0.0:
+			var gq := (Vector2(q.x, q.y) - WAIST).rotated(bend.x) + WAIST
+			q = Vector3(gq.x, gq.y, q.z)
 		var r := _rise_to_clear(tr * q, up)
 		if r < 0.0:
 			stuck += 1
@@ -121,6 +249,23 @@ func _cell_fits(c: Vector3i) -> bool:
 				v = true
 				break
 		_fit_cache[c] = v
+	return v
+
+
+## Whether cell c is in a narrow tunnel (no room for two ants side by side): little open space round it.
+## Cached per cell until the soil changes (in _fit_cache, under a key of its own).
+func _cell_narrow(c: Vector3i) -> bool:
+	var key := Vector3i(c.x, c.y - 100000, c.z)
+	var v = _fit_cache.get(key)
+	if v == null:
+		var n := 0
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				for dz in [-1, 0, 1]:
+					if nest.is_open(c + Vector3i(dx, dy, dz)):
+						n += 1
+		v = n < 13
+		_fit_cache[key] = v
 	return v
 
 

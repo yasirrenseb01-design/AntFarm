@@ -257,6 +257,7 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 		m.act = ACT_WALK
 
 
+const FIT_NEAR := 32.0          # ants nearer the camera than this lie on the ground as it is (_fit_for)
 func _update_ants(delta: float) -> void:
 	_bind_workers()                         # one drawn nestmate per real worker inside
 	# while larvae are being moved between chambers, a few nurses do the carrying
@@ -303,7 +304,9 @@ func _update_ants(delta: float) -> void:
 	# standing inside one another (the queen, much bigger, keeps a wider berth)
 	var tp := Time.get_ticks_usec()                # (dev --perf: where this function's time goes)
 	var sel_at := []                  # the selected ant's transform and pose, for its outline
+	var cam_at: Vector3 = get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d() != null else Vector3.INF
 	var clr_budget := 20
+	_gfit_budget = 3
 	var near := {}
 	for m in _mates + _dig_vis.values():          # the diggers from the simulation have bodies too
 		if m.has("xf"):
@@ -332,6 +335,7 @@ func _update_ants(delta: float) -> void:
 	var us_step := 0
 	var us_smooth := 0
 	var us_apart := 0
+	var us_fit := 0
 	_mate_cells.clear()
 	for m in _mates:
 		_mate_cells[m.cell] = m
@@ -385,6 +389,7 @@ func _update_ants(delta: float) -> void:
 				# the nest view with hundreds of ants
 				m.ka_t = float(m.get("ka_t", 0.0)) + md
 				if (_mate_frame + mi) % 3 == 0 or not m.has("sep"):
+					m.narrow = _cell_narrow(m.cell)
 					tr.origin += _keep_apart(m, tr.origin, near, minf(m.ka_t, 0.25))
 					_step_aside(m, m.ka_t)
 					_make_room(m, m.ka_t)
@@ -402,14 +407,27 @@ func _update_ants(delta: float) -> void:
 			want_lift = m.btop
 		m.blift = move_toward(float(m.get("blift", 0.0)), want_lift, 1.5 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.blift)
-		# never with its body in the soil: where a chamber floor or wall curves, the cell it walks on can lie
-		# under the drawn surface - lifted clear along its up (eased)
-		# (worked out again only once it has moved or turned a little: most ants stand still most of the time)
-		# (per cell, worked out once: where it is between the cell it left and the one it is stepping to)
-		var want_clr := lerpf(_cell_lift(Vector3i(roundi(m.from.x), roundi(m.from.y), roundi(m.from.z))),
-			_cell_lift(m.cell), clampf(m.t, 0.0, 1.0))
-		# and its own body where it really stands (pushed off its cell by others, or turned): checked for a few
-		# ants a frame, each again once it has moved a little
+		# up on a nestmate's back, passing it in a narrow tunnel (see _keep_apart): climbs on and steps down
+		m.over = move_toward(float(m.get("over", 0.0)), float(m.get("over_want", 0.0)), 1.5 * md)
+		if float(m.over) > 0.0:
+			tr.origin += tr.basis.y.normalized() * float(m.over)
+		elif m.has("over_on"):
+			m.erase("over_on")
+		# lying on the real surface under it: where a chamber floor or wall curves (or drops away) the cell it
+		# walks on is not where the ground is - its body is tipped to the slope under its feet, raised or lowered
+		# onto it, and its gaster and head bent toward the ground under them (eased)
+		# (only close enough to the camera to see it: zoomed out over hundreds of ants it is a few pixels, and
+		# was the costliest part of the frame)
+		var tf := Time.get_ticks_usec()
+		if cam_at.distance_squared_to(tr.origin) < FIT_NEAR * FIT_NEAR:
+			var gfit := _fit_for(m, tr, md, (_mate_frame + mi) % 3 == 0)
+			tr = _apply_fit(tr, gfit)
+			m.bend = Vector2(gfit[3], gfit[4])
+		else:
+			m.bend = Vector2.ZERO
+		us_fit += Time.get_ticks_usec() - tf
+		# and nothing of its body in the soil where it really stands (a bump, pushed off its cell, turned):
+		# checked for a few ants a frame, each again once it has moved or turned a little
 		var ck: Vector3 = m.get("clr_at", Vector3.INF)
 		var cf: Vector3 = m.get("clr_f", Vector3.ZERO)
 		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen \
@@ -418,16 +436,15 @@ func _update_ants(delta: float) -> void:
 			m.clr_at = tr.origin
 			m.clr_f = tr.basis.x
 			m.clr_gen = _soil_gen
-			var cl := _soil_clearance(tr.translated(tr.basis.y.normalized() * want_clr), float(m.size))
-			m.clr_own = want_clr + cl.x
+			var cl := _soil_clearance(tr, float(m.size), m.bend)
+			m.clr_own = cl.x
 			# its head or gaster in a wall (rising would not clear it): standing still, it turns away from the
 			# wall, stepping round on the spot
 			if cl.y > 0 and clr_budget > 2 and not m.has("script") and (m.rest > 0 or m.act in STILL_ACTS) \
 					and (m.get("face", Vector3.INF) as Vector3) == Vector3.INF:
 				clr_budget -= 3
-				m.rest_dir = _free_heading(m, tr, want_clr)
-		want_clr = maxf(want_clr, float(m.get("clr_own", 0.0)))
-		m.clr = move_toward(float(m.get("clr", 0.0)), want_clr, 2.0 * md)
+				m.rest_dir = _free_heading(m, tr, 0.0)
+		m.clr = move_toward(float(m.get("clr", 0.0)), float(m.get("clr_own", 0.0)), 2.0 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.clr)
 		var sgr: float = m.get("sgr", 0.0)
 		if sgr > 0.0:
@@ -457,6 +474,7 @@ func _update_ants(delta: float) -> void:
 	fprof["ants: activity+route"] = fprof.get("ants: activity+route", 0) + us_step
 	fprof["ants: smooth"] = fprof.get("ants: smooth", 0) + us_smooth
 	fprof["ants: keep apart"] = fprof.get("ants: keep apart", 0) + us_apart
+	fprof["ants: ground fit"] = fprof.get("ants: ground fit", 0) + us_fit
 	tp = _nprof("ants: loop (all)", tp)
 	_emerging(xs, cols, cus, young)
 
@@ -571,96 +589,3 @@ func _update_ants(delta: float) -> void:
 	if q_sel:
 		_sel_queen_mm.set_instance_transform(0, _queen_xf)
 		_sel_queen_mm.set_instance_custom_data(0, _queen_mm.get_instance_custom_data(0))
-
-
-## Dev (--trace): the nestmates within reach of the queen: role, activity, rest/wander left, position.
-func trace_near_queen() -> String:
-	var out := []
-	for m in _mates:
-		if m.has("xf") and (m.xf as Transform3D).origin.distance_to(_spots.queen) < 7.0:
-			var o: Vector3 = (m.xf as Transform3D).origin
-			out.append("%s%s a%d r%d w%d (%.1f,%.1f,%.1f) sep%.2f" % [m.role, "*" if m.has("script") else "", m.act, m.rest, m.wander,
-				o.x, o.y, o.z, (m.get("sep", Vector3.ZERO) as Vector3).length()])
-	return " | ".join(out)
-
-
-## Dev (--trace-mates): every nestmate: role, activity, cell, goal room, carrying what, settle/step state.
-func trace_mates() -> String:
-	var out := []
-	for m in _mates:
-		var o: Vector3 = (m.xf as Transform3D).origin if m.has("xf") else Vector3(m.cell)
-		var line := "w%s %s%s a%d c%s->%s goal%s carry%s/%s r%d w%d t%.2f set%d" % [m.get("wid", -1), m.role,
-			"*" if m.has("script") else "", m.act, m.cell, m.to, m.get("goal", -9), m.carry, m.get("item", ""),
-			m.rest, m.wander, m.t, (m.get("settle", []) as Array).size()]
-		out.append(line + " here%d free%s lift%.2f" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell), float(m.get("blift", 0.0))])
-	for id in _dig_vis:
-		out.append("dig%d" % id)
-	return " | ".join(out)
-
-
-## Dev (--trace-crowd, --follow-soil): whether part of a nestmate's body (belly height) is in the soil.
-func _ant_in_soil(m: Dictionary) -> bool:
-	if not m.has("xf"):
-		return false
-	var x: Transform3D = m.xf
-	for q in [Vector3(0.8, 0.3, 0), Vector3(0, 0.3, 0), Vector3(-0.9, 0.3, 0)]:   # (belly height, scaled with the ant)
-		if _density_at(x * q) >= 0.5:
-			return true
-	return false
-
-
-## Dev (--trace-crowd): where the nestmates are: on the ceiling / walls / floor, by the queen, and per chamber.
-func trace_crowd() -> String:
-	var ceil := 0
-	var wall := 0
-	var flr := 0
-	var by_q := 0
-	var walking := 0
-	var by_ent := 0
-	var ent_kinds := {}
-	for m in _mates:
-		var u: Vector3 = m.get("vu", m.up)
-		if u.y < -0.3:
-			ceil += 1
-		elif u.y < 0.7:
-			wall += 1
-		else:
-			flr += 1
-		if m.has("xf") and _queen_mm.instance_count > 0 and _queen_gap((m.xf as Transform3D).origin) < 1.5:
-			by_q += 1
-		if m.act == ACT_WALK:
-			walking += 1
-		if Vector3(m.cell).distance_to(Vector3(nest.entrance)) < 9.0:
-			by_ent += 1
-			var key := "%s rest>0:%s stuck-at:%s here:%s" % [m.role, m.rest > 0, m.get("dbg_stuck", -1), (_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1)]
-			ent_kinds[key] = ent_kinds.get(key, 0) + 1
-	var top := 0
-	for m in _mates:
-		if m.has("xf") and (m.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
-			top += 1
-	var dtop := 0
-	for v in _dig_vis.values():
-		if v.has("xf") and (v.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
-			dtop += 1
-	var in_soil := 0
-	for m in _mates:
-		if _ant_in_soil(m):
-			in_soil += 1
-	var bis := brood_in_soil()
-	print("   in the soil (any body point): %d   overlapping pairs: %d   larvae / cocoons in the soil: %d / %d" % [in_soil, mate_overlaps(), bis.x, bis.y])
-	return "nest %.1fC | by entrance %d | work %d diggers %d/%d er %.2f | mates %d floor %d wall %d ceiling %d | by queen %d | walking %d | air %d target %d chambers %s" % [sim.climate.nest, by_ent, nest.work_left, nest.diggers.size(), sim.diggers_wanted, nest.entrance_r, _mates.size(), flr, wall, ceil, by_q, walking,
-		nest.air, sim.target_air(), nest.chambers.map(func(c): return "%s g%.1f%s" % [c.kind, c.goal, "" if c.get("open", true) else "(dig)"])]
-
-
-func debug_summary() -> String:
-	var roles := {}
-	var acts := {}
-	var carrying := 0
-	for m in _mates:
-		roles[m.role] = roles.get(m.role, 0) + 1
-		acts[m.act] = acts.get(m.act, 0) + 1
-		if m.carry:
-			carrying += 1
-	return "anims %d cam %s d%.1f yaw%.2f cut%.1f | %s %s  roles %s  acts %s  carrying %d  larvae moved %d/%d (%s→%s)  rooms %d  fields %d" % [_anims.size(), target, cam_dist, yaw, cut_offset, sim.clock_text(),
-		"air>nest" if sim.climate.air > sim.climate.nest + 0.5 else "air<nest", roles, acts, carrying,
-		mini(_moved, sim.larvae.size()), sim.larvae.size(), _larva_prev, _larva_group, _rooms.size(), _fields.size()]
