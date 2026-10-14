@@ -11,7 +11,7 @@ uniform sampler3D vol : filter_linear;      // soil voxels (1 = solid)
 uniform vec3 vol_size = vec3(64.0, 72.0, 64.0);
 
 // The soil as the mesher sees it (nest_voxels.gd density()): each voxel solid or open, softened with its six
-// neighbours. Interpolating that is the same as softening the interpolated voxels (both are linear): 7 samples.
+// neighbours - from the interpolated voxels (7 samples; close to interpolating the softened ones).
 float raw(vec3 p) {
 	if (any(lessThan(p, vec3(-0.5))) || any(greaterThan(p, vol_size - 0.5))) {
 		return 0.0;                     // outside the block counts as open
@@ -19,8 +19,10 @@ float raw(vec3 p) {
 	return texture(vol, (p + 0.5) / vol_size).r;
 }
 float soft(vec3 p) {
-	return 0.4 * raw(p) + 0.1 * (raw(p + vec3(1, 0, 0)) + raw(p - vec3(1, 0, 0)) + raw(p + vec3(0, 1, 0))
-		+ raw(p - vec3(0, 1, 0)) + raw(p + vec3(0, 0, 1)) + raw(p - vec3(0, 0, 1)));
+	float r = raw(p);
+	float n = raw(p + vec3(1, 0, 0)) + raw(p - vec3(1, 0, 0)) + raw(p + vec3(0, 1, 0))
+		+ raw(p - vec3(0, 1, 0)) + raw(p + vec3(0, 0, 1)) + raw(p - vec3(0, 0, 1));
+	return mix(0.05 * n, 0.4 + 0.1 * n, r);     // (soil softened 0.1 per open neighbour, open space 0.05 per solid one)
 }
 
 varying vec3 w;

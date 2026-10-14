@@ -377,8 +377,17 @@ func _hash(i: int, s: int) -> float:
 func _walkable(c: Vector3i) -> bool:
 	if not nest.is_open(c):
 		return false
+	var rho: PackedByteArray = nest.rho
+	var nx: int = nest.nx
+	var ny: int = nest.ny
+	var nz: int = nest.nz
 	for d in DIRS:
-		if _holds(c + d):
+		var n: Vector3i = c + d
+		if n.y >= ny:
+			continue                     # (the sky)
+		if n.x < 0 or n.y < 0 or n.z < 0 or n.x >= nx or n.z >= nz:
+			return true                  # (the block's sides and bottom)
+		if rho[(n.z * ny + n.y) * nx + n.x] >= nest.AIR:
 			return true
 	return false
 

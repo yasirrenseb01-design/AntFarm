@@ -354,9 +354,35 @@ func trace_crowd() -> String:
 			dtop += 1
 	var near_mates := _mates.filter(func(q): return q.has("xf"))
 	var in_soil := 0
+	var why := {}
 	for m in near_mates:
 		if _ant_in_soil(m):
 			in_soil += 1
+			# (what it is doing: a hint at why)
+			var k := "walking" if float(m.get("mv", 0.0)) > 0.3 else "still"
+			if float(m.get("over", 0.0)) > 0.1:
+				k += "+climbing"
+			if (m.get("sep", Vector3.ZERO) as Vector3).length() > 0.25:
+				k += "+pushed"
+			if m.has("script"):
+				k += "+scripted"
+			var up: Vector3 = m.get("vu", m.up)
+			k += "/floor" if up.y > 0.7 else ("/ceiling" if up.y < -0.3 else "/wall")
+			why[k] = why.get(k, 0) + 1
+	var dig_soil := 0
+	var dig_why := {}
+	for v in _dig_vis.values():
+		if not v.has("xf"):
+			continue
+		var c := _soil_clearance(v.xf, float(v.size), v.get("bend", Vector2.ZERO), float(v.get("still", 0.0)) > 0.25)
+		if c.x > 0.0 or c.y > 0.0:
+			dig_soil += 1
+			var k := ("digging" if float(v.get("still", 0.0)) > 0.25 else "walking") + (" stuck%d" % int(c.y) if c.y > 0 else " rise%.1f" % c.x) + " clr%.1f" % float(v.get("clr", 0.0))
+			dig_why[k] = dig_why.get(k, 0) + 1
+	if dig_soil > 0:
+		print("   diggers in soil: ", dig_why)
+	if not why.is_empty() or dig_soil > 0:
+		print("   in the soil, by what they do: %s  diggers in the soil: %d of %d" % [why, dig_soil, _dig_vis.size()])
 	# feet that cannot reach the ground (the shader sets each foot down on the ground within ~0.5 of where it would
 	# stand on a flat floor, x the ant's size) and bodies standing clear above the ground
 	var feet_air := 0

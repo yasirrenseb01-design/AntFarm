@@ -58,17 +58,34 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	var lat := 0.0
 	if moving and not backing and flat.length() > 0.12:
 		var want := flat.normalized()
+		var rate := 5.0
 		# rounding a bend the body is a C: the head already turned toward where it is going, the gaster swung
 		# out behind (an ant bends at its neck and waist) - as far as its heading still lags the way it walks
 		var vf0: Vector3 = v.vf
 		lat = clampf(atan2(vf0.cross(want).dot(v.vu), vf0.dot(want)) * 0.7, -0.4, 0.4)
 		var old_f: Vector3 = v.vf
-		v.vf = _turn_to(v.vf, want, minf(1.0, 5.0 * delta))
+		# turning has momentum: it speeds up into a turn and eases out of it, and cannot swing back the other way
+		# from one frame to the next (the path's zigzags across the voxel grid, or its floor turning into a wall,
+		# flicked the heading to and fro)
+		var vu0: Vector3 = v.vu
+		var f0: Vector3 = (old_f - vu0 * old_f.dot(vu0))
+		if f0.length_squared() > 0.0001 and absf(want.dot(vu0)) < 0.99:
+			f0 = f0.normalized()
+			var ang := atan2(f0.cross(want).dot(vu0), f0.dot(want))
+			var wv := float(v.get("wv", 0.0))
+			var wv_want := clampf(ang * rate * 0.7, -5.0, 5.0)
+			wv = move_toward(wv, wv_want, 30.0 * delta)
+			v.wv = wv
+			v.vf = f0.rotated(vu0, clampf(wv * delta, -absf(ang), absf(ang)))
+		else:
+			v.vf = _turn_to(v.vf, want, minf(1.0, rate * delta))
 		var turned := old_f.angle_to(v.vf)            # turning takes steps as well as walking does
 		v.gait = fmod(v.gait + (step.length() + turned * 0.9 * scale) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
 	var rd: Vector3 = v.get("rest_dir", Vector3.ZERO)
 	if moving:
 		v.rest_dir = Vector3.ZERO
+	else:
+		v.wv = 0.0
 	if face != Vector3.INF and (not moving or backing):
 		var to := face - np
 		to -= v.vu * to.dot(v.vu)
@@ -88,7 +105,7 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 			v.rest_dir = Vector3.ZERO
 	v.mv = lerpf(v.mv, 1.0 if moving else 0.0, minf(1.0, 8.0 * delta))
 	v.lat = lerpf(float(v.get("lat", 0.0)), lat, minf(1.0, 6.0 * delta))
-	v.vu = (v.vu as Vector3).lerp(up, minf(1.0, 6.0 * delta)).normalized()
+	v.vu = (v.vu as Vector3).lerp(up, minf(1.0, 2.5 * delta)).normalized()     # (slowly: zigzagging along a floor-wall crease the up of each cell differs, and the body twisted to and fro)
 	v.vp = np
 	var f: Vector3 = v.vf
 	var y: Vector3 = v.vu - f * f.dot(v.vu)

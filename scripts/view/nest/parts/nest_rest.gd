@@ -108,7 +108,7 @@ func _fit_at(c: Vector3i, fwd: Vector3) -> PackedFloat32Array:
 	# (ground that rises more than half a unit there is a wall, not floor to bend toward)
 	var bt := clampf(atan2(minf(_ring_at(g, 9, a + PI), lift + 0.5) - (lift - slope * 1.05), 0.55), -0.2, 0.3)
 	var bh := clampf(atan2(minf(_ring_at(g, 9, a), lift + 0.5) - (lift + slope * 1.05), 0.5), -0.2, 0.25)
-	return PackedFloat32Array([clampf(lift, -0.8, 1.0), pitch, roll, bt, bh])
+	return PackedFloat32Array([clampf(lift, -0.6, 0.5), pitch, roll, bt, bh])     # (never far off its cell: a misread up raised ants into the ceiling)
 
 
 ## The ground round cell c, along the cell's up from where a body standing there is drawn (feet level): under
@@ -189,7 +189,7 @@ func _fit_for(m: Dictionary, tr: Transform3D, md: float, fresh: bool) -> PackedF
 			var ref: Vector3 = e[1]
 			# (a wall beside it is not ground to stand higher on: only the floor's own rise, at most ~half a unit)
 			ga += (clampf(_ring_at(g, 1, atan2(cu.cross(ref).dot(o), ref.dot(o))), g[0] - 0.5, g[0] + 0.4) - g[0]) * minf(r / 0.8, 1.25)
-		want[0] = clampf(want[0] + ga - g[0] - along, -1.0, 1.2)
+		want[0] = clampf(want[0] + ga - g[0] - along, -0.7, 0.6)
 	if cur.size() != 5:
 		cur = want
 		m.gfit_still = false
@@ -240,11 +240,13 @@ const BODY_PTS := [Vector3(0.9, 0.2, 0), Vector3(0, 0.2, 0), Vector3(-1.0, 0.2, 
 ## For an ant drawn at `tr`: how far it must rise along its up for its body to clear a curving floor (x), and
 ## how many of its points are in soil that rising does not clear (y: its head or gaster in a wall - lifting
 ## would only float it; a resting ant turns away from the wall instead, see _free_heading).
-func _soil_clearance(tr: Transform3D, s: float, bend := Vector2.ZERO) -> Vector2:
+func _soil_clearance(tr: Transform3D, s: float, bend := Vector2.ZERO, head_free := false) -> Vector2:
 	var up := tr.basis.y.normalized()
 	var need := 0.0
 	var stuck := 0
 	for i in BODY_PTS.size():
+		if i == 0 and head_free:
+			continue                       # (a digger's head is at the face it bites)
 		var q: Vector3 = BODY_PTS[i]
 		# (the head and gaster as bent at the neck and the waist: see ant_core.gdshaderinc)
 		if i == 0 and bend.y != 0.0:
@@ -278,6 +280,17 @@ func _cell_fits(c: Vector3i) -> bool:
 				break
 		_fit_cache[c] = v
 	return v
+
+
+## Where a digger at cell c bites: the soil next to it the way it was going (dir), else the nearest soil beside or
+## below it, else ahead of it.
+func _dig_face(c: Vector3i, dir: Vector3i) -> Vector3:
+	var order: Array = [dir, Vector3i(0, -1, 0)] + DIRS
+	for d in order:
+		var n: Vector3i = c + d
+		if d != Vector3i.ZERO and nest.inside(n) and not nest.is_open(n):
+			return Vector3(n)
+	return Vector3(c + dir)
 
 
 ## Whether cell c is in a narrow tunnel (no room for two ants side by side): little open space round it.

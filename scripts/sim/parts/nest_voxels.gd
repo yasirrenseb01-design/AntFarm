@@ -101,12 +101,14 @@ func is_open(c: Vector3i) -> bool:
 	return inside(c) and rho[idx(c)] < AIR
 
 
-## Soil density as seen by the mesher: solid or open, softened with the six neighbours so burrows come
-## out rounded rather than square (a one-voxel tunnel stays open: 0.4 at most). Outside the block counts as
-## air so the block gets faces.
+## Soil density as seen by the mesher (view only): solid or open, softened with the six neighbours so burrows
+## come out rounded rather than square. Soil is softened toward open space by 0.1 per open neighbour, open space
+## toward soil by only 0.05 per solid one (it was 0.1 too: a one-voxel tunnel - an ant's width - was drawn 0.4 of a
+## voxel wide, and every ant walking it had its body in the walls). Outside the block counts as air so the block
+## gets faces.
 func density(x: int, y: int, z: int) -> float:
-	return 0.4 * _solid(x, y, z) + 0.1 * (_solid(x - 1, y, z) + _solid(x + 1, y, z) + _solid(x, y - 1, z)
-		+ _solid(x, y + 1, z) + _solid(x, y, z - 1) + _solid(x, y, z + 1))
+	var n := _solid(x - 1, y, z) + _solid(x + 1, y, z) + _solid(x, y - 1, z) + _solid(x, y + 1, z) + _solid(x, y, z - 1) + _solid(x, y, z + 1)
+	return 0.4 + 0.1 * n if _solid(x, y, z) > 0.5 else 0.05 * n
 
 
 func _solid(x: int, y: int, z: int) -> float:

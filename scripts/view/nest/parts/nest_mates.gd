@@ -364,9 +364,11 @@ func _update_ants(delta: float) -> void:
 			path = m.script.pos
 		else:
 			var ta := Time.get_ticks_usec()
+			if (_mate_frame + mi) % 3 == 1:
+				m.fgap = _follow_gap(m, near)          # (a third of the ants each frame, as keeping apart is)
 			_update_activity(m, madt)
 			if not m.act in STILL_ACTS:
-				m.t += mdt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0)
+				m.t += mdt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0) * float(m.get("fgap", 1.0))
 				while m.t >= 1.0 and mdt > 0.0:
 					m.t -= 1.0
 					_step_mate(m)
@@ -406,9 +408,20 @@ func _update_ants(delta: float) -> void:
 		m.blift = move_toward(float(m.get("blift", 0.0)), want_lift, 1.5 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.blift)
 		# up on a nestmate's back, passing it in a narrow tunnel (see _keep_apart): climbs on and steps down
-		m.over = move_toward(float(m.get("over", 0.0)), float(m.get("over_want", 0.0)), 1.5 * md)
+		# (eased in and out - a step up onto it and a step down, not a lift at an even speed - and the body tips
+		# nose up as it climbs on, nose down as it steps off: it was raised and lowered level, stiffly)
+		var ov0 := float(m.get("over", 0.0))
+		var ov_want := float(m.get("over_want", 0.0))
+		var ov_v := float(m.get("over_v", 0.0))
+		ov_v = lerpf(ov_v, clampf((ov_want - ov0) * 4.0, -1.6, 1.6), 1.0 - exp(-8.0 * md))
+		m.over_v = ov_v if absf(ov_want - ov0) > 0.005 else 0.0
+		m.over = clampf(ov0 + ov_v * md, 0.0, 1.0)
+		var ov_tip := clampf(ov_v * 0.35, -0.35, 0.35)
+		m.over_tip = lerpf(float(m.get("over_tip", 0.0)), ov_tip, 1.0 - exp(-10.0 * md))
 		if float(m.over) > 0.0:
 			tr.origin += tr.basis.y.normalized() * float(m.over)
+			if absf(float(m.over_tip)) > 0.01:
+				tr.basis = tr.basis.rotated(tr.basis.z.normalized(), float(m.over_tip))
 		elif m.has("over_on"):
 			m.erase("over_on")
 		# lying on the real surface under it: where a chamber floor or wall curves (or drops away) the cell it
@@ -426,7 +439,7 @@ func _update_ants(delta: float) -> void:
 		var ck: Vector3 = m.get("clr_at", Vector3.INF)
 		var cf: Vector3 = m.get("clr_f", Vector3.ZERO)
 		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen \
-				or cf.dot(tr.basis.x) < 0.97 * cf.length() * tr.basis.x.length()):
+				or cf.dot(tr.basis.x) < 0.97 * cf.length() * tr.basis.x.length() or not m.get("gfit_still", true)):     # (or as it is still settling onto the ground)
 			clr_budget -= 1
 			m.clr_at = tr.origin
 			m.clr_f = tr.basis.x
@@ -499,6 +512,15 @@ func _update_ants(delta: float) -> void:
 		v.anim += adt
 		if not v.has("size"):
 			v.size = _sample_size()
+		v.cell = d.cell
+		# biting at the dig face: it faces the soil it digs (where it last stepped, else the nearest soil beside it)
+		if v.still > 0.25:
+			if not v.has("face_at") or v.face_cell != d.cell:
+				v.face_cell = d.cell
+				v.face_at = _dig_face(d.cell, d.dir)
+			v.face = v.face_at
+		else:
+			v.face = Vector3.INF
 		var tr := _smooth(v, (v.from as Vector3).lerp(v.to, clampf(v.t, 0.0, 1.0)), v.up, delta, v.size)
 		if _visible(tr.origin):
 			v.ka_t = float(v.get("ka_t", 0.0)) + delta
@@ -507,6 +529,16 @@ func _update_ants(delta: float) -> void:
 				v.ka_t = 0.0
 			else:
 				tr.origin += v.sep
+		# lying on the ground and clear of the soil as the nestmates do (a digger drawn on its cell alone stood with
+		# its body in the soil it was digging: in the x-ray view ants seemed to come up out of the ground) - its
+		# head may be at the face it bites
+		var dfit := _fit_for(v, tr, delta, (_mate_frame + id) % 3 == 0)
+		tr = _apply_fit(tr, dfit)
+		v.bend = Vector2(dfit[3], dfit[4])
+		if (_mate_frame + id) % 3 == 2 or not v.has("dclr"):
+			v.dclr = _soil_clearance(tr, float(v.size), v.bend, v.still > 0.25).x
+		v.clr = move_toward(float(v.get("clr", 0.0)), float(v.dclr), (2.0 if float(v.dclr) > float(v.get("clr", 0.0)) else 0.3) * delta)
+		tr.origin += tr.basis.y.normalized() * float(v.clr)
 		v.xf = tr
 		if _shown(tr):
 			var act := ACT_CARRY if d.carry else (ACT_DIG if v.still > 0.25 else ACT_WALK)
@@ -590,3 +622,32 @@ func _update_ants(delta: float) -> void:
 		_sel_queen_mm.set_instance_transform(0, _queen_xf)
 		_sel_queen_mm.set_instance_custom_data(0, _queen_mm.get_instance_custom_data(0))
 		_sel_queen_mm.set_instance_color(0, Color.WHITE)
+
+
+## Walking close behind a nestmate going the same way (out through one tunnel, a crowd at the entrance), an ant
+## slows to keep a little gap - they file along one behind another instead of pressing into each other. 1 = its
+## own pace. (Not one coming the other way: those pass, or one climbs over the other.)
+func _follow_gap(m: Dictionary, near: Dictionary) -> float:
+	if not m.has("xf") or m.has("script") or int(m.get("rest", 0)) > 0 or not (m.get("settle", []) as Array).is_empty():
+		return 1.0
+	var x: Transform3D = m.xf
+	var f := x.basis.x.normalized()
+	var head := x.origin + f * (0.9 * float(m.size))
+	var key := Vector3i(floori(head.x / 3.0), floori(head.y / 3.0), floori(head.z / 3.0))
+	var k := 1.0
+	for off in _NEAR:
+		var bin = near.get(key + off)
+		if bin == null:
+			continue
+		for o in bin:
+			if is_same(o, m) or not o.has("xf") or float(o.get("over", 0.0)) > 0.1:
+				continue
+			var ox: Transform3D = o.xf
+			var to: Vector3 = (o.d1 as Vector3) - head          # (to its gaster)
+			var ahead := to.dot(f)
+			if ahead < -0.2 or ahead > 1.3 or (to - f * ahead).length() > 0.7:
+				continue
+			if ox.basis.x.normalized().dot(f) < 0.3:
+				continue                                  # (coming the other way, or across)
+			k = minf(k, clampf((ahead + 0.2) / 1.5, 0.1, 1.0))
+	return k

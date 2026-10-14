@@ -48,7 +48,8 @@ static func sample(nest, k: Vector3i) -> PackedFloat32Array:
 		for y in S:
 			for x in S:
 				var i := ((z + 1) * B + (y + 1)) * B + (x + 1)
-				var v := 0.4 * solid[i] + 0.1 * (solid[i - 1] + solid[i + 1] + solid[i - B] + solid[i + B] + solid[i - B2] + solid[i + B2])
+				var nb := solid[i - 1] + solid[i + 1] + solid[i - B] + solid[i + B] + solid[i - B2] + solid[i + B2]
+				var v := 0.4 + 0.1 * nb if solid[i] > 0.5 else 0.05 * nb     # (as nest_voxels.density())
 				dens[(z * S + y) * S + x] = v
 				if v >= 0.5:
 					any_solid = true

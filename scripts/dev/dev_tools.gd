@@ -408,6 +408,24 @@ func _take_shot() -> void:
 						nest_view.yaw_t = nest_view.yaw
 						if i == 0:
 							print("  fitted ant: %s act %d over %.2f lat %.2f" % [fm.get("gfit"), fm.act, float(fm.get("over", 0.0)), float(fm.get("lat", 0.0))])
+				if _opts.has("follow-digger") and mode == "nest":
+					# watch a digger (the same one), seen from its side (--side) or above
+					var dv = _pushed if _pushed != null and nest_view._dig_vis.values().has(_pushed) else null
+					if dv == null:
+						for v in nest_view._dig_vis.values():
+							if v.has("xf") and float(v.get("still", 0.0)) < 0.1:
+								dv = v
+								break
+					if dv != null:
+						_pushed = dv
+						var dx: Transform3D = dv.xf
+						nest_view.target_t = dx.origin
+						nest_view.target = nest_view.target_t
+						if _opts.has("side"):
+							nest_view.yaw = atan2(-dx.basis.x.z, dx.basis.x.x) + float(_opts["side"])
+							nest_view.yaw_t = nest_view.yaw
+						var dcl: Vector2 = nest_view._soil_clearance(dx, float(dv.size), dv.get("bend", Vector2.ZERO), float(dv.get("still", 0.0)) > 0.25)
+						print("  digger: still %.2f clr %.2f soil %s narrow %s trail %d lat %.2f" % [float(dv.get("still", 0.0)), float(dv.get("clr", 0.0)), dcl, nest_view._cell_narrow(dv.cell), (dv.get("trail", PackedVector3Array()) as PackedVector3Array).size(), float(dv.get("lat", 0.0))])
 				if _opts.has("follow-soil") and mode == "nest":
 					# watch a nestmate with part of its body in the soil (the --trace-crowd check), the same one while it lasts
 					var sm = _pushed if _pushed != null and nest_view._mates.has(_pushed) and nest_view._ant_in_soil(_pushed) else null
@@ -573,7 +591,8 @@ func _count_pops() -> void:
 				if absf(turn) > 3.0 and absf(float(j[2])) > 3.0 and signf(turn) != signf(float(j[2])):
 					_jit_turns += 1
 					if _opts.has("jitter-why"):
-						print("   turn flick: %s act %d rest %d mv %.2f sep %.2f sgr %.2f settle %d rest_dir %s face %s" % [m.role, m.act, m.rest, float(m.get("mv", 0.0)),
+						print("   turn flick %.1f then %.1f rad/s: trail %d lat %.2f vel %.2f gfit-still %s | %s act %d rest %d mv %.2f sep %.2f sgr %.2f settle %d rest_dir %s face %s" % [float(j[2]), turn,
+							(m.get("trail", PackedVector3Array()) as PackedVector3Array).size(), float(m.get("lat", 0.0)), (m.get("vel", Vector3.ZERO) as Vector3).length(), m.get("gfit_still", false), m.role, m.act, m.rest, float(m.get("mv", 0.0)),
 							(m.get("sep", Vector3.ZERO) as Vector3).length(), float(m.get("sgr", 0.0)), (m.get("settle", []) as Array).size(), m.get("rest_dir", Vector3.ZERO) != Vector3.ZERO, m.get("face", Vector3.INF) != Vector3.INF])
 				if absf(rise) > 1.5 and absf(float(j[3])) > 1.5 and signf(rise) != signf(float(j[3])):
 					_jit_bobs += 1
@@ -585,11 +604,15 @@ func _count_pops() -> void:
 						print("   bob %.2f u/s: %s act %d rest %d | changes this frame: lift %+.3f clr %+.3f blift %+.3f over %+.3f sep-up %+.3f path-up %+.3f" % [rise, m.role, m.act, m.rest,
 							gf[0] - float(gp[0]), float(m.get("clr", 0.0)) - float(gp[1]), float(m.get("blift", 0.0)) - float(gp[2]), float(m.get("over", 0.0)) - float(gp[3]),
 							(sepv - (gp[4] as Vector3)).dot(upv), (vpv - (gp[5] as Vector3)).dot(upv)])
-				_jit_by[id] = [fw, p2, turn, rise]
+				var vfn: Vector3 = m.get("vf", fw)
+				var vturn: float = atan2((j[4] as Vector3).cross(vfn).dot(upv), (j[4] as Vector3).dot(vfn)) / dt2 if j.size() > 4 else 0.0
+				if _opts.has("jitter-why") and absf(turn) > 3.0 and absf(float(j[2])) > 3.0 and signf(turn) != signf(float(j[2])):
+					print("      heading itself turned %.1f rad/s; up %s vu %s fit %s" % [vturn, (upv * 10).round() / 10, ((m.get("vu", upv) as Vector3) * 10).round() / 10, m.get("gfit")])
+				_jit_by[id] = [fw, p2, turn, rise, vfn]
 				var gf2: PackedFloat32Array = m.get("gfit", PackedFloat32Array([0, 0, 0, 0, 0]))
 				_jit_parts[id] = [gf2[0], float(m.get("clr", 0.0)), float(m.get("blift", 0.0)), float(m.get("over", 0.0)), m.get("sep", Vector3.ZERO), m.get("vp", Vector3.ZERO)]
 			else:
-				_jit_by[id] = [fw, p2, 0.0, 0.0]
+				_jit_by[id] = [fw, p2, 0.0, 0.0, m.get("vf", fw)]
 			_jit_frames += 1
 		mm = MultiMesh.new()                 # (the drawn-ant matching below: skipped in the nest)
 	var now := []
