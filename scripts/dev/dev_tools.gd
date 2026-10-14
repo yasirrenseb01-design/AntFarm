@@ -528,6 +528,8 @@ func _take_shot() -> void:
 			var secs := _jit_frames / 60.0
 			print("jitter: %d turn flicks, %d bobs in %.0f ant-seconds (%.2f / %.2f per ant-minute)" % [_jit_turns, _jit_bobs, secs,
 				_jit_turns / secs * 60.0, _jit_bobs / secs * 60.0])
+			print("motion: skating sideways %.1f%%, gliding with legs still %.1f%% of ant-frames (speed %s)" % [100.0 * _jit_skate / _jit_frames,
+				100.0 * _jit_glide / _jit_frames, speed])
 		get_tree().quit()
 		return
 	await RenderingServer.frame_post_draw
@@ -544,7 +546,12 @@ var _pushed = null                # (--follow-pushed: the ant being watched)
 var _pushed_said = null
 var _pop_prev := []
 var _pop_by := {}
+var _jid_next := 0
 var _jit_by := {}
+var _jit_last := {}
+var _skate_prev := {}
+var _jit_skate := 0
+var _jit_glide := 0
 var _jit_parts := {}
 var _jit_turns := 0
 var _jit_bobs := 0
@@ -565,10 +572,19 @@ func _count_pops() -> void:
 		# each nestmate followed by who it is (matching drawn ants by nearness swapped two that passed close)
 		var pmin2 := float(_opts.get("pops-min", "0.2")) * u
 		for m in nest_view._mates:
-			if not m.has("xf"):
+			if not m.has("xf") or not nest_view._shown(m.xf):
+				if m.has("jid"):
+					_jit_by.erase(m.jid)          # (not on screen: off screen ants are moved on only every 4th frame)
+					_jit_last.erase(m.jid)
+					_pop_by.erase(m.jid)
 				continue
 			var p2: Vector3 = (m.xf as Transform3D).origin
-			var id: int = m.get("wid", -1)
+			# (keyed by the drawn body, not the worker: at high speed workers go out and come in many times a second,
+			# and a drawn body is handed to another worker - that is no jump on screen)
+			if not m.has("jid"):
+				_jid_next += 1
+				m.jid = _jid_next
+			var id: int = m.jid
 			if _pop_by.has(id):
 				var mv2: Vector3 = p2 - (_pop_by[id][0] as Vector3)
 				var was2: Vector3 = _pop_by[id][1]
@@ -610,10 +626,34 @@ func _count_pops() -> void:
 					print("      heading itself turned %.1f rad/s; up %s vu %s fit %s" % [vturn, (upv * 10).round() / 10, ((m.get("vu", upv) as Vector3) * 10).round() / 10, m.get("gfit")])
 				_jit_by[id] = [fw, p2, turn, rise, vfn]
 				var gf2: PackedFloat32Array = m.get("gfit", PackedFloat32Array([0, 0, 0, 0, 0]))
-				_jit_parts[id] = [gf2[0], float(m.get("clr", 0.0)), float(m.get("blift", 0.0)), float(m.get("over", 0.0)), m.get("sep", Vector3.ZERO), m.get("vp", Vector3.ZERO)]
+				_jit_parts[id] = [gf2[0], float(m.get("clr", 0.0)), float(m.get("blift", 0.0)), float(m.get("over", 0.0)), m.get("sep", Vector3.ZERO), m.get("vp", Vector3.ZERO), m.get("vu", upv)]
 			else:
 				_jit_by[id] = [fw, p2, 0.0, 0.0, m.get("vf", fw)]
 			_jit_frames += 1
+			# moving in a way its legs do not show: sideways (skating: its heading far off the way it moves) or with
+			# its legs still (gliding); and its legs stepping while it stands (treading the air)
+			if _jit_last.has(id):
+				var mvd: Vector3 = p2 - (_jit_last[id] as Vector3)
+				mvd -= upv * mvd.dot(upv)
+				var spd := mvd.length() / dt2
+				var stepping := float(m.get("mv", 0.0))
+				if spd > 1.0 and absf(fw.angle_to(mvd)) > 0.9 and not m.has("script") and (m.get("face", Vector3.INF) as Vector3) == Vector3.INF:
+					_jit_skate += 1
+					if _opts.has("jitter-why"):
+						print("   skate %.1f u/s %.0f deg: %s act %d rest %d mv %.2f sep %.2f sepv %.2f settle %d over %.2f vel %.2f wv %.2f" % [spd, rad_to_deg(fw.angle_to(mvd)), m.role, m.act, m.rest,
+							stepping, (m.get("sep", Vector3.ZERO) as Vector3).length(), (m.get("sepv", Vector3.ZERO) as Vector3).length(), (m.get("settle", []) as Array).size(),
+							float(m.get("over", 0.0)), (m.get("vel", Vector3.ZERO) as Vector3).length(), float(m.get("wv", 0.0))])
+						var pp: Array = _skate_prev.get(id, [])
+						if pp.size() >= 6:
+							var gfn: PackedFloat32Array = m.get("gfit", PackedFloat32Array([0, 0, 0, 0, 0]))
+							print("      this frame: path moved %.2f, sep %.2f, ground lift %+.2f, soil lift %+.2f, up turned %.1f deg, fit cell %s" % [
+								((m.get("vp", Vector3.ZERO) as Vector3) - (pp[5] as Vector3)).length(), ((m.get("sep", Vector3.ZERO) as Vector3) - (pp[4] as Vector3)).length(),
+								gfn[0] - float(pp[0]), float(m.get("clr", 0.0)) - float(pp[1]), rad_to_deg((m.get("vu", upv) as Vector3).angle_to(pp[6] if pp.size() > 6 else upv)), m.get("gfit_c")])
+				if spd > 0.6 and stepping < 0.3 and not m.has("script"):
+					_jit_glide += 1
+			_jit_last[id] = p2
+			var gf3: PackedFloat32Array = m.get("gfit", PackedFloat32Array([0, 0, 0, 0, 0]))
+			_skate_prev[id] = [gf3[0], float(m.get("clr", 0.0)), 0.0, 0.0, m.get("sep", Vector3.ZERO), m.get("vp", Vector3.ZERO), m.get("vu", upv)]
 		mm = MultiMesh.new()                 # (the drawn-ant matching below: skipped in the nest)
 	var now := []
 	var moves := []

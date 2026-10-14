@@ -19,6 +19,31 @@ func _floor_cells(ch: Dictionary) -> Array:
 	return out
 
 
+## Whether floor cell v is within two cells of a drop - the mouth of a shaft or gallery going down from the
+## floor: no brood is laid there (it rolled over the lip and lay down the shaft). Cached until the soil changes.
+func _near_drop(v: Vector3i) -> bool:
+	var k = _drop_cache.get(v)
+	if k != null and int(_drop_cache.get("gen", -1)) == _soil_gen:
+		return k
+	if int(_drop_cache.get("gen", -1)) != _soil_gen:
+		_drop_cache.clear()
+		_drop_cache["gen"] = _soil_gen
+	var r := _near_drop_now(v)
+	_drop_cache[v] = r
+	return r
+
+
+var _drop_cache := {}
+func _near_drop_now(v: Vector3i) -> bool:
+	for dz in range(-2, 3):
+		for dx in range(-2, 3):
+			var n := v + Vector3i(dx, 0, dz)
+			# (a shaft: open four cells down - a chamber floor that only dips toward its middle is not one)
+			if nest.is_open(n) and nest.is_open(n + Vector3i(0, -1, 0)) and nest.is_open(n + Vector3i(0, -2, 0)) 					and nest.is_open(n + Vector3i(0, -3, 0)) and nest.is_open(n + Vector3i(0, -4, 0)):
+				return true
+	return false
+
+
 ## Breadth-first distances from one cell through open space: lets nest ants walk the real tunnels.
 func _field_from(start: Vector3i) -> Dictionary:
 	# Steps to `start` through the open nest, a step along a wall costing 1 and one across open air (the middle

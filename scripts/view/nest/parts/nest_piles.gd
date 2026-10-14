@@ -161,6 +161,8 @@ func _pile_places(spots: Array, centre: Vector3) -> Array:
 		return []
 	var out := []
 	for s in spots:
+		if _near_drop(Vector3i(roundi(s.x), roundi(s.y + 0.45), roundi(s.z))):
+			continue                         # (by the mouth of a shaft down from the floor: brood would roll in)
 		out.append(s)
 		for o in [Vector3(0.45, 0, 0), Vector3(-0.45, 0, 0), Vector3(0, 0, 0.45), Vector3(0, 0, -0.45)]:
 			out.append(s + o)
@@ -582,8 +584,11 @@ func _update_brood() -> void:
 	var bits := []
 	if not sim.larvae.is_empty() and not _spots.larvae.is_empty():
 		for k in mini(16, int(sim.protein * 1.5)):
-			var base := _pile_xf(_spots.larvae, k * 3 + 1, 1.0).origin
-			var xf := Transform3D(Basis(Vector3.UP, _hash(k, 9) * TAU), base + Vector3(_hash(k, 7) - 0.5, 0.1, _hash(k, 8) - 0.5))
+			# (scraps of prey by the larvae, lying on the floor - they floated a layer up, or hung in a shaft)
+			var sp: Vector3 = _spots.larvae[(k * 3 + 1) % _spots.larvae.size()]
+			var base := sp + Vector3(_hash(k, 1) - 0.5, 0.0, _hash(k, 2) - 0.5) * 0.8
+			base.y = _floor_cached(base) + 0.08
+			var xf := Transform3D(Basis(Vector3.UP, _hash(k, 9) * TAU), base)
 			if _visible(xf.origin):
 				bits.append(xf)
 	_fill(_bits_mm, bits)

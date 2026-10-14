@@ -143,6 +143,21 @@ func chamber_q(p: Vector3, ch: Dictionary) -> float:
 	return room_q(Vector3(u, d.y, v), ax)
 
 
+## Where a gallery leaves a chamber toward `dir` (level): at its wall, just inside it. Shafts down to lower
+## chambers mostly leave the chamber above at its edge (Tschinkel 2011, casts of Aphaenogaster nests) - the ants
+## walk on down the wall without crossing the middle of the floor, where the brood lies. (It left at 0.7 of the
+## chamber's length that way: on the narrow sides of a long chamber that was well inside the floor.)
+func _rim_toward(ch: Dictionary, dir: Vector3) -> Vector3:
+	var c: Vector3 = ch.c
+	if dir.length() < 0.1:
+		return c
+	var d := dir.normalized()
+	var t := 0.0
+	while t < float(ch.goal) + 4.0 and chamber_q(c + d * (t + 0.5), ch) <= 0.85:
+		t += 0.5
+	return c + d * t
+
+
 func _chamber_volume(ch: Dictionary) -> float:
 	var ax := chamber_axes(ch)
 	return 4.0 / 3.0 * PI * ax.x * ax.y * (1.0 if slab else ax.z)
@@ -250,7 +265,7 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 				break
 		if ok:
 			var dir := (site - Vector3(src.c)) * Vector3(1, 0, 1)
-			var from: Vector3 = Vector3(src.c) + (dir.normalized() * float(src.goal) * 0.7 if dir.length() > 0.1 else Vector3.ZERO)
+			var from: Vector3 = _rim_toward(src, dir)
 			chambers.append({"c": site, "r": 3.5, "goal": 3.5, "kind": "brood", "from": from, "open": false,
 				"yaw": ang + rng.randf_range(-0.6, 0.6)})
 			return "planned"

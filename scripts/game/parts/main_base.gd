@@ -34,6 +34,7 @@ var _overlay_bar: ProgressBar
 var camera: Camera2D
 var speed := 0.5             # a calm pace to watch the ants by (the HUD offers 0.2× - 5×)
 var _acc := 0.0
+var _sim_us := 0                 # how long the last frame's simulation took (main.gd: the budget for fast-forward)
 var fprof := {}              # dev (--perf): microseconds spent per part of the frame, summed
 
 

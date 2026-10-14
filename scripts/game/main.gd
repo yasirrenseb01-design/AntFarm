@@ -141,9 +141,12 @@ func _process(delta: float) -> void:
 		_acc += delta * 60.0 * speed
 		var n := mini(int(_acc), maxi(2, int(speed * 3.0)))
 		_acc = minf(_acc - n, 60.0)
-		# fast-forward (developer speeds) runs as fast as the machine allows: at most ~30 ms of simulation a
-		# frame, so the picture stays usable; the steps not taken are dropped, not owed (determinism is per step)
-		var budget := t0 + (30000 if speed > 5.0 else 1000000)
+		# fast-forward (developer speeds) runs as fast as the machine allows while the picture stays at ~30 frames a
+		# second: the simulation gets what is left of ~33 ms after the rest of the last frame (drawing, the ants'
+		# bodies) - a fixed 30 ms on top of that left 100x at ~20 fps, the ants jumping from frame to frame; the steps
+		# not taken are dropped, not owed (determinism is per step)
+		var rest_us := maxf(0.0, delta * 1000000.0 - float(_sim_us))
+		var budget := t0 + (int(clampf(33000.0 - rest_us, 6000.0, 30000.0)) if speed > 5.0 else 1000000)
 		var done := 0
 		for i in n:
 			sim.step()
@@ -151,6 +154,7 @@ func _process(delta: float) -> void:
 			if Time.get_ticks_usec() > budget:
 				_acc = 0.0
 				break
+		_sim_us = Time.get_ticks_usec() - t0
 		# the speed actually reached (steps a second / 60), shown with the frame rate (F3)
 		if delta > 0.0:
 			hud.real_speed = lerpf(hud.real_speed, done / delta / 60.0, minf(1.0, 2.0 * delta))

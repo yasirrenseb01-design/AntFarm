@@ -458,6 +458,18 @@ func _update_ants(delta: float) -> void:
 		var clr1 := float(m.get("clr_own", 0.0))
 		m.clr = move_toward(clr0, clr1, (2.0 if clr1 > clr0 else 0.3) * md)
 		tr.origin += tr.basis.y.normalized() * float(m.clr)
+		# how high it is drawn, smoothed once more along its up: the ground under it, its lift clear of the soil and
+		# the path's own steps up and down each change a little every frame, and their sum bobbed the body up and
+		# down as it walked (not when the drawn ant jumps: moved on after being off screen)
+		var upn := tr.basis.y.normalized()
+		var hh := (tr.origin - (m.get("vp", tr.origin) as Vector3)).dot(upn)     # (above its path: the up turns, the world does not)
+		var hs = m.get("hs")
+		if hs == null or absf(hh - float(hs)) > 1.5 or (m.get("hs_up", upn) as Vector3).dot(upn) < 0.9:
+			m.hs = hh
+		else:
+			m.hs = lerpf(float(hs), hh, 1.0 - exp(-12.0 * md))
+			tr.origin += upn * (float(m.hs) - hh)
+		m.hs_up = upn
 		var sgr: float = m.get("sgr", 0.0)
 		if sgr > 0.0:
 			# stepping aside (see _step_aside): its legs keep pace with the shift every frame

@@ -73,8 +73,12 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 			f0 = f0.normalized()
 			var ang := atan2(f0.cross(want).dot(vu0), f0.dot(want))
 			var wv := float(v.get("wv", 0.0))
-			var wv_want := clampf(ang * rate * 0.7, -5.0, 5.0)
-			wv = move_toward(wv, wv_want, 30.0 * delta)
+			# (how fast it can turn grows with how fast it walks - turning is done by its steps: a fast ant turned
+			# too slowly round a corner and slid along sideways)
+			var spd := vel.length()
+			var wmax := 5.0 + 0.7 * spd
+			var wv_want := clampf(ang * rate * 0.7, -wmax, wmax)
+			wv = move_toward(wv, wv_want, (30.0 + 4.0 * spd) * delta)
 			v.wv = wv
 			v.vf = f0.rotated(vu0, clampf(wv * delta, -absf(ang), absf(ang)))
 		else:
