@@ -61,6 +61,8 @@ func _select(info: Dictionary) -> void:
 		sel = {"kind": "digger", "id": int(info.get("dig", -1))}
 	elif info.kind == "queen":
 		sel = {"kind": "queen", "id": -1}
+	elif info.kind in ["eggs", "larvae", "pupae"]:
+		sel = {"kind": info.kind, "id": int(info.get("id", -1))}
 	else:
 		sel = {"kind": "worker", "id": info.w.id if info.get("w") != null else -1}
 	for v in views:
@@ -87,7 +89,10 @@ func _process(delta: float) -> void:
 		for w in sim.workers:
 			if w.id == sel.id:
 				info = {"kind": "worker", "w": w, "act": w.act, "elsewhere": "อยู่ในรัง" if w.state == Ant.IN_NEST else "อยู่นอกรัง"}
-	if info.is_empty():
+	if info.is_empty() and sel.kind in ["eggs", "larvae", "pupae"]:
+		_text.text = {"eggs": "ไข่ฟองนี้ฟักเป็นตัวอ่อนแล้ว", "larvae": "ตัวอ่อนตัวนี้ทำรังไหมเข้าดักแด้แล้ว (หรือถูกพี่เลี้ยงกินไปตอนอาหารขาด)",
+			"pupae": "ดักแด้ตัวนี้ออกจากรังไหมเป็นมดงานแล้ว"}[sel.kind] + "\n(คลิกตัวใหม่เพื่อดูต่อ)"
+	elif info.is_empty():
 		_text.text = "มดตัวที่เลือกไม่อยู่แล้ว (ตายหรือไม่อยู่ในมุมนี้)"
 	else:
 		_text.text = describe(info) + ("
@@ -97,6 +102,8 @@ func _process(delta: float) -> void:
 
 ## The words for an ant found by a view: {"kind": "worker"|"queen"|"digger", "w": Ant or null, "role", "act"}.
 func describe(info: Dictionary) -> String:
+	if info.kind in ["eggs", "larvae", "pupae"]:
+		return _brood_words(info.kind, info.item)
 	if info.kind == "queen":
 		var lines := ["ราชินี"]
 		if not sim.queen.alive:
@@ -206,3 +213,46 @@ func _act_name(act: int) -> String:
 		20: return "ปีนผนังกระจก"
 		22: return "ออกไปหากินนอกแปลง"
 	return "-"
+
+
+## The words for an egg, a larva or a cocoon: its stage, how far on it is, and when it moves on (at the nest's
+## warmth now: cold slows it all, and a larva grows only as fast as it is fed). Lengths from the species' data.
+func _brood_words(kind: String, it: Dictionary) -> String:
+	var sp: Dictionary = sim.sp
+	var p: float = it.get("p", 0.0)
+	var lines := []
+	var days_key: String = {"eggs": "egg_days", "larvae": "larva_days", "pupae": "pupa_days"}[kind]
+	var rate: float = sim.dev * (sim.larva_fed if kind == "larvae" else 1.0)
+	var left := "หยุดเจริญอยู่ (รังเย็นเกินไป)" if rate < 0.02 else "อีกราว %s" % _days(float(sp[days_key]) * (1.0 - p) / rate)
+	match kind:
+		"eggs":
+			lines.append("ไข่")
+			lines.append("เจริญไปแล้ว %d%%" % int(p * 100.0))
+			lines.append("จะฟักเป็นตัวอ่อน: " + left)
+		"larvae":
+			lines.append("ตัวอ่อน")
+			lines.append("โตแล้ว %d%%" % int(p * 100.0))
+			if sim.winding_down() and p >= 0.94:
+				lines.append("หยุดโตเพื่อจำศีลข้ามหนาวเป็นตัวอ่อน (เข้าดักแด้ในฤดูใบไม้ผลิ)")
+			else:
+				lines.append("จะทำรังไหมเข้าดักแด้: " + left)
+			var h: float = it.get("h", 0.0)
+			if h > 0.05:
+				lines.append("หิว: ขาดอาหารมาราว %s (ถ้านานเกิน %d วัน พี่เลี้ยงอาจกินมันเพื่อเอาโปรตีนไปเลี้ยงตัวอื่น)" % [_days(h), int(sp["larva_starve_days"])])
+			elif sim.larva_fed < 0.95:
+				lines.append("ได้อาหารไม่เต็มที่ (ราว %d%% ของที่ต้องการ) จึงโตช้าลง" % int(sim.larva_fed * 100.0))
+			else:
+				lines.append("อิ่ม ได้อาหารเต็มที่")
+			lines.append("ถ้าได้อาหารแบบที่ผ่านมา จะเป็นมดงานยาวราว %.1f มม." % (sim._adult_size(float(it.get("q", 0.6))) * 4.2))
+		"pupae":
+			lines.append("ดักแด้ (อยู่ในรังไหม)")
+			lines.append("เจริญไปแล้ว %d%%" % int(p * 100.0))
+			lines.append("จะออกเป็นมดงาน: " + left)
+			lines.append("จะเป็นมดงานยาวราว %.1f มม." % (float(it.get("s", 1.0)) * 4.2))
+	return "\n".join(lines)
+
+
+func _days(d: float) -> String:
+	if d < 1.0:
+		return "%d ชั่วโมง" % maxi(1, int(d * 24.0))
+	return "%d วัน" % int(round(d))

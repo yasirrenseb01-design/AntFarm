@@ -72,7 +72,7 @@ func _step_mate(m: Dictionary) -> void:
 	var path: Array = m.get("settle", [])
 	if not path.is_empty():
 		var n: Vector3i = path.pop_front()          # stepping to the free spot it chose
-		if nest.walkable(n) and not _queen_cells.has(n):
+		if _walkable(n) and not _queen_cells.has(n):
 			_move_mate(m, n)
 		else:
 			m.settle = []
@@ -86,7 +86,7 @@ func _step_mate(m: Dictionary) -> void:
 		var opts: Array[Vector3i] = []
 		var clear: Array[Vector3i] = []
 		for d in DIRS:
-			if c + d != m.prev and nest.walkable(c + d) and not _queen_cells.has(c + d):
+			if c + d != m.prev and _walkable(c + d) and not _queen_cells.has(c + d):
 				opts.append(c + d)
 				if _cell_free(m, c + d):
 					clear.append(c + d)
@@ -140,11 +140,11 @@ func _step_mate(m: Dictionary) -> void:
 			by_queen = by_queen or fn < here
 			continue                    # the queen lies there: walk round her
 		if fn < here:
-			if nest.walkable(n):
+			if _walkable(n):
 				best.append(n)
 			else:
 				floaty.append(n)
-		elif fn <= here + 1 and n != m.prev and nest.walkable(n):
+		elif fn <= here + 1 and n != m.prev and _walkable(n):
 			aside.append(n)
 	if by_queen and here <= 6:
 		# the middle of the chamber is under the queen: beside her is as far as anyone gets (without this,
@@ -257,7 +257,6 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 		m.act = ACT_WALK
 
 
-const FIT_NEAR := 32.0          # ants nearer the camera than this lie on the ground as it is (_fit_for)
 func _update_ants(delta: float) -> void:
 	_bind_workers()                         # one drawn nestmate per real worker inside
 	# while larvae are being moved between chambers, a few nurses do the carrying
@@ -304,8 +303,7 @@ func _update_ants(delta: float) -> void:
 	# standing inside one another (the queen, much bigger, keeps a wider berth)
 	var tp := Time.get_ticks_usec()                # (dev --perf: where this function's time goes)
 	var sel_at := []                  # the selected ant's transform and pose, for its outline
-	var cam_at: Vector3 = get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d() != null else Vector3.INF
-	var clr_budget := 24
+	var clr_budget := 60
 	_gfit_budget = 3
 	var near := {}
 	for m in _mates + _dig_vis.values():          # the diggers from the simulation have bodies too
@@ -416,22 +414,18 @@ func _update_ants(delta: float) -> void:
 		# lying on the real surface under it: where a chamber floor or wall curves (or drops away) the cell it
 		# walks on is not where the ground is - its body is tipped to the slope under its feet, raised or lowered
 		# onto it, and its gaster and head bent toward the ground under them (eased)
-		# (only close enough to the camera to see it: zoomed out over hundreds of ants it is a few pixels, and
-		# was the costliest part of the frame)
+		# (the same near the camera and far from it: done only for near ones, an ant changed its height as the camera
+		# came closer or turned)
 		var tf := Time.get_ticks_usec()
-		var near_cam := cam_at.distance_squared_to(tr.origin) < FIT_NEAR * FIT_NEAR     # (farther: a few pixels - not worth it)
-		if near_cam:
-			var gfit := _fit_for(m, tr, md, (_mate_frame + mi) % 3 == 0)
-			tr = _apply_fit(tr, gfit)
-			m.bend = Vector2(gfit[3], gfit[4])
-		else:
-			m.bend = Vector2.ZERO
+		var gfit := _fit_for(m, tr, md, (_mate_frame + mi) % 3 == 0)
+		tr = _apply_fit(tr, gfit)
+		m.bend = Vector2(gfit[3], gfit[4])
 		us_fit += Time.get_ticks_usec() - tf
 		# and nothing of its body in the soil where it really stands (a bump, pushed off its cell, turned):
 		# checked for a few ants a frame, each again once it has moved or turned a little
 		var ck: Vector3 = m.get("clr_at", Vector3.INF)
 		var cf: Vector3 = m.get("clr_f", Vector3.ZERO)
-		if clr_budget > 0 and near_cam and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen \
+		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen \
 				or cf.dot(tr.basis.x) < 0.97 * cf.length() * tr.basis.x.length()):
 			clr_budget -= 1
 			m.clr_at = tr.origin

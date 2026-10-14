@@ -113,6 +113,7 @@ var sel_kind := ""                # the ant the keeper clicked: "worker" | "digg
 var sel_id := -1                  # its worker id (a digger: the digger's own id)
 var _sel_mm: MultiMesh            # its white outline (shaders/ants/ant_outline.gdshader)
 var _sel_queen_mm: MultiMesh
+var _sel_brood_mm: MultiMesh       # the rim round a clicked egg, larva or cocoon
 var fprof := {}                 # dev (--perf): microseconds per part of refresh(), summed
 var _brood_occ := {}             # brood laid this layout, binned (see nest_brood _place_brood)
 # where each item of brood lies, kept from one layout to the next so a pile stays still when an egg is added
@@ -148,17 +149,44 @@ var _egg_spots: Array = []         # floor beside the queen (not under her) wher
 
 ## The soil density at a point (trilinear between voxels, as the soil mesh is built from it).
 func _density_at(p: Vector3) -> float:
+	if _soft.is_empty():
+		_soft_build(Vector3i(-1, -1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
 	var x := floori(p.x)
 	var y := floori(p.y)
 	var z := floori(p.z)
+	if x < -1 or y < -1 or z < -1 or x >= nest.nx or y >= nest.ny or z >= nest.nz:
+		return 0.0                                 # (beyond the block and its first ring of air)
 	var fx := p.x - x
 	var fy := p.y - y
 	var fz := p.z - z
-	var d00 := lerpf(nest.density(x, y, z), nest.density(x + 1, y, z), fx)
-	var d10 := lerpf(nest.density(x, y + 1, z), nest.density(x + 1, y + 1, z), fx)
-	var d01 := lerpf(nest.density(x, y, z + 1), nest.density(x + 1, y, z + 1), fx)
-	var d11 := lerpf(nest.density(x, y + 1, z + 1), nest.density(x + 1, y + 1, z + 1), fx)
+	var i := ((z + 1) * _sy + (y + 1)) * _sx + (x + 1)
+	var d00 := lerpf(_soft[i], _soft[i + 1], fx)
+	var d10 := lerpf(_soft[i + _sx], _soft[i + _sx + 1], fx)
+	var j := i + _sx * _sy
+	var d01 := lerpf(_soft[j], _soft[j + 1], fx)
+	var d11 := lerpf(_soft[j + _sx], _soft[j + _sx + 1], fx)
 	return lerpf(lerpf(d00, d10, fy), lerpf(d01, d11, fy), fz)
+
+
+## The mesher's softened density (nest_voxels.gd density()) for every voxel from a to b (inclusive), kept in
+## _soft with a ring of one voxel round the block: read by _density_at, which every check of bodies against the
+## soil uses (it computed the softening from the voxels each time - most of the cost of those checks). Redone
+## where the ants dig (nest_view refresh).
+var _soft := PackedFloat32Array()
+var _sx := 0
+var _sy := 0
+func _soft_build(a: Vector3i, b: Vector3i) -> void:
+	if _soft.is_empty():
+		_sx = nest.nx + 2
+		_sy = nest.ny + 2
+		_soft.resize(_sx * _sy * (nest.nz + 2))
+	a = a.clamp(Vector3i(-1, -1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
+	b = b.clamp(Vector3i(-1, -1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
+	for z in range(a.z, b.z + 1):
+		for y in range(a.y, b.y + 1):
+			var row := ((z + 1) * _sy + (y + 1)) * _sx + 1
+			for x in range(a.x, b.x + 1):
+				_soft[row + x] = nest.density(x, y, z)
 
 
 ## _floor_y() remembered per spot (a quarter-voxel grid), forgotten whenever the soil changes.
@@ -343,12 +371,30 @@ func _hash(i: int, s: int) -> float:
 	return x - floor(x)
 
 
+## Whether a nestmate can stand at cell c: open, with soil next to it - or the block's sides and bottom (the
+## glass of a formicarium), but not the sky above it (ants walking the open top layer of the entrance crater hung
+## upside down from the air, floating above the block).
+func _walkable(c: Vector3i) -> bool:
+	if not nest.is_open(c):
+		return false
+	for d in DIRS:
+		if _holds(c + d):
+			return true
+	return false
+
+
+func _holds(n: Vector3i) -> bool:
+	if nest.inside(n):
+		return not nest.is_open(n)
+	return n.y < nest.ny                  # (outside: the sides and the bottom hold, the sky does not)
+
+
 func _up_at(c: Vector3i) -> Vector3:
 	var u := Vector3.ZERO
 	var first := Vector3.ZERO
 	for d in DIRS:
 		var n := c + d
-		if not nest.inside(n) or not nest.is_open(n):
+		if _holds(n):
 			u -= Vector3(d)
 			if first == Vector3.ZERO:
 				first = -Vector3(d)

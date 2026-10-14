@@ -262,7 +262,16 @@ func _take_shot() -> void:
 			for s in nest_view._spots.all.slice(0, 30):
 				diffs.append(snappedf(s.y - nest_view._floor_y(s), 0.01))
 			print("spot.y - floor: ", diffs)
-		if i == 60 and _opts.has("select") and mode == "nest":
+		if i == int(_opts.get("frames", "40")) - 20 and _opts.has("select") and mode == "nest" and _opts["select"] in ["eggs", "larvae", "pupae"]:
+			# click on an item of brood (--select=eggs|larvae|pupae): its rim is drawn, the box says what it is
+			var drawn: Array = nest_view._brood_drawn[_opts["select"]]
+			# (the first one not behind an ant: there the ant is what the click is on)
+			for e in drawn:
+				var bsp: Vector2 = nest_view._cam.unproject_position((e[0] as Transform3D).origin)
+				if nest_view.pick_ant(bsp).get("kind", "") == _opts["select"]:
+					hud.ant_tip._click(bsp)
+					break
+		elif i == 60 and _opts.has("select") and mode == "nest":
 			# click on a nestmate (its gaster, not its middle: picking by the whole body) - its outline is drawn
 			for m in nest_view._mates:
 				if m.has("xf") and nest_view._shown(m.xf):
@@ -506,6 +515,8 @@ func _take_shot() -> void:
 	await RenderingServer.frame_post_draw
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	get_viewport().get_texture().get_image().save_png(path)
+	if hud.ant_tip.visible:
+		print("selected: ", hud.ant_tip._text.text.replace(char(10), " | "))
 	_save_now()
 	print("saved ", path, "  fps ", Engine.get_frames_per_second(), "  process ms %.2f" % (Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0))
 	get_tree().quit()

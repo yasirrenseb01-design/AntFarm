@@ -82,6 +82,7 @@ var nurses := 0
 var callow := 0
 var out_count := 0
 var dev := 0.5
+var larva_fed := 1.0            # how much of what the larvae need they got in the last step, 0..1 (shown to the keeper; not saved)
 var activity := 0.5
 var starving := false
 var queen_fed := true

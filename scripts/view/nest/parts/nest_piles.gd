@@ -118,9 +118,10 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		var xf := _place_brood(cands[src], s, i)
 		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top, "forced": _last_forced,
 			"src": _pile_key(kind, i < moved or old_spots.is_empty())}
-		if _visible(xf.origin):
+		if _brood_shown(xf, kind):
 			xs.append(xf)
 			cs.append(col_fn.call(items[i]) if col_fn.is_valid() else Color.WHITE)
+			_brood_drawn[kind].append([xf, items[i]])
 	mm.instance_count = xs.size()
 	for i in xs.size():
 		mm.set_instance_transform(i, xs[i])
@@ -252,9 +253,26 @@ func _keep_at(pl: Dictionary, s: float, kind: String, item, col_fn: Callable, xs
 		pl.ts = sk
 		pl.lift = 0.0 if pl.top else _rest_on_floor(_register_brood(pl.base, pl.tb, s, kind, false, false), kind)
 	var xf := _register_brood(pl.base + Vector3(0, float(pl.lift), 0), pl.tb, s, kind, false)
-	if _visible(xf.origin):
+	if _brood_shown(xf, kind):
 		xs.append(xf)
 		cs.append(col_fn.call(item) if col_fn.is_valid() else Color.WHITE)
+		_brood_drawn[kind].append([xf, item])
+
+
+## Whether an item of brood drawn at `xf` is shown: unless the soil is seen through, all of it behind the cut (one
+## lying across it lay on floor that is cut away: it hung in the air in front of the face). Not whether it is on
+## screen: the brood is laid out again only when it changes, and what was off screen then stayed missing as the
+## camera came round to it (the graphics card leaves out what is off screen anyway).
+func _brood_shown(xf: Transform3D, kind: String) -> bool:
+	if xray:
+		return true
+	var f := xf.basis.x * (1.1 if kind == "larvae" else (1.35 if kind == "pupae" else 0.35))
+	var lim := _plane_w + 0.05
+	return _plane_n.dot(xf.origin + f) <= lim and _plane_n.dot(xf.origin - f) <= lim
+
+
+## The brood drawn in the last layout, for clicking on it: kind -> [[transform, the simulation's item], ...].
+var _brood_drawn := {"eggs": [], "larvae": [], "pupae": []}
 
 
 ## How far an item drawn at `xf` must be raised (or lowered: -) for its underside to rest on the floor under it.
@@ -539,6 +557,7 @@ func _brood_free(p: Vector3, r: float) -> bool:
 
 func _update_brood() -> void:
 	_brood_occ.clear()                       # larvae, cocoons and eggs share the floor: laid out together
+	_brood_drawn = {"eggs": [], "larvae": [], "pupae": []}
 	var exs := []
 	if not _spots.eggs.is_empty():
 		var shown: Array = sim.eggs.slice(0, mini(400, maxi(0, sim.eggs.size() - _pending("egg"))))
@@ -552,8 +571,9 @@ func _update_brood() -> void:
 			if not _brood_occ.has(ek):
 				_brood_occ[ek] = []
 			_brood_occ[ek].append([xf.origin, 0.3])       # larvae and cocoons are not laid on the eggs
-			if _visible(xf.origin):
+			if _brood_shown(xf, "eggs"):
 				exs.append(xf)
+				_brood_drawn.eggs.append([xf, shown[j]])
 	_fill(_egg_mm, exs)
 	# young larvae are tiny; they grow about tenfold in mass before pupating
 	_collect_freed_larvae()

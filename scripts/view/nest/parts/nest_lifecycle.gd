@@ -56,7 +56,7 @@ func _release(m: Dictionary) -> void:
 	var p: Vector3 = m.script.pos
 	m.erase("script")
 	var c := Vector3i(roundi(p.x), roundi(p.y), roundi(p.z))
-	if nest.walkable(c):
+	if _walkable(c):
 		m.cell = c
 		m.prev = c
 		m.from = Vector3(c)

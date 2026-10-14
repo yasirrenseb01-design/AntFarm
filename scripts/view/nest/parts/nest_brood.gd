@@ -40,7 +40,7 @@ func _field_from(start: Vector3i) -> Dictionary:
 				var n: Vector3i = c + d
 				if not nest.is_open(n):
 					continue
-				var nd := cur + (1 if nest.walkable(n) else 3)
+				var nd := cur + (1 if _walkable(n) else 3)
 				if nd < int(f.get(n, 1 << 30)):
 					f[n] = nd
 					if not buckets.has(nd):

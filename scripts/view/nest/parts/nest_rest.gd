@@ -341,7 +341,7 @@ func _cell_free(m: Dictionary, c: Vector3i) -> bool:
 ## Whether an ant could stand at cell c at all, nestmates aside: on a surface, off the queen and out of her
 ## legs, and with room for its body (not a narrow tunnel or a tight corner).
 func _cell_ok(c: Vector3i) -> bool:
-	if not nest.walkable(c) or _queen_cells.has(c):
+	if not _walkable(c) or _queen_cells.has(c):
 		return false
 	if _queen_mm.instance_count > 0 and _queen_gap(Vector3(c)) < 1.35:
 		return false
@@ -414,7 +414,7 @@ func _settle_on(m: Dictionary) -> bool:
 		for c in frontier:
 			for d in DIRS:
 				var n: Vector3i = c + d
-				if parent.has(n) or not nest.walkable(n) or _queen_cells.has(n):
+				if parent.has(n) or not _walkable(n) or _queen_cells.has(n):
 					continue
 				parent[n] = c
 				next.append(n)

@@ -145,6 +145,14 @@ func setup(s) -> void:
 	var selq_mat: ShaderMaterial = queen_mat.duplicate()
 	selq_mat.shader = outline
 	_sel_queen_mm = _multimesh(queen_mesh, selq_mat, true, false)
+	# a clicked egg, larva or cocoon: its own shape again, white, grown a little and seen from inside (a rim)
+	var selb := StandardMaterial3D.new()
+	selb.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	selb.cull_mode = BaseMaterial3D.CULL_FRONT
+	selb.albedo_color = Color.WHITE
+	selb.grow = true
+	selb.grow_amount = 0.05
+	_sel_brood_mm = _multimesh(_egg_mm.mesh, selb, false, false)
 	_sel_queen_mm.use_custom_data = true
 	_cut_mats = [ant_mat, sel_mat]          # (cut at the cut plane as the soil is; not the queen - she cannot step away from
 	                                        # it, and cut open she showed a hollow shell)
@@ -195,6 +203,8 @@ func refresh(delta: float) -> void:
 	for k in nest.dirty:
 		if not _queue.has(k):
 			_queue.append(k)
+		if not _soft.is_empty():
+			_soft_build(k * 16 - Vector3i.ONE, k * 16 + Vector3i(16, 16, 16))     # (nest_voxels CHUNK, and a voxel round it)
 	nest.dirty.clear()
 	_vol_timer -= delta
 	if _vol_dirty and _vol_timer <= 0.0:
@@ -236,6 +246,7 @@ func refresh(delta: float) -> void:
 	t0 = _nprof("queen", t0)
 	_update_ants(delta)
 	t0 = _nprof("nestmates", t0)
+	_show_selected_brood()
 	_draw_anims()
 	_nprof("life-cycle", t0)
 
@@ -341,9 +352,7 @@ func trace_crowd() -> String:
 	for v in _dig_vis.values():
 		if v.has("xf") and (v.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
 			dtop += 1
-	# (only the nestmates near enough the camera to be seen lying on the ground: farther ones are not fitted to it)
-	var eye := _cam.global_position
-	var near_mates := _mates.filter(func(q): return q.has("xf") and eye.distance_to((q.xf as Transform3D).origin) < FIT_NEAR)
+	var near_mates := _mates.filter(func(q): return q.has("xf"))
 	var in_soil := 0
 	for m in near_mates:
 		if _ant_in_soil(m):
@@ -366,7 +375,7 @@ func trace_crowd() -> String:
 			feet_air += 1
 		if _ground_off(x.origin, up) < -0.35 and float(m.get("blift", 0.0)) < 0.05:
 			lifted += 1
-	print("   of %d near the camera: 2+ feet off the ground %d, standing clear above it %d; climbing over a nestmate: %d (in narrow places %d)" % [near_mates.size(), feet_air, lifted,
+	print("   of %d drawn: 2+ feet off the ground %d, standing clear above it %d; climbing over a nestmate: %d (in narrow places %d)" % [near_mates.size(), feet_air, lifted,
 		_mates.filter(func(q): return float(q.get("over", 0.0)) > 0.1).size(), _mates.filter(func(q): return q.get("narrow", false)).size()])
 	var bis := brood_in_soil()
 	print("   in the soil (any body point): %d   overlapping pairs: %d   larvae / cocoons in the soil: %d / %d   larvae off the floor: %d" % [in_soil, mate_overlaps(), bis.x, bis.y, bis.z])
@@ -386,3 +395,21 @@ func debug_summary() -> String:
 	return "anims %d cam %s d%.1f yaw%.2f cut%.1f | %s %s  roles %s  acts %s  carrying %d  larvae moved %d/%d (%s→%s)  rooms %d  fields %d" % [_anims.size(), target, cam_dist, yaw, cut_offset, sim.clock_text(),
 		"air>nest" if sim.climate.air > sim.climate.nest + 0.5 else "air<nest", roles, acts, carrying,
 		mini(_moved, sim.larvae.size()), sim.larvae.size(), _larva_prev, _larva_group, _rooms.size(), _fields.size()]
+
+
+## The rim round a clicked egg, larva or cocoon (ui/ant_tip.gd sets sel_kind / sel_id: its kind and view tag).
+func _show_selected_brood() -> void:
+	var n := 0
+	if sel_kind in ["eggs", "larvae", "pupae"]:
+		for e in _brood_drawn[sel_kind]:
+			if int((e[1] as Dictionary).get("_v", -1)) == sel_id:
+				var mesh: Mesh = _egg_mm.mesh if sel_kind == "eggs" else (_larva_mm.mesh if sel_kind == "larvae" else _pupa_mm.mesh)
+				if _sel_brood_mm.mesh != mesh:
+					_sel_brood_mm.instance_count = 0
+					_sel_brood_mm.mesh = mesh
+				_sel_brood_mm.instance_count = 1
+				_sel_brood_mm.set_instance_transform(0, e[0])
+				n = 1
+				break
+	if n == 0:
+		_sel_brood_mm.instance_count = 0

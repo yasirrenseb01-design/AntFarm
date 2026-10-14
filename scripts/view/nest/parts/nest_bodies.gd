@@ -358,7 +358,7 @@ func _open_at(p: Vector3, up: Vector3) -> bool:
 func _entrance_cell() -> Vector3i:
 	var c := Vector3i(nest.entrance)
 	for k in 10:
-		if nest.walkable(c):
+		if _walkable(c):
 			return c
 		c.y -= 1
 	return _any_spot()
@@ -371,7 +371,7 @@ func _any_spot() -> Vector3i:
 	for k in 6:
 		var sp: Vector3 = _spots.all[randi() % _spots.all.size()]
 		var c := Vector3i(roundi(sp.x), roundi(sp.y + 0.45), roundi(sp.z))
-		if nest.walkable(c):
+		if _walkable(c):
 			return c
 	return Vector3i(-1, 0, 0)
 
@@ -408,6 +408,15 @@ func pick_ant(sp: Vector2) -> Dictionary:
 		var qd := AntModel.screen_gap(_cam, _queen_xf, sp, QUEEN_HEAD + Vector3(0.25, 0, 0), QUEEN_TAIL - Vector3(0.2, 0, 0), 0.32)
 		if qd < 14.0:
 			cands.append([qd, eye.distance_to(_queen_xf.origin) + 0.8, {"kind": "queen", "act": _queen_act if _queen_act >= 0 else _queen_mode}])
+	# the brood: an egg, a larva or a cocoon can be clicked as well (what stage, how far on, fed or hungry)
+	for kind in ["eggs", "larvae", "pupae"]:
+		var ends: Array = [Vector3(0.3, 0, 0), Vector3(-0.3, 0, 0), 0.7] if kind == "eggs" else \
+			([Vector3(1.0, 0.3, 0), Vector3(-0.8, 0.3, 0), 0.32] if kind == "larvae" else [Vector3(1.3, 0, 0), Vector3(-1.3, 0, 0), 0.36])
+		for e in _brood_drawn[kind]:
+			var bxf: Transform3D = e[0]
+			var d := AntModel.screen_gap(_cam, bxf, sp, ends[0], ends[1], ends[2])
+			if d < 10.0:
+				cands.append([d, eye.distance_to(bxf.origin), {"kind": kind, "id": int((e[1] as Dictionary).get("_v", -1))}])
 	var best := {}
 	var on := INF                   # on a body: the nearest to the eye
 	var near := INF                 # else: the nearest on screen
@@ -431,6 +440,12 @@ func _body_gap(xf: Transform3D, sp: Vector2) -> float:
 func info_for(kind: String, id: int) -> Dictionary:
 	if kind == "queen":
 		return {"kind": "queen", "act": _queen_act if _queen_act >= 0 else _queen_mode} if _queen_mm.instance_count > 0 else {}
+	if kind in ["eggs", "larvae", "pupae"]:
+		# an item of brood, by its view tag: as it is now ({} once it has moved on to the next stage, or was eaten)
+		for it in (sim.eggs if kind == "eggs" else (sim.larvae if kind == "larvae" else sim.pupae)):
+			if int((it as Dictionary).get("_v", -1)) == id:
+				return {"kind": kind, "item": it}
+		return {}
 	if kind == "digger":
 		var dig_ws: Array = sim.workers.filter(func(w): return w.task == Ant.TASK_DIG)
 		dig_ws.sort_custom(func(a, b): return a.id < b.id)

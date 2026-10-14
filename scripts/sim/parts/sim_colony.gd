@@ -371,6 +371,7 @@ func _brood(dt: float, nurse_cap: float) -> void:
 			queen.reserve -= give
 			protein += give
 		var r := minf(1.0, minf(nurse_cap / n, protein / need))
+		larva_fed = r
 		protein = maxf(0.0, protein - need * r)
 		var hungriest := -1
 		var worst: float = sp["larva_starve_days"]
