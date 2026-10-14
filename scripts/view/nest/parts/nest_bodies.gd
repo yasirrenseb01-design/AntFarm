@@ -35,26 +35,35 @@ func _turn_to(a: Vector3, want: Vector3, k: float) -> Vector3:
 func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale: float) -> Transform3D:
 	if not v.has("vp") or v.vp.distance_squared_to(path_pos) > 36.0:
 		v.vp = path_pos
+		v.vp1 = path_pos
+		v.vel = Vector3.ZERO
 		v.vf = Vector3.RIGHT
 		v.vu = up
 		v.gait = randf() * TAU
 		v.mv = 0.0
-	var np: Vector3 = v.vp.lerp(path_pos, 1.0 - exp(-12.0 * delta))
+	# eased twice over (two smoothings in a row): the path goes from voxel to voxel, and across the grid it
+	# zigzags (one step along x, the next along z) - eased once the body still swung to and fro at every corner
+	var k := 1.0 - exp(-10.0 * delta)
+	v.vp1 = (v.get("vp1", path_pos) as Vector3).lerp(path_pos, k)
+	var np: Vector3 = v.vp.lerp(v.vp1, k)
 	var step: Vector3 = np - v.vp
 	var moving := step.length() > 0.12 * delta
-	var flat := step - (v.vu as Vector3) * step.dot(v.vu)     # (turn only within the floor's plane: a step up or
+	# it heads the way it has been going over the last fraction of a second, not the way its last step went
+	v.vel = (v.get("vel", Vector3.ZERO) as Vector3).lerp(step / maxf(delta, 0.0001), 1.0 - exp(-5.0 * delta))
+	var vel: Vector3 = v.vel
+	var flat := vel - (v.vu as Vector3) * vel.dot(v.vu)       # (turn only within the floor's plane: a step up or
 	var face: Vector3 = v.get("face", Vector3.INF)          # down - a lift, the floor rising - never tips it on end)
 	# backing away from what it holds or works at (pulling a callow out): it keeps facing it, walking backwards
 	var backing := face != Vector3.INF and flat.dot(face - np) < 0.0
 	var lat := 0.0
-	if moving and not backing and flat.length() > 0.02 * delta:
+	if moving and not backing and flat.length() > 0.12:
 		var want := flat.normalized()
 		# rounding a bend the body is a C: the head already turned toward where it is going, the gaster swung
 		# out behind (an ant bends at its neck and waist) - as far as its heading still lags the way it walks
 		var vf0: Vector3 = v.vf
 		lat = clampf(atan2(vf0.cross(want).dot(v.vu), vf0.dot(want)) * 0.7, -0.4, 0.4)
 		var old_f: Vector3 = v.vf
-		v.vf = _turn_to(v.vf, want, minf(1.0, 9.0 * delta))
+		v.vf = _turn_to(v.vf, want, minf(1.0, 5.0 * delta))
 		var turned := old_f.angle_to(v.vf)            # turning takes steps as well as walking does
 		v.gait = fmod(v.gait + (step.length() + turned * 0.9 * scale) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
 	var rd: Vector3 = v.get("rest_dir", Vector3.ZERO)
@@ -160,7 +169,9 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 						d -= up * d.dot(up)
 						hit = hit or d.length_squared() < rr
 				if hit:
-					var top := 0.5 * float(o.size) + 0.1 + float(o.get("over", 0.0))
+					if float(o.get("over", 0.0)) > 0.1:
+						continue           # (not onto one that is itself up on another: no towers of ants)
+					var top := 0.5 * float(o.size) + 0.1
 					if top > over:
 						over = top
 						m.over_on = o

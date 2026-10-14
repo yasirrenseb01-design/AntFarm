@@ -341,15 +341,18 @@ func trace_crowd() -> String:
 	for v in _dig_vis.values():
 		if v.has("xf") and (v.xf as Transform3D).origin.y > float(nest.ny) - 1.6:
 			dtop += 1
+	# (only the nestmates near enough the camera to be seen lying on the ground: farther ones are not fitted to it)
+	var eye := _cam.global_position
+	var near_mates := _mates.filter(func(q): return q.has("xf") and eye.distance_to((q.xf as Transform3D).origin) < FIT_NEAR)
 	var in_soil := 0
-	for m in _mates:
+	for m in near_mates:
 		if _ant_in_soil(m):
 			in_soil += 1
 	# feet that cannot reach the ground (the shader sets each foot down on the ground within ~0.5 of where it would
 	# stand on a flat floor, x the ant's size) and bodies standing clear above the ground
 	var feet_air := 0
 	var lifted := 0
-	for m in _mates:
+	for m in near_mates:
 		if not m.has("xf") or m.has("script"):
 			continue
 		var x: Transform3D = m.xf
@@ -363,7 +366,7 @@ func trace_crowd() -> String:
 			feet_air += 1
 		if _ground_off(x.origin, up) < -0.35 and float(m.get("blift", 0.0)) < 0.05:
 			lifted += 1
-	print("   ants with 2+ feet off the ground: %d   standing clear above it: %d   climbing over a nestmate: %d (in narrow places %d)" % [feet_air, lifted,
+	print("   of %d near the camera: 2+ feet off the ground %d, standing clear above it %d; climbing over a nestmate: %d (in narrow places %d)" % [near_mates.size(), feet_air, lifted,
 		_mates.filter(func(q): return float(q.get("over", 0.0)) > 0.1).size(), _mates.filter(func(q): return q.get("narrow", false)).size()])
 	var bis := brood_in_soil()
 	print("   in the soil (any body point): %d   overlapping pairs: %d   larvae / cocoons in the soil: %d / %d   larvae off the floor: %d" % [in_soil, mate_overlaps(), bis.x, bis.y, bis.z])

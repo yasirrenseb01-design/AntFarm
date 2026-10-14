@@ -3,8 +3,8 @@ render_mode diffuse_burley;
 #include "res://shaders/ants/ant_core.gdshaderinc"
 
 void fragment() {
-	if (dot(cut_plane.xyz, wpos) > cut_plane.w) {
-		discard;                         // in front of the nest's cut
+	if (limb > 0.5 && dot(cut_plane.xyz, wpos) > cut_plane.w) {
+		discard;                         // a leg or antenna in front of the nest's cut (the body is never cut: hollow inside)
 	}
 	// a stretched crop shows amber honeydew through the pale membranes between the plates
 	vec3 base = COLOR.rgb * mix(vec3(1.0), limb_gain, limb);

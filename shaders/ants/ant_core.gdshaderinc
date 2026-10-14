@@ -32,8 +32,9 @@ uniform float outline_w = 0.022;
 // y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
 
 uniform float rim_amount = 0.35;
-// nest: the cut plane (xyz = normal toward the camera, w = offset): what of an ant lies in front of it is cut away,
-// as the soil is - no leg or gaster shows in front of the cut face (fragment(); far away elsewhere)
+// nest: the cut plane (xyz = normal toward the camera, w = offset): legs and antennae in front of it are cut away,
+// as the soil is (fragment(); far away elsewhere). Not the body: cut open it shows a hollow shell - an ant whose
+// body reaches over the cut is not drawn at all (nest_camera.gd _shown).
 uniform vec4 cut_plane = vec4(0.0, 0.0, 1.0, 100000.0);
 varying vec3 wpos;
 // where the feet find the ground: 0 a flat floor at the instance origin, 1 the nest's soil (the voxel volume),
@@ -95,10 +96,25 @@ vec2 leg_ik(vec3 C, vec3 N, vec3 A, vec3 TA, out vec3 axis) {
 // How far (world units, along the ant's up) the real ground lies from a foot placed at fw: + above, - below.
 float ground_dy(vec3 fw, vec3 upw) {
 	if (ground_mode == 1) {
-		float prev = 1.4;
+		// from a point just above the foot (open, unless the ground rises there): down to the first soil, or - in
+		// the soil - up to where it opens. (It used to look down from well above the foot: in a low tunnel that
+		// point was in the ceiling, and the foot was lifted up to it for a moment.)
+		float prev = 0.5;
 		float dprev = texture(vol, (fw + upw * prev + 0.5) / vol_size).r;
-		for (int i = 1; i < 10; i++) {
-			float s = 1.4 - 0.3 * float(i);
+		if (dprev >= 0.5) {
+			for (int i = 1; i < 4; i++) {
+				float s = 0.5 + 0.25 * float(i);
+				float d = texture(vol, (fw + upw * s + 0.5) / vol_size).r;
+				if (d < 0.5) {
+					return mix(prev, s, clamp((dprev - 0.5) / max(dprev - d, 0.001), 0.0, 1.0));
+				}
+				prev = s;
+				dprev = d;
+			}
+			return 1.4;
+		}
+		for (int i = 1; i < 8; i++) {
+			float s = 0.5 - 0.25 * float(i);
 			float d = texture(vol, (fw + upw * s + 0.5) / vol_size).r;
 			if (d >= 0.5) {
 				// where the density crosses 0.5 between the two samples: the same surface the soil mesh shows

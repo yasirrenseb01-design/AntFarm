@@ -345,11 +345,18 @@ func _hash(i: int, s: int) -> float:
 
 func _up_at(c: Vector3i) -> Vector3:
 	var u := Vector3.ZERO
+	var first := Vector3.ZERO
 	for d in DIRS:
 		var n := c + d
 		if not nest.inside(n) or not nest.is_open(n):
 			u -= Vector3(d)
-	return u.normalized() if u.length_squared() > 0.01 else Vector3.UP
+			if first == Vector3.ZERO:
+				first = -Vector3(d)
+	if u.length_squared() > 0.01:
+		return u.normalized()
+	# soil on opposite sides (a narrow shaft or a slot) cancels out: it stands on one of them, not upright in the
+	# air between them (an ant in a narrow shaft hung in its middle, feet reaching for nothing)
+	return first if first != Vector3.ZERO else Vector3.UP
 
 
 # ---------------------------------------------------------------- activities

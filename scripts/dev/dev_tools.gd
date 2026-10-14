@@ -497,6 +497,10 @@ func _take_shot() -> void:
 					await get_tree().process_frame
 				await RenderingServer.frame_post_draw
 				get_viewport().get_texture().get_image().save_png(path.get_basename() + "_o%d.png" % j)
+		if _opts.has("pops") and mode == "nest" and _jit_frames > 0:
+			var secs := _jit_frames / 60.0
+			print("jitter: %d turn flicks, %d bobs in %.0f ant-seconds (%.2f / %.2f per ant-minute)" % [_jit_turns, _jit_bobs, secs,
+				_jit_turns / secs * 60.0, _jit_bobs / secs * 60.0])
 		get_tree().quit()
 		return
 	await RenderingServer.frame_post_draw
@@ -511,6 +515,11 @@ var _pushed = null                # (--follow-pushed: the ant being watched)
 var _pushed_said = null
 var _pop_prev := []
 var _pop_by := {}
+var _jit_by := {}
+var _jit_parts := {}
+var _jit_turns := 0
+var _jit_bobs := 0
+var _jit_frames := 0                 # ant-frames looked at
 var _pop_moves := []
 var _pop_n := 0
 var _brood_prev := []
@@ -541,6 +550,36 @@ func _count_pops() -> void:
 				_pop_by[id] = [p2, mv2]
 			else:
 				_pop_by[id] = [p2, Vector3.ZERO]
+			# turning one way then straight back (the body flicking round), and bobbing up then straight down
+			var x2: Transform3D = m.xf
+			var upv: Vector3 = x2.basis.y.normalized()
+			var fw: Vector3 = x2.basis.x.normalized()
+			var dt2 := maxf(get_process_delta_time(), 0.001)
+			if _jit_by.has(id):
+				var j: Array = _jit_by[id]
+				var turn: float = atan2((j[0] as Vector3).cross(fw).dot(upv), (j[0] as Vector3).dot(fw)) / dt2
+				var rise: float = (p2 - (j[1] as Vector3)).dot(upv) / dt2
+				if absf(turn) > 3.0 and absf(float(j[2])) > 3.0 and signf(turn) != signf(float(j[2])):
+					_jit_turns += 1
+					if _opts.has("jitter-why"):
+						print("   turn flick: %s act %d rest %d mv %.2f sep %.2f sgr %.2f settle %d rest_dir %s face %s" % [m.role, m.act, m.rest, float(m.get("mv", 0.0)),
+							(m.get("sep", Vector3.ZERO) as Vector3).length(), float(m.get("sgr", 0.0)), (m.get("settle", []) as Array).size(), m.get("rest_dir", Vector3.ZERO) != Vector3.ZERO, m.get("face", Vector3.INF) != Vector3.INF])
+				if absf(rise) > 1.5 and absf(float(j[3])) > 1.5 and signf(rise) != signf(float(j[3])):
+					_jit_bobs += 1
+					if _opts.has("jitter-why"):
+						var gf: PackedFloat32Array = m.get("gfit", PackedFloat32Array([0, 0, 0, 0, 0]))
+						var gp: Array = _jit_parts.get(id, [0.0, 0.0, 0.0, 0.0, Vector3.ZERO, Vector3.ZERO])
+						var sepv: Vector3 = m.get("sep", Vector3.ZERO)
+						var vpv: Vector3 = m.get("vp", Vector3.ZERO)
+						print("   bob %.2f u/s: %s act %d rest %d | changes this frame: lift %+.3f clr %+.3f blift %+.3f over %+.3f sep-up %+.3f path-up %+.3f" % [rise, m.role, m.act, m.rest,
+							gf[0] - float(gp[0]), float(m.get("clr", 0.0)) - float(gp[1]), float(m.get("blift", 0.0)) - float(gp[2]), float(m.get("over", 0.0)) - float(gp[3]),
+							(sepv - (gp[4] as Vector3)).dot(upv), (vpv - (gp[5] as Vector3)).dot(upv)])
+				_jit_by[id] = [fw, p2, turn, rise]
+				var gf2: PackedFloat32Array = m.get("gfit", PackedFloat32Array([0, 0, 0, 0, 0]))
+				_jit_parts[id] = [gf2[0], float(m.get("clr", 0.0)), float(m.get("blift", 0.0)), float(m.get("over", 0.0)), m.get("sep", Vector3.ZERO), m.get("vp", Vector3.ZERO)]
+			else:
+				_jit_by[id] = [fw, p2, 0.0, 0.0]
+			_jit_frames += 1
 		mm = MultiMesh.new()                 # (the drawn-ant matching below: skipped in the nest)
 	var now := []
 	var moves := []

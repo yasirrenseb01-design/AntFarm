@@ -89,19 +89,25 @@ func _fit_at(c: Vector3i, fwd: Vector3) -> PackedFloat32Array:
 	var ref: Vector3 = e[1]
 	var g: PackedFloat32Array = e[2]
 	var a := atan2(up.cross(ref).dot(fwd), ref.dot(fwd))
-	var gf := _ring_at(g, 1, a)
-	var gb := _ring_at(g, 1, a + PI)
-	var gl := _ring_at(g, 1, a - PI * 0.5)             # (its left: forward x up)
-	var gr := _ring_at(g, 1, a + PI * 0.5)
 	var g0 := g[0]
+	# (the ground under its feet, ahead, behind and to each side - a wall there counts as ground rising half a unit
+	# at most: it tips the body up toward it, but does not stand it up against the wall)
+	var gf := clampf(_ring_at(g, 1, a), g0 - 0.6, g0 + 0.5)
+	var gb := clampf(_ring_at(g, 1, a + PI), g0 - 0.6, g0 + 0.5)
+	var gl := clampf(_ring_at(g, 1, a - PI * 0.5), g0 - 0.6, g0 + 0.5)             # (its left: forward x up)
+	var gr := clampf(_ring_at(g, 1, a + PI * 0.5), g0 - 0.6, g0 + 0.5)
 	# (its middle stays on the ground under it: at the foot of a wall the ground ahead "rises" into the wall -
 	# that tips it nose up, it does not lift it off the floor)
 	var lift := g0 + clampf((gf + gb + gl + gr) * 0.25 - g0, -0.15, 0.2)
+	# (no ground close under it - over a drop, or between two walls: it stays where its cell is, it is not lowered
+	# into the gap)
+	lift = maxf(lift, -0.35)
 	var slope := (gf - gb) / 1.6
 	var pitch := clampf(atan(slope), -0.6, 0.6)
 	var roll := clampf(atan2(gl - gr, 1.6), -0.5, 0.5)
-	var bt := clampf(atan2(_ring_at(g, 9, a + PI) - (lift - slope * 1.05), 0.55), -0.25, 0.4)
-	var bh := clampf(atan2(_ring_at(g, 9, a) - (lift + slope * 1.05), 0.5), -0.25, 0.35)
+	# (ground that rises more than half a unit there is a wall, not floor to bend toward)
+	var bt := clampf(atan2(minf(_ring_at(g, 9, a + PI), lift + 0.5) - (lift - slope * 1.05), 0.55), -0.2, 0.3)
+	var bh := clampf(atan2(minf(_ring_at(g, 9, a), lift + 0.5) - (lift + slope * 1.05), 0.5), -0.2, 0.25)
 	return PackedFloat32Array([clampf(lift, -0.8, 1.0), pitch, roll, bt, bh])
 
 
@@ -149,32 +155,54 @@ func _ground_off(p: Vector3, up: Vector3) -> float:
 	return 1.2
 
 
-## The ground fit (see _fit_at) for an ant drawn at `tr`, from the cell it is over now, eased toward it. What
-## it should be is looked up again only when `fresh` (a third of the ants each frame), and the easing stops
-## once it is there (most ants stand still).
+## The ground fit (see _fit_at) for an ant drawn at `tr`, from the cell it is over now, eased toward it. How it
+## is tipped and bent is looked up again only when `fresh` (a third of the ants each frame); how high it stands
+## follows the ground under the very point it is at, every frame - from that cell's ring of ground heights, so
+## it does not jump as it passes from one cell to the next (a walking ant bobbed up and down at every cell).
+## The easing stops once it is there (most ants stand still).
 const _FIT0 := [0.0, 0.0, 0.0, 0.0, 0.0]
 func _fit_for(m: Dictionary, tr: Transform3D, md: float, fresh: bool) -> PackedFloat32Array:
 	var cur: PackedFloat32Array = m.get("gfit", PackedFloat32Array())
+	var p := tr.origin + tr.basis.y.normalized() * 0.4
 	if fresh or cur.size() != 5:
-		var p := tr.origin + tr.basis.y.normalized() * 0.4
 		var c := Vector3i(roundi(p.x), roundi(p.y), roundi(p.z))
-		if not nest.is_open(c):
+		var was: Vector3i = m.get("gfit_c", Vector3i(-1, -1, -1))
+		if was.x >= 0 and Vector3(was).distance_to(p) < 0.85 and nest.is_open(was):
+			c = was                    # (kept until it is well over the next cell: no flicking between two)
+		elif not nest.is_open(c):
 			c = m.cell
-		var want := _fit_at(c, tr.basis.x)
-		if want.size() == 5 and want != m.get("gfit_want", PackedFloat32Array()):
-			m.gfit_want = want
-			m.gfit_still = false
-	var want: PackedFloat32Array = m.get("gfit_want", PackedFloat32Array(_FIT0))
+		var w := _fit_at(c, tr.basis.x)
+		if w.size() == 5:
+			m.gfit_want = w
+			m.gfit_c = c
+	var want: PackedFloat32Array = (m.get("gfit_want", PackedFloat32Array(_FIT0)) as PackedFloat32Array).duplicate()
+	var e = _gfit_cache.get(m.get("gfit_c", Vector3i(-1, -1, -1)))
+	if e != null:
+		var cu: Vector3 = e[0]
+		var g: PackedFloat32Array = e[2]
+		var off: Vector3 = p - Vector3(m.gfit_c)
+		var along := off.dot(cu)
+		var o := off - cu * along
+		var r := o.length()
+		var ga := g[0]
+		if r > 0.05:
+			var ref: Vector3 = e[1]
+			# (a wall beside it is not ground to stand higher on: only the floor's own rise, at most ~half a unit)
+			ga += (clampf(_ring_at(g, 1, atan2(cu.cross(ref).dot(o), ref.dot(o))), g[0] - 0.5, g[0] + 0.4) - g[0]) * minf(r / 0.8, 1.25)
+		want[0] = clampf(want[0] + ga - g[0] - along, -1.0, 1.2)
 	if cur.size() != 5:
-		cur = want.duplicate()
-	elif not m.get("gfit_still", false):
-		var k := 1.0 - exp(-7.0 * md)
-		var off := 0.0
-		for i in 5:
-			cur[i] = lerpf(cur[i], want[i], k)
-			off = maxf(off, absf(cur[i] - want[i]))
-		if off < 0.004:
-			m.gfit_still = true
+		cur = want
+		m.gfit_still = false
+	else:
+		var moved := absf(want[0] - cur[0]) > 0.004
+		for i in range(1, 5):
+			moved = moved or absf(want[i] - cur[i]) > 0.004
+		if moved or not m.get("gfit_still", false):
+			cur[0] = lerpf(cur[0], want[0], 1.0 - exp(-9.0 * md))
+			var k := 1.0 - exp(-7.0 * md)
+			for i in range(1, 5):
+				cur[i] = lerpf(cur[i], want[i], k)
+			m.gfit_still = not moved
 	m.gfit = cur
 	return cur
 
@@ -368,7 +396,7 @@ func _settle_on(m: Dictionary) -> bool:
 	# walk on them, but a chamber full of ants resting upside down looked chaotic)
 	var score := func(c: Vector3i, depth: int) -> float:
 		var u: Vector3 = _up_at(c)
-		var where := 0.0 if u.y > 0.7 else (2.5 if u.y > -0.3 else 5.0)
+		var where := 0.0 if u.y > 0.85 else (2.5 if u.y > -0.3 else 5.0)     # (the crease where floor meets wall counts as wall: resting there it was neither on the one nor the other)
 		return depth * 0.6 + where + (Vector3(c).distance_to(near_to) if near_to != Vector3.INF else 0.0)
 	# the cells within reach along the walls (cheap), then those looked at for room best first (the room
 	# around a cell - the nestmates near it - is the costly part: worked out only until a free one turns up)
@@ -376,7 +404,7 @@ func _settle_on(m: Dictionary) -> bool:
 	var cands := [[score.call(start, 0) - 0.3, start]] if _cell_ok(start) and not _brood_wide.has(start) else []
 	var frontier: Array[Vector3i] = [start]
 	var floor_seen := false
-	for depth in range(1, 13):            # (a crowded chamber: look a little further for room)
+	for depth in range(1, 11):            # (a crowded chamber: look a little further for room)
 		# (by 7 steps it has looked round its own part of the chamber; further only if all it found is up on
 		# the ceiling or a wall - ants coming in at the top of a chamber used to rest on its ceiling, the floor
 		# being just out of reach)
@@ -441,6 +469,8 @@ func _clear_brood_of_ants() -> void:
 func _body_on_brood(m: Dictionary) -> bool:
 	if not m.has("xf"):
 		return _brood_cells.has(m.cell)
+	if _on_brood(m) or float(m.get("blift", 0.0)) > 0.05:
+		return true                    # (up on the pile: its drawn body is raised above the cells it is over)
 	var x: Transform3D = m.xf
 	var f: Vector3 = x.basis.x.normalized() * (0.7 * float(m.size))
 	var pts: Array = [x.origin, x.origin - f] if _tends_brood(m) else [x.origin + f, x.origin, x.origin - f]

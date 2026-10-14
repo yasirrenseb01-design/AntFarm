@@ -305,7 +305,7 @@ func _update_ants(delta: float) -> void:
 	var tp := Time.get_ticks_usec()                # (dev --perf: where this function's time goes)
 	var sel_at := []                  # the selected ant's transform and pose, for its outline
 	var cam_at: Vector3 = get_viewport().get_camera_3d().global_position if get_viewport().get_camera_3d() != null else Vector3.INF
-	var clr_budget := 20
+	var clr_budget := 24
 	_gfit_budget = 3
 	var near := {}
 	for m in _mates + _dig_vis.values():          # the diggers from the simulation have bodies too
@@ -419,7 +419,8 @@ func _update_ants(delta: float) -> void:
 		# (only close enough to the camera to see it: zoomed out over hundreds of ants it is a few pixels, and
 		# was the costliest part of the frame)
 		var tf := Time.get_ticks_usec()
-		if cam_at.distance_squared_to(tr.origin) < FIT_NEAR * FIT_NEAR:
+		var near_cam := cam_at.distance_squared_to(tr.origin) < FIT_NEAR * FIT_NEAR     # (farther: a few pixels - not worth it)
+		if near_cam:
 			var gfit := _fit_for(m, tr, md, (_mate_frame + mi) % 3 == 0)
 			tr = _apply_fit(tr, gfit)
 			m.bend = Vector2(gfit[3], gfit[4])
@@ -430,7 +431,7 @@ func _update_ants(delta: float) -> void:
 		# checked for a few ants a frame, each again once it has moved or turned a little
 		var ck: Vector3 = m.get("clr_at", Vector3.INF)
 		var cf: Vector3 = m.get("clr_f", Vector3.ZERO)
-		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen \
+		if clr_budget > 0 and near_cam and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen \
 				or cf.dot(tr.basis.x) < 0.97 * cf.length() * tr.basis.x.length()):
 			clr_budget -= 1
 			m.clr_at = tr.origin
@@ -444,7 +445,11 @@ func _update_ants(delta: float) -> void:
 					and (m.get("face", Vector3.INF) as Vector3) == Vector3.INF:
 				clr_budget -= 3
 				m.rest_dir = _free_heading(m, tr, 0.0)
-		m.clr = move_toward(float(m.get("clr", 0.0)), float(m.get("clr_own", 0.0)), 2.0 * md)
+		# (up quickly out of the soil, down slowly: checked again as it shifts a little, the answer can flip between
+		# two heights - at the same speed both ways it bobbed up and down)
+		var clr0 := float(m.get("clr", 0.0))
+		var clr1 := float(m.get("clr_own", 0.0))
+		m.clr = move_toward(clr0, clr1, (2.0 if clr1 > clr0 else 0.3) * md)
 		tr.origin += tr.basis.y.normalized() * float(m.clr)
 		var sgr: float = m.get("sgr", 0.0)
 		if sgr > 0.0:

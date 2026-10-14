@@ -169,5 +169,10 @@ func _shown(tr: Transform3D) -> bool:
 		return false
 	if xray:
 		return true
+	# (head to gaster tip, and its sides - an ant lying along the cut was half over it)
+	var lim := _plane_w + 0.1
+	var o := tr.origin + tr.basis.y * 0.35
 	var f := tr.basis.x
-	return _plane_n.dot(tr.origin + f) <= _plane_w + 0.15 and _plane_n.dot(tr.origin - f) <= _plane_w + 0.15
+	var sd := tr.basis.z * 0.4
+	f *= 1.15                          # (the head and the gaster tip reach a little past them)
+	return _plane_n.dot(o + f) <= lim and _plane_n.dot(o - f) <= lim and _plane_n.dot(o + sd) <= lim and _plane_n.dot(o - sd) <= lim
