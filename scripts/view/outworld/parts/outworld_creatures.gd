@@ -129,6 +129,7 @@ func _update_ants(delta: float) -> void:
 		if a.carry == Ant.SUGAR:
 			act += 100                      # a crop full of honeydew swells the gaster
 		xs.append(tr)
+		a.vxf = tr
 		cols.append(body.lerp(young, clampf(1.0 - a.age / 6.0, 0.0, 1.0)))
 		a.vact = AntModel.act_step(a.vact, act, a.anim)                     # poses ease into one another
 		cus.append(Color(a.vgait, AntModel.act_y(a.vact, a.anim), fmod(a.anim, 600.0), AntModel.gait_w(a.vmv, stride)))
@@ -148,6 +149,7 @@ func _update_ants(delta: float) -> void:
 	if not sel_at.is_empty():
 		_sel_mm.set_instance_transform(0, sel_at[0])
 		_sel_mm.set_instance_custom_data(0, sel_at[1])
+		_sel_mm.set_instance_color(0, Color.WHITE)
 	_ant_mm.instance_count = xs.size()
 	for i in xs.size():
 		_ant_mm.set_instance_transform(i, xs[i])
@@ -473,16 +475,14 @@ func can_select() -> bool:
 
 ## The forager under the mouse (a screen position) for the selection (ui/ant_tip.gd), or {}.
 func pick_ant(sp: Vector2) -> Dictionary:
+	# the ant whose body (head to gaster tip on screen) the click is on, or nearest to within a finger's breadth
+	# (it was measured to the middle of the body only: a click on the head or gaster missed it)
 	var best := {}
-	var best_d := 26.0
+	var best_d := 14.0
 	for a in sim.outside:
-		if a.state == Ant.IN_NEST or a.dead or a.vpos.x == INF or (a.act == 22 and a.busy > 0):
+		if a.state == Ant.IN_NEST or a.dead or a.vpos.x == INF or (a.act == 22 and a.busy > 0) or not (a.vxf is Transform3D):
 			continue
-		var p: Vector2 = a.vpos * U
-		var o := Vector3(p.x, ground_top(p.x, p.y), p.y)
-		if _cam.is_position_behind(o):
-			continue
-		var d := _cam.unproject_position(o).distance_to(sp)
+		var d := AntModel.screen_gap(_cam, a.vxf, sp)
 		if d < best_d:
 			best_d = d
 			var act: int = a.act if a.busy > 0 else 0

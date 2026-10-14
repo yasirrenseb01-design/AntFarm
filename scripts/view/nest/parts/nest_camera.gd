@@ -159,3 +159,15 @@ func _visible(p: Vector3) -> bool:
 	if xray:
 		return true
 	return _plane_n.dot(p) <= _plane_w + 0.3
+
+
+## Whether an ant drawn at `tr` is shown: on screen, and - unless the soil is seen through - its whole body behind
+## the cut, head to gaster tip (one standing across the cut stood on soil that is not drawn: its body looked as if
+## on the face of the block, its legs on the floor behind).
+func _shown(tr: Transform3D) -> bool:
+	if not _visible(tr.origin):
+		return false
+	if xray:
+		return true
+	var f := tr.basis.x
+	return _plane_n.dot(tr.origin + f) <= _plane_w + 0.15 and _plane_n.dot(tr.origin - f) <= _plane_w + 0.15

@@ -7,8 +7,6 @@ uniform vec4 cut_plane = vec4(0.0, 0.0, 1.0, 100000.0);   // xyz = normal toward
 uniform float top_y = 72.0;
 uniform float humidity = 0.6;
 uniform sampler2D grain : filter_linear_mipmap, repeat_enable;
-uniform sampler3D vol : filter_linear;      // soil density per voxel (1 = solid)
-uniform vec3 vol_size = vec3(64.0, 72.0, 64.0);
 
 varying vec3 w;
 varying vec3 wn;
@@ -54,26 +52,25 @@ void fragment() {
 	vec3 p = w;
 	vec3 n = wn;
 	if (!FRONT_FACING) {
+		// looking at the inside of the soil: the ray crossed the cut plane in solid soil, so this is the cut face.
+		// (The first surface a ray meets behind the plane is a back face only if it crossed the plane in solid
+		// soil - in open tunnel it meets the tunnel's walls first - so the face follows the soil surface exactly.
+		// It used to be found from the voxels at the plane and drawn at the plane's depth: the soil surface is
+		// smoothed a little, so where a floor curves into a wall the two parted and a dark gap showed between the
+		// floor and the face.) Coloured as the soil where the ray crosses the plane, kept at its own depth (an ant in
+		// a tunnel behind solid soil stays hidden behind it).
 		vec3 ro = CAMERA_POSITION_WORLD;
 		vec3 rd = normalize(w - ro);
 		float t = (cut_plane.w - dot(pn, ro)) / dot(pn, rd);
 		p = ro + rd * t;
-		// where the plane passes through open tunnel there is no cap: look inside instead
-		if (texture(vol, (p + 0.5) / vol_size).r < 0.5) {
-			discard;
-		}
 		n = pn;
 		NORMAL = -normalize((VIEW_MATRIX * vec4(pn, 0.0)).xyz);   // Godot flips back-face normals after this
 		ALBEDO = soil(p, n) * 1.05;
-		// put the cap at the cut plane in the depth buffer so ants behind solid soil stay hidden
-		vec4 clip = PROJECTION_MATRIX * VIEW_MATRIX * vec4(p, 1.0);
-		DEPTH = clip.z / clip.w;
 	} else {
 		// tunnel walls are packed smooth by the ants: a touch darker and less grainy
 		vec3 c = soil(p, n);
 		float wall = smoothstep(0.4, -0.2, n.y) * step(top_y - p.y, top_y - 0.5);
 		ALBEDO = mix(c, c * 0.78, wall * 0.5);
-		DEPTH = FRAGCOORD.z;
 	}
 	ROUGHNESS = 0.92;
 	SPECULAR = 0.2;

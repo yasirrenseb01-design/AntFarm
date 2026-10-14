@@ -458,7 +458,7 @@ func _update_ants(delta: float) -> void:
 			var lm: Vector3 = tr * MOUTH
 			var la: Vector3 = m.larva_at
 			drops.append(Transform3D(Basis.from_scale(Vector3.ONE * (0.6 + 0.2 * sin(m.anim * 3.0))), lm.lerp(la + Vector3(0, 0.25, 0), 0.25)))
-		if _visible(tr.origin):
+		if _shown(tr):
 			xs.append(tr)
 			cols.append(_mate_color(m, body, young))
 			cus.append(_custom(m, m.act))
@@ -509,7 +509,7 @@ func _update_ants(delta: float) -> void:
 			else:
 				tr.origin += v.sep
 		v.xf = tr
-		if _visible(tr.origin):
+		if _shown(tr):
 			var act := ACT_CARRY if d.carry else (ACT_DIG if v.still > 0.25 else ACT_WALK)
 			xs.append(tr)
 			cols.append(body)
@@ -527,6 +527,7 @@ func _update_ants(delta: float) -> void:
 	if not sel_at.is_empty():
 		_sel_mm.set_instance_transform(0, sel_at[0])
 		_sel_mm.set_instance_custom_data(0, sel_at[1])
+		_sel_mm.set_instance_color(0, Color.WHITE)       # (its alpha carries nothing: the body parts are in the mesh's own)
 	# written as one buffer (a call per instance per field was a millisecond or more with hundreds of ants)
 	if _ant_mm.instance_count != xs.size():
 		_ant_mm.instance_count = xs.size()
@@ -589,3 +590,4 @@ func _update_ants(delta: float) -> void:
 	if q_sel:
 		_sel_queen_mm.set_instance_transform(0, _queen_xf)
 		_sel_queen_mm.set_instance_custom_data(0, _queen_mm.get_instance_custom_data(0))
+		_sel_queen_mm.set_instance_color(0, Color.WHITE)

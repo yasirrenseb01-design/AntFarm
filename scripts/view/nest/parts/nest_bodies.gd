@@ -46,8 +46,13 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	var face: Vector3 = v.get("face", Vector3.INF)          # down - a lift, the floor rising - never tips it on end)
 	# backing away from what it holds or works at (pulling a callow out): it keeps facing it, walking backwards
 	var backing := face != Vector3.INF and flat.dot(face - np) < 0.0
+	var lat := 0.0
 	if moving and not backing and flat.length() > 0.02 * delta:
 		var want := flat.normalized()
+		# rounding a bend the body is a C: the head already turned toward where it is going, the gaster swung
+		# out behind (an ant bends at its neck and waist) - as far as its heading still lags the way it walks
+		var vf0: Vector3 = v.vf
+		lat = clampf(atan2(vf0.cross(want).dot(v.vu), vf0.dot(want)) * 0.7, -0.4, 0.4)
 		var old_f: Vector3 = v.vf
 		v.vf = _turn_to(v.vf, want, minf(1.0, 9.0 * delta))
 		var turned := old_f.angle_to(v.vf)            # turning takes steps as well as walking does
@@ -73,6 +78,7 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 		if (v.vf as Vector3).dot(want) > 0.995:
 			v.rest_dir = Vector3.ZERO
 	v.mv = lerpf(v.mv, 1.0 if moving else 0.0, minf(1.0, 8.0 * delta))
+	v.lat = lerpf(float(v.get("lat", 0.0)), lat, minf(1.0, 6.0 * delta))
 	v.vu = (v.vu as Vector3).lerp(up, minf(1.0, 6.0 * delta)).normalized()
 	v.vp = np
 	var f: Vector3 = v.vf
@@ -101,9 +107,10 @@ func _custom(v: Dictionary, act: int) -> Color:
 	var clock: float = v.get("anim", 0.0)
 	v.vact = AntModel.act_step(v.get("vact", Vector3(-1, 0, 0)), act, clock)    # poses ease into one another
 	var gx := AntModel.gait_x(v.get("gait", 0.0), v.get("bend", Vector2.ZERO))       # (and the waist and neck bent to the ground)
+	var cz := AntModel.clock_z(clock, v.get("lat", 0.0))                              # (and bent sideways round a turn)
 	if v.get("fed", false):
-		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
-	return Color(gx, AntModel.act_y(v.vact, clock), fmod(clock, 600.0), AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
+		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
+	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
 
 
 const _NEAR := [Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),
@@ -361,17 +368,19 @@ func _any_spot() -> Vector3i:
 ## The ant under the mouse (a screen position) for the hover box (ui/ant_tip.gd): a nestmate (with its real
 ## worker), a digger, or the queen; {} if none is close.
 func pick_ant(sp: Vector2) -> Dictionary:
-	var best := {}
-	var best_d := 26.0
+	# the ant whose body (head to gaster tip on screen) the click is on - the nearest to the eye where bodies
+	# overlap on screen - else the one it is nearest to, within a finger's breadth (it used to be measured to the
+	# middle of the body only, so a click on the head or the gaster missed)
+	var cands := []                 # [gap, distance from the camera, info]
 	var all := {}
 	for w in sim.workers:
 		all[w.id] = w
+	var eye := _cam.global_position
 	for m in _mates:
 		if m.has("xf") and m.get("wid", -1) >= 0:
-			var d := _screen_gap((m.xf as Transform3D).origin, sp)
-			if d < best_d:
-				best_d = d
-				best = {"kind": "worker", "w": all.get(m.wid), "role": m.role, "act": m.act}
+			var d := _body_gap(m.xf, sp)
+			if d < 14.0:
+				cands.append([d, eye.distance_to((m.xf as Transform3D).origin), {"kind": "worker", "w": all.get(m.wid), "role": m.role, "act": m.act}])
 	# diggers: the colony's diggers are the workers set to dig, lowest id first, one per digger drawn
 	var dig_ws: Array = sim.workers.filter(func(w): return w.task == Ant.TASK_DIG)
 	dig_ws.sort_custom(func(a, b): return a.id < b.id)
@@ -380,14 +389,31 @@ func pick_ant(sp: Vector2) -> Dictionary:
 	for i in ds.size():
 		var v: Dictionary = _dig_vis.get(ds[i].id, {})
 		if v.has("xf"):
-			var d := _screen_gap((v.xf as Transform3D).origin, sp)
-			if d < best_d:
-				best_d = d
-				best = {"kind": "digger", "w": dig_ws[i] if i < dig_ws.size() else null, "act": ACT_CARRY if ds[i].carry else ACT_DIG,
-					"dig": ds[i].id}
-	if _queen_mm.instance_count > 0 and _screen_gap(_queen_xf.origin, sp) < 46.0:
-		best = {"kind": "queen", "act": _queen_act if _queen_act >= 0 else _queen_mode}
+			var d := _body_gap(v.xf, sp)
+			if d < 14.0:
+				cands.append([d, eye.distance_to((v.xf as Transform3D).origin), {"kind": "digger", "w": dig_ws[i] if i < dig_ws.size() else null,
+					"act": ACT_CARRY if ds[i].carry else ACT_DIG, "dig": ds[i].id}])
+	if _queen_mm.instance_count > 0 and _visible(_queen_xf.origin):
+		var qd := AntModel.screen_gap(_cam, _queen_xf, sp, QUEEN_HEAD + Vector3(0.25, 0, 0), QUEEN_TAIL - Vector3(0.2, 0, 0), 0.32)
+		if qd < 14.0:
+			cands.append([qd, eye.distance_to(_queen_xf.origin) + 0.8, {"kind": "queen", "act": _queen_act if _queen_act >= 0 else _queen_mode}])
+	var best := {}
+	var on := INF                   # on a body: the nearest to the eye
+	var near := INF                 # else: the nearest on screen
+	for c in cands:
+		if c[0] <= 0.0 and c[1] < on:
+			on = c[1]
+			best = c[2]
+	if best.is_empty():
+		for c in cands:
+			if c[0] < near:
+				near = c[0]
+				best = c[2]
 	return best
+
+
+func _body_gap(xf: Transform3D, sp: Vector2) -> float:
+	return AntModel.screen_gap(_cam, xf, sp) if _visible(xf.origin) else INF
 
 
 ## The selected ant as it is now (ui/ant_tip.gd): the same fields as pick_ant(), or {} if it is not in the nest.
@@ -414,9 +440,3 @@ func info_for(kind: String, id: int) -> Dictionary:
 ## Whether a click may select an ant here (the nest view has no tools).
 func can_select() -> bool:
 	return true
-
-
-func _screen_gap(p: Vector3, sp: Vector2) -> float:
-	if not _visible(p) or _cam.is_position_behind(p):
-		return INF
-	return _cam.unproject_position(p).distance_to(sp)

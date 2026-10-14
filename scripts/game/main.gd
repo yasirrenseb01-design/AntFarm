@@ -9,6 +9,9 @@ extends "res://scripts/dev/dev_tools.gd"
 ##       --seq=<n> [--seq-every=<frames>]   a strip of frames with the clock running instead of one shot
 ##       --view=outworld|surface|nest   which view; camera: --yaw --pitch --dist --target=x,y,z --cut --xray
 ##       --look=queen|larvae|pupae|entrance (nest)   --anim=egg,pupate,eclose,care [--care=eggs|larvae|pupae] (act out life-cycle moments)   --queen-act=<id> (hold the queen in one activity)
+##       --orbit=<n> [--orbit-pitch] (nest, after --seq: the last moment from n sides)   --follow-fit[=over|turn] [--side]
+##       --follow-pushed   --follow-soil (nest: follow an ant on a slope / climbing over / bending round a turn / pushed /
+##       with its body in the soil)   --select (nest: click one ant)   --pick-check (nest: do clicks pick the ant clicked)
 ##       --trace (with --seq, nest: print who is by the queen each frame: role, activity, rest, position)   --trace-mates (every nestmate each frame)   --pops (with --seq: print ants that jump between frames)
 ##       --at-ant=<i>|walker|act2|act9|act10 (outworld: look at a forager, or one busy at that kind of food)   --at-food=<kind> (drop one and look at it)
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)   --newcolony   --fridge

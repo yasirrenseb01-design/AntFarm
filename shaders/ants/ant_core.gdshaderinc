@@ -1,7 +1,7 @@
 // The ant's body animation (everything but the surface colour), shared by ant.gdshader and the selection
 // outline (ant_outline.gdshader, which defines OUTLINE). See ant.gdshader for the INSTANCE_CUSTOM layout.
 #ifdef OUTLINE
-uniform float outline_w = 0.045;
+uniform float outline_w = 0.022;
 #endif
 // Ant body animation on the GPU. Each vertex carries a body-part id in COLOR.a (see ant_model3d.gd);
 // each instance carries in INSTANCE_CUSTOM:
@@ -10,7 +10,8 @@ uniform float outline_w = 0.045;
 //       from -0.4 each: ant_model3d.gd gait_x)
 //   y = activity code (id + 100 if full) + 128 x the code being left; fraction = how much of the old pose
 //       still shows (ant_model3d.gd act_y: poses ease into one another instead of snapping)
-//   z = animation clock (seconds, per ant)
+//   z = animation clock (seconds, per ant, below 600) + 600 x how the body is bent sideways round a turn (0 none;
+//       else 11 + steps of 0.04 rad, head turned in and gaster out: nest_bodies.gd _custom)
 //   w = how much it is walking (fraction, 0..1) + stride scale x 100 (whole part; 0 = normal), see
 //       ant_model3d.gd gait_w(). Walking legs use inverse kinematics on the joints of the Blender model
 //       (UV.x = leg segment: 1 coxa, 2 femur, 3 tibia, 4 tarsus): each foot stays planted on the ground
@@ -163,7 +164,7 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 
 // The body's pose for one activity code (act + 100 if the crop is full): the vertex V (normal NR) of body
 // part `part` moved for that activity. Called twice while easing from one activity into the next.
-vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec2 bend, out float stretch_out) {
+vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec3 bend, out float stretch_out) {
 	float full = code >= 99.5 ? 1.0 : 0.0;
 	float act = code - full * 100.0;
 	stretch_out = 0.0;
@@ -377,7 +378,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		// the antenna turns at its socket, and is carried by the head as it nods and turns
 		mat3 Ra = rot_y(a1 * side) * rot_z(a2 + droop);
 		vec2 hp = head_pose(act, t, gait, mv);
-		mat3 Rh = rot_y(hp.y) * rot_z(hp.x + bend.y);
+		mat3 Rh = rot_y(hp.y + bend.z) * rot_z(hp.x + bend.y);
 		vec3 hpiv = vec3(1.35, 1.15, 0.0) * K;
 		vec3 v1 = piv + Ra * (V - piv);
 		V = hpiv + Rh * (v1 - hpiv);
@@ -389,7 +390,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		piv = vec3(1.35, 1.15, 0.0) * K;
 		vec2 hp = head_pose(act, t, gait, mv);
 		float nod = hp.x + bend.y;                       // (+ bent at the neck toward the ground under the head)
-		float turn = hp.y;
+		float turn = hp.y + bend.z;                      // (+ turned at the neck into a bend of the tunnel)
 		R = rot_y(turn) * rot_z(nod);
 		if (part == 11.0) {
 			float side = V.z > 0.0 ? 1.0 : -1.0;
@@ -419,7 +420,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		// carried clear of the ground and swaying against the head as the tripods alternate
 		if (act != 5.0 && act != 11.0 && act != 13.0 && act != 17.0) {
 			curl += 0.1 + 0.025 * sin(gait * 2.0) * mv;
-			R = rot_y(-0.045 * sin(gait) * mv);
+			R = rot_y(-0.045 * sin(gait) * mv - 0.8 * bend.z);    // (and swung round the bend it walks: the body a C)
 		}
 		if (act != 11.0) curl -= bend.x;                       // bent at the waist toward the ground under it
 		if (act == 4.0) {
@@ -457,17 +458,23 @@ void vertex() {
 	// x: gait + 512 x the bend code (ant_model3d.gd gait_x)
 	float bc = floor(INSTANCE_CUSTOM.x / 512.0);
 	float gait = INSTANCE_CUSTOM.x - bc * 512.0;
-	vec2 bend = vec2(0.0);
+	vec3 bend = vec3(0.0);
 	if (bc > 0.5) {
 		bc -= 1.0;
-		bend = (vec2(mod(bc, 21.0), floor(bc / 21.0)) - 10.0) * 0.04;
+		bend.xy = (vec2(mod(bc, 21.0), floor(bc / 21.0)) - 10.0) * 0.04;
 	}
-	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS, bend, s1);
+	// z: clock + 600 x the sideways bend code
+	float lc = floor(INSTANCE_CUSTOM.z / 600.0);
+	float clock = INSTANCE_CUSTOM.z - lc * 600.0;
+	if (lc > 0.5) {
+		bend.z = (lc - 11.0) * 0.04;
+	}
+	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS, bend, s1);
 	stretch = s1;
 	if (left > 0.002 && prev != code && !IN_SHADOW_PASS) {      // (a shadow skips the easing)
 		vec3 n0 = NORMAL;
 		float s0;
-		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, INSTANCE_CUSTOM.z, INSTANCE_CUSTOM.w, true, bend, s0);
+		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, true, bend, s0);
 		v1 = mix(v1, v0, left);
 		n1 = normalize(mix(n1, n0, left) + vec3(0.0, 1e-4, 0.0));
 		stretch = mix(s1, s0, left);

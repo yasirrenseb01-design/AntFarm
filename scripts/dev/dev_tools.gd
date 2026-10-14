@@ -262,6 +262,12 @@ func _take_shot() -> void:
 			for s in nest_view._spots.all.slice(0, 30):
 				diffs.append(snappedf(s.y - nest_view._floor_y(s), 0.01))
 			print("spot.y - floor: ", diffs)
+		if i == 60 and _opts.has("select") and mode == "nest":
+			# click on a nestmate (its gaster, not its middle: picking by the whole body) - its outline is drawn
+			for m in nest_view._mates:
+				if m.has("xf") and nest_view._shown(m.xf):
+					hud.ant_tip._click(nest_view._cam.unproject_position((m.xf as Transform3D) * Vector3(-0.8, 0.4, 0)))
+					break
 		if i == 60 and _opts.has("hover"):
 			_hover_some_ant(String(_opts["hover"]))
 		elif i > 10 and _opts.has("perf"):
@@ -270,6 +276,33 @@ func _take_shot() -> void:
 		if _opts.has("live") and i % 120 == 0 and mode == "nest":
 			print(nest_view.debug_summary())
 	speed = keep
+	if _opts.has("pick-check") and mode == "nest":
+		# click on each drawn nestmate's head, middle and gaster tip: is it the one picked?
+		var ok := 0
+		var tried := 0
+		var hidden := 0
+		for m in nest_view._mates:
+			if not m.has("xf") or not nest_view._shown(m.xf):
+				continue
+			for q in [Vector3(0.9, 0.4, 0), Vector3(0, 0.3, 0), Vector3(-0.95, 0.4, 0)]:
+				var sp: Vector2 = nest_view._cam.unproject_position((m.xf as Transform3D) * q)
+				var got: Dictionary = nest_view.pick_ant(sp)
+				var own: float = nest_view._cam.global_position.distance_to((m.xf as Transform3D).origin)
+				var got_d := INF
+				if got.get("kind", "") == "queen":
+					got_d = nest_view._cam.global_position.distance_to(nest_view._queen_xf.origin)
+				for o in nest_view._mates:
+					if got.get("w") != null and o.get("wid", -2) == got.w.id and o.has("xf"):
+						got_d = nest_view._cam.global_position.distance_to((o.xf as Transform3D).origin)
+				if got.get("w") != null and got.w.id == m.wid:
+					ok += 1
+					tried += 1
+				elif got_d < own - 0.3:
+					hidden += 1                   # (behind another body there: that one is what the click is on)
+				else:
+					tried += 1
+					print("   missed at %s: got %s; own gap %.1f" % [q, got.get("kind", "nothing"), nest_view._body_gap(m.xf, sp)])
+		print("pick check: %d of %d clicks on a nestmate's head / middle / gaster picked that nestmate (%d behind another body)" % [ok, tried, hidden])
 	if _opts.has("perf") and frame_ms.size() > 20:
 		# frame times: the average and the worst ones (stutter is what the eye notices)
 		var s := frame_ms.slice(10)
@@ -350,7 +383,8 @@ func _take_shot() -> void:
 					if fm == null:
 						for m in nest_view._mates:
 							var g: PackedFloat32Array = m.get("gfit", PackedFloat32Array())
-							var pick: bool = float(m.get("over", 0.0)) > 0.1 if _opts["follow-fit"] == "over" else \
+							var pick: bool = absf(float(m.get("lat", 0.0))) > 0.2 if _opts["follow-fit"] == "turn" else \
+								float(m.get("over", 0.0)) > 0.1 if _opts["follow-fit"] == "over" else \
 								(g.size() == 5 and absf(g[1]) + absf(g[2]) + absf(g[3]) > float(_opts.get("fit-min", "0.35")))
 							if pick and nest_view._visible((m.xf as Transform3D).origin):
 								fm = m
@@ -364,7 +398,7 @@ func _take_shot() -> void:
 						nest_view.yaw = atan2(-fwd.z, fwd.x) + float(_opts.get("side", "1.57"))
 						nest_view.yaw_t = nest_view.yaw
 						if i == 0:
-							print("  fitted ant: %s act %d over %.2f" % [fm.gfit, fm.act, float(fm.get("over", 0.0))])
+							print("  fitted ant: %s act %d over %.2f lat %.2f" % [fm.get("gfit"), fm.act, float(fm.get("over", 0.0)), float(fm.get("lat", 0.0))])
 				if _opts.has("follow-soil") and mode == "nest":
 					# watch a nestmate with part of its body in the soil (the --trace-crowd check), the same one while it lasts
 					var sm = _pushed if _pushed != null and nest_view._mates.has(_pushed) and nest_view._ant_in_soil(_pushed) else null

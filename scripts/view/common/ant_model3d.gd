@@ -256,6 +256,29 @@ static func gait_x(gait: float, bend: Vector2) -> float:
 	return gait + 512.0 * float(1 + g + 21 * h)
 
 
+## How far (pixels) a click at sp is from the body of an ant drawn at xf: the distance to the line from its head
+## to its gaster tip on screen, less half the body's width there (with a finger's breadth to spare: small on screen
+## it still takes a near miss) - 0 or less is on the ant. `a`, `b`: its head and tail end (model units).
+static func screen_gap(cam: Camera3D, xf: Transform3D, sp: Vector2, a := Vector3(1.0, 0.35, 0), b := Vector3(-1.05, 0.35, 0), width := 0.25) -> float:
+	var pa := xf * a
+	var pb := xf * b
+	if cam.is_position_behind(pa) or cam.is_position_behind(pb):
+		return INF
+	var sa := cam.unproject_position(pa)
+	var ab := cam.unproject_position(pb) - sa
+	var t := clampf((sp - sa).dot(ab) / maxf(ab.length_squared(), 0.000001), 0.0, 1.0)
+	return sp.distance_to(sa + ab * t) - maxf(ab.length() * width, 12.0)
+
+
+## The shader's INSTANCE_CUSTOM.z: the animation clock (seconds, kept below 600) + 600 x a code for how the body
+## is bent sideways round a turn: 0 none, else 11 + steps of 0.04 radians (head turned in, gaster swung out).
+static func clock_z(clock: float, lat: float) -> float:
+	var z := fmod(clock, 600.0)
+	if absf(lat) < 0.02:
+		return z
+	return z + 600.0 * float(clampi(roundi(lat / 0.04) + 11, 1, 21))
+
+
 static func stride_len(s: float) -> float:
 	return 2.0 * STRIDE_A * s * K / duty(s)
 

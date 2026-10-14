@@ -53,7 +53,6 @@ func setup(s) -> void:
 	_mat.shader = load("res://shaders/terrain/soil.gdshader")
 	_mat.set_shader_parameter("grain", grain)
 	_mat.set_shader_parameter("top_y", nest.ny - 0.5)
-	_mat.set_shader_parameter("vol_size", Vector3(nest.nx, nest.ny, nest.nz))
 	_xray_mat = ShaderMaterial.new()
 	_xray_mat.shader = load("res://shaders/terrain/xray.gdshader")
 	_xray_mat.set_shader_parameter("box_max", Vector3(nest.nx - 1, nest.ny - 1, nest.nz - 1))

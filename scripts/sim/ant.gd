@@ -75,6 +75,7 @@ var vright := 0.0       # 3D: seconds left of being thrown, landing on its back 
 var vfly_from := Vector2.ZERO
 var vbeyond := 0.0      # 3D: seconds since it walked off past the plot (outdoors), -1 = walking back in
 var vact := Vector3(-1, 0, 0)   # 3D: easing from one activity's pose to the next (AntModel.act_step)
+var vxf = null          # 3D outworld: where it was drawn last (for picking it with a click)
 
 
 ## This worker's threshold for a kind of need (TH_*), 0.6 (eager) .. 1.4 (reluctant): fixed for life,

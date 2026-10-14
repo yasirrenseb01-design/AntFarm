@@ -277,7 +277,7 @@ func _box(size: Vector3, pos: Vector3, mat: Material) -> void:
 	add_child(mi)
 
 
-## The cut face needs to know where the plane crosses soil versus open tunnel: give it the voxels.
+## The soil voxels as a 3D texture: the ants' feet find the floor in it (ant_core.gdshaderinc ground_dy).
 func _upload_volume() -> void:
 	_vol_dirty = false
 	_vol_timer = 0.5
@@ -288,7 +288,6 @@ func _upload_volume() -> void:
 	if _vol == null:
 		_vol = ImageTexture3D.new()
 		_vol.create(Image.FORMAT_R8, nest.nx, nest.ny, nest.nz, false, layers)
-		_mat.set_shader_parameter("vol", _vol)
 	else:
 		_vol.update(layers)
 
