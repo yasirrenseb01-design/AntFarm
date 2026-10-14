@@ -187,6 +187,7 @@ func refresh(delta: float) -> void:
 		_vol_dirty = true
 		_floor_cache.clear()            # the floor moved: brood is set down on it afresh
 		_lift_cache.clear()
+		_fit_cache.clear()
 		_soil_gen += 1
 	for k in nest.dirty:
 		if not _queue.has(k):

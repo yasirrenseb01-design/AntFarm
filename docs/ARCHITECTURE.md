@@ -23,7 +23,7 @@
   - ทดสอบภาพ: `--enemy=wolf_spider --fight=<tick>` (จัดศัตรูไว้ข้างรังแล้วเดินเวลา)
 - **มดรายตัว** (v0.8.22): `ant.task` (`TASK_CALLOW/NURSE/RESERVE/DIG`, ข้างนอก `TASK_OUT`) ตั้งทุกรอบรังใน `sim_colony._colony`;
   `ant.threshold(TH_*)` เกณฑ์ตอบสนองรายตัว (คำนวณจาก id ไม่ต้องเซฟ) — ตัวที่เกณฑ์ต่ำออกหากิน/ขนศพ/สู้/ขุดก่อน และเลิกเป็นพี่เลี้ยงคนละอายุ
-  - ภาพในรัง: `nest_bodies._bind_workers()` มดที่วาดหนึ่งตัวต่อมดงานจริงที่อยู่ในรัง (`mate.wid`); มดที่ออกไปเดินขึ้นปากรังก่อน,
+  - ภาพในรัง: `nest_rest._bind_workers()` มดที่วาดหนึ่งตัวต่อมดงานจริงที่อยู่ในรัง (`mate.wid`); มดที่ออกไปเดินขึ้นปากรังก่อน,
     มดที่เพิ่งกลับ (`ant.came_in`) เดินเข้าจากปากรัง; มดขุดวาดแยก (`_dig_vis`) ผูกกับมดหน้าที่ขุดตามลำดับ id
 - **การลากเหยื่อ** (v0.8.20): `Ant.DRAG` (`foe` = seed ของอาหาร, `ang` = ตำแหน่งที่จับ) — `sim_foragers._step_drags()`, อาหารที่มี `drag` ในตาราง
 - **วรรณะ** `ant.caste`: `Ant.WORKER` (ตอนนี้ทุกตัว), `Ant.GYNE`, `Ant.MALE` (PART 10)
@@ -62,7 +62,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 |---|---|
 | การจำลอง | `sim_base` (สถานะ, setup, เวลา, การกระทำของผู้เล่น) ← `sim_foragers` ← `sim_enemies` ← `sim_colony` ← `simulation` (step, เซฟ) |
 | รัง (การจำลอง) | `nest_voxels` (ช่องดิน, ขุดทั้งห้อง, ความหนาแน่นให้ mesher, เซฟ) ← `nest_chambers` (แผนห้อง) ← `nest_volume` (มดขุด) — แยก v0.8.5 |
-| รัง 3 มิติ | `nest_scene` ← `nest_camera` ← `nest_brood` ← `nest_piles` (กองลูกมด: ของแต่ละชิ้นอยู่ที่เดิม; แยก v0.8.31) ← `nest_lifecycle` ← `nest_bodies` (เดินตามทาง, ตัวกันชน; แยก v0.8.5) ← `nest_mates` ← `nest_view` (setup, refresh, input) |
+| รัง 3 มิติ | `nest_scene` ← `nest_camera` ← `nest_brood` ← `nest_piles` (กองลูกมด: ของแต่ละชิ้นอยู่ที่เดิม; แยก v0.8.31) ← `nest_lifecycle` ← `nest_bodies` (เดินตามทาง, ตัวกันชน; แยก v0.8.5) ← `nest_rest` (ที่หยุดพัก, ตัวพ้นดิน/ผนัง, ก้าวหลบเมื่อถูกเบียด, ผูกมดที่วาดกับมดงานจริง; แยก v0.8.55) ← `nest_mates` ← `nest_view` (setup, refresh, input) |
 | โมเดลของในกล่อง | `mesh_kit_base` (เครื่องมือสร้าง, asset, หิน/ใบไม้/หญ้า/ต้นถั่ว) ← `mesh_kit` (เพลี้ย, จิ้งหรีด, ลูกมด, แมลงวัน, แมงมุม) — แยก v0.8.5 |
 | พื้นดิน 3 มิติ | `outworld_scene` ← `outworld_props` ← `outworld_creatures` ← `outworld_camera` ← `outworld_view` |
 | HUD | `hud_base` ← `hud_colonies` ← `hud_controls` ← `hud_panel` ← `hud` |

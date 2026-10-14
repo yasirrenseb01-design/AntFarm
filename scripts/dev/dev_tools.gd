@@ -342,6 +342,36 @@ func _take_shot() -> void:
 							nest_view.target_t = an.p
 							nest_view.target = nest_view.target_t
 							break
+				if _opts.has("follow-soil") and mode == "nest":
+					# watch a nestmate with part of its body in the soil (the --trace-crowd check), the same one while it lasts
+					var sm = _pushed if _pushed != null and nest_view._mates.has(_pushed) and nest_view._ant_in_soil(_pushed) else null
+					if sm == null:
+						for m in nest_view._mates:
+							if nest_view._ant_in_soil(m) and nest_view._visible((m.xf as Transform3D).origin):
+								sm = m
+								break
+					if sm != null:
+						_pushed = sm
+						nest_view.target_t = (sm.xf as Transform3D).origin
+						nest_view.target = nest_view.target_t
+				if _opts.has("follow-pushed") and mode == "nest":
+					# watch a nestmate being pushed aside (stepping aside on its legs), the same one while it lasts
+					var pm = _pushed if _pushed != null and nest_view._mates.has(_pushed) else null
+					if pm == null or float(pm.get("sgr", 0.0)) == 0.0 and (pm.get("sepv", Vector3.ZERO) as Vector3).length() < 0.02:
+						pm = null
+						for m in nest_view._mates:
+							if float(m.get("sgr", 0.0)) > 0.0 and (m.get("sepv", Vector3.ZERO) as Vector3).length() > 0.1 and m.has("xf") and m.get("rest", 0) > 0 and nest_view._visible((m.xf as Transform3D).origin):
+								pm = m
+								break
+					if i == 0:
+						print("  stepping aside: %d (resting %d)" % [nest_view._mates.filter(func(q): return float(q.get("sgr", 0.0)) > 0.0).size(), nest_view._mates.filter(func(q): return float(q.get("sgr", 0.0)) > 0.0 and q.rest > 0).size()])
+					if pm != null:
+						_pushed = pm
+						nest_view.target_t = (pm.xf as Transform3D).origin
+						nest_view.target = nest_view.target_t
+						if i == 0 or pm != _pushed_said:
+							_pushed_said = pm
+							print("  pushed ant: sepv %.2f mv %.2f gait %.2f rest %d" % [(pm.sepv as Vector3).length(), pm.get("mv", 0.0), pm.get("gait", 0.0), pm.rest])
 				if _opts.has("follow-crossing") and mode == "nest":
 					# watch a nestmate up on the brood pile (crossing it), once one is
 					for m in nest_view._mates:
@@ -396,6 +426,20 @@ func _take_shot() -> void:
 				print("%d: %s" % [k, nest_view.trace_mates()])
 			if _opts.has("trace") and mode == "nest":
 				print("%d: brood-overlaps %d mate-overlaps %d who %s | %s" % [k, nest_view.brood_overlaps(), nest_view.mate_overlaps(), nest_view._overlap_who, nest_view.trace_near_queen()])     # who is by the queen, doing what
+		if _opts.has("orbit") and mode == "nest":
+			# the last moment seen from all round, the clock held: <shot>_o0.png ... (--orbit=<n> [--orbit-pitch=<rad>])
+			speed = 0
+			var y0: float = nest_view.yaw
+			for j in int(_opts["orbit"]):
+				nest_view.yaw = y0 + TAU * j / float(_opts["orbit"])
+				nest_view.yaw_t = nest_view.yaw
+				if _opts.has("orbit-pitch"):
+					nest_view.pitch = float(_opts["orbit-pitch"])
+					nest_view.pitch_t = nest_view.pitch
+				for f in 3:
+					await get_tree().process_frame
+				await RenderingServer.frame_post_draw
+				get_viewport().get_texture().get_image().save_png(path.get_basename() + "_o%d.png" % j)
 		get_tree().quit()
 		return
 	await RenderingServer.frame_post_draw
@@ -406,6 +450,8 @@ func _take_shot() -> void:
 	get_tree().quit()
 
 
+var _pushed = null                # (--follow-pushed: the ant being watched)
+var _pushed_said = null
 var _pop_prev := []
 var _pop_moves := []
 var _pop_n := 0

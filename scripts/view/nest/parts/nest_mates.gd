@@ -1,5 +1,5 @@
-extends "res://scripts/view/nest/parts/nest_bodies.gd"
-## Nest view, layer 7 of 8: the nestmates walking the real tunnels, their roles and activities,
+extends "res://scripts/view/nest/parts/nest_rest.gd"
+## Nest view, layer 8 of 9: the nestmates walking the real tunnels, their roles and activities,
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 
@@ -24,9 +24,11 @@ func _arrive(m: Dictionary) -> void:
 		if m.goal == -1:
 			m.goal = _brood_room(_larva_group)
 	if m.role in ["nurse", "attend", "idle", "traffic"]:
-		if not _settle(m) and m.role == "idle" and int(m.get("tries", 0)) < 3:
-			# no room in this chamber at all: rest in another one
-			m.tries = int(m.get("tries", 0)) + 1
+		var tries := int(m.get("tries", 0))
+		if not _settle(m) and (tries < 3 or (not _cell_fits(m.cell) and tries < 6)):
+			# no room in this chamber at all: rest in another one (and never in a narrow tunnel, where everyone
+			# passing had to squeeze through it; ants bound for a full chamber used to pile up in its middle)
+			m.tries = tries + 1
 			m.goal = _random_room()
 			m.wander = 2
 			return
@@ -325,6 +327,7 @@ func _update_ants(delta: float) -> void:
 			if not near.has(ck):
 				near[ck] = []
 			near[ck].append(cbody)
+	_near_bins = near
 	tp = _nprof("ants: bins", tp)
 	var us_step := 0
 	var us_smooth := 0
@@ -383,6 +386,8 @@ func _update_ants(delta: float) -> void:
 				m.ka_t = float(m.get("ka_t", 0.0)) + md
 				if (_mate_frame + mi) % 3 == 0 or not m.has("sep"):
 					tr.origin += _keep_apart(m, tr.origin, near, minf(m.ka_t, 0.25))
+					_step_aside(m, m.ka_t)
+					_make_room(m, m.ka_t)
 					m.ka_t = 0.0
 				else:
 					tr.origin += m.sep
@@ -407,15 +412,28 @@ func _update_ants(delta: float) -> void:
 		# ants a frame, each again once it has moved a little
 		var ck: Vector3 = m.get("clr_at", Vector3.INF)
 		var cf: Vector3 = m.get("clr_f", Vector3.ZERO)
-		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen 				or cf.dot(tr.basis.x) < 0.97 * cf.length() * tr.basis.x.length()):
+		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.03 or int(m.get("clr_gen", -1)) != _soil_gen \
+				or cf.dot(tr.basis.x) < 0.97 * cf.length() * tr.basis.x.length()):
 			clr_budget -= 1
 			m.clr_at = tr.origin
 			m.clr_f = tr.basis.x
 			m.clr_gen = _soil_gen
-			m.clr_own = _soil_clearance(tr, float(m.size))
+			var cl := _soil_clearance(tr.translated(tr.basis.y.normalized() * want_clr), float(m.size))
+			m.clr_own = want_clr + cl.x
+			# its head or gaster in a wall (rising would not clear it): standing still, it turns away from the
+			# wall, stepping round on the spot
+			if cl.y > 0 and clr_budget > 2 and not m.has("script") and (m.rest > 0 or m.act in STILL_ACTS) \
+					and (m.get("face", Vector3.INF) as Vector3) == Vector3.INF:
+				clr_budget -= 3
+				m.rest_dir = _free_heading(m, tr, want_clr)
 		want_clr = maxf(want_clr, float(m.get("clr_own", 0.0)))
 		m.clr = move_toward(float(m.get("clr", 0.0)), want_clr, 2.0 * md)
 		tr.origin += tr.basis.y.normalized() * float(m.clr)
+		var sgr: float = m.get("sgr", 0.0)
+		if sgr > 0.0:
+			# stepping aside (see _step_aside): its legs keep pace with the shift every frame
+			m.gait = fmod(float(m.gait) + sgr * md, TAU * 64.0)
+			m.mv = maxf(float(m.mv), float(m.smv))
 		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr
 		if m.act == ACT_FEED and not m.has("script") and _visible(tr.origin) and m.get("larva_at", Vector3.INF) != Vector3.INF:
@@ -580,6 +598,17 @@ func trace_mates() -> String:
 	return " | ".join(out)
 
 
+## Dev (--trace-crowd, --follow-soil): whether part of a nestmate's body (belly height) is in the soil.
+func _ant_in_soil(m: Dictionary) -> bool:
+	if not m.has("xf"):
+		return false
+	var x: Transform3D = m.xf
+	for q in [Vector3(0.8, 0.3, 0), Vector3(0, 0.3, 0), Vector3(-0.9, 0.3, 0)]:   # (belly height, scaled with the ant)
+		if _density_at(x * q) >= 0.5:
+			return true
+	return false
+
+
 ## Dev (--trace-crowd): where the nestmates are: on the ceiling / walls / floor, by the queen, and per chamber.
 func trace_crowd() -> String:
 	var ceil := 0
@@ -615,15 +644,10 @@ func trace_crowd() -> String:
 			dtop += 1
 	var in_soil := 0
 	for m in _mates:
-		if m.has("xf"):
-			var x: Transform3D = m.xf
-			var n := 0
-			for q in [Vector3(0.8, 0.3, 0), Vector3(0, 0.3, 0), Vector3(-0.9, 0.3, 0)]:   # (belly height, scaled with the ant)
-				if _density_at(x * q) >= 0.5:
-					n += 1
-			if n >= 1:
-				in_soil += 1
-	print("   in the soil (any body point): %d   overlapping pairs: %d" % [in_soil, mate_overlaps()])
+		if _ant_in_soil(m):
+			in_soil += 1
+	var bis := brood_in_soil()
+	print("   in the soil (any body point): %d   overlapping pairs: %d   larvae / cocoons in the soil: %d / %d" % [in_soil, mate_overlaps(), bis.x, bis.y])
 	return "nest %.1fC | by entrance %d | work %d diggers %d/%d er %.2f | mates %d floor %d wall %d ceiling %d | by queen %d | walking %d | air %d target %d chambers %s" % [sim.climate.nest, by_ent, nest.work_left, nest.diggers.size(), sim.diggers_wanted, nest.entrance_r, _mates.size(), flr, wall, ceil, by_q, walking,
 		nest.air, sim.target_air(), nest.chambers.map(func(c): return "%s g%.1f%s" % [c.kind, c.goal, "" if c.get("open", true) else "(dig)"])]
 

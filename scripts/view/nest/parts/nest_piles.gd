@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_brood.gd"
-## Nest view, layer 4 of 8: the brood piles - each egg, larva and cocoon laid down like a real object on the
+## Nest view, layer 4 of 9: the brood piles - each egg, larva and cocoon laid down like a real object on the
 ## floor (or on the heap), clear of the chamber walls and the queen, and left exactly where it lies until
 ## nurses carry its pile elsewhere.
 
@@ -89,7 +89,7 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 				tops.append(i)                   # (after everything it could be resting on)
 				continue
 			_keep_at(pl, s, kind, items[i], col_fn, xs, cs)
-		elif pl.is_empty() and _born_at(kind, spots, v):
+		elif pl.is_empty() and _born_at(kind, spots, v, s):
 			_keep_at(_placed[v], s, kind, items[i], col_fn, xs, cs)    # where the egg / larva it came from lay
 		else:
 			todo.append(i)
@@ -204,7 +204,7 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 			inner = places
 		# the lowest place on the heap where it lies clear of the walls and roof (from a different place
 		# for each item, so they spread over the heap instead of stacking into a tower)
-		var shape: Vector2 = c.get("shape", Vector2(0.86, 0.38))
+		var kind: String = c.get("kind", "larvae")
 		# (the heap first; if nowhere on it is clear of the roof, anywhere on the chamber floor out of her way)
 		var wide := places.filter(func(p): return _queen_mm.instance_count == 0 or _queen_gap(p) >= r + 0.2)
 		var nin := mini(inner.size(), 60)
@@ -217,7 +217,7 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 					# resting on the top of what is under it (top ~ its centre + half its thickness)
 					l = maxf(l, float(o[0].y) + float(o[3] if o.size() > 3 else o[1]) - p.y)
 			for turn in [0.0, PI * 0.5]:
-				var score := l + 100.0 * _in_soil(p + Vector3(0, l, 0), Basis(Vector3.UP, _hash(i, 3) * TAU + turn), s, shape)
+				var score := l + 100.0 * _soil_pts(_brood_xf(p + Vector3(0, l, 0), Basis(Vector3.UP, _hash(i, 3) * TAU + turn), _grown(kind, s), kind, false), kind)
 				if score < low:
 					low = score
 					best = p
@@ -241,12 +241,21 @@ var _last_forced := false          # laid where it still touches the soil (nowhe
 var _last_yaw := Basis.IDENTITY
 
 
-## Draws a kept item where it lies (its tilt to the floor worked out again only when the soil changes).
+## Draws a kept item where it lies (its tilt to the floor worked out again only when the soil changes). Where
+## the floor under it is uneven, a growing larva's ends could dip into it: then it rests a little higher, on
+## the bump (worked out again as it grows) - it never slides across the floor.
 func _keep_at(pl: Dictionary, s: float, kind: String, item, col_fn: Callable, xs: Array, cs: Array) -> void:
-	if pl.get("tgen", -1) != _soil_gen:
-		pl.tb = _floor_tilt(pl.base, pl.b, s) if not pl.top else pl.b
+	var sk := snappedf(s, 0.05)
+	if pl.get("tgen", -1) != _soil_gen or pl.get("ts", -1.0) != sk:
+		pl.tb = _floor_tilt(pl.base, pl.b, _grown(kind, s)) if not pl.top else pl.b     # (as it was laid: see _brood_xf)
 		pl.tgen = _soil_gen
-	var xf := _register_brood(pl.base, pl.tb, s, kind, false)
+		pl.ts = sk
+		pl.lift = 0.0
+		var up: Vector3 = (pl.tb as Basis).y.normalized()
+		var xf0 := _register_brood(pl.base, pl.tb, s, kind, false, false)
+		while pl.lift < 0.3 and _soil_pts(xf0.translated(up * pl.lift), kind) > 0:
+			pl.lift += 0.03
+	var xf := _register_brood(pl.base + (pl.tb as Basis).y.normalized() * float(pl.lift), pl.tb, s, kind, false)
 	if _visible(xf.origin):
 		xs.append(xf)
 		cs.append(col_fn.call(item) if col_fn.is_valid() else Color.WHITE)
@@ -254,8 +263,10 @@ func _keep_at(pl: Dictionary, s: float, kind: String, item, col_fn: Callable, xs
 
 ## A new larva starts where its egg lay; a new cocoon where its larva spun it, when that is in the cocoon
 ## pile's own chamber (a founding cell; with workers a nurse carries it up to the pupa chamber instead).
-## Records it in _placed and returns true, or false (laid down in the pile as usual).
-func _born_at(kind: String, spots: Array, v: int) -> bool:
+## It lies there turned so that, fully grown, no part of it is in the chamber wall (else as near the spot as
+## that can be: an egg by the wall hatches into a larva lying along it, not into it). Records it in _placed
+## and returns true, or false (laid down in the pile as usual).
+func _born_at(kind: String, spots: Array, v: int, s: float) -> bool:
 	var from: String = "eggs" if kind == "larvae" else ("larvae" if kind == "pupae" else "")
 	if from == "" or _freed[from].is_empty():
 		return false
@@ -263,10 +274,36 @@ func _born_at(kind: String, spots: Array, v: int) -> bool:
 	if kind == "pupae" and (_nearest_spot(p, spots) == Vector3.INF or _nearest_spot(p, spots).distance_to(p) > 2.0):
 		return false
 	_freed[from].pop_front()
-	p.y = _floor_cached(p)
-	_placed[v] = {"base": p, "b": Basis(Vector3.UP, randf() * TAU), "top": false, "forced": false,
+	var sf := _grown(kind, s)
+	var yaw0 := randf() * TAU
+	var best := [99, p, Basis(Vector3.UP, yaw0)]
+	for off in _BORN_OFFS:
+		var q: Vector3 = p + off
+		q.y = _floor_cached(q)
+		if _density_at(q + Vector3(0, 0.3, 0)) >= 0.5:
+			continue
+		for k in 8:
+			var b := Basis(Vector3.UP, yaw0 + k * TAU / 8.0)
+			var n := _soil_pts(_brood_xf(q, b, sf, kind, true), kind)
+			if n < int(best[0]):
+				best = [n, q, b]
+		if int(best[0]) == 0:
+			break
+	_placed[v] = {"base": best[1], "b": best[2], "top": false, "forced": int(best[0]) > 0,
 		"src": _pile_key(kind, true)}
 	return true
+
+
+const _BORN_OFFS := [Vector3.ZERO, Vector3(0.4, 0, 0), Vector3(-0.4, 0, 0), Vector3(0, 0, 0.4), Vector3(0, 0, -0.4),
+	Vector3(0.3, 0, 0.3), Vector3(-0.3, 0, 0.3), Vector3(0.3, 0, -0.3), Vector3(-0.3, 0, -0.3),
+	Vector3(0.8, 0, 0), Vector3(-0.8, 0, 0), Vector3(0, 0, 0.8), Vector3(0, 0, -0.8),
+	Vector3(0.6, 0, 0.6), Vector3(-0.6, 0, 0.6), Vector3(0.6, 0, -0.6), Vector3(-0.6, 0, -0.6)]
+
+
+## The size an item will reach where it lies: a larva grows from ~0.3 to ~1.1 before it pupates (it is laid
+## down with room for that), a cocoon stays the size it is.
+static func _grown(kind: String, s: float) -> float:
+	return maxf(s, 1.08) if kind == "larvae" else s
 
 
 ## The larvae that are gone since the last layout (they pupated, or were eaten): where they lay goes to
@@ -314,17 +351,30 @@ func _pile_key(kind: String, new_pile: bool) -> String:
 func _still_lies(pl: Dictionary, s: float) -> bool:
 	return true
 
-## Puts one item of brood at `base` (the floor, or the top of what it rests on) into `_brood_occ`.
-func _register_brood(base: Vector3, b: Basis, s: float, kind: String, on_floor := true) -> Transform3D:
+## Puts one item of brood at `base` (the floor, or the top of what it rests on) into `_brood_occ` (unless
+## `record` is false: only where it would be drawn).
+func _register_brood(base: Vector3, b: Basis, s: float, kind: String, on_floor := true, record := true) -> Transform3D:
 	var shape: Vector2 = Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62)
-	if on_floor:
-		b = _floor_tilt(base, b, s)          # lying along the slope of a curving chamber floor, not level across it
-	# a larva lies on the floor (its mesh sits on its origin); a cocoon is centred, so it is raised half its height
-	var pos := base + b.y * (0.6 * s if shape.y > 0.5 else 0.0)
+	var xf := _brood_xf(base, b, s, kind, on_floor)
+	if not record:
+		return xf
+	var bb := xf.basis.orthonormalized()
+	var pos := xf.origin
 	var key := Vector3i(floori(pos.x / 1.5), floori(pos.y / 1.5), floori(pos.z / 1.5))
 	if not _brood_occ.has(key):
 		_brood_occ[key] = []
-	_brood_occ[key].append([pos, 0.95 * s, b.x * (shape.x - shape.y) * s, shape.y * s])
+	_brood_occ[key].append([pos, 0.95 * s, bb.x * (shape.x - shape.y) * s, shape.y * s])
+	return xf
+
+
+## How an item lying at `base` with heading `b` is drawn: on the floor it lies along the slope of a curving
+## chamber floor, not level across it (the slope under it fully grown, the same at every size: a growing larva
+## tipped a little differently and its ends went into a curving floor); a larva's mesh sits on its origin, a
+## cocoon is centred (raised half its height).
+func _brood_xf(base: Vector3, b: Basis, s: float, kind: String, on_floor := true) -> Transform3D:
+	if on_floor:
+		b = _floor_tilt(base, b, _grown(kind, s))
+	var pos := base + b.y * (0.6 * s if kind != "larvae" else 0.0)
 	return Transform3D(b.scaled(Vector3.ONE * s), pos)
 
 
@@ -341,34 +391,62 @@ func _floor_tilt(base: Vector3, b: Basis, s: float) -> Basis:
 	return Basis(x, n, x.cross(n))
 
 
-## A turn (radians, added to the item's own heading) that keeps the whole item in the open, both ends and
-## middle a little above the floor; -1 if no heading fits here.
+## A turn (radians, added to the item's own heading) that keeps the whole item - grown to full size - in the
+## open, clear of the floor's curve and the walls; -1 if no heading fits here.
 func _fit_turn(p: Vector3, s: float, c: Dictionary, i: int) -> float:
-	var shape: Vector2 = c.get("shape", Vector2(0.86, 0.38))
+	var kind: String = c.get("kind", "larvae")
 	var base := Vector3(p.x, _floor_cached(p), p.z)
-	for turn in [0.0, PI * 0.5, PI * 0.25, PI * 0.75]:
-		if _lies_clear(base, Basis(Vector3.UP, _hash(i, 3) * TAU + turn), s * 1.15, shape):    # (room to grow a little)
+	for k in 8:
+		var turn: float = [0.0, PI * 0.5, PI * 0.25, PI * 0.75, PI, PI * 1.5, PI * 1.25, PI * 1.75][k]
+		if _soil_pts(_brood_xf(base, Basis(Vector3.UP, _hash(i, 3) * TAU + turn), _grown(kind, s), kind, true), kind) == 0:
 			return turn
 	return -1.0
 
 
-## How many points of an item lying at `base` (ends, middle, top) are inside the soil (0 = lies clear).
-func _in_soil(base: Vector3, b: Basis, s: float, shape: Vector2) -> int:
-	var mid := base + Vector3(0, 0.25 * s + 0.05, 0)
-	var ax: Vector3 = b.x.normalized() * (shape.x - 0.1) * s
+## How many points on the surface of an item drawn at `xf` are inside the soil (0: it lies clear).
+func _soil_pts(xf: Transform3D, kind: String) -> int:
 	var n := 0
-	for q in [mid, mid + ax, mid - ax, base + Vector3(0, 2.0 * shape.y * s, 0)]:
-		if _density_at(q) >= 0.5:
+	for q in (_larva_pts() if kind == "larvae" else _COCOON_PTS):
+		if _density_at(xf * q) >= 0.5:
 			n += 1
 	return n
 
 
-## Whether an item lying at `base` with heading `b` is clear of the soil along its whole length (low down,
-## where it touches a curving floor first): its middle and both ends.
-func _lies_clear(base: Vector3, b: Basis, s: float, shape: Vector2) -> bool:
-	var mid := base + Vector3(0, 0.25 * s + 0.05, 0)
-	var ax: Vector3 = b.x.normalized() * (shape.x - 0.1) * s
-	return _density_at(mid) < 0.5 and _density_at(mid + ax) < 0.5 and _density_at(mid - ax) < 0.5
+## Points on a larva lying at its origin (size 1; mesh_kit.larva): the middle, top and both sides of its
+## curved body at seven places along it, both ends and the head - all that shows if it is in the soil (not
+## its underside, which rests on the floor).
+static var _larva_cache: Array = []
+static func _larva_pts() -> Array:
+	if _larva_cache.is_empty():
+		for i in 7:
+			var t := float(i) / 6.0
+			var th := lerpf(-0.75, 0.95, t)
+			var r := maxf(0.36 * sin(lerpf(0.35, 2.75, t)), 0.1)
+			var c := Vector3(sin(th) * 1.15, r * 0.95, (1.0 - cos(th)) * 0.55 - 0.18)
+			_larva_cache.append_array([c, c + Vector3(0, r * 0.9, 0), c + Vector3(0, 0.1, r * 0.9), c + Vector3(0, 0.1, -r * 0.9)])
+			if i == 0 or i == 6:
+				var tan := Vector3(cos(th) * 1.15, 0.0, sin(th) * 0.55).normalized() * (1.0 if i == 6 else -1.0)
+				_larva_cache.append(c + tan * r)
+		_larva_cache.append(Vector3(sin(0.95) * 1.15 + 0.2, 0.15, (1.0 - cos(0.95)) * 0.55 - 0.1))     # the head
+	return _larva_cache
+
+
+## The same for a cocoon (an ellipsoid 2.7 x 1.24, centred): ends, top, sides.
+const _COCOON_PTS := [Vector3(1.25, 0, 0), Vector3(-1.25, 0, 0), Vector3(0.9, 0.4, 0), Vector3(-0.9, 0.4, 0),
+	Vector3(0.9, 0, 0.42), Vector3(0.9, 0, -0.42), Vector3(-0.9, 0, 0.42), Vector3(-0.9, 0, -0.42),
+	Vector3(0, 0.58, 0), Vector3(0, 0, 0.58), Vector3(0, 0, -0.58), Vector3(0, 0.4, 0.4), Vector3(0, 0.4, -0.4)]
+
+
+## Dev (--trace-crowd): how many larvae and cocoons drawn have some part of them in the soil.
+func brood_in_soil() -> Vector2i:
+	var out := Vector2i.ZERO
+	for i in _larva_mm.instance_count:
+		if _soil_pts(_larva_mm.get_instance_transform(i), "larvae") > 0:
+			out.x += 1
+	for i in _pupa_mm.instance_count:
+		if _soil_pts(_pupa_mm.get_instance_transform(i), "pupae") > 0:
+			out.y += 1
+	return out
 
 
 func _brood_near(p: Vector3) -> Array:

@@ -1,7 +1,7 @@
 extends "res://scripts/view/nest/parts/nest_lifecycle.gd"
-## Nest view, layer 6 of 8 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves —
+## Nest view, layer 6 of 9 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves —
 ## easing along its voxel path, turning, the leg cycle, and bodies keeping out of one another (and the queen),
-## and (moved from nest_mates.gd in v0.8.16) where an ant chooses to stop: a free patch of floor.
+## and (moved from nest_mates.gd in v0.8.16) whether it stands on the brood (where it stops: nest_rest.gd).
 
 
 func _pose(from: Vector3, to: Vector3, t: float, up: Vector3, scale := 1.0) -> Transform3D:
@@ -52,12 +52,26 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 		v.vf = _turn_to(v.vf, want, minf(1.0, 9.0 * delta))
 		var turned := old_f.angle_to(v.vf)            # turning takes steps as well as walking does
 		v.gait = fmod(v.gait + (step.length() + turned * 0.9 * scale) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
+	var rd: Vector3 = v.get("rest_dir", Vector3.ZERO)
+	if moving:
+		v.rest_dir = Vector3.ZERO
 	if face != Vector3.INF and (not moving or backing):
 		var to := face - np
 		to -= v.vu * to.dot(v.vu)
 		if to.length_squared() > 0.01:
 			var want := to.normalized()
 			v.vf = _turn_to(v.vf, want, minf(1.0, 5.0 * delta))
+	elif not moving and rd != Vector3.ZERO:
+		# standing with its head or gaster in the wall: it turns round on the spot to lie clear (stepping)
+		var want := (rd - (v.vu as Vector3) * rd.dot(v.vu)).normalized()
+		var old_f: Vector3 = v.vf
+		v.vf = _turn_to(v.vf, want, minf(1.0, 3.0 * delta))
+		var turned := old_f.angle_to(v.vf)
+		v.gait = fmod(v.gait + turned * 0.9 / AntModel.stride_len(v.get("stride", 1.0)) * TAU, TAU * 64.0)
+		if turned > 0.2 * delta:
+			moving = true                          # (its legs step as it turns)
+		if (v.vf as Vector3).dot(want) > 0.995:
+			v.rest_dir = Vector3.ZERO
 	v.mv = lerpf(v.mv, 1.0 if moving else 0.0, minf(1.0, 8.0 * delta))
 	v.vu = (v.vu as Vector3).lerp(up, minf(1.0, 6.0 * delta)).normalized()
 	v.vp = np
@@ -213,45 +227,6 @@ func _ease_sep(m: Dictionary, p: Vector3, up: Vector3, push: Vector3, delta: flo
 	return sep
 
 
-## How far an ant standing on floor cell c must be raised for its body to clear the floor around it (a curving
-## chamber floor can rise above the cell's own height within a body length): cached per cell until the soil
-## changes.
-func _cell_lift(c: Vector3i) -> float:
-	var v = _lift_cache.get(c)
-	if v == null:
-		# along the cell's own up (floor, wall or ceiling): sample a body's span round the cell at belly height
-		# and rise until every sample is in the open
-		var up := _up_at(c)
-		var a := up.cross(Vector3.FORWARD if absf(up.z) < 0.9 else Vector3.RIGHT).normalized()
-		var b := up.cross(a).normalized()
-		var need := 0.0
-		for o in [Vector3.ZERO, a * 0.8, -a * 0.8, b * 0.8, -b * 0.8]:
-			var q: Vector3 = Vector3(c) + o + up * 0.25
-			var k := 0
-			while k < 6 and _density_at(q + up * need) >= 0.5:
-				need += 0.2
-				k += 1
-		v = minf(need, 1.2)
-		_lift_cache[c] = v
-	return v
-
-
-## How far an ant drawn at `tr` must rise along its up for its body (head, thorax, gaster at belly height)
-## to be clear of the soil: 0 if it already is (at most ~1.4).
-func _soil_clearance(tr: Transform3D, s: float) -> float:
-	var up := tr.basis.y.normalized()
-	var need := 0.0
-	# (a little lower than the belly and a little wider than the body: a margin, so it stays clear as it
-	# shifts a fraction before it is checked again)
-	for q in [Vector3(0.9, 0.2, 0), Vector3(0, 0.2, 0), Vector3(-1.0, 0.2, 0), Vector3(0, 0.2, 0.3), Vector3(0, 0.2, -0.3)]:
-		var p: Vector3 = tr * q
-		var k := 0
-		while k < 7 and _density_at(p + up * need) >= 0.5:
-			need += 0.2
-			k += 1
-	return need
-
-
 ## Whether this nestmate is walking across the brood pile (its way on led over it: no way round). Real
 ## ants climb over the brood in a crowded chamber (user's choice, 2026-10-13); it is not pushed off sideways.
 func _on_brood(m: Dictionary) -> bool:
@@ -327,188 +302,6 @@ func mate_overlaps() -> int:
 func _open_at(p: Vector3, up: Vector3) -> bool:
 	var c := p + up * 0.6
 	return nest.is_open(Vector3i(roundi(c.x), roundi(c.y), roundi(c.z)))
-
-
-## Whether a nestmate could stand at cell c without being on top of another ant, the brood or the queen.
-func _cell_free(m: Dictionary, c: Vector3i) -> bool:
-	if not nest.walkable(c) or _queen_cells.has(c):
-		return false
-	for dx in [-1, 0, 1]:
-		for dy in [-1, 0, 1]:
-			for dz in [-1, 0, 1]:
-				var o = _mate_cells.get(c + Vector3i(dx, dy, dz))
-				if o != null and not is_same(o, m):
-					return false
-	return not _brood_wide.has(c)              # (not within a body width of the brood: marked with the layout)
-
-
-## Ants choose where to stop: a free patch of floor near where they were going (a nurse beside the larvae,
-## an attendant beside the queen) rather than on top of a nestmate or the brood. Sets m.settle, the cells
-## to walk there (empty: stay put).
-func _settle(m: Dictionary) -> bool:
-	m.settle = []
-	var start: Vector3i = m.cell
-	var near_to := Vector3.INF
-	match m.role:
-		"nurse": near_to = _nearest_spot(Vector3(start), _spots.larvae) if not _spots.larvae.is_empty() else Vector3.INF
-		"attend": near_to = _spots.queen if _spots.queen != Vector3.ZERO else Vector3.INF
-	# a resting ant settles on the floor: walls and the ceiling only if nothing else is free nearby (ants do
-	# walk on them, but a chamber full of ants resting upside down looked chaotic)
-	var score := func(c: Vector3i, depth: int) -> float:
-		var u: Vector3 = _up_at(c)
-		var where := 0.0 if u.y > 0.7 else (2.5 if u.y > -0.3 else 5.0)
-		return depth * 0.6 + where + (Vector3(c).distance_to(near_to) if near_to != Vector3.INF else 0.0)
-	var best := start if _cell_free(m, start) else Vector3i(-9999, 0, 0)
-	var best_s: float = score.call(start, 0) if best == start else INF
-	var parent := {start: start}
-	var frontier: Array[Vector3i] = [start]
-	for depth in range(1, 8):             # (a crowded chamber: look a little further for room)
-		var next: Array[Vector3i] = []
-		for c in frontier:
-			for d in DIRS:
-				var n: Vector3i = c + d
-				if parent.has(n) or not nest.walkable(n) or _queen_cells.has(n):
-					continue
-				parent[n] = c
-				next.append(n)
-				if _cell_free(m, n):
-					var s: float = score.call(n, depth)
-					if s < best_s - 0.3:          # (stay put unless somewhere is clearly better)
-						best_s = s
-						best = n
-		frontier = next
-	if best.x == -9999:
-		return false                             # no room anywhere near
-	if best == start:
-		return true
-	var path := []
-	var c := best
-	while c != start:
-		path.push_front(c)
-		c = parent[c]
-	m.settle = path
-	_mate_cells[best] = m                    # spoken for: the next ant looks elsewhere
-	return true
-
-
-## After the brood is laid out again, ants resting where it now lies get up and find room beside it (or go to
-## rest in another chamber).
-func _clear_brood_of_ants() -> void:
-	for m in _mates:
-		if m.rest > 0 and not m.has("script") and not m.carry and _body_on_brood(m):
-			if not _settle(m):
-				m.goal = _random_room()
-				m.rest = 0
-
-
-## Whether any part of a resting ant's body (head end, middle, gaster; a nurse's head may be among the brood)
-## lies over the brood.
-func _body_on_brood(m: Dictionary) -> bool:
-	if not m.has("xf"):
-		return _brood_cells.has(m.cell)
-	var x: Transform3D = m.xf
-	var f: Vector3 = x.basis.x.normalized() * (0.7 * float(m.size))
-	var pts: Array = [x.origin, x.origin - f] if _tends_brood(m) else [x.origin + f, x.origin, x.origin - f]
-	for q in pts:
-		if _brood_cells.has(Vector3i(roundi(q.x), roundi(q.y - 0.45), roundi(q.z))):
-			return true
-	return false
-
-
-# ---------------------------------------------------------------- one drawn nestmate per real worker
-
-## The nestmates drawn in the nest are the real workers inside, one each, so each keeps its own size, age and
-## job: nurses (and the queen's attendants) by the brood and the queen, the reserve resting about, a forager
-## just back walking in from the entrance, one going out walking up to it first. Diggers are drawn at the dig
-## face (_dig_vis), and workers still climbing out of their cocoons by their eclosion.
-func _bind_workers() -> void:
-	var all := {}
-	var inside := []
-	for w in sim.workers:
-		all[w.id] = w
-		if w.state == Ant.IN_NEST and w.task != Ant.TASK_DIG:
-			inside.append(w)
-	inside.sort_custom(func(a, b): return a.age < b.age or (a.age == b.age and a.id < b.id))
-	var by_id := {}
-	for i in range(_pending("eclose"), inside.size()):      # the youngest are still being born
-		if by_id.size() >= 250:
-			break
-		by_id[inside[i].id] = inside[i]
-	# the queen's retinue: the nurses most drawn to her
-	var attend := {}
-	if sim.queen.alive:
-		var nurses: Array = by_id.values().filter(func(w): return w.task == Ant.TASK_NURSE)
-		nurses.sort_custom(func(a, b): return a.threshold(Ant.TH_ATTEND) < b.threshold(Ant.TH_ATTEND))
-		for i in mini(mini(3, by_id.size() / 6), nurses.size()):
-			attend[nurses[i].id] = true
-	var keep := []
-	var free := []
-	var bound := {}
-	for m in _mates:
-		var wid: int = m.get("wid", -1)
-		if m.get("gone", false):
-			continue                                   # walked out through the entrance
-		if wid >= 0 and by_id.has(wid) and not m.get("leaving", false):
-			bound[wid] = m
-			keep.append(m)
-		elif wid >= 0 and not m.has("script") and not m.has("deliver"):
-			var w = all.get(wid)
-			if w != null and w.state != Ant.IN_NEST and not m.get("leaving", false):
-				# it has gone out: walk it up to the entrance first
-				m.leaving = true
-				m.left_at = _t
-				m.role = "traffic"
-				m.goal = -1
-				m.rest = 0
-				m.wander = 0
-				m.settle = []
-				m.carry = false
-			if m.get("leaving", false) and _t - float(m.get("left_at", _t)) < 25.0:
-				keep.append(m)
-		elif wid < 0:
-			free.append(m)                             # a newborn from an eclosion: takes the youngest worker
-		else:
-			keep.append(m)                             # busy in a life-cycle moment: let it finish
-	for w in by_id.values():
-		if bound.has(w.id):
-			continue
-		var m: Dictionary
-		if not free.is_empty():
-			m = free.pop_front()
-		else:
-			var walking_in: bool = sim.tick - int(w.came_in) < int(sim.TPD * 0.05)
-			var c := _entrance_cell() if walking_in else _any_spot()
-			if c.x < 0:
-				continue
-			_add_mate(c, "traffic" if walking_in else "idle", -1000000000, w.size)
-			m = _mates.pop_back()
-			m.fed = walking_in and w.brought == Ant.SUGAR       # back from the aphids: its crop is full
-			if not walking_in:
-				_settle(m)
-		m.wid = w.id
-		bound[w.id] = m
-		keep.append(m)
-	_mates = keep
-	# each one's job follows its worker's (unless it is in the middle of carrying or a life-cycle moment)
-	for wid in bound:
-		var m: Dictionary = bound[wid]
-		var w = by_id[wid]
-		m.size = w.size
-		m.born = sim.tick - int(w.age * sim.TPD)
-		if m.carry or m.has("script") or m.has("deliver") or m.role == "carry":
-			continue
-		var want := "idle"
-		if attend.has(wid):
-			want = "attend"
-		elif (w.task == Ant.TASK_NURSE or w.task == Ant.TASK_CALLOW) and w.threshold(Ant.TH_ATTEND) < 1.15:
-			want = "nurse"                             # (the rest of the nurses rest nearby, off the brood pile)
-		elif m.role == "traffic" and m.goal != -1 and sim.tick - int(w.came_in) < int(sim.TPD * 0.05):
-			want = "traffic"                           # still walking in from the entrance
-		if want != m.role:
-			m.role = want
-			m.goal = _queen_room() if want == "attend" else (_brood_room(_larva_group) if want == "nurse" else _random_room())
-			m.wander = 0
-			m.rest = mini(m.rest, 5)
 
 
 ## A walkable cell just inside the entrance (where foragers come in), or (-1, 0, 0).
