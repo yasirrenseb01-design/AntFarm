@@ -6,5 +6,8 @@ render_mode unshaded, cull_front;
 #include "res://shaders/ants/ant_core.gdshaderinc"
 
 void fragment() {
+	if (dot(cut_plane.xyz, wpos) > cut_plane.w) {
+		discard;                         // in front of the nest's cut
+	}
 	ALBEDO = vec3(1.0);
 }

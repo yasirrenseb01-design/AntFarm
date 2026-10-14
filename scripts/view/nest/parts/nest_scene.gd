@@ -98,6 +98,7 @@ var _queen_xf := Transform3D()
 var _mate_frame := 0
 var _brood_wide := {}            # cells too near the brood to stop on (a body width clear; _cell_free)
 var _brood_cells := {}           # cells with brood on the floor: routes go round them (nest_brood _mark_brood_cells)
+var _cut_mats: Array = []          # the ants' materials, cut at the cut plane (nest_view refresh)
 var _ant_shader_mat: ShaderMaterial   # the workers' material (shadow_pose follows the level of detail)
 var _egg_at := {}                # egg tag -> where it was laid (it stays there until it hatches)
 var _freed := {"eggs": [], "larvae": []}   # where brood just hatched / pupated lay: the next stage starts there
@@ -277,7 +278,8 @@ func _box(size: Vector3, pos: Vector3, mat: Material) -> void:
 	add_child(mi)
 
 
-## The soil voxels as a 3D texture: the ants' feet find the floor in it (ant_core.gdshaderinc ground_dy).
+## The soil voxels as a 3D texture: the cut face (which parts of it are solid soil) and the ants' feet (the floor
+## under them) read it.
 func _upload_volume() -> void:
 	_vol_dirty = false
 	_vol_timer = 0.5
@@ -288,6 +290,7 @@ func _upload_volume() -> void:
 	if _vol == null:
 		_vol = ImageTexture3D.new()
 		_vol.create(Image.FORMAT_R8, nest.nx, nest.ny, nest.nz, false, layers)
+		_mat.set_shader_parameter("vol", _vol)
 	else:
 		_vol.update(layers)
 

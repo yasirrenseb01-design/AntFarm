@@ -32,6 +32,10 @@ uniform float outline_w = 0.022;
 // y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
 
 uniform float rim_amount = 0.35;
+// nest: the cut plane (xyz = normal toward the camera, w = offset): what of an ant lies in front of it is cut away,
+// as the soil is - no leg or gaster shows in front of the cut face (fragment(); far away elsewhere)
+uniform vec4 cut_plane = vec4(0.0, 0.0, 1.0, 100000.0);
+varying vec3 wpos;
 // where the feet find the ground: 0 a flat floor at the instance origin, 1 the nest's soil (the voxel volume),
 // 2 the outworld floor (ground_h). Each walking foot is set down on the real surface under it.
 uniform int ground_mode = 0;
@@ -485,5 +489,6 @@ void vertex() {
 	VERTEX += normalize(n1) * outline_w;      // the selection outline: the body grown out a little, seen from inside
 #endif
 	}
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 

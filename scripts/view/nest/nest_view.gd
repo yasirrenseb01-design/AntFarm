@@ -53,6 +53,7 @@ func setup(s) -> void:
 	_mat.shader = load("res://shaders/terrain/soil.gdshader")
 	_mat.set_shader_parameter("grain", grain)
 	_mat.set_shader_parameter("top_y", nest.ny - 0.5)
+	_mat.set_shader_parameter("vol_size", Vector3(nest.nx, nest.ny, nest.nz))
 	_xray_mat = ShaderMaterial.new()
 	_xray_mat.shader = load("res://shaders/terrain/xray.gdshader")
 	_xray_mat.set_shader_parameter("box_max", Vector3(nest.nx - 1, nest.ny - 1, nest.nz - 1))
@@ -145,6 +146,8 @@ func setup(s) -> void:
 	selq_mat.shader = outline
 	_sel_queen_mm = _multimesh(queen_mesh, selq_mat, true, false)
 	_sel_queen_mm.use_custom_data = true
+	_cut_mats = [ant_mat, sel_mat]          # (cut at the cut plane as the soil is; not the queen - she cannot step away from
+	                                        # it, and cut open she showed a hollow shell)
 
 	if nest.slab:
 		_build_ant_farm_case()
@@ -207,6 +210,8 @@ func refresh(delta: float) -> void:
 		_sel_mm.mesh = _ant_meshes[lod]
 		_ant_shader_mat.set_shader_parameter("shadow_pose", lod == "hi")   # zoomed out: shadows in the rest pose
 	_mat.set_shader_parameter("cut_plane", Vector4(_plane_n.x, _plane_n.y, _plane_n.z, _plane_w))
+	for cm in _cut_mats:
+		(cm as ShaderMaterial).set_shader_parameter("cut_plane", Vector4(_plane_n.x, _plane_n.y, _plane_n.z, 100000.0 if xray else _plane_w))
 	_mat.set_shader_parameter("humidity", sim.humidity)
 	_xray_mat.set_shader_parameter("humidity", sim.humidity)
 	_spot_timer -= delta
@@ -297,11 +302,10 @@ func trace_mates() -> String:
 func _ant_in_soil(m: Dictionary) -> bool:
 	if not m.has("xf"):
 		return false
-	var x: Transform3D = m.xf
-	for q in [Vector3(0.8, 0.3, 0), Vector3(0, 0.3, 0), Vector3(-0.9, 0.3, 0)]:   # (belly height, scaled with the ant)
-		if _density_at(x * q) >= 0.5:
-			return true
-	return false
+	# (its body as drawn: head, thorax, gaster at belly height and its sides, the head and gaster bent as the
+	# shader bends them to the ground)
+	var c := _soil_clearance(m.xf, float(m.size), m.get("bend", Vector2.ZERO))
+	return c.x > 0.0 or c.y > 0.0
 
 
 ## Dev (--trace-crowd): where the nestmates are: on the ceiling / walls / floor, by the queen, and per chamber.
