@@ -8,6 +8,7 @@ extends RefCounted
 
 
 const BITE := 0.12                 # model units (~0.18 mm): less than this is touching, not inside
+const DEEP := 0.3                  # well inside: plain to see
 # a worker's body (model units, size 1; x forward, y up from its feet): centre, radius
 const ANT_BODY := [[Vector3(0.85, 0.4, 0), 0.27], [Vector3(0.2, 0.38, 0), 0.22],
 	[Vector3(-0.6, 0.36, 0), 0.4], [Vector3(-1.05, 0.37, 0), 0.4], [Vector3(-1.35, 0.36, 0), 0.25]]
@@ -41,6 +42,20 @@ static func _cocoon_spheres(xf: Transform3D) -> Array:
 	return [[xf * Vector3(0.75, 0, 0), 0.55 * s], [xf * Vector3(0, 0, 0), 0.6 * s], [xf * Vector3(-0.75, 0, 0), 0.55 * s]]
 
 
+## Which parts of two ants are deepest in each other (head, thorax, waist, gaster, gaster tip), e.g. "H-G".
+static func _parts(a: Array, b: Array) -> String:
+	var worst := -INF
+	var w := []
+	for i in a.size():
+		for j in b.size():
+			var d := float(a[i][1]) + float(b[j][1]) - (a[i][0] as Vector3).distance_to(b[j][0])
+			if d > worst:
+				worst = d
+				w = ["HTWGt"[i], "HTWGt"[j]]
+	w.sort()
+	return "%s-%s" % w
+
+
 static func _depth(a: Array, b: Array) -> float:
 	var worst := 0.0
 	for p in a:
@@ -53,10 +68,10 @@ static func _depth(a: Array, b: Array) -> float:
 static func _kind(nv, m: Dictionary) -> String:
 	if m.has("script"):
 		return "scripted"
-	if float(m.get("over", 0.0)) > 0.1:
+	if float(m.get("over", 0.0)) > 0.1 and m.has("over_on"):
 		return "climbing"
-	if nv._on_brood(m) or float(m.get("blift", 0.0)) > 0.05:
-		return "crossing"
+	if nv._on_brood(m) or float(m.get("over", 0.0)) > 0.05:
+		return "crossing"                         # (up on the brood)
 	if m.get("carry", false):
 		return "carrying"
 	var still: bool = float(m.get("mv", 0.0)) < 0.3
@@ -100,6 +115,8 @@ static func measure(nv, tally: Dictionary) -> void:
 			if d > worst:
 				worst = d
 				what = b[2]
+		if worst > DEEP:
+			tally.in_brood_deep = int(tally.get("in_brood_deep", 0)) + 1
 		if worst > BITE:
 			_worst(tally, "brood", worst, o, "%s in a %s" % [_kind(nv, m), what])
 			var key := "in brood: %s (%s)" % [_kind(nv, m), what]
@@ -113,12 +130,35 @@ static func measure(nv, tally: Dictionary) -> void:
 			if oi.distance_squared_to((ants[j].xf as Transform3D).origin) > 12.0:
 				continue
 			var d := _depth(sph[i], sph[j])
+			if d > DEEP:
+				tally.in_ant_deep = int(tally.get("in_ant_deep", 0)) + 1
 			if d > BITE:
 				var ka := _kind(nv, ants[i])
 				var kb := _kind(nv, ants[j])
-				_worst(tally, "ant", d, oi.lerp((ants[j].xf as Transform3D).origin, 0.5), "%s + %s (gap ahead %.2f / %.2f, narrow %s)" % [ka, kb,
-					float(ants[i].get("fgap", 1.0)), float(ants[j].get("fgap", 1.0)), ants[i].get("narrow", false)])
+				_worst(tally, "ant", d, oi.lerp((ants[j].xf as Transform3D).origin, 0.5), "%s + %s | %s | %s" % [ka, kb, _why(ants[i]), _why(ants[j])])
 				var key := "in ant: %s + %s" % ([ka, kb] if ka < kb else [kb, ka])
+				if ka == "climbing" or kb == "climbing":
+					var c: Dictionary = ants[i] if ka == "climbing" else ants[j]
+					var u: Dictionary = ants[j] if ka == "climbing" else ants[i]
+					var cs: Array = sph[i] if ka == "climbing" else sph[j]
+					var us: Array = sph[j] if ka == "climbing" else sph[i]
+					var rel: float = ((u.xf as Transform3D).origin - (c.xf as Transform3D).origin).dot((c.xf as Transform3D).basis.y.normalized())
+					key += " - %s, climber %s-%s, other %+.1f up, over %.2f hold %.1f" % ["the one it is on" if is_same(c.get("over_on"), u) else "another",
+						_parts(cs, []) if false else "", "", rel, float(c.get("over", 0.0)), float(c.get("over_hold", 0.0))]
+					key = key.substr(0, key.find(", over")) + " " + _parts(cs, us)
+					_worst(tally, "climb", d, (c.xf as Transform3D).origin, "%s | want %s over %.2f hs %.2f clr %.2f gfit %.2f" % [key, c.get("cw"), float(c.get("over", 0.0)),
+						float(c.get("hs", 0.0)), float(c.get("clr", 0.0)), (c.get("gfit", PackedFloat32Array([0])) as PackedFloat32Array)[0]])
+				if ka == "walking" and kb == "walking":
+					# (which way the two are going: one behind the other, meeting head on, or across; in a narrow tunnel?)
+					var fa: Vector3 = (ants[i].xf as Transform3D).basis.x.normalized()
+					var fb: Vector3 = (ants[j].xf as Transform3D).basis.x.normalized()
+					var dd := fa.dot(fb)
+					var how := "same way" if dd > 0.5 else ("head on" if dd < -0.5 else "across")
+					var nar: bool = ants[i].get("narrow", false) or ants[j].get("narrow", false)
+					key += " - %s%s" % [how, ", narrow" if nar else ""]
+					var ga := float(ants[i].get("fgap", 1.0)) < 0.3
+					var gb := float(ants[j].get("fgap", 1.0)) < 0.3
+					key += " " + _parts(sph[i], sph[j]) + (" mutual" if ga and gb else (" one-waits" if ga or gb else " neither-waits"))
 				tally[key] = int(tally.get(key, 0)) + 1
 				tally.in_ant = int(tally.get("in_ant", 0)) + 1
 				tally.in_ant_depth = float(tally.get("in_ant_depth", 0.0)) + d
@@ -142,10 +182,19 @@ static func measure(nv, tally: Dictionary) -> void:
 				if k < 2:
 					front += 1
 		if front == 2 or free > 2:
-			_worst(tally, "feet", float(free), x.origin, "%s, %d feet free" % [_kind(nv, m), free])
+			_worst(tally, "feet", float(free) + (3.0 if front == 2 else 0.0), x.origin, "%s, %d feet free%s | %s" % [_kind(nv, m), free, " (both front)" if front == 2 else "", _why(m)])
 			var key := "feet in the air: %s%s" % [_kind(nv, m), " (front)" if front == 2 else ""]
 			tally[key] = int(tally.get(key, 0)) + 1
 			tally.feet_air = int(tally.get("feet_air", 0)) + 1
+
+
+## Why an ant is where it is drawn (dev): its pace allowed by what is ahead, how long it has been held up, how far
+## it is pushed off its path, its drawn body behind its path point, stepping or not.
+static func _why(m: Dictionary) -> String:
+	var pth: Vector3 = (m.from as Vector3).lerp(m.to, clampf(float(m.t), 0.0, 1.0)) if m.has("from") else Vector3.ZERO
+	return "wid %d push %.2f ka_t %.2f partner %s gap %.2f blocked %.1f sep %.2f lag %.2f mv %.2f rest %d over %.2f on %s cross %s" % [int(m.get("wid", -1)), (m.get("ka_push", Vector3.ZERO) as Vector3).length(), float(m.get("ka_t", 0.0)), m.has("partner"), float(m.get("fgap", 1.0)),
+		float(m.get("blocked_t", 0.0)), (m.get("sep", Vector3.ZERO) as Vector3).length(), pth.distance_to(m.get("vp", pth)), float(m.get("mv", 0.0)),
+		int(m.get("rest", 0)), float(m.get("over", 0.0)), m.has("over_on"), m.has("cross_on")]
 
 
 ## The worst case of each kind this frame (where, how deep, what): for --follow-bodies to look at.
@@ -173,8 +222,10 @@ static func _on_body(nv, f: Vector3, up: Vector3, m: Dictionary) -> bool:
 static func report(tally: Dictionary) -> String:
 	var n := maxf(1.0, float(tally.get("ant_frames", 0)))
 	var lines := ["bodies over %d frames, %d ant-frames on screen:" % [int(tally.get("frames", 0)), int(n)],
-		"  ant in brood %.2f%% of ant-frames (mean depth %.2f)" % [100.0 * float(tally.get("in_brood", 0)) / n, float(tally.get("in_brood_depth", 0.0)) / maxf(1.0, float(tally.get("in_brood", 0)))],
-		"  ant in ant %.2f pairs per 100 ant-frames (mean depth %.2f)" % [100.0 * float(tally.get("in_ant", 0)) / n, float(tally.get("in_ant_depth", 0.0)) / maxf(1.0, float(tally.get("in_ant", 0)))],
+		"  ant in brood %.2f%% of ant-frames (mean depth %.2f; deep %.2f%%)" % [100.0 * float(tally.get("in_brood", 0)) / n, float(tally.get("in_brood_depth", 0.0)) / maxf(1.0, float(tally.get("in_brood", 0))),
+			100.0 * float(tally.get("in_brood_deep", 0)) / n],
+		"  ant in ant %.2f pairs per 100 ant-frames (mean depth %.2f; deep %.2f)" % [100.0 * float(tally.get("in_ant", 0)) / n, float(tally.get("in_ant_depth", 0.0)) / maxf(1.0, float(tally.get("in_ant", 0))),
+			100.0 * float(tally.get("in_ant_deep", 0)) / n],
 		"  feet in the air %.2f%% of ant-frames" % [100.0 * float(tally.get("feet_air", 0)) / n]]
 	var keys := tally.keys().filter(func(k): return String(k).contains(":"))
 	keys.sort_custom(func(a, b): return int(tally[a]) > int(tally[b]))

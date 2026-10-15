@@ -303,7 +303,7 @@ func trace_mates() -> String:
 		var line := "w%s %s%s a%d c%s->%s goal%s carry%s/%s r%d w%d t%.2f set%d" % [m.get("wid", -1), m.role,
 			"*" if m.has("script") else "", m.act, m.cell, m.to, m.get("goal", -9), m.carry, m.get("item", ""),
 			m.rest, m.wander, m.t, (m.get("settle", []) as Array).size()]
-		out.append(line + " here%d free%s lift%.2f" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell), float(m.get("blift", 0.0))])
+		out.append(line + " here%d free%s lift%.2f" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell), float(m.get("over", 0.0))])
 	for id in _dig_vis:
 		out.append("dig%d" % id)
 	return " | ".join(out)
@@ -399,7 +399,7 @@ func trace_crowd() -> String:
 				n += 1
 		if n >= 2:
 			feet_air += 1
-		if _ground_off(x.origin, up) < -0.35 and float(m.get("blift", 0.0)) < 0.05:
+		if _ground_off(x.origin, up) < -0.35 and float(m.get("over", 0.0)) < 0.05:
 			lifted += 1
 	print("   of %d drawn: 2+ feet off the ground %d, standing clear above it %d; climbing over a nestmate: %d (in narrow places %d)" % [near_mates.size(), feet_air, lifted,
 		_mates.filter(func(q): return float(q.get("over", 0.0)) > 0.1).size(), _mates.filter(func(q): return q.get("narrow", false)).size()])

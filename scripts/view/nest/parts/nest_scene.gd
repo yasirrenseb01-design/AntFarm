@@ -1,7 +1,7 @@
 extends Node3D
 ## 3D view of the underground nest: the soil block sliced open by a camera-facing cut plane,
 ## with diggers from the simulation, resting nestmates, brood piles and the queen.
-## Nest view, layer 1 of 9: state and the building blocks of the scene (soil chunks, materials,
+## Nest view, layer 1 of 10: state and the building blocks of the scene (soil chunks, materials,
 ## meshes, the glass case). Layers: nest_scene <- nest_camera <- nest_brood <- nest_lifecycle <- nest_bodies <- nest_mates <- nest_view.
 const Ant := preload("res://scripts/sim/ant.gd")
 const Mesher := preload("res://scripts/view/nest/nest_mesher.gd")
@@ -116,6 +116,7 @@ var _sel_queen_mm: MultiMesh
 var _sel_brood_mm: MultiMesh       # the rim round a clicked egg, larva or cocoon
 var fprof := {}                 # dev (--perf): microseconds per part of refresh(), summed
 var _brood_occ := {}             # brood laid this layout, binned (see nest_brood _place_brood)
+var _brood_gen := 0               # counts brood layouts (what is cached against the brood is worked out again)
 # where each item of brood lies, kept from one layout to the next so a pile stays still when an egg is added
 # or one hatches (items are told apart by a view tag "_v" written into the simulation's brood entries)
 var _placed := {}                # tag -> {"base": floor point (or top of what it rests on), "b": Basis, "src": pile key, "top": bool}

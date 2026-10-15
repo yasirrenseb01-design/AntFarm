@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_lifecycle.gd"
-## Nest view, layer 6 of 9 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves —
+## Nest view, layer 6 of 10 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves —
 ## easing along its voxel path, turning, the leg cycle, and bodies keeping out of one another (and the queen),
 ## and (moved from nest_mates.gd in v0.8.16) whether it stands on the brood (where it stops: nest_rest.gd).
 
@@ -43,7 +43,9 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 		v.mv = 0.0
 	# eased twice over (two smoothings in a row): the path goes from voxel to voxel, and across the grid it
 	# zigzags (one step along x, the next along z) - eased once the body still swung to and fro at every corner
-	var k := 1.0 - exp(-10.0 * delta)
+	# (held up by a body ahead - see nest_contact._gap_ahead - the drawn body stops at once, not only its point on
+	# the path: easing on behind it, it walked on up to a cell into the one ahead)
+	var k := (1.0 - exp(-10.0 * delta)) * float(v.get("fgap", 1.0))
 	v.vp1 = (v.get("vp1", path_pos) as Vector3).lerp(path_pos, k)
 	var np: Vector3 = v.vp.lerp(v.vp1, k)
 	var step: Vector3 = np - v.vp
@@ -164,8 +166,10 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 	var side: Vector3 = (m.xf as Transform3D).basis.z if m.has("xf") else Vector3.RIGHT
 	# meeting another ant in a narrow tunnel there is no room to step aside: a walking ant climbs over its back
 	# (over a resting one, or - two passing - the one with the higher id), as real ants do in their galleries
-	var walking: bool = int(m.get("rest", 1)) == 0 and float(m.get("mv", 0.0)) > 0.3 and not m.has("script")
-	var over := 0.0
+	var walking: bool = (int(m.get("rest", 1)) == 0 or not (m.get("settle", []) as Array).is_empty()) and float(m.get("mv", 0.0)) > 0.3 \
+		and not m.has("script")
+	var over_on = null
+	var over_d := INF
 	for off in _NEAR:
 		var bin = near.get(key + off)
 		if bin == null:
@@ -179,23 +183,25 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 				continue
 			var reach: float = r + 0.55 * float(o.size)
 			var rr := reach * reach
-			if float(o.get("over", 0.0)) > 0.25 and is_same(o.get("over_on"), m):
+			if is_same(o.get("over_on"), m) and float(o.get("over_hold", 0.0)) > 0.0:
 				continue                 # (it is climbing over this one: on its back, not pushing it aside)
-			if walking and (m.get("narrow", false) or o.get("narrow", false)) and not o.has("callow") \
-					and (int(o.get("rest", 1)) > 0 or int(m.get("wid", 0)) > int(o.get("wid", 0))):
-				var hit := false
+			# (or anywhere, onto one that has stood in its way a while: see nest_contact._gap_ahead)
+			if (walking and (m.get("narrow", false) or o.get("narrow", false)) and (int(o.get("rest", 1)) > 0 or int(m.get("wid", 0)) > int(o.get("wid", 0))) \
+					or is_same(o, m.get("cross_on")) and float(m.get("cross_t", 0.0)) > 0.0) and not o.has("callow") \
+					and float(o.get("over", 0.0)) <= 0.1 and not is_same(o.get("over_on"), m):     # (no towers of ants; not onto one climbing over it)
+				# (a little before the two bodies meet: it climbs on as its head reaches the other - _climb lifts each
+				# part of its body only once it is over the other's)
+				var lim := (reach + 0.5) * (reach + 0.5)
+				var dmin := INF
 				for a in [a0, a1]:
 					for b in [o.d0, o.d1]:
 						var d: Vector3 = a - b
 						d -= up * d.dot(up)
-						hit = hit or d.length_squared() < rr
-				if hit:
-					if float(o.get("over", 0.0)) > 0.1:
-						continue           # (not onto one that is itself up on another: no towers of ants)
-					var top := 0.5 * float(o.size) + 0.1
-					if top > over:
-						over = top
-						m.over_on = o
+						dmin = minf(dmin, d.length_squared())
+				if dmin < lim:
+					if dmin < over_d:
+						over_d = dmin
+						over_on = o
 					continue
 			var b0: Vector3 = o.d0
 			var b1: Vector3 = o.d1
@@ -244,14 +250,19 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 					push += d / l * (reach - l) * 0.5     # (as hard as ant on ant: harder only squeezed them into each other)
 	m.ka_push = push
 	# (held a moment after the last touch, so it climbs on and steps down once - not up and down every time the
-	# two bodies just touch or part)
-	if over > 0.0:
-		m.over_want = minf(over, 0.8)
+	# two bodies just touch or part; it keeps to the one it is on until it is past it)
+	var on_now = m.get("over_on")
+	if over_on != null and (on_now == null or float(m.get("over_hold", 0.0)) <= 0.0 \
+			or not is_same(on_now, over_on) and float(m.get("over", 0.0)) < 0.05):
+		m.over_on = over_on
+	if over_on != null and is_same(m.get("over_on"), over_on):
 		m.over_hold = 0.6
 	else:
 		m.over_hold = float(m.get("over_hold", 0.0)) - delta
-		if float(m.over_hold) <= 0.0:
-			m.over_want = 0.0
+	if m.has("cross_on"):
+		m.cross_t = float(m.get("cross_t", 0.0)) - delta
+		if float(m.cross_t) <= 0.0:
+			m.erase("cross_on")
 	return _ease_sep(m, p, up, push, delta)
 
 
@@ -287,9 +298,12 @@ func _ease_sep(m: Dictionary, p: Vector3, up: Vector3, push: Vector3, delta: flo
 	# squeezed against the wall, used to flick back and forth a millimetre or more every frame
 	# eased (not only rate-limited): pressed in a crowd the push each frame flips to and fro a little - the
 	# body follows only its average, and ignores changes too small to see (else it trembled on the spot)
+	# (a walking ant steps aside about twice as briskly: brushing past another its body was in the other's for
+	# a moment before the shift caught up)
+	var brisk := float(m.get("mv", 0.0)) > 0.5
 	var target := sep
-	sep = was.lerp(target, 1.0 - exp(-2.5 * delta))
-	sep = was.move_toward(sep, 3.0 * delta)
+	sep = was.lerp(target, 1.0 - exp(-(5.0 if brisk else 2.5) * delta))
+	sep = was.move_toward(sep, (5.5 if brisk else 3.0) * delta)
 	if (sep - was).length() < 0.004 and (target - was).length() < 0.08:
 		sep = was
 	m.sep = sep

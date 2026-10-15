@@ -1,5 +1,5 @@
-extends "res://scripts/view/nest/parts/nest_rest.gd"
-## Nest view, layer 8 of 9: the nestmates walking the real tunnels, their roles and activities,
+extends "res://scripts/view/nest/parts/nest_contact.gd"
+## Nest view, layer 9 of 10: the nestmates walking the real tunnels, their roles and activities,
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 
@@ -334,6 +334,8 @@ func _update_ants(delta: float) -> void:
 	var us_smooth := 0
 	var us_apart := 0
 	var us_fit := 0
+	var us_climb := 0
+	var us_gap := 0
 	_mate_cells.clear()
 	for m in _mates:
 		_mate_cells[m.cell] = m
@@ -362,10 +364,21 @@ func _update_ants(delta: float) -> void:
 			m.act = m.script.act
 			m.face = m.script.face
 			path = m.script.pos
+			m.fgap = 1.0
 		else:
 			var ta := Time.get_ticks_usec()
-			if (_mate_frame + mi) % 3 == 1:
-				m.fgap = _follow_gap(m, near)          # (a third of the ants each frame, as keeping apart is)
+			m.gap_dt = float(m.get("gap_dt", 0.0)) + md
+			var fg := float(m.get("fgap", 1.0))
+			if (_mate_frame + mi) % 3 == 1 or fg < 1.0 and fg > 0.0 and (_mate_frame + mi) % 2 == 0:     # (more often while closing on something ahead)
+				var tg := Time.get_ticks_usec()
+				m.fgap = _gap_ahead(m, near, float(m.gap_dt))     # (a third of the ants each frame, as keeping apart is)
+				m.gap_dt = 0.0
+				if m.get("stop_here", false):
+					m.erase("stop_here")
+					m.settle = []
+					_arrive(m)                    # (held up in a jam: as near as it gets)
+					m.fgap = 1.0
+				us_gap += Time.get_ticks_usec() - tg
 			_update_activity(m, madt)
 			if not m.act in STILL_ACTS:
 				m.t += mdt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0) * float(m.get("fgap", 1.0))
@@ -396,34 +409,7 @@ func _update_ants(delta: float) -> void:
 					m.ka_t = 0.0
 				else:
 					tr.origin += m.sep
-		# crossing the brood pile: up on top of it (eased, so it climbs on and steps down)
-		var want_lift := 0.0
-		if _on_brood(m):
-			# (how high the brood is under it, worked out again only when it moves on a cell or the brood changes)
-			var bkey: Array = [m.cell, _brood_occ.size()]
-			if m.get("btop_key", []) != bkey:
-				m.btop_key = bkey
-				m.btop = _brood_top(tr.origin)
-			want_lift = m.btop
-		m.blift = move_toward(float(m.get("blift", 0.0)), want_lift, 1.5 * md)
-		tr.origin += tr.basis.y.normalized() * float(m.blift)
-		# up on a nestmate's back, passing it in a narrow tunnel (see _keep_apart): climbs on and steps down
-		# (eased in and out - a step up onto it and a step down, not a lift at an even speed - and the body tips
-		# nose up as it climbs on, nose down as it steps off: it was raised and lowered level, stiffly)
-		var ov0 := float(m.get("over", 0.0))
-		var ov_want := float(m.get("over_want", 0.0))
-		var ov_v := float(m.get("over_v", 0.0))
-		ov_v = lerpf(ov_v, clampf((ov_want - ov0) * 4.0, -1.6, 1.6), 1.0 - exp(-8.0 * md))
-		m.over_v = ov_v if absf(ov_want - ov0) > 0.005 else 0.0
-		m.over = clampf(ov0 + ov_v * md, 0.0, 1.0)
-		var ov_tip := clampf(ov_v * 0.35, -0.35, 0.35)
-		m.over_tip = lerpf(float(m.get("over_tip", 0.0)), ov_tip, 1.0 - exp(-10.0 * md))
-		if float(m.over) > 0.0:
-			tr.origin += tr.basis.y.normalized() * float(m.over)
-			if absf(float(m.over_tip)) > 0.01:
-				tr.basis = tr.basis.rotated(tr.basis.z.normalized(), float(m.over_tip))
-		elif m.has("over_on"):
-			m.erase("over_on")
+		# (crossing the brood pile, or brushing a larva: up on top of it - see nest_contact._climb, last of all below)
 		# lying on the real surface under it: where a chamber floor or wall curves (or drops away) the cell it
 		# walks on is not where the ground is - its body is tipped to the slope under its feet, raised or lowered
 		# onto it, and its gaster and head bent toward the ground under them (eased)
@@ -446,10 +432,11 @@ func _update_ants(delta: float) -> void:
 			m.clr_gen = _soil_gen
 			var cl := _soil_clearance(tr, float(m.size), m.bend)
 			m.clr_own = cl.x
-			# its head or gaster in a wall (rising would not clear it): standing still, it turns away from the
-			# wall, stepping round on the spot
-			if cl.y > 0 and clr_budget > 2 and not m.has("script") and (m.rest > 0 or m.act in STILL_ACTS) \
-					and (m.get("face", Vector3.INF) as Vector3) == Vector3.INF:
+			# its head or gaster in a wall (rising would not clear it), or its front feet over a drop: standing
+			# still, it turns away from the wall or the drop, stepping round on the spot
+			var still: bool = not m.has("script") and (m.rest > 0 and (m.get("settle", []) as Array).is_empty() or m.act in STILL_ACTS) \
+					and (m.get("face", Vector3.INF) as Vector3) == Vector3.INF
+			if still and clr_budget > 2 and (cl.y > 0 or float(m.get("over", 0.0)) < 0.05 and _feet_over_drop(tr) >= 4):
 				clr_budget -= 3
 				m.rest_dir = _free_heading(m, tr, 0.0)
 		# (up quickly out of the soil, down slowly: checked again as it shifts a little, the answer can flip between
@@ -475,6 +462,12 @@ func _update_ants(delta: float) -> void:
 			# stepping aside (see _step_aside): its legs keep pace with the shift every frame
 			m.gait = fmod(float(m.gait) + sgr * md, TAU * 64.0)
 			m.mv = maxf(float(m.mv), float(m.smv))
+		# up on a nestmate's back passing it (see _keep_apart), or on the brood (see nest_contact._climb): last, on the
+		# body as it lies on the ground - what is under it is drawn so (raised before, the ground fit then lowered it
+		# into them)
+		var tcl := Time.get_ticks_usec()
+		tr = _climb(m, tr, md)
+		us_climb += Time.get_ticks_usec() - tcl
 		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr
 		if m.act == ACT_FEED and not m.has("script") and _visible(tr.origin) and m.get("larva_at", Vector3.INF) != Vector3.INF:
@@ -499,6 +492,8 @@ func _update_ants(delta: float) -> void:
 	fprof["ants: smooth"] = fprof.get("ants: smooth", 0) + us_smooth
 	fprof["ants: keep apart"] = fprof.get("ants: keep apart", 0) + us_apart
 	fprof["ants: ground fit"] = fprof.get("ants: ground fit", 0) + us_fit
+	fprof["ants: climb"] = fprof.get("ants: climb", 0) + us_climb
+	fprof["ants: look ahead"] = fprof.get("ants: look ahead", 0) + us_gap
 	tp = _nprof("ants: loop (all)", tp)
 	_emerging(xs, cols, cus, young)
 
@@ -634,32 +629,3 @@ func _update_ants(delta: float) -> void:
 		_sel_queen_mm.set_instance_transform(0, _queen_xf)
 		_sel_queen_mm.set_instance_custom_data(0, _queen_mm.get_instance_custom_data(0))
 		_sel_queen_mm.set_instance_color(0, Color.WHITE)
-
-
-## Walking close behind a nestmate going the same way (out through one tunnel, a crowd at the entrance), an ant
-## slows to keep a little gap - they file along one behind another instead of pressing into each other. 1 = its
-## own pace. (Not one coming the other way: those pass, or one climbs over the other.)
-func _follow_gap(m: Dictionary, near: Dictionary) -> float:
-	if not m.has("xf") or m.has("script") or int(m.get("rest", 0)) > 0 or not (m.get("settle", []) as Array).is_empty():
-		return 1.0
-	var x: Transform3D = m.xf
-	var f := x.basis.x.normalized()
-	var head := x.origin + f * (0.9 * float(m.size))
-	var key := Vector3i(floori(head.x / 3.0), floori(head.y / 3.0), floori(head.z / 3.0))
-	var k := 1.0
-	for off in _NEAR:
-		var bin = near.get(key + off)
-		if bin == null:
-			continue
-		for o in bin:
-			if is_same(o, m) or not o.has("xf") or float(o.get("over", 0.0)) > 0.1:
-				continue
-			var ox: Transform3D = o.xf
-			var to: Vector3 = (o.d1 as Vector3) - head          # (to its gaster)
-			var ahead := to.dot(f)
-			if ahead < -0.2 or ahead > 1.3 or (to - f * ahead).length() > 0.7:
-				continue
-			if ox.basis.x.normalized().dot(f) < 0.3:
-				continue                                  # (coming the other way, or across)
-			k = minf(k, clampf((ahead + 0.2) / 1.5, 0.1, 1.0))
-	return k

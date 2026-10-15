@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_brood.gd"
-## Nest view, layer 4 of 9: the brood piles - each egg, larva and cocoon laid down like a real object on the
+## Nest view, layer 4 of 10: the brood piles - each egg, larva and cocoon laid down like a real object on the
 ## floor (or on the heap), clear of the chamber walls and the queen, and left exactly where it lies until
 ## nurses carry its pile elsewhere.
 
@@ -404,7 +404,8 @@ func _register_brood(base: Vector3, b: Basis, s: float, kind: String, on_floor :
 	var key := Vector3i(floori(pos.x / 1.5), floori(pos.y / 1.5), floori(pos.z / 1.5))
 	if not _brood_occ.has(key):
 		_brood_occ[key] = []
-	_brood_occ[key].append([pos, 0.95 * s, bb.x * (shape.x - shape.y) * s, shape.y * s])
+	# [centre (a larva: on the floor under it), packing radius, half its long axis, half its thickness, larva?]
+	_brood_occ[key].append([pos, 0.95 * s, bb.x * (shape.x - shape.y) * s, shape.y * s, kind == "larvae"])
 	return xf
 
 
@@ -595,6 +596,7 @@ func _update_brood() -> void:
 	_pile(_pupa_mm, _spots.pupae, sim.pupae.slice(0, maxi(0, sim.pupae.size() - _pending("pupate"))), 300, func(p): return p.get("s", 1.0),
 		[], 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
 	_mark_brood_cells()
+	_brood_gen += 1
 	# the crater mound of excavated pellets around the entrance on top of the block
 	var n := mini(nest.excavated / 2, 900)
 	if n == _mound_n:

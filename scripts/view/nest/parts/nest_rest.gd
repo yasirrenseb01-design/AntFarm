@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_bodies.gd"
-## Nest view, layer 7 of 9 (split from parts/nest_bodies.gd in v0.8.55): where a nestmate stops and how it
+## Nest view, layer 7 of 10 (split from parts/nest_bodies.gd in v0.8.55): where a nestmate stops and how it
 ## lies there - a free patch of floor with room for its body (not in a nestmate, the queen's legs or a narrow
 ## tunnel), clear of the soil where a chamber floor curves (lifted) or a wall is close (turned away), stepping
 ## aside when pushed; and the one drawn nestmate per real worker inside.
@@ -310,40 +310,6 @@ func _cell_narrow(c: Vector3i) -> bool:
 	return v
 
 
-## The heading (in its floor's plane) in which an ant drawn at `tr` lies clear of the walls - and not with its
-## head or gaster in a nestmate beside it - nearest its own: Vector3.ZERO if no heading is clearer than the
-## one it has.
-func _free_heading(m: Dictionary, tr: Transform3D, lift: float) -> Vector3:
-	var up := tr.basis.y.normalized()
-	var f := tr.basis.x.normalized()
-	var sc := tr.basis.x.length()
-	var o := tr.origin + up * lift
-	var best := Vector3.ZERO
-	var best_s := INF
-	for k in 8:
-		var a := (k + 1) / 2 * (1 if k % 2 == 1 else -1) * TAU / 8.0     # 0, +45, -45, +90, -90 ... degrees
-		var h := f.rotated(up, a)
-		var t := Transform3D(Basis(h, up, h.cross(up)).scaled(Vector3.ONE * sc), o)
-		var c := _soil_clearance(t, sc)
-		var score := c.y * 10.0 + c.x + absf(a) * 0.05
-		for e in [o + h * (1.2 * sc), o - h * (1.2 * sc)]:     # its two ends: a nestmate there?
-			var ec := Vector3i(roundi(e.x), roundi(e.y), roundi(e.z))
-			for d in _NEAR:
-				var n = _mate_cells.get(ec + d)
-				if n != null and not is_same(n, m):
-					score += 4.0
-					break
-		if k == 0:
-			if c.y == 0:
-				return Vector3.ZERO
-			best_s = score
-			continue
-		if score < best_s:
-			best_s = score
-			best = h
-	return best
-
-
 var _near_bins := {}              # the nestmates binned by where they are drawn this frame (_update_ants)
 ## Whether a nestmate could stand at cell c without being on top of another ant, the brood or the queen (her
 ## body, and her legs reaching out beside it: an ant resting in them was pushed off into its neighbours).
@@ -482,7 +448,7 @@ func _clear_brood_of_ants() -> void:
 func _body_on_brood(m: Dictionary) -> bool:
 	if not m.has("xf"):
 		return _brood_cells.has(m.cell)
-	if _on_brood(m) or float(m.get("blift", 0.0)) > 0.05:
+	if _on_brood(m) or float(m.get("over", 0.0)) > 0.05 and not m.has("over_on"):
 		return true                    # (up on the pile: its drawn body is raised above the cells it is over)
 	var x: Transform3D = m.xf
 	var f: Vector3 = x.basis.x.normalized() * (0.7 * float(m.size))

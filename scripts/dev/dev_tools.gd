@@ -402,13 +402,17 @@ func _take_shot() -> void:
 					# seen from its side (--side=<radians round from its right side>)
 					# (--follow-fit=over: one climbing over a nestmate's back instead)
 					var fm = _pushed if _pushed != null and nest_view._mates.has(_pushed) else null
+					var climbs: bool = _opts["follow-fit"] == "over"
+					if fm != null and climbs and not fm.has("over_on") and float(fm.get("over", 0.0)) <= 0.0 and float(_pushed_t) > 1.0:
+						fm = null                 # (past the one it climbed over a second ago: another climber)
 					if fm == null:
+						_pushed_t = 0.0
 						for m in nest_view._mates:
 							var g: PackedFloat32Array = m.get("gfit", PackedFloat32Array())
 							var pick: bool = absf(float(m.get("lat", 0.0))) > 0.2 if _opts["follow-fit"] == "turn" else \
-								float(m.get("over", 0.0)) > 0.1 if _opts["follow-fit"] == "over" else \
+								m.has("over_on") if climbs else \
 								(g.size() == 5 and absf(g[1]) + absf(g[2]) + absf(g[3]) > float(_opts.get("fit-min", "0.35")))
-							if pick and nest_view._visible((m.xf as Transform3D).origin):
+							if pick and m.has("xf") and (climbs or nest_view._visible((m.xf as Transform3D).origin)):
 								fm = m
 								break
 					if fm != null:
@@ -419,8 +423,13 @@ func _take_shot() -> void:
 						var fwd: Vector3 = fx.basis.x
 						nest_view.yaw = atan2(-fwd.z, fwd.x) + float(_opts.get("side", "1.57"))
 						nest_view.yaw_t = nest_view.yaw
+						if fm.has("over_on") or float(fm.get("over", 0.0)) > 0.0:
+							_pushed_t = 0.0
+						else:
+							_pushed_t = float(_pushed_t) + get_process_delta_time()
 						if i == 0:
-							print("  fitted ant: %s act %d over %.2f lat %.2f" % [fm.get("gfit"), fm.act, float(fm.get("over", 0.0)), float(fm.get("lat", 0.0))])
+							print("  fitted ant: %s act %d over %.2f tip %.2f on %s lat %.2f" % [fm.get("gfit"), fm.act, float(fm.get("over", 0.0)),
+								float(fm.get("over_tip", 0.0)), fm.has("over_on"), float(fm.get("lat", 0.0))])
 				if _opts.has("follow-digger") and mode == "nest":
 					# watch a digger (the same one), seen from its side (--side) or above
 					var dv = _pushed if _pushed != null and nest_view._dig_vis.values().has(_pushed) else null
@@ -472,7 +481,7 @@ func _take_shot() -> void:
 				if _opts.has("follow-crossing") and mode == "nest":
 					# watch a nestmate up on the brood pile (crossing it), once one is
 					for m in nest_view._mates:
-						if float(m.get("blift", 0.0)) > 0.05 and m.has("xf"):
+						if float(m.get("over", 0.0)) > 0.05 and not m.has("over_on") and m.has("xf"):
 							nest_view.target_t = (m.xf as Transform3D).origin
 							nest_view.target = nest_view.target_t
 							break
@@ -563,6 +572,7 @@ var _bodies_at := Vector3.INF
 var _bodies_d := 0.0
 var _pushed = null                # (--follow-pushed: the ant being watched)
 var _pushed_said = null
+var _pushed_t := 0.0             # (--follow-fit=over: how long since the one watched was last climbing)
 var _pop_prev := []
 var _pop_by := {}
 var _jid_next := 0
