@@ -1,0 +1,183 @@
+extends RefCounted
+## Dev (--bodies, with --seq, nest view): how often drawn bodies are inside one another, measured in 3D from the
+## models' real shapes (worker_lo.antmesh: head, thorax, gaster as spheres; a larva's curved body, a cocoon, an
+## egg) - not the flat discs the nest view keeps apart with. Counts only what is on screen.
+##   ant in brood: a nestmate's body more than BITE into an egg, larva or cocoon (by what the ant is doing)
+##   ant in ant: two nestmates' bodies more than BITE into each other (by what the two are doing)
+##   feet in the air: a standing ant whose two front feet (or more than two feet) have no ground under them
+
+
+const BITE := 0.12                 # model units (~0.18 mm): less than this is touching, not inside
+# a worker's body (model units, size 1; x forward, y up from its feet): centre, radius
+const ANT_BODY := [[Vector3(0.85, 0.4, 0), 0.27], [Vector3(0.2, 0.38, 0), 0.22],
+	[Vector3(-0.6, 0.36, 0), 0.4], [Vector3(-1.05, 0.37, 0), 0.4], [Vector3(-1.35, 0.36, 0), 0.25]]
+# where its six feet stand (model units): front pair first
+const FEET := [Vector3(0.9, 0.0, 1.0), Vector3(0.9, 0.0, -1.0), Vector3(0.1, 0.0, 1.05), Vector3(0.1, 0.0, -1.05),
+	Vector3(-0.85, 0.0, 1.05), Vector3(-0.85, 0.0, -1.05)]
+
+
+static func _ant_spheres(xf: Transform3D, gaster_bend := 0.0) -> Array:
+	var out := []
+	var s := xf.basis.x.length()
+	for b in ANT_BODY:
+		out.append([xf * (b[0] as Vector3), float(b[1]) * s])
+	return out
+
+
+## A larva as the nest view draws it (mesh_kit.larva, the same curve as nest_piles._larva_pts): seven spheres.
+static func _larva_spheres(xf: Transform3D) -> Array:
+	var out := []
+	var s := xf.basis.x.length()
+	for i in 7:
+		var t := float(i) / 6.0
+		var th := lerpf(-0.75, 0.95, t)
+		var r := maxf(0.36 * sin(lerpf(0.35, 2.75, t)), 0.1)
+		out.append([xf * Vector3(sin(th) * 1.15, r * 0.95, (1.0 - cos(th)) * 0.55 - 0.18), r * s])
+	return out
+
+
+static func _cocoon_spheres(xf: Transform3D) -> Array:
+	var s := xf.basis.x.length()
+	return [[xf * Vector3(0.75, 0, 0), 0.55 * s], [xf * Vector3(0, 0, 0), 0.6 * s], [xf * Vector3(-0.75, 0, 0), 0.55 * s]]
+
+
+static func _depth(a: Array, b: Array) -> float:
+	var worst := 0.0
+	for p in a:
+		for q in b:
+			worst = maxf(worst, float(p[1]) + float(q[1]) - (p[0] as Vector3).distance_to(q[0]))
+	return worst
+
+
+## What a nestmate is doing, for the tallies.
+static func _kind(nv, m: Dictionary) -> String:
+	if m.has("script"):
+		return "scripted"
+	if float(m.get("over", 0.0)) > 0.1:
+		return "climbing"
+	if nv._on_brood(m) or float(m.get("blift", 0.0)) > 0.05:
+		return "crossing"
+	if m.get("carry", false):
+		return "carrying"
+	var still: bool = float(m.get("mv", 0.0)) < 0.3
+	var tends: bool = nv._tends_brood(m)
+	return ("tending " if tends else "") + ("still" if still else "walking")
+
+
+static func measure(nv, tally: Dictionary) -> void:
+	var brood := []                                   # [spheres, centre, kind]
+	for i in nv._larva_mm.instance_count:
+		var x: Transform3D = nv._larva_mm.get_instance_transform(i)
+		if nv._shown(x):
+			brood.append([_larva_spheres(x), x.origin, "larva"])
+	for i in nv._pupa_mm.instance_count:
+		var x: Transform3D = nv._pupa_mm.get_instance_transform(i)
+		if nv._shown(x):
+			brood.append([_cocoon_spheres(x), x.origin, "cocoon"])
+	for i in nv._egg_mm.instance_count:
+		var x: Transform3D = nv._egg_mm.get_instance_transform(i)
+		if nv._shown(x):
+			brood.append([[[x.origin, 0.25 * x.basis.x.length()]], x.origin, "egg"])
+	var ants := []
+	for m in nv._mates:
+		if m.has("xf") and nv._shown(m.xf):
+			ants.append(m)
+	tally.frames = int(tally.get("frames", 0)) + 1
+	tally.ant_frames = int(tally.get("ant_frames", 0)) + ants.size()
+	var sph := []
+	for m in ants:
+		sph.append(_ant_spheres(m.xf))
+	# ants in the brood
+	for i in ants.size():
+		var m: Dictionary = ants[i]
+		var o: Vector3 = (m.xf as Transform3D).origin
+		var worst := 0.0
+		var what := ""
+		for b in brood:
+			if o.distance_squared_to(b[1]) > 9.0:
+				continue
+			var d := _depth(sph[i], b[0])
+			if d > worst:
+				worst = d
+				what = b[2]
+		if worst > BITE:
+			_worst(tally, "brood", worst, o, "%s in a %s" % [_kind(nv, m), what])
+			var key := "in brood: %s (%s)" % [_kind(nv, m), what]
+			tally[key] = int(tally.get(key, 0)) + 1
+			tally.in_brood = int(tally.get("in_brood", 0)) + 1
+			tally.in_brood_depth = float(tally.get("in_brood_depth", 0.0)) + worst
+	# ants in ants
+	for i in ants.size():
+		var oi: Vector3 = (ants[i].xf as Transform3D).origin
+		for j in range(i + 1, ants.size()):
+			if oi.distance_squared_to((ants[j].xf as Transform3D).origin) > 12.0:
+				continue
+			var d := _depth(sph[i], sph[j])
+			if d > BITE:
+				var ka := _kind(nv, ants[i])
+				var kb := _kind(nv, ants[j])
+				_worst(tally, "ant", d, oi.lerp((ants[j].xf as Transform3D).origin, 0.5), "%s + %s (gap ahead %.2f / %.2f, narrow %s)" % [ka, kb,
+					float(ants[i].get("fgap", 1.0)), float(ants[j].get("fgap", 1.0)), ants[i].get("narrow", false)])
+				var key := "in ant: %s + %s" % ([ka, kb] if ka < kb else [kb, ka])
+				tally[key] = int(tally.get(key, 0)) + 1
+				tally.in_ant = int(tally.get("in_ant", 0)) + 1
+				tally.in_ant_depth = float(tally.get("in_ant_depth", 0.0)) + d
+	# feet in the air (standing ants: a walking ant lifts its feet anyway)
+	for m in ants:
+		if float(m.get("mv", 0.0)) > 0.3 or float(m.get("over", 0.0)) > 0.1:
+			continue
+		var x: Transform3D = m.xf
+		var up := x.basis.y.normalized()
+		var free := 0
+		var front := 0
+		for k in FEET.size():
+			var f: Vector3 = x * (FEET[k] as Vector3)
+			var ground := false
+			for h in [0.05, 0.2, 0.35, 0.5]:          # (the ground below the foot)
+				if nv._density_at(f - up * h) >= 0.5:
+					ground = true
+					break
+			if not ground and not _on_body(nv, f, up, m):
+				free += 1
+				if k < 2:
+					front += 1
+		if front == 2 or free > 2:
+			_worst(tally, "feet", float(free), x.origin, "%s, %d feet free" % [_kind(nv, m), free])
+			var key := "feet in the air: %s%s" % [_kind(nv, m), " (front)" if front == 2 else ""]
+			tally[key] = int(tally.get(key, 0)) + 1
+			tally.feet_air = int(tally.get("feet_air", 0)) + 1
+
+
+## The worst case of each kind this frame (where, how deep, what): for --follow-bodies to look at.
+static func _worst(tally: Dictionary, kind: String, depth: float, at: Vector3, what: String) -> void:
+	var w: Dictionary = tally.get("worst", {})
+	if not w.has(kind) or float(w[kind][0]) < depth:
+		w[kind] = [depth, at, what]
+	tally.worst = w
+
+
+## Whether a foot at f rests on something other than soil: another ant's back, or the brood.
+static func _on_body(nv, f: Vector3, up: Vector3, m: Dictionary) -> bool:
+	for o in nv._mates:
+		if is_same(o, m) or not o.has("xf") or (o.xf as Transform3D).origin.distance_squared_to(f) > 6.0:
+			continue
+		for s in _ant_spheres(o.xf):
+			if (s[0] as Vector3).distance_to(f - up * 0.1) < float(s[1]) + 0.15:
+				return true
+	for b in nv._brood_near(f):
+		if nv._brood_offset(f, b).length() < float(b[3] if b.size() > 3 else b[1]) + 0.5:
+			return true
+	return false
+
+
+static func report(tally: Dictionary) -> String:
+	var n := maxf(1.0, float(tally.get("ant_frames", 0)))
+	var lines := ["bodies over %d frames, %d ant-frames on screen:" % [int(tally.get("frames", 0)), int(n)],
+		"  ant in brood %.2f%% of ant-frames (mean depth %.2f)" % [100.0 * float(tally.get("in_brood", 0)) / n, float(tally.get("in_brood_depth", 0.0)) / maxf(1.0, float(tally.get("in_brood", 0)))],
+		"  ant in ant %.2f pairs per 100 ant-frames (mean depth %.2f)" % [100.0 * float(tally.get("in_ant", 0)) / n, float(tally.get("in_ant_depth", 0.0)) / maxf(1.0, float(tally.get("in_ant", 0)))],
+		"  feet in the air %.2f%% of ant-frames" % [100.0 * float(tally.get("feet_air", 0)) / n]]
+	var keys := tally.keys().filter(func(k): return String(k).contains(":"))
+	keys.sort_custom(func(a, b): return int(tally[a]) > int(tally[b]))
+	for k in keys:
+		lines.append("    %5d  %s" % [int(tally[k]), k])
+	return "\n".join(lines)

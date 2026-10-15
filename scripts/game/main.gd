@@ -12,6 +12,7 @@ extends "res://scripts/dev/dev_tools.gd"
 ##       --orbit=<n> [--orbit-pitch] (nest, after --seq: the last moment from n sides)   --follow-fit[=over|turn] [--side]
 ##       --follow-pushed   --follow-soil (nest: follow an ant on a slope / climbing over / bending round a turn / pushed /
 ##       with its body in the soil)   --select[=eggs|larvae|pupae] (nest: click one ant / one item of brood)   --pick-check (nest: do clicks pick the ant clicked)
+##       --bodies (with --seq, nest: bodies inside one another, feet in the air - dev/body_check.gd)
 ##       --trace (with --seq, nest: print who is by the queen each frame: role, activity, rest, position)   --trace-mates (every nestmate each frame)   --pops (with --seq: print ants that jump between frames)
 ##       --at-ant=<i>|walker|act2|act9|act10 (outworld: look at a forager, or one busy at that kind of food)   --at-food=<kind> (drop one and look at it)
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)   --newcolony   --fridge

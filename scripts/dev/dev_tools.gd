@@ -361,6 +361,17 @@ func _take_shot() -> void:
 				await get_tree().process_frame
 				if _opts.has("pops"):
 					_count_pops()
+				if _opts.has("bodies") and mode == "nest":
+					_bodies.worst = {}
+					BodyCheck.measure(nest_view, _bodies)
+					# (--follow-bodies=ant|brood|feet: the camera on the worst case of that kind, held a while)
+					var fw: Array = (_bodies.worst as Dictionary).get(_opts.get("follow-bodies", ""), [])
+					if not fw.is_empty() and (_bodies_at == Vector3.INF or float(fw[0]) > _bodies_d * 1.5 or k % 4 == 0 and i == 0):
+						_bodies_at = fw[1]
+						_bodies_d = fw[0]
+						nest_view.target_t = _bodies_at
+						nest_view.target = _bodies_at
+						print("  follow %s: %.2f %s at %s" % [_opts["follow-bodies"], fw[0], fw[2], fw[1]])
 				if _watch_food != null and mode == "outworld" and sim.foods.has(_watch_food):
 					var fp2: Vector2 = _watch_food.pos
 					outworld.target_t = Vector3(fp2.x, 0, fp2.y) * outworld.U
@@ -526,6 +537,8 @@ func _take_shot() -> void:
 					await get_tree().process_frame
 				await RenderingServer.frame_post_draw
 				get_viewport().get_texture().get_image().save_png(path.get_basename() + "_o%d.png" % j)
+		if _opts.has("bodies") and mode == "nest":
+			print(BodyCheck.report(_bodies))
 		if _opts.has("pops") and mode == "nest" and _jit_frames > 0:
 			var secs := _jit_frames / 60.0
 			print("jitter: %d turn flicks, %d bobs in %.0f ant-seconds (%.2f / %.2f per ant-minute)" % [_jit_turns, _jit_bobs, secs,
@@ -544,6 +557,10 @@ func _take_shot() -> void:
 	get_tree().quit()
 
 
+const BodyCheck := preload("res://scripts/dev/body_check.gd")
+var _bodies := {}                 # (--bodies: bodies inside one another, see body_check.gd)
+var _bodies_at := Vector3.INF
+var _bodies_d := 0.0
 var _pushed = null                # (--follow-pushed: the ant being watched)
 var _pushed_said = null
 var _pop_prev := []
