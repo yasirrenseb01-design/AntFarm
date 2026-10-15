@@ -331,6 +331,8 @@ func _take_shot() -> void:
 					counts[key + " inst"] = counts.get(key + " inst", 0) + nd.multimesh.instance_count
 				counts[key] = counts.get(key, 0) + 1
 		print("visible geometry: ", counts)
+		print("memory: %.0f MB (game)  video %.0f MB" % [Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
+			Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
 		print("engine: process %.1f ms  draw calls %d  objects %d  primitives %d" % [Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0,
 			Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
 			Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)])
