@@ -16,7 +16,7 @@ const CLIMB_PARTS := [Vector3(0.85, 0.4, 0.27), Vector3(0.2, 0.38, 0.22), Vector
 ## height after the two bodies had met, lower than the other's back (the gaster is ~0.8 high, it was lifted ~0.6):
 ## it came up through the other's body; on the brood only its middle was raised, its head and gaster were in the
 ## larvae. `tr` is where it is drawn before climbing; returns it raised and tipped.
-func _climb(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
+func _climb(m: Dictionary, tr: Transform3D, md: float, at: float) -> Transform3D:
 	var want := 0.0
 	var tip := 0.0
 	var up := tr.basis.y.normalized()
@@ -27,18 +27,22 @@ func _climb(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 	# ants climbing over one another, each against all those round it, cost ~5 ms a frame every frame)
 	m.climb_t = float(m.get("climb_t", 1.0)) + md
 	if on_ant and float(m.climb_t) < 0.066 and m.has("cw"):
-		return _climb_ease(m, tr, md, (m.cw as Vector2).x, (m.cw as Vector2).y)
+		return _climb_ease(m, tr, at, (m.cw as Vector2).x, (m.cw as Vector2).y)
 	# (by the brood, as it was a frame or two ago: two frames in three it keeps that - most stand still there)
 	if not on_ant and int(m.get("bc_gen", -1)) == _brood_gen and (_mate_frame + int(m.get("wid", 0))) % 3 != 0:
-		return _climb_ease(m, tr, md, (m.cw as Vector2).x, (m.cw as Vector2).y)
+		return _climb_ease(m, tr, at, (m.cw as Vector2).x, (m.cw as Vector2).y)
 	m.climb_t = 0.0
 	if on_ant:
-		# over the one it climbs onto and any other beside it (in a crowd its body came down into a neighbour of
-		# the one it was on): the bodies on the same surface (not one on a wall), not those up on another's back
+		# over the one it climbs onto, and once up on its back any other beside it (in a crowd its body came down into
+		# a neighbour of the one it was on) - not before: a resting neighbour pressed against it lifted it straight up
+		# before its head had reached the one it climbs; the bodies on the same surface (not one on a wall), not those
+		# up on another's back
+		var all_round := float(m.get("over", 0.0)) > 0.3
 		var key := Vector3i(floori(tr.origin.x / 3.0), floori(tr.origin.y / 3.0), floori(tr.origin.z / 3.0))
 		for off in _NEAR:
 			for q in _near_bins.get(key + off, []):
-				if is_same(q, m) or not q.has("xf") or is_same(q.get("over_on"), m) or float(q.get("over", 0.0)) > 0.1 and not is_same(q, o):
+				if is_same(q, m) or not q.has("xf") or is_same(q.get("over_on"), m) or float(q.get("over", 0.0)) > 0.1 and not is_same(q, o) \
+						or not all_round and not is_same(q, o):
 					continue
 				var qx: Transform3D = q.xf
 				if qx.origin.distance_squared_to(tr.origin) < 11.0 and qx.basis.y.normalized().dot(up) > 0.7:
@@ -72,37 +76,65 @@ func _climb(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 		want = lt.x
 		tip = lt.y
 	m.cw = Vector2(want, tip)
-	return _climb_ease(m, tr, md, want, tip)
+	return _climb_ease(m, tr, at, want, tip)
 
 
-## `tr` raised by `want` and tipped by `tip` (see _climb), eased.
-func _climb_ease(m: Dictionary, tr: Transform3D, md: float, want: float, tip: float) -> Transform3D:
-	if want <= 0.0 and float(m.get("over", 0.0)) <= 0.0 and float(m.get("over_tip", 0.0)) == 0.0:
-		m.over_w = 0.0
-		return tr                             # (by the brood but clear of it: nothing to ease)
-	# (the bodies under it shift a little every frame - their own steps, pushes, the order they are drawn in: the
-	# height it needs is filtered first, else it bobbed up and down on the other's back)
-	var w0 := float(m.get("over_w", want))
-	var wf := want if want > w0 + 0.25 else lerpf(w0, want, 1.0 - exp(-14.0 * md))
-	m.over_w = wf
+## `tr` raised by `want` and tipped by `tip` (see _climb), eased in the ants' own time `at` (slowed with the clock
+## below 1x and in the cold, as their steps are: at 0.2x it rose at the full rate while it walked on five times slower,
+## and looked pushed up). The height and the tip move like a body, not a lerp toward a target that jumps: they gather
+## speed and settle (critically damped), so climbing on and stepping down flow - the user asked for smoother poses,
+## 2026-10-16. Up a little quicker than down (its head must come up onto the other's back as it reaches it).
+func _climb_ease(m: Dictionary, tr: Transform3D, at: float, want: float, tip: float) -> Transform3D:
 	var ov0 := float(m.get("over", 0.0))
-	# (up as fast as the head rises onto the other's back - it must never be inside it - down more gently: each
-	# eased, and at most a quick step up or down a frame)
-	var ov := lerpf(ov0, wf, 1.0 - exp(-(16.0 if wf > ov0 else 5.0) * md))
-	ov = move_toward(ov0, ov, (6.0 if wf > ov0 else 2.5) * md)
-	if absf(ov - wf) < 0.005:
-		ov = wf
+	var tp0 := float(m.get("over_tip", 0.0))
+	if want <= 0.0 and ov0 <= 0.0 and tp0 == 0.0:
+		m.over_v = 0.0
+		m.tip_v = 0.0
+		return tr                             # (nothing under it: nothing to ease)
+	# (over a nestmate gently; onto the brood - which lies still, and is low - more briskly, else it walked into the
+	# larvae before it was up)
+	var brood_only: bool = not m.has("over_on")
+	var hv := _spring(ov0, float(m.get("over_v", 0.0)), want, (20.0 if brood_only else 13.0) if want > ov0 else 6.0, at)
+	# (never more than a quarter of a unit below what it needs - a body plainly inside the one under it - however
+	# smooth: then it keeps up)
+	var sink := 0.12 if brood_only else 0.25
+	if hv.x < want - sink:
+		hv = Vector2(want - sink, maxf(hv.y, 0.0))
+	var ov := maxf(hv.x, 0.0)
 	m.over = ov
-	m.over_tip = lerpf(float(m.get("over_tip", 0.0)), tip if want > 0.0 else 0.0, 1.0 - exp(-8.0 * md))
-	if ov <= 0.0 and absf(float(m.over_tip)) < 0.005:
+	m.over_v = hv.y if hv.x > 0.0 else 0.0
+	# (its legs step it up and down: rising onto the other's back - or stepping down off it - with its legs still, it
+	# looked lifted by something under it; the height climbed drives the gait as distance walked does)
+	var rise := absf(ov - ov0)
+	if rise > 0.0005 and at > 0.0:
+		var sz := float(m.size)
+		m.gait = fmod(float(m.get("gait", 0.0)) + rise * 1.6 / (AntModel.stride_len(float(m.get("stride", 1.0))) * sz) * TAU, TAU * 64.0)
+		m.mv = maxf(float(m.get("mv", 0.0)), clampf(rise / at / 0.4, 0.0, 1.0))
+	var tv := _spring(tp0, float(m.get("tip_v", 0.0)), tip if want > 0.0 else 0.0, 12.0 if brood_only else 7.0, at)
+	m.over_tip = tv.x
+	m.tip_v = tv.y
+	if ov <= 0.002 and absf(tv.x) < 0.005 and absf(tv.y) < 0.02 and want <= 0.0:
+		m.over = 0.0
 		m.over_tip = 0.0
+		m.over_v = 0.0
+		m.tip_v = 0.0
 		if m.has("over_on") and float(m.get("over_hold", 0.0)) <= 0.0:
 			m.erase("over_on")
 		return tr
 	var b2 := tr.basis
-	if absf(float(m.over_tip)) > 0.005:
+	if absf(float(m.over_tip)) > 0.002:
 		b2 = b2.rotated(tr.basis.z.normalized(), float(m.over_tip))
 	return Transform3D(b2, tr.origin + tr.basis.y.normalized() * ov)
+
+
+## One step `dt` of a critically damped spring at x (speed v) toward `target`, stiffness w (1/s): [x, v] after it.
+static func _spring(x: float, v: float, target: float, w: float, dt: float) -> Vector2:
+	if dt <= 0.0:
+		return Vector2(x, v)
+	var e := exp(-w * dt)
+	var d := x - target
+	var c := v + w * d
+	return Vector2(target + (d + c * dt) * e, (v - w * c * dt) * e)
 
 
 ## A walking ant looks ahead: another body in its way (a nestmate walking ahead of it the same way, one coming the

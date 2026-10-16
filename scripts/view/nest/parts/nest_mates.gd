@@ -312,7 +312,9 @@ func _update_ants(delta: float) -> void:
 			var o: Vector3 = x.origin
 			var f: Vector3 = x.basis.x.normalized() * (0.7 * float(m.size))
 			m.d0 = o + f                 # head-thorax and gaster discs, worked out once per frame
-			m.d1 = o - f
+			# (the gaster's disc at its middle, -0.84 of a body: at -0.7 its tip - out to -1.5 - was outside it, and
+			# resting ants lay with a head in a nestmate's gaster tip)
+			m.d1 = o - f * 1.2
 			var key := Vector3i(floori(o.x / 3.0), floori(o.y / 3.0), floori(o.z / 3.0))
 			if not near.has(key):
 				near[key] = []
@@ -466,7 +468,7 @@ func _update_ants(delta: float) -> void:
 		# body as it lies on the ground - what is under it is drawn so (raised before, the ground fit then lowered it
 		# into them)
 		var tcl := Time.get_ticks_usec()
-		tr = _climb(m, tr, md)
+		tr = _climb(m, tr, md, madt)
 		us_climb += Time.get_ticks_usec() - tcl
 		us_apart += Time.get_ticks_usec() - tc
 		m.xf = tr

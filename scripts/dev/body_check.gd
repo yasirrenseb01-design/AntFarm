@@ -148,6 +148,10 @@ static func measure(nv, tally: Dictionary) -> void:
 					key = key.substr(0, key.find(", over")) + " " + _parts(cs, us)
 					_worst(tally, "climb", d, (c.xf as Transform3D).origin, "%s | want %s over %.2f hs %.2f clr %.2f gfit %.2f" % [key, c.get("cw"), float(c.get("over", 0.0)),
 						float(c.get("hs", 0.0)), float(c.get("clr", 0.0)), (c.get("gfit", PackedFloat32Array([0])) as PackedFloat32Array)[0]])
+				if ka == "still" and kb == "still":
+					key += " " + _parts(sph[i], sph[j]) + " sep %.1f/%.1f push %.2f/%.2f" % [(ants[i].get("sep", Vector3.ZERO) as Vector3).length(), (ants[j].get("sep", Vector3.ZERO) as Vector3).length(),
+						(ants[i].get("ka_push", Vector3.ZERO) as Vector3).length(), (ants[j].get("ka_push", Vector3.ZERO) as Vector3).length()]
+					key = key.substr(0, key.length() - 2) if false else key
 				if ka == "walking" and kb == "walking":
 					# (which way the two are going: one behind the other, meeting head on, or across; in a narrow tunnel?)
 					var fa: Vector3 = (ants[i].xf as Transform3D).basis.x.normalized()

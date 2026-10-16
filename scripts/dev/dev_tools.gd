@@ -410,7 +410,7 @@ func _take_shot() -> void:
 						for m in nest_view._mates:
 							var g: PackedFloat32Array = m.get("gfit", PackedFloat32Array())
 							var pick: bool = absf(float(m.get("lat", 0.0))) > 0.2 if _opts["follow-fit"] == "turn" else \
-								m.has("over_on") if climbs else \
+								(m.has("over_on") and float(m.get("over", 0.0)) > 0.05) if climbs else \
 								(g.size() == 5 and absf(g[1]) + absf(g[2]) + absf(g[3]) > float(_opts.get("fit-min", "0.35")))
 							if pick and m.has("xf") and (climbs or nest_view._visible((m.xf as Transform3D).origin)):
 								fm = m
