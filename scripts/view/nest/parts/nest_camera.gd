@@ -10,22 +10,30 @@ func snap_camera() -> void:
 
 
 func _ease_camera(delta: float) -> void:
-	# keyboard: WASD / arrows move, Q/E turn, R/F tilt, +/- zoom
-	var mv := Vector2.ZERO
+	# keyboard: W/S forward and back, A/D (and the arrows) sideways, Q/E down and up, Z/C turn, R/F tilt, +/- zoom
+	# (user, 2026-10-16: W/S used to move up and down, Q/E to turn)
+	var mv := Vector3.ZERO
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
 		mv.x -= 1
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		mv.x += 1
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		mv.y += 1
+		mv.z += 1
 	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
-		mv.y -= 1
-	if mv != Vector2.ZERO:
-		var right := _cam.global_transform.basis.x
-		target_t += (right * mv.x + Vector3.UP * mv.y) * dist_t * 0.9 * delta
-	if Input.is_key_pressed(KEY_Q):
-		yaw_t += 1.4 * delta
+		mv.z -= 1
 	if Input.is_key_pressed(KEY_E):
+		mv.y += 1
+	if Input.is_key_pressed(KEY_Q):
+		mv.y -= 1
+	if mv != Vector3.ZERO:
+		var right := _cam.global_transform.basis.x
+		right.y = 0.0
+		right = right.normalized()
+		var fwd := Vector3.UP.cross(right).normalized()        # (level, the way the camera looks)
+		target_t += (right * mv.x + fwd * mv.z + Vector3.UP * mv.y) * dist_t * 0.9 * delta
+	if Input.is_key_pressed(KEY_Z):
+		yaw_t += 1.4 * delta
+	if Input.is_key_pressed(KEY_C):
 		yaw_t -= 1.4 * delta
 	if Input.is_key_pressed(KEY_R):
 		pitch_t = clampf(pitch_t + 0.9 * delta, -0.2, 1.45)

@@ -61,9 +61,14 @@ func _ease_camera(delta: float) -> void:
 		mv.y -= 1
 	if mv != Vector2.ZERO:
 		target_t += (_right() * mv.x + _forward() * mv.y) * dist_t * 0.9 * delta
+	# (Q/E the camera down and up - nearer the ground or farther - and Z/C turn: the same keys as in the nest)
 	if Input.is_key_pressed(KEY_Q):
-		yaw_t += 1.4 * delta
+		zoom_by(1.0 - 1.2 * delta)
 	if Input.is_key_pressed(KEY_E):
+		zoom_by(1.0 + 1.2 * delta)
+	if Input.is_key_pressed(KEY_Z):
+		yaw_t += 1.4 * delta
+	if Input.is_key_pressed(KEY_C):
 		yaw_t -= 1.4 * delta
 	if Input.is_key_pressed(KEY_R):
 		pitch_t = clampf(pitch_t + 0.9 * delta, 0.12, 1.54)
