@@ -1,4 +1,6 @@
 extends "res://scripts/dev/dev_tools.gd"
+const DesktopMode := preload("res://scripts/game/desktop_mode.gd")
+var desktop                    # desktop mode: the nest as the wallpaper (PART 11)
 ## Entry point. Owns the simulation, the views, the camera and the HUD. Top of the chain:
 ## parts/main_base <- parts/main_camera <- dev/dev_tools <- main.
 ##
@@ -21,6 +23,9 @@ extends "res://scripts/dev/dev_tools.gd"
 ##   --scenario=keeper|wild (indoor formicarium, or a plot of ground with seasons and predators)
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
 ##   --testsave=<name> [--slot=<year>]   open a colony grown by tests/year_run.gd (read-only)
+##   --desktop   start as the desktop wallpaper (desktop_mode.gd; back to the game from the tray icon)
+##       [--no-cover-check] (dev: draw even under a full-screen app)   --quit-after=<s> (dev: close after s seconds)
+##       --gpu=<i> (dev: started again with D3D12 on that GPU: 1 = the RTX here)   --desktop-after=<s> (dev: as if the button were pressed)
 
 
 func _ready() -> void:
@@ -104,6 +109,11 @@ func _ready() -> void:
 		_settings.merge(st, true)
 		Store.save_settings(_settings))
 	hud.save_requested.connect(_save_now)
+	desktop = DesktopMode.new()
+	add_child(desktop)
+	desktop.setup(self)
+	hud.desktop_requested.connect(_enter_desktop)
+	desktop.failed.connect(func(msg): hud.show_report("โหมดเดสก์ท็อป", msg))
 	hud.speed_changed.connect(func(v):
 		speed = v
 		# at fast-forward each ant moves every few ticks with a longer stride to keep frame time flat
@@ -113,7 +123,7 @@ func _ready() -> void:
 	camera.position = _pos_t
 	camera.zoom = Vector2.ONE * _zoom_t
 	var start_view: String = _opts.get("view", _settings.get("view", "outworld"))
-	if start_view != "nest":          # a screenshot of the nest sets its own view below
+	if start_view != "nest" or not _opts.has("shot"):          # (a screenshot of the nest sets its own view below)
 		hud._apply_mode(start_view)
 		_set_mode(start_view)
 
@@ -125,6 +135,17 @@ func _ready() -> void:
 		_show_catchup_overlay()
 	if _opts.has("shot"):
 		_take_shot()
+	elif _opts.has("desktop-after"):
+		get_tree().create_timer(float(_opts["desktop-after"])).timeout.connect(_enter_desktop)    # (dev: as the button does, mid-game)
+	elif _opts.has("desktop"):
+		_enter_desktop.call_deferred()          # (started as the wallpaper: --desktop)
+		desktop.check_cover = not _opts.has("no-cover-check")
+	if _opts.has("quit-after") and not _opts.has("shot"):
+		# (dev: close as the keeper would after that many seconds - desktop mode checked on the real desktop)
+		get_tree().create_timer(float(_opts["quit-after"])).timeout.connect(func():
+			_notification(NOTIFICATION_WM_CLOSE_REQUEST)
+			if not desktop.on:
+				get_tree().quit())
 
 
 func _process(delta: float) -> void:
@@ -160,6 +181,8 @@ func _process(delta: float) -> void:
 		if delta > 0.0:
 			hud.real_speed = lerpf(hud.real_speed, done / delta / 60.0, minf(1.0, 2.0 * delta))
 	t0 = _pt("sim", t0)
+	if desktop != null and desktop.hidden:
+		return                 # (the wallpaper, under a full-screen app: nothing to draw - the colony lives on)
 	if mode == "surface":
 		_ease_surface(delta)
 		world.refresh(delta, speed)
@@ -179,6 +202,37 @@ func _process(delta: float) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_save_now()
+		if desktop != null:
+			desktop.close()             # (as the wallpaper: out of the wallpaper layer first, then it quits)
+
+
+## The nest as the desktop wallpaper (desktop_mode.gd; what went wrong comes back by its `failed` signal). The
+## wallpaper layer shows only what Direct3D 12 draws (Vulkan presents straight to the screen, past the layer: nothing
+## showed, tested 2026-10-16), and the game draws with Vulkan (D3D12 lost the device on the Intel UHD here): so it is
+## saved and started again with D3D12, as the wallpaper.
+func _enter_desktop() -> void:
+	if OS.get_name() == "Windows" and RenderingServer.get_current_rendering_driver_name() != _opts.get("desk-driver", "d3d12"):
+		if not desktop.available():
+			desktop.enter()                       # (says why it cannot)
+			return
+		_save_now()
+		var args := []
+		if not OS.has_feature("template"):
+			args += ["--path", ProjectSettings.globalize_path("res://")]      # (running from the editor build)
+		var drv: String = _opts.get("desk-driver", "d3d12")             # (dev: other drivers tried)
+		args += ["--rendering-driver", drv, "--rendering-method", "gl_compatibility" if drv.begins_with("opengl3") else "mobile"]
+		if _opts.has("gpu"):
+			args += ["--gpu-index", str(_opts["gpu"])]                       # (dev: the RTX, not the Intel UHD)
+		args.append("--")
+		args.append("--desktop")
+		for k in ["testsave", "slot", "sandbox", "no-cover-check", "quit-after", "view", "gpu", "desk-driver"]:
+			if _opts.has(k):
+				args.append("--%s=%s" % [k, _opts[k]])
+		OS.create_process(OS.get_executable_path(), args)
+		# (quit after a moment: at once, in the first frames, the views' threads were still starting and it crashed)
+		get_tree().create_timer(2.0).timeout.connect(func(): get_tree().quit())
+		return
+	desktop.enter()
 
 
 func _unhandled_input(e: InputEvent) -> void:

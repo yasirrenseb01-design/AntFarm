@@ -72,6 +72,14 @@ func _build_top(root: Control) -> void:
 	fwrap.add_child(mine)
 	row.add_child(fwrap)
 
+	# the nest as the desktop wallpaper, behind the icons (back: the ant icon in the system tray)
+	var desk := _button("วอลเปเปอร์", false)
+	desk.tooltip_text = "ให้รังมดเป็นภาพพื้นหลังเดสก์ท็อป อยู่หลังไอคอน\nกลับเข้าเกม: คลิกไอคอนมดที่ถาดระบบ (มุมขวาล่าง)"
+	desk.pressed.connect(func(): desktop_requested.emit())
+	var dwrap := CenterContainer.new()
+	dwrap.add_child(desk)
+	row.add_child(dwrap)
+
 
 func _build_tools(root: Control) -> void:
 	var panel := PanelContainer.new()

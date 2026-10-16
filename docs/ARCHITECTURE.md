@@ -33,7 +33,7 @@
 ## โฟลเดอร์
 ```
 scripts/
-  game/        main.gd (จุดเริ่ม), save_store.gd, parts/ (main_base, main_camera)
+  game/        main.gd (จุดเริ่ม), save_store.gd, desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), parts/ (main_base, main_camera)
   dev/         dev_tools.gd (--shot, --selftest), ตัวเลือกบรรทัดคำสั่งอยู่หัว main.gd
   sim/         simulation.gd + parts/ (sim_base, sim_foragers, sim_enemies, sim_colony),
                ant.gd, climate.gd, nest_volume.gd (+ parts/nest_voxels, nest_chambers), pheromone_field.gd, species/
@@ -47,7 +47,7 @@ scripts/
                sounds.gd (เสียงเตือน), lofi.gd (เพลงพื้นหลังที่สร้างในโค้ด ทำในเธรดเบื้องหลัง)
 shaders/       ants/, creatures/, terrain/ (+ ground_h.gdshaderinc: ความสูงพื้นข้างนอก ใช้ร่วมพื้นกับสัตว์), plants/
 assets/models/ ants/, prey/, plants/   (ไฟล์ .antmesh/.json ที่ Blender สร้าง — ห้ามแก้มือ ให้รันสคริปต์ Blender ใหม่)
-tools/         build.ps1 (สร้าง + ลบ build เก่าเอง), check.ps1,
+tools/         build.ps1 (สร้าง + ลบ build เก่าเอง + คอมไพล์ AntDesk.exe), check.ps1, desktop/antdesk.cs (ตัวช่วย Win32 ของโหมดวอลเปเปอร์),
                blender/ (build_ant.py + ant/<ส่วน>.py, build_props.py + props/<ชนิด>.py, bl.py),
                dev/ (gd.sh เปิด Godot อย่างปลอดภัย, split_gd.py แยกไฟล์, strip.py รวมภาพต่อเนื่อง)
 tests/         save_test, migration_test (+ fixtures/save_vN), reach_test, real_save_test, rock_test, nest_debug,
@@ -121,3 +121,20 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
   `stats.brood_dead` = ไข่/ตัวอ่อน/ดักแด้ที่ตาย (เซฟเก่า: ยอดเดิมทั้งหมดเป็น `other`)
 - ไฟล์เซฟตัวอย่างของแต่ละรูปแบบอยู่ใน `tests/fixtures/` (สร้างจากโค้ดเวอร์ชันนั้น) — เปลี่ยนรูปแบบครั้งใหม่ให้เพิ่มไฟล์ของรูปแบบล่าสุดก่อนเปลี่ยน
 - ทดสอบโดยไม่แตะเซฟจริง: `--sandbox` ใช้ `user://sandbox/`
+
+## โหมดเดสก์ท็อป (PART 11)
+- `scripts/game/desktop_mode.gd` + ตัวช่วย `tools/desktop/antdesk.cs` → `build/AntDesk.exe` (คอมไพล์ด้วย csc ของ .NET Framework 4 ที่มากับ Windows,
+  ไม่ต้องติดตั้ง SDK) วางข้าง `AntFarm.exe`; เกมเรียก `attach <hwnd>` / `detach <hwnd>` / `covered` **ในเธรดเสมอ** — ถ้าเรียกบนเธรดหลัก
+  ตัวช่วยแก้หน้าต่างเกมข้ามโปรเซส Windows ส่งข้อความกลับมาที่เธรดหลักที่กำลังรอ = deadlock
+- Windows 11 24H2+ ("raised desktop": Progman มี `WS_EX_NOREDIRECTIONBITMAP`): หน้าต่างเกมเป็นลูกของ Progman แบบ layered ทึบ วางใต้
+  `SHELLDLL_DefView` (ไอคอน), WorkerW (วอลเปเปอร์เดิม) ล่างสุด — แบบเดียวกับ Lively; รุ่นเก่า: ลูกของ WorkerW; ข้อความ `0x052C` ต้องใช้ `0xD, 1`
+- **ต้องวาดด้วย Direct3D 12** — Vulkan, OpenGL, ANGLE มองไม่เห็นในชั้นนี้ (ทดสอบแล้ว 2026-10-16: Vulkan ทั้งแบบ layered/ไม่ layered/ใน WorkerW,
+  D3D12 เห็นทั้งบน Intel UHD และ RTX 3050) แต่เกมปกติวาดด้วย Vulkan (D3D12 บน Intel UHD การ์ดรีเซ็ตตัวในฉากหนัก): กดปุ่ม "วอลเปเปอร์"
+  เกมเซฟแล้ว**เปิดตัวเองใหม่** `--rendering-driver d3d12 --rendering-method mobile -- --desktop` (main.gd `_enter_desktop`) แล้วปิดตัวเก่า
+  หลัง 2 วินาที (ปิดทันทีตอนเพิ่งเปิดเกม = crash); ครั้งแรกที่ใช้ D3D12 คอมไพล์ shader นาน (เห็นหน้า Godot เป็นวอลเปเปอร์ก่อน)
+- มีแอปเปิดเต็มจอบัง (`covered` ทุก 2 วินาที ในเธรด): หยุดวาด (`render_loop_enabled`) และข้ามงานของภาพ แต่การจำลองเดินต่อ
+- บันทึกของโหมดนี้: `user://desktop_mode.log` (เปิดตัวใหม่แล้วไม่มี console)
+- ตรวจบนเดสก์ท็อปจริง: `--desktop --no-cover-check --quit-after=<s>` (หรือ `--desktop-after=<s>` เหมือนกดปุ่มกลางเกม) แล้ว**รอจน log บอกว่าเกาะแล้ว
+  + ~10 วินาที** ค่อยถ่ายจอขณะย่อหน้าต่าง (ผู้ใช้อนุญาตให้ย่อหน้าต่างชั่วคราว 2026-10-16); ก่อนรอบใหม่ให้แน่ใจว่าเกมรอบก่อนปิดแล้ว
+  (หน้าต่างที่ยังค้างอยู่ทับหน้าต่างใหม่) — `AntDesk.exe zorder` ดูลูกของ Progman, `info <hwnd>` ดูสถานะหน้าต่าง;
+  `AntDesk.exe snap/snapdwm` จับภาพที่ GPU วาดในหน้าต่างลูกไม่ได้ — ใช้ตรวจไม่ได้

@@ -16,6 +16,7 @@ signal colony_play(slot: int)
 signal settings_changed(settings: Dictionary)
 signal save_requested
 signal cam_action(action: String)
+signal desktop_requested               # the keeper wants the nest as the desktop wallpaper (game/desktop_mode.gd)
 
 const PANEL_W := 352.0
 const INK := Color("f1e6d6")

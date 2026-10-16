@@ -8,6 +8,12 @@ $version = (Select-String -Path "$root\project.godot" -Pattern 'config/version="
 $archived = "$root\build\versions\AntFarm-v$version.exe"
 $target = "$root\build\AntFarm.exe"
 New-Item -ItemType Directory -Force "$root\build\versions" | Out-Null
+# desktop mode's Win32 helper (tools/desktop/antdesk.cs), next to the game and its archived versions: built with the C#
+# compiler that comes with Windows (.NET Framework 4)
+$csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+& $csc /nologo /target:winexe /platform:x64 /r:System.Drawing.dll /r:System.Windows.Forms.dll /out:"$root\build\AntDesk.exe" "$root\tools\desktop\antdesk.cs"
+if ($LASTEXITCODE -ne 0) { throw "AntDesk.exe failed to build" }
+try { Copy-Item "$root\build\AntDesk.exe" "$root\build\versions\AntDesk.exe" -Force } catch {}
 & $godot --headless --path $root --export-release "Windows Desktop" $archived
 if (-not (Test-Path $archived)) { throw "export failed" }
 try {
