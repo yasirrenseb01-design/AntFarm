@@ -65,14 +65,14 @@ func _climb(m: Dictionary, tr: Transform3D, md: float, at: float) -> Transform3D
 				m.bc_gen = _brood_gen
 				m.bc_at = tr.origin
 				m.bc_f = tr.basis.x
-				m.bc = _need_lift(_climb_need(tr, _brood_spheres(tr.origin), up, _tends_brood(m)), float(m.size))
+				m.bc = _headroom(tr, up, _need_lift(_climb_need(tr, _brood_spheres(tr.origin), up, _tends_brood(m)), float(m.size)))
 			want = (m.bc as Vector2).x
 			tip = (m.bc as Vector2).y
 		else:
 			tends = _tends_brood(m)
 			unders.append_array(_brood_spheres(tr.origin))
 	if not unders.is_empty():
-		var lt := _need_lift(_climb_need(tr, unders, up, tends), float(m.size))
+		var lt := _headroom(tr, up, _need_lift(_climb_need(tr, unders, up, tends), float(m.size)))
 		want = lt.x
 		tip = lt.y
 	m.cw = Vector2(want, tip)
@@ -287,6 +287,30 @@ func _body_spheres(q: Dictionary) -> Array:
 ## From the rise each part needs (_climb_need): how far to raise the body and tip it (nose up +) - tipped along
 ## what it is over (the line from its gaster's need to its head's), then raised so that no part is in what is
 ## under it with that tip.
+## A lift and tip (_need_lift) cut down to the room there is above the body drawn at `tr`: its head, thorax and
+## gaster, raised and tipped so, must not go up into the soil - in a low tunnel an ant climbing over a nestmate or
+## onto a larva was lifted into the ceiling (one seemed to float up into the soil, user 2026-10-16); there it
+## squeezes past as real ants do instead.
+func _headroom(tr: Transform3D, up: Vector3, lt: Vector2) -> Vector2:
+	if lt.x <= 0.0:
+		return lt
+	var s := tr.basis.x.length()
+	var want := lt.x
+	var sn := sin(lt.y)
+	while want > 0.0:
+		var clear := true
+		for i in [0, 1, 3]:
+			var p: Vector3 = CLIMB_PARTS[i]
+			var top: Vector3 = tr * Vector3(p.x, p.y, 0.0) + up * (want + p.x * s * sn + p.z * s + 0.05)
+			if _density_at(top) >= 0.5:
+				clear = false
+				break
+		if clear:
+			break
+		want -= 0.1
+	return Vector2(maxf(want, 0.0), lt.y if want > 0.0 else 0.0)
+
+
 static func _need_lift(need: Array, size: float) -> Vector2:
 	var a: Vector2 = need[0]
 	var b: Vector2 = need[need.size() - 1]

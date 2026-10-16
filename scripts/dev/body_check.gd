@@ -166,6 +166,24 @@ static func measure(nv, tally: Dictionary) -> void:
 				tally[key] = int(tally.get(key, 0)) + 1
 				tally.in_ant = int(tally.get("in_ant", 0)) + 1
 				tally.in_ant_depth = float(tally.get("in_ant_depth", 0.0)) + d
+	# bodies in the soil: the middle of its head, thorax or gaster in the soil (plainly buried, not a leg tip)
+	for i in ants.size():
+		var m: Dictionary = ants[i]
+		var buried := ""
+		for k in [0, 1, 3]:
+			if nv._density_at(sph[i][k][0]) >= 0.5:
+				buried += "HTWGt"[k]
+		if buried != "":
+			var key := "in soil: %s (%s)" % [_kind(nv, m), buried]
+			tally[key] = int(tally.get(key, 0)) + 1
+			tally.in_soil = int(tally.get("in_soil", 0)) + 1
+			var clr: Vector2 = nv._soil_clearance(m.xf, float(m.size), m.get("bend", Vector2.ZERO))
+			if _kind(nv, m) == "still":
+				_worst(tally, "soilstill", float(buried.length()) + randf() * 0.1, (m.xf as Transform3D).origin, "%s | rise %.2f stuck %d clr_t %.2f wall_n %d rest_dir %s act %d face %s settle %d | %s" % [buried,
+					clr.x, int(clr.y), float(m.get("clr_t", 0.0)), int(m.get("wall_n", 0)), m.get("rest_dir", Vector3.ZERO) != Vector3.ZERO, int(m.act),
+					(m.get("face", Vector3.INF) as Vector3) != Vector3.INF, (m.get("settle", []) as Array).size(), _why(m)])
+			_worst(tally, "soil", float(buried.length()), (m.xf as Transform3D).origin, "%s %s | rise %.2f stuck %d clr %.2f clr_own %.2f gfit %s tip %.2f | %s" % [_kind(nv, m),
+				buried, clr.x, int(clr.y), float(m.get("clr", 0.0)), float(m.get("clr_own", 0.0)), m.get("gfit"), float(m.get("over_tip", 0.0)), _why(m)])
 	# feet in the air (standing ants: a walking ant lifts its feet anyway)
 	for m in ants:
 		if float(m.get("mv", 0.0)) > 0.3 or float(m.get("over", 0.0)) > 0.1:
@@ -230,7 +248,8 @@ static func report(tally: Dictionary) -> String:
 			100.0 * float(tally.get("in_brood_deep", 0)) / n],
 		"  ant in ant %.2f pairs per 100 ant-frames (mean depth %.2f; deep %.2f)" % [100.0 * float(tally.get("in_ant", 0)) / n, float(tally.get("in_ant_depth", 0.0)) / maxf(1.0, float(tally.get("in_ant", 0))),
 			100.0 * float(tally.get("in_ant_deep", 0)) / n],
-		"  feet in the air %.2f%% of ant-frames" % [100.0 * float(tally.get("feet_air", 0)) / n]]
+		"  feet in the air %.2f%% of ant-frames" % [100.0 * float(tally.get("feet_air", 0)) / n],
+		"  body in the soil %.2f%% of ant-frames" % [100.0 * float(tally.get("in_soil", 0)) / n]]
 	var keys := tally.keys().filter(func(k): return String(k).contains(":"))
 	keys.sort_custom(func(a, b): return int(tally[a]) > int(tally[b]))
 	for k in keys:
