@@ -486,6 +486,7 @@ func _update_ants(delta: float) -> void:
 		# body as it lies on the ground - what is under it is drawn so (raised before, the ground fit then lowered it
 		# into them)
 		var tcl := Time.get_ticks_usec()
+		tr = _soil_push(m, tr, md)               # (out of the walls of a narrow bend: nest_contact)
 		tr = _climb(m, tr, md, madt)
 		us_climb += Time.get_ticks_usec() - tcl
 		us_apart += Time.get_ticks_usec() - tc

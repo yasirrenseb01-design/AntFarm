@@ -460,6 +460,20 @@ func _take_shot() -> void:
 						_pushed = sm
 						nest_view.target_t = (sm.xf as Transform3D).origin
 						nest_view.target = nest_view.target_t
+				if _opts.has("follow-wall") and mode == "nest":
+					# watch a walking nestmate being shifted out of a tunnel wall (nest_contact._soil_push), the same one
+					var wm = _pushed if _pushed != null and nest_view._mates.has(_pushed) else null
+					if wm == null:
+						for m in nest_view._mates:
+							if m.has("xf") and (m.get("soil_off", Vector3.ZERO) as Vector3).length() > 0.15 and float(m.get("mv", 0.0)) > 0.3:
+								wm = m
+								break
+					if wm != null:
+						_pushed = wm
+						nest_view.target_t = (wm.xf as Transform3D).origin
+						nest_view.target = nest_view.target_t
+						if i == 0:
+							print("  wall: shift %.2f turn %.2f in-soil %s" % [(wm.get("soil_off", Vector3.ZERO) as Vector3).length(), float(wm.get("soil_yaw", 0.0)), nest_view._ant_in_soil(wm)])
 				if _opts.has("follow-pushed") and mode == "nest":
 					# watch a nestmate being pushed aside (stepping aside on its legs), the same one while it lasts
 					var pm = _pushed if _pushed != null and nest_view._mates.has(_pushed) else null

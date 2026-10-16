@@ -210,6 +210,23 @@ static func measure(nv, tally: Dictionary) -> void:
 		if buried != "":
 			var key := "in soil: %s (%s)" % [_kind(nv, m), buried]
 			tally[key] = int(tally.get(key, 0)) + 1
+			var kd := _kind(nv, m)
+			if kd in ["walking", "waiting", "meeting"] and m.has("from"):
+				# (why: its drawn middle off its path, its heading off the way the path goes, in a narrow tunnel, its
+				# middle itself in the soil, its up off the cell's)
+				var x: Transform3D = m.xf
+				var pth: Vector3 = (m.from as Vector3).lerp(m.to, clampf(float(m.t), 0.0, 1.0))
+				var dirv: Vector3 = (m.to as Vector3) - (m.from as Vector3)
+				var off := ((x.origin + x.basis.y.normalized() * 0.4) - pth).length()
+				var ang := 0.0
+				if dirv.length() > 0.01:
+					ang = rad_to_deg(x.basis.x.normalized().angle_to(dirv.normalized()))
+				var so: Vector3 = m.get("soil_off", Vector3.ZERO)
+				var why := "%s narrow=%s soil-shift>%s soil-turn=%s up.y>%s mid-in-soil=%s near-ant=%s" % [kd, m.get("narrow", false),
+					"0.9" if so.length() > 0.9 else ("0.3" if so.length() > 0.3 else "0"), absf(float(m.get("soil_yaw", 0.0))) > 0.1,
+					"0.7" if x.basis.y.normalized().y > 0.7 else ("-0.3" if x.basis.y.normalized().y > -0.3 else "ceiling"),
+					nv._density_at(x.origin + x.basis.y.normalized() * 0.38) >= 0.5, float(m.get("fgap", 1.0)) < 1.0]
+				tally["why: " + why] = int(tally.get("why: " + why, 0)) + 1
 			tally.in_soil = int(tally.get("in_soil", 0)) + 1
 			var clr: Vector2 = nv._soil_clearance(m.xf, float(m.size), m.get("bend", Vector2.ZERO))
 			if _kind(nv, m) in ["climbing", "crossing"]:

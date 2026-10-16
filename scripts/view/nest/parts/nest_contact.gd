@@ -153,6 +153,138 @@ static func _spring(x: float, v: float, target: float, w: float, dt: float) -> V
 	return Vector2(target + (d + c * dt) * e, (v - w * c * dt) * e)
 
 
+## Out of the walls: its head, thorax or gaster in the soil - rounding a bend in a narrow tunnel its body, straight
+## and longer than the bend is wide, cut the corner (its drawn middle lags its path by up to a cell, and its heading the
+## way the path turns) - and it is shifted away from the soil and turned a little to lie along the tunnel: the soil's
+## slope at each part that is in it says which way is out, and how far. Kept and eased like the shift that keeps
+## nestmates apart (what still is in the soil is added on, and it relaxes once clear), so it does not tremble.
+## Walking ants were in the soil ~2,000 times per 4 test runs, waiting and meeting ones ~300 (user, 2026-10-16).
+const _SOIL_PTS := [Vector3(0.85, 0.4, 0.0), Vector3(0.2, 0.38, 0.0), Vector3(-0.85, 0.35, 0.0), Vector3(-1.2, 0.33, 0.0)]
+func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
+	if m.has("script") or md <= 0.0:
+		return tr
+	var up := tr.basis.y.normalized()
+	var off: Vector3 = m.get("soil_off", Vector3.ZERO)
+	var yaw := float(m.get("soil_yaw", 0.0))
+	# (looked at every other frame while it walks, every third standing still - keeping the shift it has between: ~2 ms
+	# a frame with 300 ants in a small nest, every frame for each)
+	var moving := float(m.get("mv", 0.0)) > 0.3
+	m.soil_t = float(m.get("soil_t", 0.0)) + md
+	var touching := off != Vector3.ZERO or yaw != 0.0
+	if float(m.soil_t) < (0.0 if moving and touching else (0.03 if moving else 0.05)):      # (walking against a wall: every frame; walking: every other)
+		if off == Vector3.ZERO and yaw == 0.0:
+			return tr
+		var tk := tr                             # (as it was shifted and turned last time)
+		if yaw != 0.0:
+			tk.basis = tk.basis.rotated(up, yaw)
+		tk.origin += off
+		return tk
+	var sdt := float(m.soil_t)              # (the time since it was last looked at: the easing below is over that)
+	m.soil_t = 0.0
+	var off0 := off
+	var yaw0 := yaw
+	var t2 := tr
+	if yaw != 0.0:
+		t2.basis = t2.basis.rotated(up, yaw)
+	t2.origin += off
+	var side := t2.basis.z.normalized()
+	var push := Vector3.ZERO
+	var torque := 0.0
+	var hits := 0
+	var bend: Vector2 = m.get("bend", Vector2.ZERO)
+	var lat := float(m.get("lat", 0.0))
+	for q0 in _SOIL_PTS:
+		var q: Vector3 = _bent(q0, bend, lat)
+		var c: Vector3 = t2 * q
+		if _density_at(c) < 0.45:
+			continue
+		var g := Vector3(_density_at(c + Vector3(0.2, 0, 0)) - _density_at(c - Vector3(0.2, 0, 0)),
+			_density_at(c + Vector3(0, 0.2, 0)) - _density_at(c - Vector3(0, 0.2, 0)),
+			_density_at(c + Vector3(0, 0, 0.2)) - _density_at(c - Vector3(0, 0, 0.2)))
+		# (out sideways or ahead/behind - along its up is the ground fit's - unless the soil is mostly above or below
+		# it: a low ceiling, or the floor of a bend rising into its head; then out that way too, at half the rate)
+		var gp := g - up * g.dot(up)
+		if gp.length_squared() < 0.25 * g.length_squared():
+			gp = gp + up * g.dot(up) * 0.5
+		g = gp
+		if g.length_squared() < 0.000001:
+			continue
+		var out := -g.normalized()
+		var d := 0.1
+		while d < 0.7 and _density_at(c + out * d) >= 0.5:
+			d += 0.1
+		push += out * d
+		torque += out.dot(side) * d * signf(q.x)
+		hits += 1
+	if hits > 0:
+		# (not toward a nestmate beside it: the shift that keeps them apart pushed it to the wall, this pushed it back,
+		# and the two together held it in the other's body - two passing in a tunnel walked through each other)
+		push /= float(hits)
+		var key := Vector3i(floori(t2.origin.x / 3.0), floori(t2.origin.y / 3.0), floori(t2.origin.z / 3.0))
+		for o2 in _NEAR:
+			for q in _near_bins.get(key + o2, []):
+				if is_same(q, m) or not q.has("xf") or float(q.get("over", 0.0)) > 0.1 or float(m.get("over", 0.0)) > 0.1:
+					continue
+				var to: Vector3 = (q.xf as Transform3D).origin - t2.origin
+				to -= up * to.dot(up)
+				var dist := to.length()
+				if dist < 0.01 or dist > 1.8 * float(m.size):
+					continue
+				var dirq := to / dist
+				var toward := push.dot(dirq)
+				if toward > 0.0:
+					push -= dirq * toward * clampf((1.8 * float(m.size) - dist) / (0.6 * float(m.size)), 0.0, 1.0)
+		# (add on what is still in the soil: the shift so far is already in t2; turned toward lying along the tunnel -
+		# head pushed one way, gaster the other: it turns, about the vertical through its middle)
+		var want := (off + push).limit_length(1.0)
+		if _density_at(tr.origin + want + up * 0.4) >= 0.5:
+			want *= 0.5                          # (never its middle into the soil instead)
+		off = off.lerp(want, 1.0 - exp(-25.0 * sdt))
+		yaw = clampf(lerpf(yaw, yaw - torque * 0.6, 1.0 - exp(-16.0 * sdt)), -0.8, 0.8)
+	else:
+		off *= pow(0.5, sdt / 0.35)                # (clear: it drifts back onto its path)
+		yaw *= pow(0.5, sdt / 0.35)
+		if off.length_squared() < 0.0001:
+			off = Vector3.ZERO
+		if absf(yaw) < 0.002:
+			yaw = 0.0
+	m.soil_off = off
+	m.soil_yaw = yaw
+	# (shifted or turned out of the wall, its legs step it there - as when a nestmate pushes it aside: it glided)
+	var moved := (off - off0).length() + absf(yaw - yaw0) * 1.1 * float(m.size)
+	if moved > 0.0005:
+		m.gait = fmod(float(m.get("gait", 0.0)) + moved / (AntModel.stride_len(float(m.get("stride", 1.0))) * float(m.size)) * TAU, TAU * 64.0)
+		m.mv = maxf(float(m.get("mv", 0.0)), clampf(moved / sdt / 0.5, 0.0, 1.0))
+	if off == Vector3.ZERO and yaw == 0.0:
+		return tr
+	var t3 := tr
+	if yaw != 0.0:
+		t3.basis = t3.basis.rotated(up, yaw)
+	t3.origin += off
+	return t3
+
+
+## A point of an ant's body (model units) where the shader draws it: the head turned at the neck (its bend, up +,
+## and into a turn by `lat`), the gaster at the waist (its resting curl less its bend, swung out by -0.8 lat) -
+## ant_core.gdshaderinc.
+static func _bent(q: Vector3, bend: Vector2, lat: float) -> Vector3:
+	if q.x > NECK.x:
+		var h := (Vector2(q.x, q.y) - NECK).rotated(bend.y) + NECK
+		return _yaw_at(Vector3(h.x, h.y, q.z), NECK.x, lat)
+	if q.x < WAIST.x:
+		var g := (Vector2(q.x, q.y) - WAIST).rotated(GASTER_CURL - bend.x) + WAIST
+		return _yaw_at(Vector3(g.x, g.y, q.z), WAIST.x, -0.8 * lat)
+	return q
+
+
+## q turned about the vertical through x = px by the shader's rot_y(a).
+static func _yaw_at(q: Vector3, px: float, a: float) -> Vector3:
+	if absf(a) < 0.001:
+		return q
+	var dx := q.x - px
+	return Vector3(px + cos(a) * dx + sin(a) * q.z, q.y, -sin(a) * dx + cos(a) * q.z)
+
+
 ## A walking ant looks ahead: another body in its way (a nestmate walking ahead of it the same way, one coming the
 ## other way or crossing its path, one resting there, a digger) and it slows, to a stop before it touches - it
 ## used to keep walking and only be pushed aside once the two were in each other, slower than it walked (in wide
