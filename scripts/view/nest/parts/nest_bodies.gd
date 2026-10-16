@@ -188,7 +188,8 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 			# (or anywhere, onto one that has stood in its way a while: see nest_contact._gap_ahead)
 			if (walking and (m.get("narrow", false) or o.get("narrow", false)) and (int(o.get("rest", 1)) > 0 or int(m.get("wid", 0)) > int(o.get("wid", 0))) \
 					or is_same(o, m.get("cross_on")) and float(m.get("cross_t", 0.0)) > 0.0) and not o.has("callow") \
-					and float(o.get("over", 0.0)) <= 0.1 and not is_same(o.get("over_on"), m):     # (no towers of ants; not onto one climbing over it)
+					and float(o.get("over", 0.0)) <= 0.1 and not is_same(o.get("over_on"), m) \
+					and float(m.get("no_climb_t", 0.0)) <= 0.0:     # (no towers of ants; not onto one climbing over it; not where there was no room to)
 				# (a little before the two bodies meet: it climbs on as its head reaches the other - _climb lifts each
 				# part of its body only once it is over the other's)
 				var lim := (reach + 0.5) * (reach + 0.5)
@@ -259,6 +260,8 @@ func _keep_apart(m: Dictionary, p: Vector3, near: Dictionary, delta: float) -> V
 		m.over_hold = 0.6
 	else:
 		m.over_hold = float(m.get("over_hold", 0.0)) - delta
+	if float(m.get("no_climb_t", 0.0)) > 0.0:
+		m.no_climb_t = float(m.no_climb_t) - delta
 	if m.has("cross_on"):
 		m.cross_t = float(m.get("cross_t", 0.0)) - delta
 		if float(m.cross_t) <= 0.0:

@@ -426,10 +426,10 @@ func _update_ants(delta: float) -> void:
 		# checked for a few ants a frame, each again once it has moved or turned a little
 		var ck: Vector3 = m.get("clr_at", Vector3.INF)
 		var cf: Vector3 = m.get("clr_f", Vector3.ZERO)
-		# (and now and then anyway: a resting ant nudged a little at a time by its neighbours never moved far enough at
+		# (and twice a second anyway: a resting ant nudged a little at a time by its neighbours never moved far enough at
 		# once to be checked again, and lay with its head in the soil - user, 2026-10-16)
 		m.clr_t = float(m.get("clr_t", 0.0)) + md
-		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.008 or int(m.get("clr_gen", -1)) != _soil_gen or float(m.clr_t) > 1.0 \
+		if clr_budget > 0 and (ck.x == INF or ck.distance_squared_to(tr.origin) > 0.008 or int(m.get("clr_gen", -1)) != _soil_gen or float(m.clr_t) > 0.5 \
 				or cf.dot(tr.basis.x) < 0.97 * cf.length() * tr.basis.x.length() or not m.get("gfit_still", true)):     # (or as it is still settling onto the ground)
 			clr_budget -= 1
 			m.clr_t = 0.0
@@ -445,11 +445,11 @@ func _update_ants(delta: float) -> void:
 			if still and clr_budget > 2 and (cl.y > 0 or float(m.get("over", 0.0)) < 0.05 and _feet_over_drop(tr) >= 4):
 				clr_budget -= 3
 				m.rest_dir = _free_heading(m, tr, 0.0)
-				# no way round lies clear here (its head or gaster in the soil whichever way it faces): checked twice,
+				# no way round lies clear here (its head or gaster in the soil whichever way it faces):
 				# it gets up and finds another spot to rest
 				if cl.y > 0 and m.rest_dir == Vector3.ZERO and m.rest > 0 and not m.carry:
 					m.wall_n = int(m.get("wall_n", 0)) + 1
-					if int(m.wall_n) >= 2:
+					if int(m.wall_n) >= 1:
 						m.wall_n = 0
 						m.act_left = 0.0
 						if not _settle(m) or (m.settle as Array).is_empty():

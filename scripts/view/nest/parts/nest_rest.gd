@@ -234,6 +234,7 @@ func _rise_to_clear(p: Vector3, up: Vector3) -> float:
 ## fraction before it is checked again).
 const NECK := Vector2(0.46, 0.39)            # the head's and the gaster's joints (model units: ant_core K x design)
 const WAIST := Vector2(-0.31, 0.36)
+const GASTER_CURL := 0.1                    # the gaster's resting curl (tip down) in shaders/ants/ant_core.gdshaderinc
 const BODY_PTS := [Vector3(0.9, 0.2, 0), Vector3(0, 0.2, 0), Vector3(-1.0, 0.2, 0), Vector3(0, 0.2, 0.3), Vector3(0, 0.2, -0.3)]
 
 
@@ -252,8 +253,10 @@ func _soil_clearance(tr: Transform3D, s: float, bend := Vector2.ZERO, head_free 
 		if i == 0 and bend.y != 0.0:
 			var hq := (Vector2(q.x, q.y) - NECK).rotated(bend.y) + NECK
 			q = Vector3(hq.x, hq.y, q.z)
-		elif i == 2 and bend.x != 0.0:
-			var gq := (Vector2(q.x, q.y) - WAIST).rotated(bend.x) + WAIST
+		elif i == 2:
+			# (the shader curls the gaster tip down 0.1 and lifts it by the bend: rot_z(0.1 - bend.x) about the waist -
+			# this turned it the other way, by +bend.x, so a gaster bent down into a dip was checked as raised)
+			var gq := (Vector2(q.x, q.y) - WAIST).rotated(GASTER_CURL - bend.x) + WAIST
 			q = Vector3(gq.x, gq.y, q.z)
 		var r := _rise_to_clear(tr * q, up)
 		if r < 0.0:

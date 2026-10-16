@@ -17,12 +17,31 @@ const FEET := [Vector3(0.9, 0.0, 1.0), Vector3(0.9, 0.0, -1.0), Vector3(0.1, 0.0
 	Vector3(-0.85, 0.0, 1.05), Vector3(-0.85, 0.0, -1.05)]
 
 
-static func _ant_spheres(xf: Transform3D, gaster_bend := 0.0) -> Array:
+## Its body as the shader draws it: the head turned at the neck by its bend (up +), the gaster at the waist by its
+## resting curl less its bend (nest_rest.NECK / WAIST / GASTER_CURL, ant_core.gdshaderinc).
+static func _ant_spheres(xf: Transform3D, bend := Vector2.ZERO, lat := 0.0) -> Array:
 	var out := []
 	var s := xf.basis.x.length()
-	for b in ANT_BODY:
-		out.append([xf * (b[0] as Vector3), float(b[1]) * s])
+	for k in ANT_BODY.size():
+		var c: Vector3 = ANT_BODY[k][0]
+		if k == 0:
+			var hq := (Vector2(c.x, c.y) - Vector2(0.46, 0.39)).rotated(bend.y) + Vector2(0.46, 0.39)
+			c = Vector3(hq.x, hq.y, c.z)
+			c = _yaw_about(c, 0.46, lat)                  # (turned at the neck into a bend: rot_y(lat))
+		elif k >= 3:
+			var gq := (Vector2(c.x, c.y) - Vector2(-0.31, 0.36)).rotated(0.1 - bend.x) + Vector2(-0.31, 0.36)
+			c = Vector3(gq.x, gq.y, c.z)
+			c = _yaw_about(c, -0.31, -0.8 * lat)          # (the gaster swung out round the bend: rot_y(-0.8 lat))
+		out.append([xf * c, float(ANT_BODY[k][1]) * s])
 	return out
+
+
+## p turned about the vertical through x = px by the shader's rot_y(a).
+static func _yaw_about(p: Vector3, px: float, a: float) -> Vector3:
+	if a == 0.0:
+		return p
+	var dx := p.x - px
+	return Vector3(px + cos(a) * dx + sin(a) * p.z, p.y, -sin(a) * dx + cos(a) * p.z)
 
 
 ## A larva as the nest view draws it (mesh_kit.larva, the same curve as nest_piles._larva_pts): seven spheres.
@@ -64,19 +83,32 @@ static func _depth(a: Array, b: Array) -> float:
 	return worst
 
 
+## Its sideways bend as the shader gets it (clock_z: in steps of 0.04, none under 0.02).
+static func _lat(m: Dictionary) -> float:
+	var l := float(m.get("lat", 0.0))
+	return 0.0 if absf(l) < 0.02 else clampf(roundf(l / 0.04), -10.0, 10.0) * 0.04
+
+
 ## What a nestmate is doing, for the tallies.
 static func _kind(nv, m: Dictionary) -> String:
 	if m.has("script"):
 		return "scripted"
 	if float(m.get("over", 0.0)) > 0.1 and m.has("over_on"):
 		return "climbing"
-	if nv._on_brood(m) or float(m.get("over", 0.0)) > 0.05:
-		return "crossing"                         # (up on the brood)
+	if float(m.get("over", 0.0)) > 0.05:
+		return "crossing"                         # (up on the brood: lifted onto it, not only on a cell by it)
 	if m.get("carry", false):
 		return "carrying"
 	var still: bool = float(m.get("mv", 0.0)) < 0.3
 	var tends: bool = nv._tends_brood(m)
-	return ("tending " if tends else "") + ("still" if still else "walking")
+	if still:
+		# resting where it stopped / held up by one in its way / stopped to meet, groom or feed
+		if int(m.get("act", 0)) in nv.STILL_ACTS:
+			return ("tending " if tends else "") + "meeting"
+		if int(m.get("rest", 0)) > 0 and (m.get("settle", []) as Array).is_empty():
+			return ("tending " if tends else "") + "resting"
+		return ("tending " if tends else "") + "waiting"
+	return ("tending " if tends else "") + "walking"
 
 
 static func measure(nv, tally: Dictionary) -> void:
@@ -101,7 +133,7 @@ static func measure(nv, tally: Dictionary) -> void:
 	tally.ant_frames = int(tally.get("ant_frames", 0)) + ants.size()
 	var sph := []
 	for m in ants:
-		sph.append(_ant_spheres(m.xf))
+		sph.append(_ant_spheres(m.xf, m.get("bend", Vector2.ZERO), _lat(m)))
 	# ants in the brood
 	for i in ants.size():
 		var m: Dictionary = ants[i]
@@ -148,7 +180,7 @@ static func measure(nv, tally: Dictionary) -> void:
 					key = key.substr(0, key.find(", over")) + " " + _parts(cs, us)
 					_worst(tally, "climb", d, (c.xf as Transform3D).origin, "%s | want %s over %.2f hs %.2f clr %.2f gfit %.2f" % [key, c.get("cw"), float(c.get("over", 0.0)),
 						float(c.get("hs", 0.0)), float(c.get("clr", 0.0)), (c.get("gfit", PackedFloat32Array([0])) as PackedFloat32Array)[0]])
-				if ka == "still" and kb == "still":
+				if ka == "resting" and kb == "resting":
 					key += " " + _parts(sph[i], sph[j]) + " sep %.1f/%.1f push %.2f/%.2f" % [(ants[i].get("sep", Vector3.ZERO) as Vector3).length(), (ants[j].get("sep", Vector3.ZERO) as Vector3).length(),
 						(ants[i].get("ka_push", Vector3.ZERO) as Vector3).length(), (ants[j].get("ka_push", Vector3.ZERO) as Vector3).length()]
 					key = key.substr(0, key.length() - 2) if false else key
@@ -160,6 +192,8 @@ static func measure(nv, tally: Dictionary) -> void:
 					var how := "same way" if dd > 0.5 else ("head on" if dd < -0.5 else "across")
 					var nar: bool = ants[i].get("narrow", false) or ants[j].get("narrow", false)
 					key += " - %s%s" % [how, ", narrow" if nar else ""]
+					if ants[i].has("over_on") or ants[j].has("over_on"):
+						key += " [about to climb / held low]"
 					var ga := float(ants[i].get("fgap", 1.0)) < 0.3
 					var gb := float(ants[j].get("fgap", 1.0)) < 0.3
 					key += " " + _parts(sph[i], sph[j]) + (" mutual" if ga and gb else (" one-waits" if ga or gb else " neither-waits"))
@@ -178,7 +212,11 @@ static func measure(nv, tally: Dictionary) -> void:
 			tally[key] = int(tally.get(key, 0)) + 1
 			tally.in_soil = int(tally.get("in_soil", 0)) + 1
 			var clr: Vector2 = nv._soil_clearance(m.xf, float(m.size), m.get("bend", Vector2.ZERO))
-			if _kind(nv, m) == "still":
+			if _kind(nv, m) in ["climbing", "crossing"]:
+				_worst(tally, "soilclimb", float(buried.length()) + randf() * 0.1, (m.xf as Transform3D).origin, "%s %s | rise %.2f stuck %d over %.2f tip %.2f cw %s gfit %s clr %.2f up.y %.2f narrow %s" % [_kind(nv, m), buried,
+					clr.x, int(clr.y), float(m.get("over", 0.0)), float(m.get("over_tip", 0.0)), m.get("cw"), m.get("gfit"), float(m.get("clr", 0.0)),
+					(m.xf as Transform3D).basis.y.normalized().y, m.get("narrow", false)])
+			if _kind(nv, m) in ["resting", "tending resting"]:
 				_worst(tally, "soilstill", float(buried.length()) + randf() * 0.1, (m.xf as Transform3D).origin, "%s | rise %.2f stuck %d clr_t %.2f wall_n %d rest_dir %s act %d face %s settle %d | %s" % [buried,
 					clr.x, int(clr.y), float(m.get("clr_t", 0.0)), int(m.get("wall_n", 0)), m.get("rest_dir", Vector3.ZERO) != Vector3.ZERO, int(m.act),
 					(m.get("face", Vector3.INF) as Vector3) != Vector3.INF, (m.get("settle", []) as Array).size(), _why(m)])
@@ -232,7 +270,7 @@ static func _on_body(nv, f: Vector3, up: Vector3, m: Dictionary) -> bool:
 	for o in nv._mates:
 		if is_same(o, m) or not o.has("xf") or (o.xf as Transform3D).origin.distance_squared_to(f) > 6.0:
 			continue
-		for s in _ant_spheres(o.xf):
+		for s in _ant_spheres(o.xf, o.get("bend", Vector2.ZERO), _lat(o)):
 			if (s[0] as Vector3).distance_to(f - up * 0.1) < float(s[1]) + 0.15:
 				return true
 	for b in nv._brood_near(f):

@@ -72,9 +72,18 @@ func _climb(m: Dictionary, tr: Transform3D, md: float, at: float) -> Transform3D
 			tends = _tends_brood(m)
 			unders.append_array(_brood_spheres(tr.origin))
 	if not unders.is_empty():
-		var lt := _headroom(tr, up, _need_lift(_climb_need(tr, unders, up, tends), float(m.size)))
+		var need := _need_lift(_climb_need(tr, unders, up, tends), float(m.size))
+		var lt := _headroom(tr, up, need)
 		want = lt.x
 		tip = lt.y
+		# (no room to climb over it - a low chamber or tunnel: the one climbing came through the other's body
+		# instead; it gives up climbing, and waits, rests where it is or goes another way - as in a jam)
+		if on_ant and need.x - lt.x > 0.25 and float(m.get("over", 0.0)) < 0.3:
+			m.erase("over_on")
+			m.erase("cross_on")
+			m.over_hold = 0.0
+			m.no_climb_t = 3.0
+			m.stop_here = not m.has("deliver") and not m.get("carry", false) and not m.get("leaving", false) and randf() < 0.5
 	m.cw = Vector2(want, tip)
 	return _climb_ease(m, tr, at, want, tip)
 
@@ -94,15 +103,22 @@ func _climb_ease(m: Dictionary, tr: Transform3D, at: float, want: float, tip: fl
 	# (over a nestmate gently; onto the brood - which lies still, and is low - more briskly, else it walked into the
 	# larvae before it was up)
 	var brood_only: bool = not m.has("over_on")
-	var hv := _spring(ov0, float(m.get("over_v", 0.0)), want, (20.0 if brood_only else 13.0) if want > ov0 else 6.0, at)
+	var hv := _spring(ov0, float(m.get("over_v", 0.0)), want, (20.0 if brood_only else 13.0) if want > ov0 else 8.0, at)
 	# (never more than a quarter of a unit below what it needs - a body plainly inside the one under it - however
 	# smooth: then it keeps up)
 	var sink := 0.12 if brood_only else 0.25
 	if hv.x < want - sink:
 		hv = Vector2(want - sink, maxf(hv.y, 0.0))
 	var ov := maxf(hv.x, 0.0)
+	# (and never above the room there is where it is now: stepping down off the other's back it walks on, into a low
+	# tunnel or up a wall, while still eased down - it was carried into the ceiling)
+	if ov > 0.05:
+		var room := _headroom(tr, tr.basis.y.normalized(), Vector2(ov, tp0)).x
+		if room < ov:
+			ov = room
+			hv.y = minf(hv.y, 0.0)
 	m.over = ov
-	m.over_v = hv.y if hv.x > 0.0 else 0.0
+	m.over_v = hv.y if ov > 0.0 else 0.0
 	# (its legs step it up and down: rising onto the other's back - or stepping down off it - with its legs still, it
 	# looked lifted by something under it; the height climbed drives the gait as distance walked does)
 	var rise := absf(ov - ov0)
@@ -204,7 +220,9 @@ func _gap_ahead(m: Dictionary, near: Dictionary, dt: float) -> float:
 			# (a jam - the one in its way is resting, or held up itself: half of them stop here instead, and rest
 			# where they are, as most do in a packed chamber; else every ant in a crowd was climbing over another)
 			var jam: bool = int(by.get("rest", 0)) > 0 and (by.get("settle", []) as Array).is_empty() or float(by.get("fgap", 1.0)) < 0.15
-			if jam and randf() < 0.5 and not m.has("deliver") and not m.get("carry", false) and not m.get("leaving", false):
+			# (and where there was no room to climb over it a moment ago, it does not try again: it stops)
+			var low := float(m.get("no_climb_t", 0.0)) > 0.0
+			if (jam and randf() < 0.5 or low) and not m.has("deliver") and not m.get("carry", false) and not m.get("leaving", false):
 				m.stop_here = true                  # (nest_mates: it arrives where it is)
 			else:
 				m.cross_on = by
