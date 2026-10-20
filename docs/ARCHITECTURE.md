@@ -65,7 +65,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 | รัง 3 มิติ | `nest_scene` ← `nest_camera` ← `nest_brood` ← `nest_piles` (กองลูกมด: ของแต่ละชิ้นอยู่ที่เดิม; แยก v0.8.31) ← `nest_lifecycle` ← `nest_bodies` (เดินตามทาง, ตัวกันชน; แยก v0.8.5) ← `nest_rest` (ที่หยุดพัก, ตัวพ้นดิน/ผนัง, ก้าวหลบเมื่อถูกเบียด, ผูกมดที่วาดกับมดงานจริง; แยก v0.8.55) ← `nest_contact` (มองข้างหน้าแล้วชะลอ/หยุด, ปีนข้ามมดและลูกมดจากรูปทรงจริง, หันหนีผนังและขอบที่ไม่มีพื้น, ดันออกจากผนังอุโมงค์; ใหม่ v0.8.63) ← `nest_mates` ← `nest_view` (setup, refresh, input) |
 | โมเดลของในกล่อง | `mesh_kit_base` (เครื่องมือสร้าง, asset, หิน/ใบไม้/หญ้า/ต้นถั่ว) ← `mesh_kit` (เพลี้ย, จิ้งหรีด, ลูกมด, แมลงวัน, แมงมุม) — แยก v0.8.5 |
 | พื้นดิน 3 มิติ | `outworld_scene` ← `outworld_props` ← `outworld_creatures` ← `outworld_camera` ← `outworld_view` |
-| HUD | `hud_base` ← `hud_colonies` ← `hud_controls` ← `hud_panel` ← `hud` |
+| HUD | `hud_base` ← `hud_colonies` ← `hud_enemies` ← `hud_controls` ← `hud_panel` ← `hud` |
 | เกม | `main_base` ← `main_camera` ← `dev/dev_tools` ← `main` |
 
 ถ้าฟังก์ชันใหม่ต้องเรียกฟังก์ชันชั้นสูงกว่า ให้ย้ายฟังก์ชันใหม่ขึ้นไปอยู่ชั้นนั้น (Godot จะ error "Function not found in base self")

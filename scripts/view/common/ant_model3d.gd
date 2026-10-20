@@ -295,6 +295,16 @@ static func tint(body: Color) -> Color:
 	return Color(minf(1.0, body.r / 0.55), minf(1.0, body.g / 0.55), minf(1.0, body.b / 0.55), 1.0)
 
 
+const BODY_LIFT := 1.35          # (v0.11.1, the player: outdoors a touch too black, in the nest too brown - the same now)
+
+## An ant's colour for the instance colour of the 3D views, the same in the nest and the outworld: linear (the
+## shaders take COLOR as it is; in daylight the sRGB value bleached them grey, and the nest, which used it, drew
+## them brown), lifted a little.
+static func body_linear(body: Color) -> Color:
+	var l := tint(body).srgb_to_linear()
+	return Color(minf(1.0, l.r * BODY_LIFT), minf(1.0, l.g * BODY_LIFT), minf(1.0, l.b * BODY_LIFT), 1.0)
+
+
 # ---------------------------------------------------------------- easing from one activity's pose to the next
 # The shader picks a pose per activity id; switching ids outright snaps the body (head, gaster, legs) to the
 # new pose in one frame. INSTANCE_CUSTOM.y therefore carries the pose being left too:

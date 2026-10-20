@@ -4,6 +4,17 @@ extends "res://scripts/view/outworld/parts/outworld_creatures.gd"
 
 # ---------------------------------------------------------------- camera
 
+var follow_cid := 0          # an enemy the camera keeps in view (the HUD's enemy panel), 0 = none
+
+
+## Keeps an enemy in view (sim.creatures id): the camera eases to it and rides along until it is gone or the keeper
+## moves the camera.
+func follow_creature(id: int) -> void:
+	follow_cid = id
+	dist_t = minf(dist_t, 110.0)
+	pitch_t = clampf(pitch_t, 0.6, 1.1)
+
+
 func snap_camera() -> void:
 	yaw = yaw_t
 	pitch = pitch_t
@@ -22,6 +33,7 @@ func _fit_dist() -> float:
 
 
 func reset_view() -> void:
+	follow_cid = 0
 	yaw_t = 0.0
 	pitch_t = 0.95
 	target_t = Vector3(sim.WORLD.x * U * 0.5, 0, sim.WORLD.y * U * 0.5 + 6.0)
@@ -29,6 +41,7 @@ func reset_view() -> void:
 
 
 func top_down() -> void:
+	follow_cid = 0
 	yaw_t = 0.0
 	pitch_t = 1.5
 	target_t = Vector3(sim.WORLD.x * U * 0.5, 0, sim.WORLD.y * U * 0.5)
@@ -36,6 +49,7 @@ func top_down() -> void:
 
 
 func focus_nest() -> void:
+	follow_cid = 0
 	target_t = _on_ground(sim.nest_pos)
 	dist_t = 60.0
 	pitch_t = clampf(pitch_t, 0.6, 1.1)
@@ -61,6 +75,13 @@ func _ease_camera(delta: float) -> void:
 		mv.y -= 1
 	if mv != Vector2.ZERO:
 		target_t += (_right() * mv.x + _forward() * mv.y) * dist_t * 0.9 * delta
+		follow_cid = 0
+	if follow_cid != 0:
+		var c = sim._creature(follow_cid)
+		if c == null:
+			follow_cid = 0                    # it left, or the ants killed it (the camera stays on where it fell)
+		else:
+			target_t = _on_ground((c.pos as Vector2).clamp(Vector2.ZERO, sim.WORLD))
 	# (Q/E the camera down and up - nearer the ground or farther - and Z/C turn: the same keys as in the nest)
 	if Input.is_key_pressed(KEY_Q):
 		zoom_by(1.0 - 1.2 * delta)

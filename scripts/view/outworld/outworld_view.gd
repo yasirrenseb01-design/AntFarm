@@ -201,6 +201,7 @@ func _unhandled_input(e: InputEvent) -> void:
 					if at != Vector3.INF:
 						target_t = at
 						dist_t = minf(dist_t * 0.5, 90.0)
+						follow_cid = 0
 				_pan = e.pressed and e.shift_pressed
 				_rot = e.pressed and not e.shift_pressed
 			elif e.pressed:
@@ -211,6 +212,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		elif e.button_index == MOUSE_BUTTON_RIGHT or e.button_index == MOUSE_BUTTON_MIDDLE:
 			_pan = e.pressed
 			_rot = false
+			if e.pressed:
+				follow_cid = 0                     # (moved by hand: stop following an enemy)
 	elif e is InputEventMouseMotion:
 		hover = pick(e.position)
 		if _rot:

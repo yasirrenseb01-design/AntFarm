@@ -53,6 +53,8 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/migration
 Report "older save formats load and play on identically" ($r -match "MIGRATION TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/reach_test.gd") 300
 Report "ants reach food walled by stones" ($r -match "reached 8/8")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/enemy_test.gd") 300
+Report "released enemies come in and are fought" ($r -match "ENEMY TEST PASSED")
 $sandbox = Join-Path $env:APPDATA "Godot\app_userdata\AntFarm\sandbox\saves\slot1.antfarm"
 if (Test-Path $sandbox) {
     $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/real_save_test.gd") 300

@@ -100,6 +100,12 @@ func _ready() -> void:
 			_settings["view"] = m
 			Store.save_settings(_settings))
 	hud.cam_action.connect(_cam_action)
+	hud.enemy_watch.connect(func(id):
+		# (the enemy panel: watch it in the 3D outworld, the camera riding along)
+		if mode != "outworld":
+			hud._apply_mode("outworld")
+			_set_mode("outworld")
+		outworld.follow_creature(id))
 	nest_view.cut_changed.connect(func(v): hud.set_cut(v))
 	hud.current_slot = slot
 	hud.settings = _settings

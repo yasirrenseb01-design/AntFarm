@@ -1,8 +1,8 @@
 extends CanvasLayer
 ## Keeper's instrument panel: clock and speed on top, tools at the bottom, colony readout,
 ## nest cross-section, population chart and journal on the right.
-## HUD, layer 1 of 5: state, colours, the theme and small widget helpers.
-## Layers: hud_base <- hud_colonies <- hud_controls <- hud_panel <- hud.
+## HUD, layer 1 of 6: state, colours, the theme and small widget helpers.
+## Layers: hud_base <- hud_colonies <- hud_enemies <- hud_controls <- hud_panel <- hud.
 const Ant := preload("res://scripts/sim/ant.gd")
 const Kit := preload("res://scripts/view/surface2d/draw_kit.gd")
 const Store := preload("res://scripts/game/save_store.gd")

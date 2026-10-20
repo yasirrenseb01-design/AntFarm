@@ -289,8 +289,8 @@ func _update_ants(delta: float) -> void:
 	var adt := delta * minf(speed, 1.0) * lerpf(0.25, 1.0, chill) if running else 0.0
 	if running:
 		_meetings()
-	var body: Color = AntModel.tint(sim.sp["body_color"])
-	var young: Color = AntModel.tint(sim.sp["callow_color"])
+	var body: Color = AntModel.body_linear(sim.sp["body_color"])       # (as in the outworld)
+	var young: Color = AntModel.body_linear(sim.sp["callow_color"])
 	var xs := []
 	var cols := []
 	var cus := []

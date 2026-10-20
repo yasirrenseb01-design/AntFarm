@@ -17,9 +17,8 @@ func _update_ants(delta: float) -> void:
 	var kp := 1.0 - exp(-20.0 * delta)
 	var ka := 1.0 - exp(-10.0 * delta)
 	var adt := delta * minf(speed, 1.0) if speed > 0 else 0.0     # (below 1x, real time, poses play in slow motion)
-	# in daylight the ants need their true (linear) colour or the sun bleaches them grey
-	var body: Color = AntModel.tint(sim.sp["body_color"]).srgb_to_linear()
-	var young: Color = AntModel.tint(sim.sp["callow_color"]).srgb_to_linear()
+	var body: Color = AntModel.body_linear(sim.sp["body_color"])
+	var young: Color = AntModel.body_linear(sim.sp["callow_color"])
 	var xs := []
 	var cols := []
 	var cus := []

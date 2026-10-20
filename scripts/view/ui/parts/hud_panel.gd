@@ -1,5 +1,5 @@
 extends "res://scripts/view/ui/parts/hud_controls.gd"
-## HUD, layer 4 of 5: the side panel (colony readout, live nest cross-section, chart, journal).
+## HUD, layer 5 of 6: the side panel (colony readout, live nest cross-section, chart, journal).
 
 
 func _build_panel(root: Control) -> void:

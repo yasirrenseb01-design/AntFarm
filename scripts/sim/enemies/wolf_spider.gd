@@ -9,6 +9,8 @@ const T := preload("res://scripts/sim/text_th.gd")
 const IN_NEST := 0
 
 const NAME := "แมงมุมหมาป่า"
+const LATIN := "Lycosidae"
+const ABOUT := "ล่าได้ทั้งกลางวันและกลางคืน เดินเข้ามาไล่จับมดที่ออกหากิน · มดเกาะขาได้ 8 ตัว ถ้า 5 ตัวขึ้นไปมันจะขยับไม่ได้ · กัดมดตายบ่อย สะบัดมดหลุด · ถ้ามดรุมได้ มักฆ่ามันได้"      # (the HUD's enemy panel)
 const CHASED := T.spider_chased        # journal line when the keeper removes it
 const STATS := {
 	"hp": 1.0,          # health; formic acid and bites wear it down
@@ -66,7 +68,12 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	s.ang += wrapf(target_ang - s.ang, -PI, PI) * 0.08
 	var np: Vector2 = s.pos + Vector2.from_angle(s.ang) * STATS.speed * free * (1.5 if s.get("fleeing", false) else 1.0)
 	var world: Vector2 = sim.WORLD
-	var inside := np.x > 0 and np.y > 0 and np.x < world.x and np.y < world.y
+	# walls and stones turn it once it is in. blocked() counts the 3 px band along the edge as wall, so judged where it
+	# steps a slow enemy coming in turns back there: wild spiders and beetles have not come in since v0.8.25. One the
+	# keeper lets in is judged where it is; wild ones keep the old rule until their rates are balanced again (PART EA4,
+	# docs/roadmap/BACKLOG.md) - with it fixed a lone wild colony of 14 was held at ~11-16 workers all its first year.
+	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(s.pos) if s.get("released", false) \
+		else (np.x > 0 and np.y > 0 and np.x < world.x and np.y < world.y)
 	if not leaving and inside and sim.blocked(np):
 		s.ang += 2.0
 	else:

@@ -8,6 +8,8 @@ const T := preload("res://scripts/sim/text_th.gd")
 const IN_NEST := 0
 
 const NAME := "ด้วงดิน"
+const LATIN := "Carabidae"
+const ABOUT := "เกราะแข็ง กัดและกรดฟอร์มิกของมดแทบไม่เข้า · กรามบดแรง · พ่นสารเคมีจากปลายท้องจนมดที่เกาะร่วงหมด · มดมักฆ่าไม่ได้ ได้แค่ไล่ให้หนี"      # (the HUD's enemy panel)
 const CHASED := T.beetle_chased
 const STATS := {
 	"hp": 1.4,
@@ -48,7 +50,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true
 		sim._log(T.enemy_flees % NAME, "ok")
-	var leaving: bool = c.life <= 0 or c.get("fleeing", false) or sim.daylight() > 0.35
+	var leaving: bool = c.life <= 0 or c.get("fleeing", false) or (sim.daylight() > 0.35 and not c.get("released", false))
 	var best = null
 	var bd := 140.0
 	for a in sim.outside:
@@ -67,7 +69,12 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var burst := 1.0 if fmod(c.phase, 9.0) < 7.0 or leaving else 0.15
 	var np: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.speed * free * burst
 	var world: Vector2 = sim.WORLD
-	var inside := np.x > 0 and np.y > 0 and np.x < world.x and np.y < world.y
+	# walls and stones turn it once it is in. blocked() counts the 3 px band along the edge as wall, so judged where it
+	# steps a slow enemy coming in turns back there: wild spiders and beetles have not come in since v0.8.25. One the
+	# keeper lets in is judged where it is; wild ones keep the old rule until their rates are balanced again (PART EA4,
+	# docs/roadmap/BACKLOG.md) - with it fixed a lone wild colony of 14 was held at ~11-16 workers all its first year.
+	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos) if c.get("released", false) \
+		else (np.x > 0 and np.y > 0 and np.x < world.x and np.y < world.y)
 	if not leaving and inside and sim.blocked(np):
 		c.ang += 1.8
 	else:

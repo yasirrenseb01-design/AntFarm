@@ -1,5 +1,5 @@
 extends "res://scripts/view/ui/parts/hud_base.gd"
-## HUD, layer 2 of 5: the "my colonies" window (save slots, time while closed) and report dialogs.
+## HUD, layer 2 of 6: the "my colonies" window (save slots, time while closed) and report dialogs.
 
 
 ## "My colonies": the save slots (play one, start a new colony in one) and what happens to time

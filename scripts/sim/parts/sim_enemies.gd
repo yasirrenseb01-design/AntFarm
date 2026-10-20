@@ -17,6 +17,7 @@ const ACID := 0.0004        # health an ant's bite + formic acid takes off per t
 const ACT_ATTACK := 13      # view: biting and spraying (gaster curled forward)
 const ACT_ALARM := 14       # view: running in alarmed, mandibles open
 const FIGHT_FROM := 20      # a colony smaller than this hides from big enemies instead of mobbing them
+const RELEASE_MAX := 3      # enemies in the box at once when the keeper lets them in (the HUD's enemy panel)
 
 
 ## Now and then an enemy finds its way into the box (one at a time); night hunters only after dark.
@@ -30,6 +31,18 @@ func _maybe_spawn(dt: float) -> void:
 		if rng.randf() < S.rate * dt * season_life():
 			_spawn_creature(kind)
 			return
+
+
+## The keeper lets an enemy into the box (HUD enemy panel): it comes in from an edge as a wild one does, by day
+## or night, with natural enemies on or off. Returns its id, or 0 when RELEASE_MAX are in already.
+## Called between steps like placing food, and drawing only on sim.rng, so a run stays reproducible.
+func release_enemy(kind: String) -> int:
+	if creatures.size() >= RELEASE_MAX or not ENEMY_KINDS.has(kind):
+		return 0
+	_spawn_creature(kind)
+	creatures[-1]["released"] = true            # (a night hunter let in by day stays out till its time is up)
+	log_entries[0].text = T.enemy_released % ENEMY_KINDS[kind].NAME     # (in place of its wild arrival line: "at night" may not be true)
+	return creatures[-1].id
 
 
 ## Where on the enemy this ant holds on: round its body (spider) or along its sides (centipede).
@@ -194,8 +207,10 @@ func _calm(a: Ant) -> void:
 func remove_enemies() -> void:
 	if creatures.is_empty():
 		return
-	var kind: String = creatures[0].kind
+	var kinds := {}
 	for c in creatures:
 		_release(c, _clinging(c))
+		kinds[c.kind] = true
 	creatures.clear()
-	_log(ENEMY_KINDS[kind].CHASED)
+	for kind in kinds:
+		_log(ENEMY_KINDS[kind].CHASED)

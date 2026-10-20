@@ -1,5 +1,5 @@
-extends "res://scripts/view/ui/parts/hud_colonies.gd"
-## HUD, layer 3 of 5: the top bar (clock, speed, views), the tool bar and the camera pad.
+extends "res://scripts/view/ui/parts/hud_enemies.gd"
+## HUD, layer 4 of 6: the top bar (clock, speed, views), the tool bar and the camera pad.
 
 
 # ---------------------------------------------------------------- layout
@@ -65,6 +65,13 @@ func _build_top(root: Control) -> void:
 	var vwrap := CenterContainer.new()
 	vwrap.add_child(views)
 	row.add_child(vwrap)
+
+	var foes := _button("ศัตรู", false)
+	foes.tooltip_text = "ปล่อยแมงมุมหมาป่า ตะขาบหิน หรือด้วงดิน มาดูมดสู้"
+	foes.pressed.connect(toggle_enemies)
+	var ewrap := CenterContainer.new()
+	ewrap.add_child(foes)
+	row.add_child(ewrap)
 
 	var mine := _button("รังของฉัน", false)
 	mine.pressed.connect(open_colonies)

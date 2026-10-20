@@ -1,7 +1,7 @@
 extends "res://scripts/view/ui/parts/hud_panel.gd"
 ## Keeper's instrument panel: clock and speed on top, tools at the bottom, colony readout, nest
 ## cross-section, population chart and journal on the right. This file is the top of the chain.
-## Layers: parts/hud_base <- hud_colonies <- hud_controls <- hud_panel <- hud.
+## Layers: parts/hud_base <- hud_colonies <- hud_enemies <- hud_controls <- hud_panel <- hud.
 
 const AntTip := preload("res://scripts/view/ui/ant_tip.gd")
 const Sounds := preload("res://scripts/view/ui/sounds.gd")
@@ -22,6 +22,7 @@ func setup(s, w) -> void:
 	_build_panel(root)
 	_build_camera_pad(root)
 	_build_colonies(root)
+	_build_enemies(root)
 	# a soft chime when the keeper must act (water), and the frame rate when asked for (F3)
 	_chime = AudioStreamPlayer.new()
 	_chime.stream = Sounds.chime()
@@ -133,3 +134,4 @@ func refresh(delta: float) -> void:
 	var ok: bool = hum >= sim.sp["humidity_ok_min"] and hum <= sim.sp["humidity_ok_max"]
 	_show(_vals["hum"], "%d%%" % int(hum * 100), INK if ok else DANGER)
 	_chart.queue_redraw()
+	_refresh_enemies()
