@@ -7,6 +7,7 @@ const Ant := preload("res://scripts/sim/ant.gd")
 const Kit := preload("res://scripts/view/ui/draw_kit.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const SpeciesWindow := preload("res://scripts/view/ui/species_window.gd")
+const Paper := preload("res://scripts/view/ui/paper.gd")
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const T := preload("res://scripts/sim/text_th.gd")
 
@@ -46,6 +47,7 @@ var current_slot := 1
 var settings := {}
 var _colonies: Window
 var _settings_win: Window
+var _paper_theme: Theme         # the windows: the field notebook (ui/paper.gd)
 var _colonies_body: PanelContainer
 var _report: AcceptDialog
 var _proj_tex: ImageTexture

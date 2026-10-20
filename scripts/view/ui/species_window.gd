@@ -6,6 +6,7 @@ extends Window
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const LasiusNiger := preload("res://scripts/sim/species/lasius_niger.gd")
+const Paper := preload("res://scripts/view/ui/paper.gd")
 
 const SPECIES := [LasiusNiger]
 ## what can be shown: [button, caption, kind, scale, body colour key]
@@ -43,7 +44,8 @@ func setup(h) -> void:
 	wrap_controls = true
 	close_requested.connect(queue_free)
 	var body := PanelContainer.new()
-	body.add_theme_stylebox_override("panel", h._box(Color(0.1, 0.075, 0.055, 0.98), h.LINE, 0, 18, 16))
+	body.add_theme_stylebox_override("panel", Paper.page(18, 16))
+	body.set_anchors_preset(Control.PRESET_FULL_RECT)          # (the paper fills the window: no dark strip under it)
 	add_child(body)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
@@ -53,13 +55,13 @@ func setup(h) -> void:
 	list.add_theme_constant_override("separation", 6)
 	list.custom_minimum_size.x = 170
 	row.add_child(list)
-	list.add_child(h._label("ชนิดมด", 13, h.MUTED))
+	list.add_child(h._label("ชนิดมด", 13, Paper.PENCIL))
 	for S in SPECIES:
 		var b: Button = h._button("%s\n%s" % [S.DATA.name_th, S.DATA.name], true)
 		b.button_pressed = true
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		list.add_child(b)
-	list.add_child(_wrap(h, "ชนิดอื่นจะตามมาในเวอร์ชันหลัง", 12, h.MUTED, 170))
+	list.add_child(_wrap(h, "ชนิดอื่นจะตามมาในเวอร์ชันหลัง", 12, Paper.PENCIL, 170))
 	_build_card(row, SPECIES[0])
 
 
@@ -79,19 +81,19 @@ func _build_card(row: Control, S) -> void:
 	row.add_child(text)
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 10)
-	name_row.add_child(h._label(S.DATA.name_th, 26, h.INK, h._display))
-	var latin: Label = h._label(S.DATA.name, 15, h.MUTED)
+	name_row.add_child(h._label(S.DATA.name_th, 26, Paper.INK, h._display))
+	var latin: Label = h._label(S.DATA.name, 15, Paper.PENCIL)
 	latin.size_flags_vertical = Control.SIZE_SHRINK_END
 	name_row.add_child(latin)
 	text.add_child(name_row)
-	text.add_child(_wrap(h, card.blurb, 13, h.INK, 430))
-	text.add_child(h._label("นิสัยและจุดเด่น", 15, h.AMBER))
+	text.add_child(_wrap(h, card.blurb, 13, Paper.INK, 430))
+	text.add_child(h._label("นิสัยและจุดเด่น", 15, Paper.ACCENT))
 	for t in card.traits:
 		_point(text, t)
 	var diff := HBoxContainer.new()
 	diff.add_theme_constant_override("separation", 8)
-	diff.add_child(h._label("ความยากในการเลี้ยง", 15, h.AMBER))
-	diff.add_child(h._label(card.difficulty, 15, h.LEAF))
+	diff.add_child(h._label("ความยากในการเลี้ยง", 15, Paper.ACCENT))
+	diff.add_child(h._label(card.difficulty, 15, Paper.LEAF))
 	text.add_child(diff)
 	for t in card.care:
 		_point(text, t)
@@ -121,9 +123,9 @@ func _build_card(row: Control, S) -> void:
 		var k: int = i
 		b.pressed.connect(func(): _show(k))
 		picks.add_child(b)
-	_caption = _wrap(h, "", 12, h.INK, 420)
+	_caption = _wrap(h, "", 12, Paper.INK, 420)
 	right.add_child(_caption)
-	right.add_child(_wrap(h, "โมเดลเดียวกับในเกม · ลากเพื่อหมุนดู · ขนาดบนจอไม่เท่ากัน (ขยายให้เห็นชัด)", 11, h.MUTED, 420))
+	right.add_child(_wrap(h, "โมเดลเดียวกับในเกม · ลากเพื่อหมุนดู · ขนาดบนจอไม่เท่ากัน (ขยายให้เห็นชัด)", 11, Paper.PENCIL, 420))
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	foot.add_theme_constant_override("separation", 8)
@@ -141,9 +143,9 @@ func _build_card(row: Control, S) -> void:
 
 func _point(parent: Control, t: Array) -> void:
 	var h = hud
-	var l: Label = _wrap(h, "• " + String(t[0]), 13, h.INK, 430)
+	var l: Label = _wrap(h, "• " + String(t[0]), 13, Paper.INK, 430)
 	parent.add_child(l)
-	var src: Label = _wrap(h, "   ที่มา: " + String(t[1]), 11, h.MUTED, 430)
+	var src: Label = _wrap(h, "   ที่มา: " + String(t[1]), 11, Paper.PENCIL, 430)
 	parent.add_child(src)
 
 

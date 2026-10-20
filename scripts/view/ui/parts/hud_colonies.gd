@@ -7,7 +7,7 @@ extends "res://scripts/view/ui/parts/hud_base.gd"
 func _build_colonies(root: Control) -> void:
 	_colonies = Window.new()
 	_colonies.title = "รังของฉัน"
-	_colonies.theme = root.theme
+	_colonies.theme = _paper_theme
 	_colonies.transient = true
 	_colonies.exclusive = true
 	_colonies.unresizable = true
@@ -16,11 +16,12 @@ func _build_colonies(root: Control) -> void:
 	_colonies.close_requested.connect(_colonies.hide)
 	root.add_child(_colonies)
 	_colonies_body = PanelContainer.new()
-	_colonies_body.add_theme_stylebox_override("panel", _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 0, 16, 14))
+	_colonies_body.add_theme_stylebox_override("panel", Paper.page())
+	_colonies_body.set_anchors_preset(Control.PRESET_FULL_RECT)          # (the paper fills the window: no dark strip under it)
 	_colonies.add_child(_colonies_body)
 	_settings_win = Window.new()
 	_settings_win.title = "ตั้งค่า"
-	_settings_win.theme = root.theme
+	_settings_win.theme = _paper_theme
 	_settings_win.transient = true
 	_settings_win.exclusive = true
 	_settings_win.unresizable = true
@@ -29,7 +30,7 @@ func _build_colonies(root: Control) -> void:
 	_settings_win.close_requested.connect(_settings_win.hide)
 	root.add_child(_settings_win)
 	_report = AcceptDialog.new()
-	_report.theme = root.theme
+	_report.theme = _paper_theme
 	_report.ok_button_text = "ดูรัง"
 	root.add_child(_report)
 
@@ -48,7 +49,7 @@ func open_colonies() -> void:
 		var info := VBoxContainer.new()
 		info.add_theme_constant_override("separation", 0)
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.add_child(_label("รัง %d%s" % [s, "  · กำลังเล่น" if s == current_slot else ""], 15, AMBER if s == current_slot else INK))
+		info.add_child(_label("รัง %d%s" % [s, "  · กำลังเล่น" if s == current_slot else ""], 15, Paper.ACCENT if s == current_slot else Paper.INK))
 		var desc := "ว่าง"
 		if not m.is_empty():
 			var when := Time.get_datetime_string_from_unix_time(int(m.get("saved_unix", 0)) + _tz_offset(), true)
@@ -56,7 +57,7 @@ func open_colonies() -> void:
 				"สวน" if m.get("scenario", "keeper") == "wild" else "ชุดเลี้ยง", m.get("day", 1), m.get("workers", 0),
 				"ตู้แอนท์ฟาร์ม" if m.get("glass", false) else "ก้อนดิน",
 				"" if m.get("queen", true) else " · ราชินีตายแล้ว", when.replace("T", " ").left(16)]
-		info.add_child(_label(desc, 12, MUTED))
+		info.add_child(_label(desc, 12, Paper.PENCIL))
 		row.add_child(info)
 		if not m.is_empty() and s != current_slot:
 			var play := _button("เล่นรังนี้", false)
@@ -75,7 +76,7 @@ func open_colonies() -> void:
 		col.add_child(row)
 	col.add_child(HSeparator.new())
 	var foot := HBoxContainer.new()
-	var note := _label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · ตอนปิดเกม เพลง และอื่นๆ อยู่ใน \"ตั้งค่า\" ที่หน้าแรก", 12, MUTED)
+	var note := _label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · ตอนปิดเกม เพลง และอื่นๆ อยู่ใน \"ตั้งค่า\" ที่หน้าแรก", 12, Paper.PENCIL)
 	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(note)
 	var save_now := _button("เซฟตอนนี้", false)
@@ -104,14 +105,15 @@ func open_settings() -> void:
 	for c in _settings_win.get_children():
 		c.queue_free()
 	var body := PanelContainer.new()
-	body.add_theme_stylebox_override("panel", _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 0, 16, 14))
+	body.add_theme_stylebox_override("panel", Paper.page())
+	body.set_anchors_preset(Control.PRESET_FULL_RECT)          # (the paper fills the window: no dark strip under it)
 	_settings_win.add_child(body)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 12)
 	col.custom_minimum_size = Vector2(520, 0)
 	body.add_child(col)
 	var away := HBoxContainer.new()
-	away.add_child(_label("ตอนปิดเกม", 13, MUTED))
+	away.add_child(_label("ตอนปิดเกม", 13, Paper.PENCIL))
 	var opt := OptionButton.new()
 	opt.focus_mode = Control.FOCUS_NONE
 	for i in Store.AWAY_RATES.size():
@@ -131,7 +133,7 @@ func open_settings() -> void:
 		settings_changed.emit(settings))
 	col.add_child(care)
 	var tune := HBoxContainer.new()
-	tune.add_child(_label("เพลงพื้นหลัง", 13, MUTED))
+	tune.add_child(_label("เพลงพื้นหลัง", 13, Paper.PENCIL))
 	var vol := HSlider.new()
 	vol.focus_mode = Control.FOCUS_NONE
 	vol.min_value = 0.0
@@ -140,7 +142,7 @@ func open_settings() -> void:
 	vol.value = float(settings.get("music", 0.6))
 	vol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var vol_txt := _label("ปิด" if vol.value <= 0.0 else "%d%%" % roundi(vol.value * 100), 13, INK)
+	var vol_txt := _label("ปิด" if vol.value <= 0.0 else "%d%%" % roundi(vol.value * 100), 13, Paper.INK)
 	vol_txt.custom_minimum_size.x = 44
 	vol.value_changed.connect(func(v):
 		settings["music"] = v
@@ -160,7 +162,7 @@ func open_settings() -> void:
 			_fps_label.visible = on
 		settings_changed.emit(settings))
 	col.add_child(fps)
-	col.add_child(_label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม" % int(Store.MAX_AWAY_DAYS), 12, MUTED))
+	col.add_child(_label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม" % int(Store.MAX_AWAY_DAYS), 12, Paper.PENCIL))
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	var done := _button("เสร็จ", false)
@@ -180,12 +182,17 @@ class EnemyRate extends VBoxContainer:
 	var _text: Label
 	var _scen := "wild"
 
-	func _init(hud, rate: float, scen: String) -> void:
+	var _ink: Color
+	var _pencil: Color
+
+	func _init(hud, rate: float, scen: String, paper := false) -> void:
 		_hud = hud
+		_ink = hud.Paper.INK if paper else hud.INK
+		_pencil = hud.Paper.PENCIL if paper else hud.MUTED
 		add_theme_constant_override("separation", 2)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		row.add_child(hud._label("ไม่มี", 12, hud.MUTED))
+		row.add_child(hud._label("ไม่มี", 12, _pencil))
 		_slider = HSlider.new()
 		_slider.min_value = 0.0
 		_slider.max_value = 3.0
@@ -194,9 +201,9 @@ class EnemyRate extends VBoxContainer:
 		_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(_slider)
-		row.add_child(hud._label("บ่อยมาก", 12, hud.MUTED))
+		row.add_child(hud._label("บ่อยมาก", 12, _pencil))
 		add_child(row)
-		_text = hud._label("", 12, hud.INK)
+		_text = hud._label("", 12, _ink)
 		_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_text.custom_minimum_size.x = 300
 		add_child(_text)
@@ -244,22 +251,23 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	win.close_requested.connect(win.queue_free)
 	_colonies.get_parent().add_child(win)
 	var body := PanelContainer.new()
-	body.add_theme_stylebox_override("panel", _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 0, 16, 14))
+	body.add_theme_stylebox_override("panel", Paper.page())
+	body.set_anchors_preset(Control.PRESET_FULL_RECT)          # (the paper fills the window: no dark strip under it)
 	win.add_child(body)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	col.custom_minimum_size = Vector2(540, 0)
 	body.add_child(col)
 	var picked := {}
-	var rates := EnemyRate.new(self, 1.0, "wild")
+	var rates := EnemyRate.new(self, 1.0, "wild", true)
 	for group in [["scenario", "ฉาก", NEW_SCENARIOS], ["nest", "รัง", NEW_NESTS], ["start", "เริ่มจาก", NEW_STARTS]]:
 		var key: String = group[0]
 		var opts: Array = group[2]
-		col.add_child(_label(group[1], 15, AMBER))
+		col.add_child(_label(group[1], 15, Paper.ACCENT))
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		col.add_child(row)
-		var note := _label(opts[0][2], 12, MUTED)
+		var note := _label(opts[0][2], 12, Paper.PENCIL)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.custom_minimum_size = Vector2(540, 0)
 		var bg := ButtonGroup.new()
@@ -277,7 +285,7 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 					rates.set_rate(picked.rate, o[0]))                      # it showed 0% for the formicarium and sent 100%)
 			row.add_child(b)
 		col.add_child(note)
-	col.add_child(_label("สัตว์ร้าย (แมงมุมหมาป่า ตะขาบหิน ด้วงดิน)", 15, AMBER))
+	col.add_child(_label("สัตว์ร้าย (แมงมุมหมาป่า ตะขาบหิน ด้วงดิน)", 15, Paper.ACCENT))
 	picked["rate"] = 1.0
 	rates.changed.connect(func(v):
 		picked["rate"] = v
@@ -288,7 +296,7 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	foot.add_theme_constant_override("separation", 10)
 	if occupied:
-		var warn := _label("รังเดิมในช่องนี้จะถูกลบ", 12, DANGER)
+		var warn := _label("รังเดิมในช่องนี้จะถูกลบ", 12, Paper.DANGER)
 		warn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		foot.add_child(warn)
 	var cancel := _button("ยกเลิก", false)

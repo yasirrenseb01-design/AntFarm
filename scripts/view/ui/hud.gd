@@ -16,6 +16,7 @@ func setup(s, w) -> void:
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = _make_theme()
+	_paper_theme = Paper.theme(root.theme)
 	add_child(root)
 	_build_top(root)
 	_build_tools(root)

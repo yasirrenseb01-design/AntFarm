@@ -1,12 +1,16 @@
 extends CanvasLayer
-## The title screen (PART EA2): what the game opens on, and where the "เมนู" button (or Esc) goes back to. The menu
-## sits on the left; behind it the last colony lives on, and the camera tours it - the outworld from above, a forager,
+## The title screen (PART EA2): what the game opens on, and where the "เมนู" button (or Esc) goes back to. The game's
+## logo at the top, the menu on a page of the keeper's field notebook on the left (a pencil scribbles when a word is
+## clicked); behind it the last colony lives on, and the camera tours it - the outworld from above, a forager,
 ## the queen, the brood, a worker in the nest - and, once ants have names (EA3b), every other shot follows a named one.
 ## main.gd owns it: open() / close(); while it is open the HUD is hidden.
 
 const SHOT_S := 14.0                  # seconds a shot lasts
 const TURN := 0.05                    # radians a second the camera drifts round
-const MENU_PX := 520.0                # how much of the window's left the menu takes
+const MENU_PX := 470.0                # how much of the window's left the menu takes
+const PAGE_W := 380.0                 # the notebook page
+const LOGO_W := 760.0
+const Paper := preload("res://scripts/view/ui/paper.gd")
 
 var main
 var is_open := false
@@ -14,6 +18,9 @@ var _root: Control
 var _go_on: Button                    # "เล่นต่อ" (not for the colony shown before the first one is started)
 var _go_on_note: Label
 var _caption: Label                   # what the camera is looking at, bottom right
+var _page                             # the notebook page the menu is written on (Page)
+var _items: Array = []                # the menu's words (Buttons)
+var _pen: AudioStreamPlayer           # the pencil, scribbling when a word is clicked
 var _rng := RandomNumberGenerator.new()      # (only looks: never sim.rng, which keeps the colony reproducible)
 var _shot := -1
 var _shot_t := 0.0
@@ -21,6 +28,8 @@ var _named_turn := false
 var _named_i := -1
 var _follow = null                    # the ant the camera rides with (an Ant), or null
 var _view_before := "outworld"
+var _xray_before := false
+var pending_report: Array = []        # [title, text]: the time-away report, kept until the keeper goes on into the game
 
 
 func setup(m) -> void:
@@ -31,48 +40,55 @@ func setup(m) -> void:
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_STOP           # (the tour has the camera: no dragging it meanwhile)
-	_root.theme = h._make_theme()
+	_root.theme = _menu_theme(h)
 	add_child(_root)
-	# a dark band on the left, fading out to the right
-	var band := TextureRect.new()
-	var g := Gradient.new()
-	g.offsets = PackedFloat32Array([0.0, 0.62, 1.0])
-	g.colors = PackedColorArray([Color(0.06, 0.045, 0.035, 0.94), Color(0.06, 0.045, 0.035, 0.8), Color(0.06, 0.045, 0.035, 0.0)])
-	var gt := GradientTexture2D.new()
-	gt.gradient = g
-	gt.width = 256
-	gt.height = 4
-	band.texture = gt
-	band.stretch_mode = TextureRect.STRETCH_SCALE
-	band.anchor_bottom = 1.0
-	band.offset_right = 640
-	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(band)
+	# the game's logo, top centre (the keeper's picture: assets/ui/logo.png, made by tools/ui/make_logo.py)
+	var logo := TextureRect.new()
+	logo.texture = load("res://assets/ui/logo.png")
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.anchor_left = 0.5
+	logo.anchor_right = 0.5
+	logo.offset_left = -LOGO_W * 0.5
+	logo.offset_right = LOGO_W * 0.5
+	logo.offset_top = 18
+	logo.offset_bottom = 18 + LOGO_W * 0.34
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(logo)
+	# the menu: a page of the keeper's field notebook, taped on a little askew
+	_page = Page.new()
+	_page.anchor_top = 0.5
+	_page.anchor_bottom = 0.5
+	_page.offset_left = 56
+	_page.offset_right = 56 + PAGE_W
+	_page.offset_top = -170
+	_page.offset_bottom = 225
+	_page.rotation = -0.025
+	_root.add_child(_page)
 	var col := VBoxContainer.new()
-	col.anchor_top = 0.5
-	col.anchor_bottom = 0.5
-	col.offset_left = 72
-	col.grow_vertical = Control.GROW_DIRECTION_BOTH
-	col.add_theme_constant_override("separation", 10)
-	_root.add_child(col)
-	col.add_child(h._label("มดดำสวน", 52, h.INK, h._display))
-	col.add_child(h._label("AntFarm · เลี้ยงมดแบบสมจริง", 16, h.MUTED))
-	var gap := Control.new()
-	gap.custom_minimum_size.y = 26
-	col.add_child(gap)
-	_go_on = _big(col, "เล่นต่อ", close, true)
-	_go_on_note = h._label("", 13, h.MUTED)
+	col.position = Vector2(56, 26)
+	col.size = Vector2(PAGE_W - 80, 420)
+	col.add_theme_constant_override("separation", 0)
+	_page.add_child(col)
+	var head: Label = h._label("สมุดบันทึกผู้เลี้ยงมด", 15, Paper.ACCENT)
+	head.custom_minimum_size.y = Page.LINE * 1.5
+	head.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	col.add_child(head)
+	_go_on = _item(col, "เล่นต่อ", close, true)
+	_go_on_note = h._label("", 12, Paper.PENCIL)
+	_go_on_note.custom_minimum_size.y = Page.LINE
+	_go_on_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	col.add_child(_go_on_note)
-	_big(col, "รังใหม่", func(): main._title_new_colony())
-	_big(col, "รังของฉัน", func(): h.open_colonies())
-	_big(col, "ตั้งค่า", func(): h.open_settings())
-	_big(col, "วอลเปเปอร์", func(): main._enter_desktop())
-	_big(col, "ออกจากเกม", func(): main.get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST))
+	_item(col, "รังใหม่", func(): main._title_new_colony())
+	_item(col, "รังของฉัน", func(): h.open_colonies())
+	_item(col, "ตั้งค่า", func(): h.open_settings())
+	_item(col, "วอลเปเปอร์", func(): main._enter_desktop())
+	_item(col, "ออกจากเกม", func(): main.get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST))
 	var ver: Label = h._label("v%s" % ProjectSettings.get_setting("application/config/version", "dev"), 12, h.MUTED)
 	ver.anchor_top = 1.0
 	ver.anchor_bottom = 1.0
-	ver.offset_left = 72
-	ver.offset_top = -40
+	ver.offset_left = 24
+	ver.offset_top = -34
 	_root.add_child(ver)
 	_caption = h._label("", 15, h.INK, h._display)
 	_caption.anchor_left = 1.0
@@ -87,17 +103,91 @@ func setup(m) -> void:
 	_caption.add_theme_constant_override("shadow_offset_x", 1)
 	_caption.add_theme_constant_override("shadow_offset_y", 1)
 	_root.add_child(_caption)
+	_pen = AudioStreamPlayer.new()
+	_pen.volume_db = -4.0
+	add_child(_pen)
 	visible = false
 
 
-func _big(parent: Control, text: String, fn: Callable, accent := false) -> Button:
-	var b: Button = main.hud._button(text, false)
-	b.custom_minimum_size = Vector2(300, 46 if accent else 40)
+## The menu's words: written on the page, no boxes; under the pointer a pencil line is drawn beneath one.
+func _menu_theme(h) -> Theme:
+	var th: Theme = h._make_theme().duplicate()
+	for st in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		th.set_stylebox(st, "Button", StyleBoxEmpty.new())
+	th.set_color("font_color", "Button", Paper.INK)
+	th.set_color("font_hover_color", "Button", Paper.ACCENT)
+	th.set_color("font_pressed_color", "Button", Paper.ACCENT)
+	th.set_color("font_hover_pressed_color", "Button", Paper.ACCENT)
+	th.set_color("font_focus_color", "Button", Paper.INK)
+	return th
+
+
+func _item(parent: Control, text: String, fn: Callable, first := false) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 20 if accent else 17)
-	b.pressed.connect(fn)
+	b.custom_minimum_size = Vector2(PAGE_W - 90, Page.LINE)
+	b.add_theme_font_size_override("font_size", 24 if first else 20)
+	b.mouse_entered.connect(func(): _page.hover(b))
+	b.mouse_exited.connect(func(): _page.hover(null))
+	b.pressed.connect(func():
+		_pen.stream = Paper.pencil()
+		_pen.play()
+		fn.call())
 	parent.add_child(b)
+	_items.append(b)
 	return b
+
+
+## The notebook page: kraft paper, ruled lines and a margin, a strip of tape at the top; under the word the pointer is
+## on, a pencil line is drawn in, quickly, a little wobbly.
+class Page extends Control:
+	const LINE := 38.0                 # the ruling
+	var _hot: Button = null
+	var _hot_t := 0.0
+	var _seed := 0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func hover(b: Button) -> void:
+		_hot = b
+		_hot_t = 0.0
+		_seed += 1
+		queue_redraw()
+
+	func _process(delta: float) -> void:
+		if _hot != null and _hot_t < 1.0:
+			_hot_t = minf(1.0, _hot_t + delta * 4.0)       # drawn in over a quarter of a second
+			queue_redraw()
+
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		draw_rect(Rect2(r.position + Vector2(7, 9), r.size), Color(0, 0, 0, 0.35))      # its shadow
+		draw_texture_rect(Paper.texture(), r, true)
+		var y := 26.0 + LINE * 1.5
+		while y < size.y - 12.0:
+			draw_line(Vector2(10, y), Vector2(size.x - 10, y), Paper.RULE, 1.0)
+			y += LINE
+		draw_line(Vector2(44, 6), Vector2(44, size.y - 6), Paper.MARGIN, 1.5)
+		# a strip of tape holding it on
+		draw_set_transform(Vector2(size.x * 0.5, 3), 0.06, Vector2.ONE)
+		draw_rect(Rect2(-48, -15, 96, 30), Color(0.93, 0.89, 0.76, 0.6))
+		draw_set_transform_matrix(Transform2D.IDENTITY)
+		if _hot != null and is_instance_valid(_hot) and _hot.is_visible_in_tree():
+			var at: Vector2 = _hot.position + (_hot.get_parent() as Control).position
+			var font: Font = _hot.get_theme_font("font")
+			var w: float = font.get_string_size(_hot.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _hot.get_theme_font_size("font_size")).x + 22.0
+			var rr := RandomNumberGenerator.new()
+			rr.seed = _seed
+			var pts := PackedVector2Array()
+			var n := 18
+			for i in n + 1:
+				var u := float(i) / n * _hot_t
+				pts.append(at + Vector2(4 + u * w, _hot.size.y - 6 + sin(u * 9.0 + _seed) * 1.6 + rr.randf_range(-0.6, 0.6)))
+			draw_polyline(pts, Paper.PENCIL, 2.0, true)
 
 
 ## Shows the title screen over the colony (`can_go_on`: false for the colony shown before any is started).
@@ -106,6 +196,8 @@ func open(can_go_on := true) -> void:
 	visible = true
 	main.hud.visible = false
 	_view_before = main.mode
+	_xray_before = main.nest_view.xray
+	main.nest_view.set_xray(true)                      # (underground the tour sees through the soil: never a shot of bare soil)
 	main.outworld.side_px = -MENU_PX                  # (the outworld centred right of the menu, not left of the side panel)
 	_go_on.visible = can_go_on
 	_go_on_note.visible = can_go_on
@@ -115,6 +207,8 @@ func open(can_go_on := true) -> void:
 	_shot = -1
 	_named_turn = false
 	_next_shot()
+	if main._opts.has("title-hover"):
+		_page.hover(_items[int(main._opts["title-hover"])])         # (dev: as if the pointer were on that word)
 
 
 ## Back to the game, in the view the keeper had.
@@ -126,9 +220,13 @@ func close() -> void:
 	_follow = null
 	main.outworld.follow_cid = 0
 	main.nest_view._cam.h_offset = 0.0
+	main.nest_view.set_xray(_xray_before)
 	main.hud.visible = true
 	main.hud.set_side_open(main.hud._side.visible, false)     # (the outworld's centre as the side panel has it)
 	_set_view(_view_before)
+	if not pending_report.is_empty():
+		main.hud.show_report(pending_report[0], pending_report[1])
+		pending_report = []
 
 
 func _set_view(m: String) -> void:

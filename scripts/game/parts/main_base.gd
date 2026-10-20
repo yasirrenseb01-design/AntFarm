@@ -168,7 +168,10 @@ func _report_away() -> void:
 				break
 			lines.append("• %s  %s" % [e.stamp, e.text])
 			shown += 1
-	hud.show_report("ระหว่างที่คุณไม่อยู่", "\n".join(lines))
+	if title != null and title.is_open:
+		title.pending_report = ["ระหว่างที่คุณไม่อยู่", "\n".join(lines)]     # (shown once the keeper goes on into the game)
+	else:
+		hud.show_report("ระหว่างที่คุณไม่อยู่", "\n".join(lines))
 
 
 func _hours_text(h: float) -> String:
