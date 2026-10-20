@@ -6,7 +6,7 @@ extends "res://scripts/view/ui/parts/hud_base.gd"
 ## while the game is closed.
 func _build_colonies(root: Control) -> void:
 	_colonies = Window.new()
-	_colonies.title = "รังของฉัน"
+	_colonies.title = tr("my_colonies")
 	_colonies.theme = _paper_theme
 	_colonies.transient = true
 	_colonies.exclusive = true
@@ -20,7 +20,7 @@ func _build_colonies(root: Control) -> void:
 	_colonies_body.set_anchors_preset(Control.PRESET_FULL_RECT)          # (the paper fills the window: no dark strip under it)
 	_colonies.add_child(_colonies_body)
 	_settings_win = Window.new()
-	_settings_win.title = "ตั้งค่า"
+	_settings_win.title = tr("settings")
 	_settings_win.theme = _paper_theme
 	_settings_win.transient = true
 	_settings_win.exclusive = true
@@ -31,7 +31,7 @@ func _build_colonies(root: Control) -> void:
 	root.add_child(_settings_win)
 	_report = AcceptDialog.new()
 	_report.theme = _paper_theme
-	_report.ok_button_text = "ดูรัง"
+	_report.ok_button_text = tr("report_ok")
 	root.add_child(_report)
 
 
@@ -49,24 +49,24 @@ func open_colonies() -> void:
 		var info := VBoxContainer.new()
 		info.add_theme_constant_override("separation", 0)
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.add_child(_label("รัง %d%s" % [s, "  · กำลังเล่น" if s == current_slot else ""], 15, Paper.ACCENT if s == current_slot else Paper.INK))
-		var desc := "ว่าง"
+		info.add_child(_label(tr("col_slot") % [s, tr("col_playing") if s == current_slot else ""], 15, Paper.ACCENT if s == current_slot else Paper.INK))
+		var desc := tr("col_empty")
 		if not m.is_empty():
 			var when := Time.get_datetime_string_from_unix_time(int(m.get("saved_unix", 0)) + _tz_offset(), true)
-			desc = "%s · วันที่ %d · มดงาน %d · %s%s · บันทึก %s" % [
-				"สวน" if m.get("scenario", "keeper") == "wild" else "ชุดเลี้ยง", m.get("day", 1), m.get("workers", 0),
-				"ตู้แอนท์ฟาร์ม" if m.get("glass", false) else "ก้อนดิน",
-				"" if m.get("queen", true) else " · ราชินีตายแล้ว", when.replace("T", " ").left(16)]
+			desc = tr("col_desc") % [
+				tr("col_wild") if m.get("scenario", "keeper") == "wild" else tr("col_keeper"), m.get("day", 1), m.get("workers", 0),
+				tr("nest_glass") if m.get("glass", false) else tr("nest_soil"),
+				"" if m.get("queen", true) else tr("title_queen_dead"), when.replace("T", " ").left(16)]
 		info.add_child(_label(desc, 12, Paper.PENCIL))
 		row.add_child(info)
 		if not m.is_empty() and s != current_slot:
-			var play := _button("เล่นรังนี้", false)
+			var play := _button(tr("col_play"), false)
 			var slot_n: int = s
 			play.pressed.connect(func():
 				_colonies.hide()
 				colony_play.emit(slot_n))
 			row.add_child(play)
-		var fresh := _button("เริ่มใหม่…", false)
+		var fresh := _button(tr("col_restart"), false)
 		var slot_k: int = s
 		var occupied: bool = not m.is_empty()
 		fresh.pressed.connect(func():
@@ -76,13 +76,13 @@ func open_colonies() -> void:
 		col.add_child(row)
 	col.add_child(HSeparator.new())
 	var foot := HBoxContainer.new()
-	var note := _label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · ตอนปิดเกม เพลง และอื่นๆ อยู่ใน \"ตั้งค่า\" ที่หน้าแรก", 12, Paper.PENCIL)
+	var note := _label(tr("col_note"), 12, Paper.PENCIL)
 	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(note)
-	var save_now := _button("เซฟตอนนี้", false)
+	var save_now := _button(tr("col_save_now"), false)
 	save_now.pressed.connect(func():
 		save_requested.emit()
-		save_now.text = "เซฟแล้ว")
+		save_now.text = tr("col_saved"))
 	foot.add_child(save_now)
 	col.add_child(foot)
 	_colonies.reset_size()
@@ -112,12 +112,27 @@ func open_settings() -> void:
 	col.add_theme_constant_override("separation", 12)
 	col.custom_minimum_size = Vector2(520, 0)
 	body.add_child(col)
+	# the language first (each named in its own words, so it can be found in a language one cannot read)
+	var lang_row := HBoxContainer.new()
+	lang_row.add_child(_label(tr("set_language"), 13, Paper.PENCIL))
+	var langs := OptionButton.new()
+	langs.focus_mode = Control.FOCUS_NONE
+	for i in L.LANGS.size():
+		langs.add_item(L.LANGS[i][1], i)
+		if L.LANGS[i][0] == L.current():
+			langs.select(i)
+	langs.item_selected.connect(func(i):
+		if L.LANGS[i][0] != L.current():
+			language_changed.emit(L.LANGS[i][0]))
+	langs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lang_row.add_child(langs)
+	col.add_child(lang_row)
 	var away := HBoxContainer.new()
-	away.add_child(_label("ตอนปิดเกม", 13, Paper.PENCIL))
+	away.add_child(_label(tr("set_away"), 13, Paper.PENCIL))
 	var opt := OptionButton.new()
 	opt.focus_mode = Control.FOCUS_NONE
 	for i in Store.AWAY_RATES.size():
-		opt.add_item(Store.AWAY_RATES[i][0], i)
+		opt.add_item(tr(Store.AWAY_RATES[i][0]), i)
 	opt.select(int(settings.get("away", 3)))
 	opt.item_selected.connect(func(i):
 		settings["away"] = i
@@ -126,20 +141,20 @@ func open_settings() -> void:
 	away.add_child(opt)
 	col.add_child(away)
 	# (two clocks: the colony's, cut short, and the ants' own pace - said here once, the time away being the one that differs)
-	var clocks := _label("ระหว่างเล่น 1 วันในเกม = 1 นาทีที่ความเร็ว 1× (ปุ่ม 0.2×–5× ที่แถบบน) — มดเดินด้วยความเร็วจริง แต่วันเดือนของรังย่อลง" +
-		"ให้เห็นรังโต · ตอนปิดเกม เวลาเดินตามที่เลือกข้างบน (ปกติช้ากว่าตอนเล่น รังจะได้ไม่ขาดน้ำขาดอาหารตอนคุณไม่อยู่นาน)", 12, Paper.PENCIL)
+	var clocks := _label(tr("set_time_1") +
+		tr("set_time_2"), 12, Paper.PENCIL)
 	clocks.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	clocks.custom_minimum_size.x = 500
 	col.add_child(clocks)
 	var care := CheckBox.new()
-	care.text = "ผู้ช่วยเติมน้ำและให้อาหารตอนที่ไม่อยู่ (เฉพาะชุดเลี้ยง)"
+	care.text = tr("set_care")
 	care.button_pressed = settings.get("care", true)
 	care.toggled.connect(func(on):
 		settings["care"] = on
 		settings_changed.emit(settings))
 	col.add_child(care)
 	var tune := HBoxContainer.new()
-	tune.add_child(_label("เพลงพื้นหลัง", 13, Paper.PENCIL))
+	tune.add_child(_label(tr("set_music"), 13, Paper.PENCIL))
 	var vol := HSlider.new()
 	vol.focus_mode = Control.FOCUS_NONE
 	vol.min_value = 0.0
@@ -148,11 +163,11 @@ func open_settings() -> void:
 	vol.value = float(settings.get("music", 0.6))
 	vol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var vol_txt := _label("ปิด" if vol.value <= 0.0 else "%d%%" % roundi(vol.value * 100), 13, Paper.INK)
+	var vol_txt := _label(tr("off") if vol.value <= 0.0 else "%d%%" % roundi(vol.value * 100), 13, Paper.INK)
 	vol_txt.custom_minimum_size.x = 44
 	vol.value_changed.connect(func(v):
 		settings["music"] = v
-		vol_txt.text = "ปิด" if v <= 0.0 else "%d%%" % roundi(v * 100)
+		vol_txt.text = tr("off") if v <= 0.0 else "%d%%" % roundi(v * 100)
 		if music != null:
 			music.volume = v
 		settings_changed.emit(settings))
@@ -160,7 +175,7 @@ func open_settings() -> void:
 	tune.add_child(vol_txt)
 	col.add_child(tune)
 	var fps := CheckBox.new()
-	fps.text = "แสดงอัตราเฟรม (FPS) มุมซ้ายบน · ปุ่มลัด F3"
+	fps.text = tr("set_fps")
 	fps.button_pressed = bool(settings.get("show_fps", false))
 	fps.toggled.connect(func(on):
 		settings["show_fps"] = on
@@ -168,10 +183,10 @@ func open_settings() -> void:
 			_fps_label.visible = on
 		settings_changed.emit(settings))
 	col.add_child(fps)
-	col.add_child(_label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม" % int(Store.MAX_AWAY_DAYS), 12, Paper.PENCIL))
+	col.add_child(_label(tr("set_note") % int(Store.MAX_AWAY_DAYS), 12, Paper.PENCIL))
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
-	var done := _button("เสร็จ", false)
+	var done := _button(tr("done"), false)
 	done.pressed.connect(_settings_win.hide)
 	foot.add_child(done)
 	col.add_child(foot)
@@ -198,7 +213,7 @@ class EnemyRate extends VBoxContainer:
 		add_theme_constant_override("separation", 2)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		row.add_child(hud._label("ไม่มี", 12, _pencil))
+		row.add_child(hud._label(tr("none"), 12, _pencil))
 		_slider = HSlider.new()
 		_slider.min_value = 0.0
 		_slider.max_value = 3.0
@@ -207,7 +222,7 @@ class EnemyRate extends VBoxContainer:
 		_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(_slider)
-		row.add_child(hud._label("บ่อยมาก", 12, _pencil))
+		row.add_child(hud._label(tr("rate_very_often"), 12, _pencil))
 		add_child(row)
 		_text = hud._label("", 12, _ink)
 		_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -227,28 +242,28 @@ class EnemyRate extends VBoxContainer:
 	func _show() -> void:
 		var v := _slider.value
 		if v <= 0.0:
-			_text.text = "0% · ไม่มีศัตรูมาเอง (ยังปล่อยมาดูได้จากปุ่ม \"ศัตรู\")"
+			_text.text = tr("rate_none")
 			return
 		var days: float = _hud.sim.enemy_days(v)
-		var when := ("ราวๆ วันละ %.1f ตัว" % (1.0 / days)) if days < 1.0 else "ราวๆ ทุก %s วัน" % ("%.1f" % days if days < 3.0 else str(roundi(days)))
-		var level := "น้อย" if v < 0.75 else ("ตามธรรมชาติ" if v <= 1.25 else ("บ่อย" if v <= 2.0 else "บ่อยมาก"))
+		var when := (tr("rate_per_day") % (1.0 / days)) if days < 1.0 else tr("rate_every") % ("%.1f" % days if days < 3.0 else str(roundi(days)))
+		var level := tr("rate_low") if v < 0.75 else (tr("rate_natural") if v <= 1.25 else (tr("rate_often") if v <= 2.0 else tr("rate_very_often")))
 		_text.text = "%d%% (%s) · %s%s" % [roundi(v * 100.0), level, when,
-			" ในหน้าร้อน · ฤดูใบไม้ผลิ/ร่วงน้อยลง หน้าหนาวไม่มี" if _scen == "wild" else " ทั้งปี"]
+			tr("rate_seasons") if _scen == "wild" else tr("rate_all_year")]
 
 
-## Choices for a new colony: where it lives, what it lives in, and how it starts.
+## Choices for a new colony: where it lives, what it lives in, and how it starts (words: keys of lang/strings.csv).
 const NEW_SCENARIOS := [
-	["wild", "สวน/ทุ่งหญ้า (กลางแจ้ง)", "แปลงดินโล่งมีแดดแบบที่มดดำสวนชอบทำรัง สี่ฤดูแบบเขตอบอุ่น ไม่ต้องดูแล: ฝนให้น้ำ มดหาน้ำหวานจากเพลี้ยและล่าแมลงเอง หน้าหนาวต้องสะสมไขมันไว้จำศีล มีศัตรูธรรมชาติ (แมงมุม ตะขาบ ด้วงดิน) รังมีปีดีปีร้ายตามธรรมชาติ"],
-	["keeper", "ชุดเลี้ยง (ในห้อง)", "ฟอร์มิคาเรียมบนชั้นในห้อง อุณหภูมิห้องทั้งปี มีแผ่นความร้อน ปกติไม่มีศัตรู (ตั้งได้ข้างล่าง) ราชินีที่ไม่ได้จำศีลจะวางไข่น้อยลงเรื่อยๆ"]]
-const NEW_NESTS := [["soil", "ก้อนดิน", "มดขุดอุโมงค์เองในดินทั้งก้อน"], ["glass", "ตู้แอนท์ฟาร์ม", "ดินแผ่นบางระหว่างกระจกสองแผ่น มองเห็นทุกห้อง"]]
-const NEW_STARTS := [["queen", "ราชินีตัวเดียว", "ราชินีหลังบินผสมพันธุ์ปลายเดือนกรกฎาคม ขังตัวเองเลี้ยงลูกชุดแรกด้วยไขมันในตัว"],
-	["young", "รังอายุ 3 เดือน (14 ตัว)", "ราชินีกับมดงาน 14 ตัว เริ่มกลางเดือนเมษายน"]]
+	["wild", "scen_wild", "scen_wild_note"],
+	["keeper", "scen_keeper", "scen_keeper_note"]]
+const NEW_NESTS := [["soil", "nest_soil", "nest_soil_note"], ["glass", "nest_glass", "nest_glass_note"]]
+const NEW_STARTS := [["queen", "start_queen", "start_queen_note"],
+	["young", "start_young", "start_young_note"]]
 
 
 ## The new-colony window: pick a scenario, a nest and a start, then start it in this slot.
 func _open_new_colony(slot: int, occupied: bool) -> void:
 	var win := Window.new()
-	win.title = "เริ่มรังใหม่ในรัง %d" % slot
+	win.title = tr("new_title") % slot
 	win.theme = _colonies.theme
 	win.transient = true
 	win.exclusive = true
@@ -266,32 +281,32 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	body.add_child(col)
 	var picked := {}
 	var rates := EnemyRate.new(self, 1.0, "wild", true)
-	for group in [["scenario", "ฉาก", NEW_SCENARIOS], ["nest", "รัง", NEW_NESTS], ["start", "เริ่มจาก", NEW_STARTS]]:
+	for group in [["scenario", "new_scene", NEW_SCENARIOS], ["nest", "new_nest", NEW_NESTS], ["start", "new_start", NEW_STARTS]]:
 		var key: String = group[0]
 		var opts: Array = group[2]
-		col.add_child(_label(group[1], 15, Paper.ACCENT))
+		col.add_child(_label(tr(group[1]), 15, Paper.ACCENT))
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		col.add_child(row)
-		var note := _label(opts[0][2], 12, Paper.PENCIL)
+		var note := _label(tr(opts[0][2]), 12, Paper.PENCIL)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.custom_minimum_size = Vector2(540, 0)
 		var bg := ButtonGroup.new()
 		picked[key] = opts[0][0]
 		for o in opts:
-			var b := _button(o[1], true)
+			var b := _button(tr(o[1]), true)
 			b.button_group = bg
 			b.button_pressed = o == opts[0]
 			b.pressed.connect(func():
 				picked[key] = o[0]
-				note.text = o[2]
+				note.text = tr(o[2])
 				if key == "scenario":
 					if not picked.has("rate_set"):
 						picked["rate"] = 1.0 if o[0] == "wild" else 0.0       # (each scene's usual, until the keeper picks one;
 					rates.set_rate(picked.rate, o[0]))                      # it showed 0% for the formicarium and sent 100%)
 			row.add_child(b)
 		col.add_child(note)
-	col.add_child(_label("สัตว์ร้าย (แมงมุมหมาป่า ตะขาบหิน ด้วงดิน)", 15, Paper.ACCENT))
+	col.add_child(_label(tr("new_enemies"), 15, Paper.ACCENT))
 	picked["rate"] = 1.0
 	rates.changed.connect(func(v):
 		picked["rate"] = v
@@ -302,13 +317,13 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	foot.add_theme_constant_override("separation", 10)
 	if occupied:
-		var warn := _label("รังเดิมในช่องนี้จะถูกลบ", 12, Paper.DANGER)
+		var warn := _label(tr("new_overwrite"), 12, Paper.DANGER)
 		warn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		foot.add_child(warn)
-	var cancel := _button("ยกเลิก", false)
+	var cancel := _button(tr("cancel"), false)
 	cancel.pressed.connect(win.queue_free)
 	foot.add_child(cancel)
-	var go := _button("เริ่มรังนี้", false)
+	var go := _button(tr("new_go"), false)
 	go.pressed.connect(func():
 		win.queue_free()
 		colony_new.emit(slot, "%s:%s:%s:%s" % [picked.nest, picked.start, picked.scenario, picked.rate]))
@@ -318,14 +333,14 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	win.popup_centered()
 
 
-## Asks before doing something (a dialog with the keeper's own OK and "ยกเลิก").
+## Asks before doing something (a dialog with the keeper's own OK and tr("cancel")).
 func confirm(title: String, text: String, ok_text: String, on_ok: Callable) -> void:
 	var d := ConfirmationDialog.new()
 	d.theme = _report.theme
 	d.title = title
 	d.dialog_text = text
 	d.ok_button_text = ok_text
-	d.cancel_button_text = "ยกเลิก"
+	d.cancel_button_text = tr("cancel")
 	d.confirmed.connect(on_ok)
 	d.visibility_changed.connect(func():
 		if not d.visible:

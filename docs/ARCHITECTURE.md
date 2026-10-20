@@ -35,7 +35,7 @@ scripts/
   game/        main.gd (จุดเริ่ม), save_store.gd, desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), title.gd (หน้าแรก + กล้องเดินชมรัง),
                single_instance.gd (เกมเดียวต่อเครื่อง: ตัวที่สองบอกตัวแรกให้ขึ้นมา, พอร์ต 47815), parts/ (main_base, main_camera)
   dev/         dev_tools.gd (--shot, --selftest), ตัวเลือกบรรทัดคำสั่งอยู่หัว main.gd
-  sim/         simulation.gd + parts/ (sim_state, sim_base, sim_foragers, sim_enemies, sim_colony, sim_duties),
+  sim/         simulation.gd + parts/ (sim_state, sim_base, sim_foragers, sim_enemies, sim_colony, sim_duties), lang.gd (ภาษา),
                ant.gd, climate.gd, nest_volume.gd (+ parts/nest_voxels, nest_chambers), pheromone_field.gd, species/
   view/
     common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset)
@@ -108,7 +108,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 
 ## เซฟ
 - `scripts/game/save_store.gd`: 3 ช่อง (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
-- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 10)
+- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 11)
 - **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
   และ**ไม่บันทึกทับ**; อ่านไม่ได้ → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (บอกผู้เล่นทุกกรณี)
@@ -121,6 +121,17 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
   `stats.brood_dead` = ไข่/ตัวอ่อน/ดักแด้ที่ตาย (เซฟเก่า: ยอดเดิมทั้งหมดเป็น `other`)
 - ไฟล์เซฟตัวอย่างของแต่ละรูปแบบอยู่ใน `tests/fixtures/` (สร้างจากโค้ดเวอร์ชันนั้น) — เปลี่ยนรูปแบบครั้งใหม่ให้เพิ่มไฟล์ของรูปแบบล่าสุดก่อนเปลี่ยน
 - ทดสอบโดยไม่แตะเซฟจริง: `--sandbox` ใช้ `user://sandbox/`
+
+## ภาษา (v0.11.11, PART EA-R R1)
+- คำทุกคำที่ผู้เล่นเห็นอยู่ใน `lang/strings.csv` คอลัมน์ `keys,th,en` (แถวที่ขึ้นต้น `#` คือหัวข้อกลุ่ม); รหัสเป็นคำอังกฤษสั้นๆ (`tip_age_size`)
+  — **ห้ามเขียนข้อความไทยในโค้ด** (`tests/lang_test.gd` ตรวจ) เพิ่มข้อความใหม่ = เพิ่มแถวใน CSV ทั้งสองภาษา `%` ต้องเหมือนกันและเรียงเหมือนกัน
+- `scripts/sim/lang.gd` (`L`) อ่าน CSV ตอนเริ่ม (`lang/strings.csv.import` = "keep": Godot ไม่แปลงเป็น .translation แก้ CSV แล้วเปิดเกมใหม่ก็เห็น)
+  ใส่ `TranslationServer`; Node ใช้ `tr("key")`, ที่อื่น (การจำลอง, static, ค่าคงที่) `L.t("key")` / `L.f("key", [ค่า])`;
+  ค่าคงที่เก็บรหัส (`NAME`, `CARD`, `AWAY_RATES`, `NEW_*`, `SHOWN`, `STAR_COMING`, `MONTHS`) แล้วแปลตรงที่แสดง
+- ภาษาเริ่มต้น: settings `lang` ถ้ามี ไม่งั้น `OS.get_locale_language()` "th" → ไทย อื่นๆ → อังกฤษ; `--lang=th|en` (dev);
+  เปลี่ยนในหน้าต่างตั้งค่า → เซฟ + โหลดฉากใหม่ (`main._change_language`)
+- **บันทึกผู้เลี้ยง** (`sim.log_entries`, เซฟ v11): `{"day", "clock", "key", "args", "kind"}` — `T.<name>` ใน `text_th.gd` คือรหัส `log_<name>`;
+  ค่าที่เป็นคำ (ชื่อศัตรู สาเหตุตาย) ใส่เป็น `L.k(key)`; แสดงด้วย `L.entry_text(e)` / `L.stamp(e)`; บรรทัดที่เซฟก่อน v0.11.11 เป็น `{"stamp", "text"}` ไทย แสดงตามเดิม
 
 ## โหมดเดสก์ท็อป (PART 11)
 - `scripts/game/desktop_mode.gd` + ตัวช่วย `tools/desktop/antdesk.cs` → `build/AntDesk.exe` (คอมไพล์ด้วย csc ของ .NET Framework 4 ที่มากับ Windows,

@@ -8,7 +8,8 @@ const Field := preload("res://scripts/sim/pheromone_field.gd")
 const Climate := preload("res://scripts/sim/climate.gd")
 const LasiusNiger := preload("res://scripts/sim/species/lasius_niger.gd")
 const NestVolume := preload("res://scripts/sim/nest_volume.gd")
-const T := preload("res://scripts/sim/text_th.gd")     # journal texts
+const T := preload("res://scripts/sim/text_th.gd")     # journal keys
+const L := preload("res://scripts/sim/lang.gd")        # words in the language in use
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 
 signal logged(entry: Dictionary)
@@ -123,7 +124,7 @@ var _unloaded: Array = []                # foragers (ids) who brought honeydew h
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 10             # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 11             # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
 	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt", "name",
 	"duty", "partner", "sweet", "n_larvae", "n_brood", "n_mates", "rest_h", "dig_h", "n_sugar", "n_prey", "n_corpses", "n_fights", "task"]

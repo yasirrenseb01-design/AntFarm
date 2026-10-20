@@ -1,0 +1,485 @@
+keys,th,en
+# journal,,
+log_founding_sealed,ราชินีที่เพิ่งผสมพันธุ์สลัดปีกทิ้ง ขุดห้องเล็กแล้วปิดตัวเองอยู่ในนั้น (ก่อตั้งรังแบบปิด),"The newly mated queen has shed her wings, dug a small chamber and sealed herself in (claustral founding)"
+log_founding_reserves,เธอจะเลี้ยงลูกรุ่นแรกด้วยไขมันสะสมในตัวโดยไม่ออกหาอาหาร มดงานตัวแรกใช้เวลาราว 6–8 สัปดาห์,"She will raise her first brood on her own fat reserves, never going out to feed. The first worker takes about 6–8 weeks"
+log_young_colony,รังอายุราว 3 เดือน: ราชินี 1 ตัว มดงาน %d ตัว เริ่มบันทึกการสังเกต,A colony about 3 months old: 1 queen and %d workers. The observations begin
+log_young_needs_protein,ตัวอ่อนต้องการโปรตีน มีจิ้งหรีดตายวางอยู่ทางขวาล่างของกล่อง,The larvae need protein: there is a dead cricket at the lower right of the box
+log_water_added,เติมน้ำในแท็งก์น้ำของรัง ความชื้น %d%%,Filled the nest's water tank. Humidity %d%%
+log_chamber_planned,รังเริ่มแน่น มดเริ่มขุดปล่องลงไปทำห้องใหม่ (ห้องที่ %d),The nest is getting crowded: the ants have started digging a shaft down to a new chamber (chamber %d)
+log_chamber_opened,มดขุดทะลุถึงห้องใหม่แล้ว กำลังขยายห้องให้กว้าง,The ants have broken through to the new chamber and are widening it
+log_chamber_grown,มดขยายห้องรังให้กว้างขึ้นเพราะตัวอ่อนเริ่มแน่น,The ants are widening the brood chamber: the larvae are getting crowded
+log_rain_start,ฝนตก มดหลบเข้ารัง กลิ่นบนพื้นกำลังถูกชะล้าง,Rain: the ants shelter in the nest and the scent trails on the ground are being washed away
+log_warn_starve,น้ำตาลในรังหมด มดงานเริ่มอดอาหาร,The nest has run out of sugar: the workers are starving
+log_warn_dry,รังแห้งมาก มดงานเริ่มขาดน้ำ ควรเติมน้ำ,The nest is very dry: the workers are getting thirsty. Add water
+log_warn_lowhum,ความชื้นในรังต่ำ ไข่เริ่มแห้งตาย,The humidity in the nest is low: eggs are drying out and dying
+log_warn_lowwater,น้ำในแทงก์ของรังใกล้หมด — กดเติมน้ำในรังได้แล้ว,The nest's water tank is nearly empty — time to add water
+log_warn_nowater,น้ำในแทงก์หมดแล้ว รังจะเริ่มแห้ง,The water tank is empty: the nest will start to dry out
+log_warn_mold,ราขึ้นในรังเพราะชื้นเกินไป ตัวอ่อนและอาหารเริ่มเสีย,Mould is growing in the nest because it is too damp: larvae and food are spoiling
+log_queen_died,ราชินีตายจาก%s รังจะค่อยๆ หมดไปเพราะไม่มีไข่ใหม่,The queen has died of %s. With no new eggs the colony will slowly dwindle away
+log_cannibalism,ขาดโปรตีน มดงานกินตัวอ่อนที่อดอาหารไปแล้ว %d ตัว,"Short of protein, the workers have eaten starving larvae (%d so far)"
+log_first_worker,มดงานตัวแรกออกจากรังไหมแล้ว! เป็นมดรุ่นแรกตัวเล็ก (nanitic) จะเปิดปากรังออกไปหาอาหาร,"The first worker has come out of her cocoon! A small first-generation worker (a nanitic), she will open the nest and go out to forage"
+log_new_worker,มดงานตัวใหม่ออกจากรังไหม (รวม %d ตัว),A new worker has come out of her cocoon (%d in all)
+log_warn_heat,ในรังร้อนเกินไป ตัวอ่อนเริ่มตาย,The nest is too hot: larvae are dying
+log_fly_fell,มีแมลงวันตายตกลงมาในกล่อง มดจะหาเจอเองถ้าออกสำรวจ,A dead fly has fallen into the box. The ants will find it if they go exploring
+log_spider_arrives,แมงมุมหมาป่าเดินเข้ามาในพื้นที่หาอาหาร,A wolf spider has wandered into the outworld
+log_spider_first_kill,แมงมุมจับมดงานไป 1 ตัว,The spider has caught a worker
+log_spider_leaves,แมงมุมออกไปแล้ว (จับมดได้ %d ตัว),The spider has gone (ants caught: %d)
+log_spider_chased,ไล่แมงมุมออกจากกล่องแล้ว,Chased the spider out of the box
+log_found_aphids,มดพบฝูงเพลี้ยอ่อน เริ่มรีดน้ำหวานและทิ้งกลิ่นนำทาง,The ants have found a colony of aphids: they are milking them for honeydew and laying a trail
+log_beyond_food,มดออกไปหากินนอกแปลงแล้วกลับมาพร้อมอาหาร — สวนรอบๆ กว้างกว่าที่เห็น เส้นกลิ่นไปขอบแปลงคือทางไปแหล่งอาหารข้างนอก,Foragers went out beyond the plot and came back with food — the garden around is bigger than what you see: trails to the edge lead to food outside
+log_found_honey,มดพบหยดน้ำผึ้ง กำลังชวนกันมาเก็บ,The ants have found a drop of honey and are recruiting nestmates to collect it
+log_found_cricket,มดพบจิ้งหรีด กำลังตัดชิ้นส่วนกลับรัง,The ants have found the cricket and are cutting pieces to carry home
+log_found_fly,มดพบแมลงวันตาย ได้โปรตีนเพิ่ม,The ants have found the dead fly: more protein
+log_alarm_raised,มดเจอศัตรู! ปล่อยกลิ่นเตือนภัย พวกพ้องกำลังกรูกันเข้าไปรุม,The ants have met an enemy! They give off alarm pheromone and nestmates rush in to mob it
+log_enemy_killed,มดรุมจับ%sไว้จนตาย แล้วกัดพ่นกรดฟอร์มิกจนมันไม่ขยับ ตอนนี้กลายเป็นอาหารโปรตีนของรัง,"The ants held the %s down, biting and spraying formic acid until it stopped moving. Now it is protein for the colony"
+log_enemy_released,ผู้เลี้ยงปล่อย%sเข้าไปในพื้นที่หาอาหาร,The keeper let a %s into the outworld
+log_enemy_flees,%sบาดเจ็บจากกรดฟอร์มิก กำลังหนีออกจากกล่อง,"Hurt by formic acid, the %s is fleeing the box"
+log_found_spider_dead,มดเริ่มกินซากแมงมุมที่รุมฆ่าได้,The ants have started eating the spider they killed
+log_centipede_arrives,ตะขาบหินวิ่งออกมาจากใต้ก้อนหินมาล่าเหยื่อตอนกลางคืน,A stone centipede has come out from under a stone to hunt in the dark
+log_centipede_leaves,ตะขาบหินกลับไปหลบใต้ก้อนหินแล้ว (จับมดได้ %d ตัว),The stone centipede has gone back under its stone (ants caught: %d)
+log_centipede_chased,จับตะขาบหินออกจากกล่องแล้ว,Took the stone centipede out of the box
+log_found_centipede_dead,มดเริ่มกินซากตะขาบหิน,The ants have started eating the stone centipede
+log_beetle_arrives,ด้วงดินวิ่งเข้ามาในพื้นที่หาอาหารตอนกลางคืน,A ground beetle has run into the outworld in the dark
+log_beetle_leaves,ด้วงดินจากไปแล้ว (จับมดได้ %d ตัว),The ground beetle has gone (ants caught: %d)
+log_beetle_chased,จับด้วงดินออกจากกล่องแล้ว,Took the ground beetle out of the box
+log_beetle_sprays,ด้วงดินพ่นสารเคมีจากปลายท้องป้องกันตัว มดที่เกาะอยู่ร่วงหลุดหมด,The ground beetle sprays a defensive secretion from the tip of its abdomen: the clinging ants all drop off
+log_found_beetle_dead,มดเริ่มกินซากด้วงดิน (กินได้เฉพาะเนื้อข้างใน เปลือกแข็งเหลือไว้),The ants have started eating the ground beetle (only the soft insides: the hard shell is left)
+log_wild_start,ฉากสวน/ทุ่งหญ้า: ไม่ต้องเติมน้ำหรือให้อาหาร ฝนทำให้ดินชื้น มดหาน้ำหวานจากเพลี้ยและล่าแมลงเอง รังจะโตเท่าที่พื้นที่เลี้ยงได้ (วางอาหารเสริมได้ถ้าอยากช่วย),Garden/meadow: no need to water or feed. The rain keeps the soil damp; the ants collect honeydew from aphids and hunt insects themselves. The colony grows as far as its ground can feed it (you can still put out extra food to help)
+log_fridge_hint,"เข้าเดือนพฤศจิกายนแล้ว ในธรรมชาติมดดำสวนจำศีลราวพฤศจิกายน–กุมภาพันธ์ ถ้าพารังเข้าตู้เย็น (ปุ่ม ""จำศีลในตู้เย็น"") อย่างน้อยหกสัปดาห์ ราชินีจะกลับมาวางไข่เต็มที่ในปีหน้า","It is November. In nature black garden ants hibernate from about November to February. Put the nest in the fridge (the ""Hibernate in fridge"" button) for at least six weeks and the queen will lay fully again next year"
+log_rest_low,ราชินีไม่ได้พักหนาวมานาน เริ่มวางไข่น้อยลงแล้ว ควรพารังเข้าตู้เย็นจำศีลอย่างน้อยหกสัปดาห์,The queen has gone a long time without a winter rest and is laying fewer eggs. Put the nest in the fridge to hibernate for at least six weeks
+log_fridge_ready,"ครบหกสัปดาห์ในตู้เย็นแล้ว นำรังออกได้เลย (กดปุ่ม ""จำศีลในตู้เย็น"" อีกครั้ง) หรือจะให้อยู่ต่ออีกสักพักก็ได้","Six weeks in the fridge: you can take the nest out now (press ""Hibernate in fridge"" again), or leave it a while longer"
+log_fridge_in,ย้ายรังเข้าตู้เย็นเพื่อจำศีล อุณหภูมิจะค่อยๆ ลดลงจนเหลือราว 6–7°C ในหนึ่งสัปดาห์ ต้องอยู่ในความเย็นอย่างน้อยหกสัปดาห์ ระหว่างนี้มดแทบไม่กินอะไร,Moved the nest into the fridge to hibernate. It cools to about 6–7°C over a week and needs at least six weeks in the cold; meanwhile the ants hardly eat
+log_fridge_out,นำรังออกจากตู้เย็น อุณหภูมิจะค่อยๆ อุ่นขึ้นจนเท่าห้องในหนึ่งสัปดาห์,Took the nest out of the fridge. It warms up to room temperature over a week
+log_winter_rest_done,รังผ่านความหนาวมาครบหกสัปดาห์แล้ว ราชินีได้พักฤดูหนาว พออุ่นขึ้นจะกลับมาวางไข่เต็มที่,The colony has had six weeks of cold: the queen has had her winter rest and will lay fully once it is warm
+log_rain_stop,ฝนหยุดแล้ว เส้นทางกลิ่นส่วนใหญ่ถูกชะล้างไป,The rain has stopped. Most of the scent trails have been washed away
+log_cause_starvation,ขาดอาหาร,starvation
+log_cause_thirst,ขาดน้ำ,thirst
+log_ant_named,"ตั้งชื่อมดงาน #%d ว่า ""%s""","Named worker #%d ""%s"""
+log_ant_unnamed,"เอาชื่อ ""%s"" ออกจากมดงาน #%d","Took the name ""%s"" from worker #%d"
+log_named_died,%s ตายแล้ว — %s (อายุ %d วัน),%s has died — %s (aged %d days)
+log_queen_named,"ตั้งชื่อราชินีว่า ""%s""","Named the queen ""%s"""
+log_queen_unnamed,"เอาชื่อ ""%s"" ออกจากราชินี","Took the name ""%s"" from the queen"
+log_named_queen_died,ราชินี %s ตายแล้ว — %s,Queen %s has died — %s
+cause_starve,อดอาหาร,starved
+cause_thirst,ขาดน้ำ,of thirst
+cause_old,แก่ตาย,of old age
+cause_out,หายไปตอนออกหากิน,lost while foraging
+cause_enemy,ถูกศัตรูกัด,bitten by an enemy
+cause_other,ไม่ทราบสาเหตุ,cause unknown
+log_stamp,ว.%d %s,Day %d %s
+# calendar,,
+month_jan,ม.ค.,Jan
+month_feb,ก.พ.,Feb
+month_mar,มี.ค.,Mar
+month_apr,เม.ย.,Apr
+month_may,พ.ค.,May
+month_jun,มิ.ย.,Jun
+month_jul,ก.ค.,Jul
+month_aug,ส.ค.,Aug
+month_sep,ก.ย.,Sep
+month_oct,ต.ค.,Oct
+month_nov,พ.ย.,Nov
+month_dec,ธ.ค.,Dec
+date_day_month,%d %s,%d %s
+season_winter,ฤดูหนาว,Winter
+season_spring,ใบไม้ผลิ,Spring
+season_summer,ฤดูร้อน,Summer
+season_autumn,ใบไม้ร่วง,Autumn
+# enemies,,
+enemy_wolf_spider,แมงมุมหมาป่า,wolf spider
+enemy_wolf_spider_about,ล่าได้ทั้งกลางวันและกลางคืน เดินเข้ามาไล่จับมดที่ออกหากิน · มดเกาะขาได้ 8 ตัว ถ้า 5 ตัวขึ้นไปมันจะขยับไม่ได้ · กัดมดตายบ่อย สะบัดมดหลุด · ถ้ามดรุมได้ มักฆ่ามันได้,"Hunts by day as well as by night, walking in to run down foragers · up to 8 ants can hold its legs; 5 or more and it cannot move · its bite often kills, and it shakes ants off · mobbed, it is often killed"
+enemy_centipede,ตะขาบหิน,stone centipede
+enemy_centipede_about,ยาว ~25 มม. วิ่งเร็วมาก กัดด้วยเขี้ยวพิษ ปกติออกล่าตอนกลางคืน · มดเกาะตามขาได้ 10 ตัว · บิดตัวสะบัดมดหลุดเก่ง และหนีเร็วเมื่อเจ็บ,"About 25 mm long and very fast; bites with venom claws; usually hunts at night · up to 10 ants can hold its legs · good at writhing free, and quick to run when hurt"
+enemy_ground_beetle,ด้วงดิน,ground beetle
+enemy_ground_beetle_about,เกราะแข็ง กัดและกรดฟอร์มิกของมดแทบไม่เข้า · กรามบดแรง · พ่นสารเคมีจากปลายท้องจนมดที่เกาะร่วงหมด · มดมักฆ่าไม่ได้ ได้แค่ไล่ให้หนี,Hard armour that the ants' bites and formic acid barely get through · crushing jaws · sprays a secretion from the tip of its abdomen and the clinging ants all drop off · the ants rarely kill one: they can only drive it off
+# foods,,
+tool_honey,หยดน้ำผึ้ง,Drop of honey
+tool_cricket,จิ้งหรีดตาย,Dead cricket
+# star ants,,
+top_big,ตัวใหญ่ที่สุด,Biggest
+top_big_text,ยาว %.1f มม.,%.1f mm long
+top_small,ตัวเล็กที่สุด,Smallest
+top_small_text,ยาว %.1f มม.,%.1f mm long
+top_old,อายุมากที่สุด,Oldest
+top_old_text,อายุ %d วัน,%d days old
+top_hurt,บาดเจ็บแต่ยังรอด,Injured but alive
+top_hurt_text,บาดเจ็บ %d%%,%d%% injured
+top_feed_larvae,ป้อนตัวอ่อนมากที่สุด,Fed the most larvae
+top_feed_larvae_text,ป้อนตัวอ่อน %d ครั้ง,Larvae fed: %d
+top_carry_brood,คาบลูกมดมากที่สุด,Carried the most brood
+top_carry_brood_text,คาบลูกมด %d ครั้ง,Brood carried: %d
+top_feed_mates,ป้อนน้ำหวานเพื่อนมากที่สุด,Fed the most nestmates
+top_feed_mates_text,ป้อนน้ำหวานเพื่อน %d ครั้ง,Nestmates fed honeydew: %d
+top_rest,ยืนพักมากที่สุด,Rested the most
+top_rest_text,ยืนพัก %d ชั่วโมง,Hours resting: %d
+top_dig,ขุดดินมากที่สุด,Dug the most
+top_dig_text,ขุดดิน %d ชั่วโมง,Hours digging: %d
+top_sugar_trips,ขนน้ำหวานกลับรังมากที่สุด,Brought home the most honeydew
+top_sugar_trips_text,ขนน้ำหวาน %d เที่ยว,Loads of honeydew: %d
+top_prey,ขนเหยื่อมากที่สุด,Brought home the most prey
+top_prey_text,ขนเหยื่อ %d ชิ้น,Pieces of prey: %d
+top_corpses,ขนศพออกมากที่สุด,Carried out the most dead
+top_corpses_text,ขนศพออก %d ตัว,Dead carried out: %d
+top_fights,รุมศัตรูแล้วรอดมากที่สุด,Survived the most fights
+top_fights_text,รุมศัตรูแล้วรอด %d ครั้ง,Fights come through: %d
+# species,,
+ln_blurb,มดที่พบมากที่สุดในสวนและทุ่งหญ้าทั่วยุโรป ตัวดำ ขนาดเล็ก 3.5–5 มม. รังหนึ่งมีราชินีตัวเดียว เป็นมดที่คนเลี้ยงมดนิยมเริ่มเลี้ยงเป็นชนิดแรก,"The commonest ant of gardens and meadows all over Europe: black, small (3.5–5 mm), one queen to a colony. Many keepers start with it"
+ln_trait_founding,ราชินีตั้งรังเองตัวเดียว: ขังตัวในห้องเล็กใต้ดิน เลี้ยงลูกรุ่นแรกด้วยไขมันและกล้ามเนื้อปีกในตัว ไม่ออกมากินเลยจนมดงานรุ่นแรกออก,"The queen founds her colony alone: she seals herself in a small chamber underground and raises her first brood on her fat and wing muscles, never coming out to eat until the first workers emerge"
+ln_src_janet,"งานวิจัย L. niger (Janet 1907), AntWiki","L. niger study (Janet 1907), AntWiki"
+ln_trait_aphids,เลี้ยงเพลี้ยเอาน้ำหวาน: ใช้หนวดเคาะหลังเพลี้ยให้ปล่อยหยดน้ำหวาน และไล่ผู้ล่าอย่างเต่าทองออกจากกลุ่มเพลี้ย,"Tends aphids for honeydew: strokes them with her antennae until they give a drop, and chases predators such as ladybirds away from them"
+ln_src_banks,งานวิจัย L. niger (Banks 1962),L. niger study (Banks 1962)
+ln_trait_no_sting,ไม่มีเหล็กไน: สู้ด้วยการกัดแล้วงอท้องพ่นกรดฟอร์มิก และรุมกันดึงขาศัตรูจนขยับไม่ได้,"No sting: fights by biting and curling the gaster forward to spray formic acid, and mobs an enemy, pulling its legs until it cannot move"
+ln_src_formicinae,มดวงศ์ย่อย Formicinae ทั่วไป,Formicine ants in general
+ln_trait_trails,ชวนพวกไปหาอาหารด้วยทางกลิ่นจากปลายท้อง และปล่อยกลิ่นเตือนภัยเมื่อเจอศัตรู,"Recruits nestmates to food along scent trails from the tip of the gaster, and gives off alarm pheromone on meeting an enemy"
+ln_src_bestmann,งานวิจัย L. niger (Bestmann 1992),L. niger study (Bestmann 1992)
+ln_trait_queen_age,ราชินีอายุยืนมาก: บันทึกในที่เลี้ยงนานเกือบ 29 ปี (มีบันทึกเดียว),The queen lives very long: almost 29 years in captivity (a single record)
+ln_src_kutter,งานวิจัย L. niger (Kutter & Stumper 1969),L. niger study (Kutter & Stumper 1969)
+ln_difficulty,ง่าย — เหมาะกับมือใหม่,Easy — good for beginners
+ln_care_food,กินง่าย: น้ำหวาน (น้ำผึ้ง เพลี้ย) กับแมลงเล็กๆ เป็นโปรตีนให้ตัวอ่อน,"Easy to feed: sugar (honey, aphids) and small insects as protein for the larvae"
+ln_src_keepers,คำแนะนำผู้เลี้ยง,Keepers' advice
+ln_care_temp,อยู่ได้ที่อุณหภูมิห้อง ลูกมดโตเร็วที่สุดราว 20–28°C ต่ำกว่า ~13°C หยุดโต,Lives at room temperature; brood grows fastest at about 20–28°C and stops below ~13°C
+ln_src_keepers_game,คำแนะนำผู้เลี้ยง + ค่าในเกม,Keepers' advice + the game's values
+ln_care_winter,ต้องจำศีลหน้าหนาว (ราวปลาย ต.ค.–ต้น มี.ค.) ไม่อย่างนั้นราชินีวางไข่น้อยลงเรื่อยๆ,"Needs a winter hibernation (about late Oct – early Mar), or the queen lays fewer and fewer eggs"
+ln_care_slow,รังใหม่โตช้า: จากไข่ใบแรกถึงมดงานตัวแรกราว 6–10 สัปดาห์ ปีแรกยังมีมดไม่มาก,"A new colony grows slowly: about 6–10 weeks from the first egg to the first worker, and few ants in the first year"
+ln_src_keepers_wiki,คำแนะนำผู้เลี้ยง + Wikipedia,Keepers' advice + Wikipedia
+ln_name,มดดำสวน,Black garden ant
+# settings,,
+away_stop,หยุดเวลาตอนปิดเกม,Time stops while the game is closed
+away_real,1 วันในเกม = 24 ชม. จริง (เวลาจริง),1 game day = 24 real hours (real time)
+away_6h,1 วันในเกม = 6 ชม. จริง,1 game day = 6 real hours
+away_1h,1 วันในเกม = 1 ชม. จริง,1 game day = 1 real hour
+away_15m,1 วันในเกม = 15 นาทีจริง,1 game day = 15 real minutes
+# desktop mode,,
+tray_tooltip,AntFarm · คลิกเพื่อกลับไปเล่นเกม,AntFarm · click to go back to the game
+tray_back,กลับไปเล่นเกม,Back to the game
+tray_quit,ปิดเกม (เซฟแล้วออก),Quit (saves first)
+desk_no_helper,ใช้โหมดเดสก์ท็อปไม่ได้: ไม่พบ AntDesk.exe ข้างไฟล์เกม,Desktop mode cannot start: AntDesk.exe was not found next to the game
+desk_windows_only,โหมดเดสก์ท็อปมีเฉพาะ Windows,Desktop mode is only on Windows
+desk_failed,ตั้งเป็นวอลเปเปอร์ไม่ได้ (%s),Could not become the wallpaper (%s)
+# saves and wallpaper,,
+save_newer,รัง %d ถูกบันทึกด้วยเกมเวอร์ชันใหม่กว่านี้ (รูปแบบเซฟ %d) เกมนี้จึงเปิดรังทดลองให้แทน\nและจะไม่บันทึกทับรังนั้น — อัปเดตเกมแล้วรังจะกลับมาเหมือนเดิม,"Colony %d was saved by a newer version of the game (save format %d), so this one opens a trial colony instead\nand will not save over it — update the game and the colony will be back as it was"
+save_unreadable,อ่านเซฟรัง %d ไม่ได้ เก็บไฟล์เดิมไว้ในโฟลเดอร์เซฟแล้ว (slot%d.unreadable-…) และเริ่มรังใหม่,Could not read the save of colony %d. The file is kept in the save folder (slot%d.unreadable-…) and a new colony starts
+desk_title,โหมดเดสก์ท็อป,Desktop mode
+save_title,เซฟ,Save
+wallpaper,วอลเปเปอร์,Wallpaper
+desk_intro_1,รังมดจะไปอยู่เป็นภาพพื้นหลังเดสก์ท็อป หลังไอคอน (เกมเซฟแล้วเปิดตัวเองใหม่ ครั้งแรกอาจใช้เวลาครึ่งนาที)\n\n,"The nest becomes your desktop wallpaper, behind the icons (the game saves and starts itself again; the first time it may take half a minute)\n\n"
+desk_intro_2,กลับมาเล่น: คลิกไอคอนมดที่ถาดระบบ มุมขวาล่างของจอ — Windows 11 มักซ่อนไอคอนใหม่ไว้ใต้ลูกศร ^\n,"To come back: click the ant icon in the system tray, bottom right of the screen — Windows 11 often hides new icons under the ^ arrow\n"
+desk_intro_3,(ลากไอคอนมดออกมาวางข้างนาฬิกาจะหาง่ายขึ้น) · คลิกขวาที่ไอคอน: เมนูปิดเกม,(drag the ant icon out next to the clock to find it easily) · right-click the icon: the menu to quit
+desk_go,ตั้งเป็นวอลเปเปอร์,Make it the wallpaper
+# time away,,
+away_running,ระหว่างที่คุณไม่อยู่ รังยังมีชีวิตต่อ…\nกำลังจำลอง %.1f จาก %.1f วันในเกม,While you were away the colony lived on…\nsimulating %.1f of %.1f game days
+away_summary,คุณไม่อยู่ %s → ในรังผ่านไป %.1f วัน (วันที่ %d → %d)%s,You were away %s → %.1f days passed in the nest (day %d → %d)%s
+away_capped,\n(จำลองให้สูงสุด %d วันในเกม),\n(at most %d game days are simulated)
+away_workers,มดงาน  %d → %d   (เกิดใหม่ %d · ตาย %d · ลูกมดตาย %d),Workers  %d → %d   (born %d · died %d · brood lost %d)
+away_brood,ไข่ %d · ตัวอ่อน %d · ดักแด้ %d,Eggs %d · larvae %d · pupae %d
+away_chambers,ห้องในรัง  %d → %d   · ปริมาตร %.1f ซม³,Chambers  %d → %d   · volume %.1f cm³
+away_humidity,ความชื้นในรังตอนนี้ %d%%%s,Humidity in the nest now %d%%%s
+away_add_water,  (ควรเติมน้ำ),  (add water)
+away_queen_died,ราชินีตายระหว่างที่คุณไม่อยู่,The queen died while you were away
+away_events,เรื่องที่เกิดขึ้น:,What happened:
+away_more,…และอีก %d เรื่อง,…and %d more
+away_title,ระหว่างที่คุณไม่อยู่,While you were away
+minutes_n,%d นาที,%d minutes
+hours_n,%.1f ชั่วโมง,%.1f hours
+days_n,%.1f วัน,%.1f days
+# title,,
+title_notebook,สมุดบันทึกผู้เลี้ยงมด,Keeper's field notebook
+title_go_on,เล่นต่อ,Go on
+title_new,รังใหม่,New colony
+my_colonies,รังของฉัน,My colonies
+settings,ตั้งค่า,Settings
+title_quit,ออกจากเกม,Quit
+title_colony_note,รัง %d · ปีที่ %d · %s · มดงาน %d ตัว%s,Colony %d · year %d · %s · %d workers%s
+title_queen_dead, · ราชินีตายแล้ว, · the queen is dead
+shot_outworld,พื้นที่หาอาหาร,The outworld
+shot_plot,แปลงดินรอบรัง,The ground around the nest
+shot_forager,มดงานออกหากิน,A forager out
+larvae,ตัวอ่อน,Larvae
+shot_cocoons,รังไหม (ดักแด้),Cocoons (pupae)
+eggs,ไข่,Eggs
+shot_nest_worker,มดงานในรัง,A worker in the nest
+shot_queen_named,"ราชินี ""%s""","Queen ""%s"""
+queen,ราชินี,Queen
+# ant info box,,
+tip_name_ant,ตั้งชื่อมดตัวนี้…,Name this ant…
+tip_name_queen,ตั้งชื่อราชินี…,Name the queen…
+tip_name_clear,ว่างไว้ = เอาชื่อออก,Leave empty = no name
+tip_name_set,ตั้งชื่อ,Name
+tip_in_nest,อยู่ในรัง,in the nest
+tip_outside,อยู่นอกรัง,outside the nest
+tip_egg_gone,ไข่ฟองนี้ฟักเป็นตัวอ่อนแล้ว,This egg has hatched into a larva
+tip_larva_gone,ตัวอ่อนตัวนี้ทำรังไหมเข้าดักแด้แล้ว (หรือถูกพี่เลี้ยงกินไปตอนอาหารขาด),This larva has spun its cocoon and pupated (or the nurses ate it when food ran short)
+tip_pupa_gone,ดักแด้ตัวนี้ออกจากรังไหมเป็นมดงานแล้ว,This pupa has come out of its cocoon as a worker
+tip_click_another,\n(คลิกตัวใหม่เพื่อดูต่อ),\n(click another to go on)
+tip_gone,มดตัวที่เลือกไม่อยู่แล้ว (ตายหรือไม่อยู่ในมุมนี้),"The ant you picked is gone (dead, or not in this view)"
+tip_queen_named,"ราชินี ""%s""","Queen ""%s"""
+tip_dead,ตายแล้ว,Dead
+tip_hibernating,จำศีล,Hibernating
+tip_queen_founding,ปิดตัวเลี้ยงลูกรุ่นแรกด้วยไขมันของตัวเอง (เหลือ %d%%),"Sealed in, raising her first brood on her own fat (%d%% left)"
+tip_queen_not_laying,หยุดวางไข่ (อาหารไม่พอ),Not laying (not enough food)
+tip_laying,วางไข่,Laying eggs
+tip_doing,กำลังทำ: ,Doing: 
+tip_worker_named,"""%s"" · มดงาน #%d","""%s"" · worker #%d"
+tip_worker_n,มดงาน #%d,Worker #%d
+worker,มดงาน,Worker
+tip_job,หน้าที่: ,Job: 
+tip_age_size,อายุ %d วัน · ยาว %.1f มม.,%d days old · %.1f mm long
+tip_crop_full,กระเพาะพักเต็มไปด้วยน้ำหวาน,Crop full of honeydew
+tip_carry_prey,คาบชิ้นเหยื่อ,Carrying a piece of prey
+tip_carry_corpse,แบกศพเพื่อนร่วมรัง,Carrying a dead nestmate
+tip_hurt,บาดเจ็บ (ขาหรือหนวดขาด) เดินช้าลง,Injured (lost a leg or an antenna): walks slower
+tip_hungry,หิว / อ่อนแรง,Hungry / weak
+tip_leanings,นิสัย: ,Leanings: 
+job_dig,ขุดรัง,Digging the nest
+job_attend,ดูแลราชินี,Attending the queen
+job_search,ออกหาอาหาร,Foraging
+job_return,ขนอาหารกลับรัง,Carrying food home
+job_home,เดินกลับรัง,Heading home
+job_undertaker,ขนศพไปกองขยะ,Carrying the dead to the midden
+job_defend,ป้องกันรัง,Defending the colony
+job_drag,ช่วยกันลากเหยื่อกลับรัง,Hauling prey home with nestmates
+job_callow,มดใหม่ (ตัวยังซีด เพิ่งออกจากรังไหม),"Callow (still pale, just out of the cocoon)"
+job_nurse,พี่เลี้ยง (เลี้ยงไข่ ตัวอ่อน รังไหม),"Nurse (tends eggs, larvae and cocoons)"
+job_just_back,เพิ่งกลับจากข้างนอก,Just back from outside
+job_reserve,มดสำรองในรัง (พร้อมออกหากิน ขนศพ หรือสู้),"Reserve in the nest (ready to forage, carry out the dead or fight)"
+lean_forage,ออกหากินก่อนตัวอื่น,first out to forage
+lean_stay,ไม่ค่อยออกนอกรัง,rarely leaves the nest
+lean_dig,ชอบขุด,likes digging
+lean_fight,กล้าสู้,bold in a fight
+lean_queen,ชอบอยู่ใกล้ราชินี,keeps near the queen
+lean_nurse,เป็นพี่เลี้ยงนานกว่าตัวอื่น,stays a nurse longer than most
+act_walk,เดิน,walking
+act_rest,พัก,resting
+act_bite,กัด / ขุดดิน,biting / digging
+act_antennate,แตะหนวดทักทาย,touching antennae
+act_groom,ทำความสะอาดตัว,cleaning itself
+act_feed,ป้อนอาหารปากต่อปาก,feeding mouth to mouth (trophallaxis)
+act_fed,รับอาหารปากต่อปาก,being fed mouth to mouth
+act_allogroom,เลียทำความสะอาดตัวให้เพื่อน,grooming a nestmate
+act_groomed,ยืนนิ่งให้เพื่อนเลียทำความสะอาด,standing still to be groomed
+act_tend,เลียดูแลลูกมด / ราชินี,licking the brood / the queen
+act_carry,คาบของ,carrying
+act_milk,รีดน้ำหวานจากเพลี้ย,milking aphids for honeydew
+act_drink,กินน้ำ / น้ำหวาน,drinking water / honeydew
+act_attack,สู้ (กัดและพ่นกรด),fighting (biting and spraying acid)
+act_alarm,ตื่นตัว วิ่งเข้าหาศัตรู,"alarmed, running at the enemy"
+act_pause,หยุดสำรวจรอบตัว,stopping to look around
+act_trail,เดินตามทางกลิ่น,following a scent trail
+act_egg,ยกไข่,lifting an egg
+act_flipped,ล้มหงาย กำลังพลิกตัว,"on its back, righting itself"
+act_drag,ลากเหยื่อ,dragging prey
+act_glass,ปีนผนังกระจก,climbing the glass
+act_beyond,ออกไปหากินนอกแปลง,foraging beyond the plot
+tip_brood_stopped,หยุดเจริญอยู่ (รังเย็นเกินไป),Not developing (the nest is too cold)
+tip_in_about,อีกราว %s,in about %s
+tip_developed,เจริญไปแล้ว %d%%,%d%% developed
+tip_hatches,จะฟักเป็นตัวอ่อน: ,Hatches into a larva: 
+tip_grown,โตแล้ว %d%%,%d%% grown
+tip_diapause,หยุดโตเพื่อจำศีลข้ามหนาวเป็นตัวอ่อน (เข้าดักแด้ในฤดูใบไม้ผลิ),Stopped growing to overwinter as a larva (diapause; it pupates in spring)
+tip_spins,จะทำรังไหมเข้าดักแด้: ,Spins its cocoon: 
+tip_larva_hungry,หิว: ขาดอาหารมาราว %s (ถ้านานเกิน %d วัน พี่เลี้ยงอาจกินมันเพื่อเอาโปรตีนไปเลี้ยงตัวอื่น),Hungry: short of food for about %s (after more than %d days the nurses may eat it to feed the others with its protein)
+tip_larva_underfed,ได้อาหารไม่เต็มที่ (ราว %d%% ของที่ต้องการ) จึงโตช้าลง,"Not fully fed (about %d%% of what it needs), so it grows more slowly"
+tip_larva_fed,อิ่ม ได้อาหารเต็มที่,Well fed
+tip_larva_size,ถ้าได้อาหารแบบที่ผ่านมา จะเป็นมดงานยาวราว %.1f มม.,"Fed as it has been, it will be a worker about %.1f mm long"
+tip_pupa,ดักแด้ (อยู่ในรังไหม),Pupa (in its cocoon)
+tip_ecloses,จะออกเป็นมดงาน: ,Comes out as a worker: 
+tip_pupa_size,จะเป็นมดงานยาวราว %.1f มม.,Will be a worker about %.1f mm long
+hours_d,%d ชั่วโมง,%d hours
+days_d,%d วัน,%d days
+# new colony,,
+scen_wild,สวน/ทุ่งหญ้า (กลางแจ้ง),Garden / meadow (outdoors)
+scen_wild_note,แปลงดินโล่งมีแดดแบบที่มดดำสวนชอบทำรัง สี่ฤดูแบบเขตอบอุ่น ไม่ต้องดูแล: ฝนให้น้ำ มดหาน้ำหวานจากเพลี้ยและล่าแมลงเอง หน้าหนาวต้องสะสมไขมันไว้จำศีล มีศัตรูธรรมชาติ (แมงมุม ตะขาบ ด้วงดิน) รังมีปีดีปีร้ายตามธรรมชาติ,"A sunny patch of open ground of the kind black garden ants like to nest in, with the four seasons of a temperate climate. No care needed: the rain waters it and the ants collect honeydew from aphids and hunt insects themselves; for the winter they must lay down fat to hibernate on. Natural enemies (spiders, centipedes, ground beetles); good years and bad years, as in nature"
+scen_keeper,ชุดเลี้ยง (ในห้อง),Formicarium (indoors)
+scen_keeper_note,ฟอร์มิคาเรียมบนชั้นในห้อง อุณหภูมิห้องทั้งปี มีแผ่นความร้อน ปกติไม่มีศัตรู (ตั้งได้ข้างล่าง) ราชินีที่ไม่ได้จำศีลจะวางไข่น้อยลงเรื่อยๆ,"A formicarium on a shelf indoors: room temperature all year, with a heat mat; usually no enemies (you can set them below). A queen that does not hibernate lays fewer and fewer eggs"
+nest_soil_note,มดขุดอุโมงค์เองในดินทั้งก้อน,The ants dig their own tunnels through a whole block of soil
+nest_glass_note,ดินแผ่นบางระหว่างกระจกสองแผ่น มองเห็นทุกห้อง,A thin layer of soil between two panes of glass: every chamber in view
+start_queen_note,ราชินีหลังบินผสมพันธุ์ปลายเดือนกรกฎาคม ขังตัวเองเลี้ยงลูกชุดแรกด้วยไขมันในตัว,A queen just after the mating flight in late July: she seals herself in and raises her first brood on her own fat
+start_young,รังอายุ 3 เดือน (14 ตัว),A 3-month-old colony (14 workers)
+start_young_note,ราชินีกับมดงาน 14 ตัว เริ่มกลางเดือนเมษายน,"A queen and 14 workers, starting in mid-April"
+start_queen,ราชินีตัวเดียว,A lone queen
+new_scene,ฉาก,Setting
+new_nest,รัง,Nest
+new_start,เริ่มจาก,Start with
+# my colonies,,
+report_ok,ดูรัง,Back to the colony
+col_slot,รัง %d%s,Colony %d%s
+col_playing,  · กำลังเล่น,  · playing
+col_empty,ว่าง,Empty
+col_desc,%s · วันที่ %d · มดงาน %d · %s%s · บันทึก %s,%s · day %d · %d workers · %s%s · saved %s
+col_wild,สวน,Garden
+col_keeper,ชุดเลี้ยง,Formicarium
+nest_glass,ตู้แอนท์ฟาร์ม,Ant farm (glass)
+nest_soil,ก้อนดิน,Block of soil
+col_play,เล่นรังนี้,Play this colony
+col_restart,เริ่มใหม่…,Start anew…
+col_note,"เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · ตอนปิดเกม เพลง และอื่นๆ อยู่ใน ""ตั้งค่า"" ที่หน้าแรก","Saved automatically every minute and when the game closes · time while closed, music and the rest are in ""Settings"" on the title page"
+col_save_now,เซฟตอนนี้,Save now
+col_saved,เซฟแล้ว,Saved
+set_away,ตอนปิดเกม,While the game is closed
+set_time_1,ระหว่างเล่น 1 วันในเกม = 1 นาทีที่ความเร็ว 1× (ปุ่ม 0.2×–5× ที่แถบบน) — มดเดินด้วยความเร็วจริง แต่วันเดือนของรังย่อลง,"While you play, 1 game day = 1 minute at 1× (the 0.2×–5× buttons on the top bar) — the ants move at their real pace, but the colony's days and months are shortened"
+set_time_2,ให้เห็นรังโต · ตอนปิดเกม เวลาเดินตามที่เลือกข้างบน (ปกติช้ากว่าตอนเล่น รังจะได้ไม่ขาดน้ำขาดอาหารตอนคุณไม่อยู่นาน),"so you can watch the colony grow · while the game is closed time runs as chosen above (usually slower than in play, so the colony does not go short of water and food when you are away long)"
+set_care,ผู้ช่วยเติมน้ำและให้อาหารตอนที่ไม่อยู่ (เฉพาะชุดเลี้ยง),A helper waters and feeds while you are away (formicarium only)
+set_music,เพลงพื้นหลัง,Music
+off,ปิด,Off
+set_fps,แสดงอัตราเฟรม (FPS) มุมซ้ายบน · ปุ่มลัด F3,Show the frame rate (FPS) top left · shortcut F3
+set_note,เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม,Saved automatically every minute and when the game closes · up to %d game days are simulated for the time it was closed
+done,เสร็จ,Done
+none,ไม่มี,None
+rate_none,"0% · ไม่มีศัตรูมาเอง (ยังปล่อยมาดูได้จากปุ่ม ""ศัตรู"")","0% · no enemies come by themselves (you can still let one in with the ""Enemies"" button)"
+rate_per_day,ราวๆ วันละ %.1f ตัว,about %.1f a day
+rate_every,ราวๆ ทุก %s วัน,about every %s days
+rate_low,น้อย,few
+rate_natural,ตามธรรมชาติ,natural
+rate_very_often,บ่อยมาก,very often
+rate_often,บ่อย,often
+rate_seasons, ในหน้าร้อน · ฤดูใบไม้ผลิ/ร่วงน้อยลง หน้าหนาวไม่มี," in summer · fewer in spring and autumn, none in winter"
+rate_all_year, ทั้งปี, all year
+new_title,เริ่มรังใหม่ในรัง %d,New colony in slot %d
+new_enemies,สัตว์ร้าย (แมงมุมหมาป่า ตะขาบหิน ด้วงดิน),"Predators (wolf spider, stone centipede, ground beetle)"
+new_overwrite,รังเดิมในช่องนี้จะถูกลบ,The colony now in this slot will be deleted
+cancel,ยกเลิก,Cancel
+new_go,เริ่มรังนี้,Start this colony
+# controls,,
+tool_pan,มือ (เลื่อนจอ),Hand (move the view)
+tool_rock,ก้อนหิน,Stone
+tool_erase,ลบกลิ่น,Wipe scent
+top_subtitle,%s · รังเดี่ยว ราชินี 1 ตัว · %s 60×37 ซม. · v%s,"%s · single colony, 1 queen · %s 60×37 cm · v%s"
+top_plot,แปลงสวน,garden plot
+top_box,กล่อง,box
+speed_pause,หยุด,Pause
+speed_dev,ความเร็วสำหรับนักพัฒนา (F10 ซ่อน/แสดง),Developer speed (F10 shows / hides)
+view_outworld,พื้นดิน 3 มิติ,Outworld 3D
+view_nest,ในรัง 3 มิติ,Nest 3D
+enemies,ศัตรู,Enemies
+enemies_tip,ปล่อยแมงมุมหมาป่า ตะขาบหิน หรือด้วงดิน มาดูมดสู้,"Let in a wolf spider, a stone centipede or a ground beetle and watch the ants fight"
+stars,มดเด่น,Star ants
+stars_tip,มดที่ทำงานแต่ละอย่างมากที่สุด และมดที่ตั้งชื่อไว้,"The ants that did most of each job, and the ants you named"
+wallpaper_tip,ให้รังมดเป็นภาพพื้นหลังเดสก์ท็อป อยู่หลังไอคอน\nกลับเข้าเกม: คลิกไอคอนมดที่ถาดระบบ (มุมขวาล่าง),"Make the nest your desktop wallpaper, behind the icons\nBack to the game: click the ant icon in the system tray (bottom right)"
+menu,เมนู,Menu
+menu_tip,กลับหน้าแรก (Esc),Back to the title page (Esc)
+place_plot,วางในแปลง,Put in the plot
+place_box,วางในกล่อง,Put in the box
+cut_plane,ระนาบตัด,Cut
+xray,มองทะลุดิน,See through the soil
+add_water,เติมน้ำในรัง,Add water
+show_scent,แสดงกลิ่น,Show scent
+heater,แผ่นความร้อน,Heat mat
+fridge,จำศีลในตู้เย็น,Hibernate in fridge
+cam_top,มุมบน,Top
+cam_fit,เต็มจอ,Whole
+cam_go,ไปที่,Go to
+cam_entrance,ปากรัง,Entrance
+pupae,ดักแด้,Pupae
+hint_nest,ลากซ้าย หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูม · ดับเบิลคลิก ไปที่ห้องนั้น · W/S หน้า-หลัง · A/D ซ้าย-ขวา · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง,Left drag: turn · right drag: move · wheel: zoom · double-click: go to that chamber · W/S forward-back · A/D left-right · Q/E down-up · Z/C turn · R/F tilt
+hint_outworld,ลากซ้าย (มือ) หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง,Left drag (hand): turn · right drag: move · wheel: zoom where you point · double-click: zoom in · WASD move · Q/E down-up · Z/C turn · R/F tilt
+# journal,,
+log_heater_on,เปิดแผ่นความร้อนใต้รัง อุณหภูมิในรังจะค่อยๆ สูงขึ้น,Switched on the heat mat under the nest: the nest will slowly warm up
+log_heater_off,ปิดแผ่นความร้อน,Switched off the heat mat
+# star ants,,
+stars_title,มดเด่นในรัง,Star ants
+stars_named,มดที่ตั้งชื่อไว้,Ants you named
+stars_how,ตั้งชื่อ: คลิกมดในฉาก แล้วพิมพ์ในกล่องข้อมูลของมัน,To name one: click an ant in the scene and type in its info box
+stars_firsts,อันดับ 1 ของแต่ละด้าน,First in each line of work
+stars_coming,จะเริ่มนับในรุ่นถัดไป (การจำลองเลือกเวรงานรายตัว),Counted from the next version on (the simulation gives each ant its duties)
+stars_in_queen_room,ในห้องราชินี,in the queen's chamber
+stars_job_age,%s · อายุ %d วัน,%s · %d days old
+not_yet,ยังไม่มี,None yet
+stars_callow,มดใหม่ ตัวยังซีด,"callow, still pale"
+stars_nurse,พี่เลี้ยง,nurse
+stars_reserve,มดสำรองในรัง,reserve in the nest
+stars_digging,ขุดดิน,digging
+stars_in_nest,ในรัง,in the nest
+go_see,ไปดู,Go see
+# side panel,,
+panel_fold,พับ ›,Fold ›
+panel_fold_tip,พับแผงสถานะเก็บ (ดูฉากได้กว้างขึ้น),Fold the colony panel away (more room for the view)
+panel_open,‹ สถานะรัง,‹ Colony
+panel_open_tip,เปิดแผงสถานะรัง บันทึก และกราฟประชากร,"Open the colony panel: status, journal and population chart"
+panel_status,สถานะรัง,Colony
+panel_workers,มดงาน,Workers
+panel_out,นอกรัง,Outside
+panel_nurses,พี่เลี้ยง,Nurses
+panel_callow,ตัวใหม่,Callows
+panel_sugar,น้ำตาล,Sugar
+panel_fat,ไขมันสะสม,Fat reserve
+panel_protein,โปรตีน,Protein
+panel_nest_temp,ในรัง,Nest
+panel_dev,พัฒนาการ,Development
+panel_dead,มดงานตาย,Workers died
+panel_brood_dead,ลูกมดตาย,Brood lost
+panel_cycle,ไข่→มดงาน,Egg→worker
+panel_volume,ปริมาตรรัง,Nest volume
+panel_depth,ลึก,Depth
+panel_size,ขนาดมดงาน,Worker size
+panel_humidity,ความชื้นในรัง,Humidity
+panel_section,ภาพตัดขวางรัง,Nest cross-section
+panel_chart,ประชากรรายวัน,Population by day
+panel_journal,บันทึกผู้เลี้ยง,Keeper's journal
+panel_water,น้ำ,Water
+depth_chambers,ลึก %.1f ซม · %d ห้อง,%.1f cm deep · %d chambers
+panel_day_n,วันที่ %d,Day %d
+panel_today,วันนี้,Today
+# enemies,,
+en_title,ศัตรู · ปล่อยมาดูมดสู้,Enemies · let one in and watch the ants fight
+en_rate,ศัตรูธรรมชาติมาเองบ่อยแค่ไหน,How often natural enemies come by themselves
+en_how,ปล่อยเอง: ศัตรูเดินเข้ามาจากขอบพื้นที่หาอาหาร ล่าอยู่ราวครึ่งวันในเกมแล้วจากไป ถ้ามดไม่รุมฆ่าหรือไล่ไปก่อน · มดที่เจอจะปล่อยกลิ่นเตือนภัย พวกพ้องกรูมากัดและพ่นกรดฟอร์มิก · ศัตรูที่ตายกลายเป็นอาหารของรัง,"Let one in: it walks in from the edge of the outworld and hunts for about half a game day, then leaves, unless the ants kill it or drive it off first · the ant that meets it gives off alarm pheromone and nestmates rush in to bite and spray formic acid · a dead enemy becomes food for the colony"
+en_release,ปล่อย,Let in
+en_now,ในพื้นที่หาอาหารตอนนี้,In the outworld now
+en_remove,เอาศัตรูออกทั้งหมด,Take all enemies out
+en_full,มีศัตรูในพื้นที่ครบ %d ตัวแล้ว,There are already %d enemies in the outworld
+en_no_ants,รังนี้ไม่มีมดเหลือแล้ว,This colony has no ants left
+en_small,รังยังมีมดงานไม่ถึง %d ตัว: มดจะหลบ ไม่รุมสู้ ศัตรูจับมดที่ออกหากินได้ง่าย,"The colony has fewer than %d workers: they hide instead of mobbing, and an enemy easily catches foragers"
+en_quiet,ตอนนี้มดแทบไม่ออกจากรัง (หนาว กลางคืน หรือจำศีล) จะไม่ค่อยได้เห็นการต่อสู้,"The ants hardly leave the nest now (cold, night or hibernation): you will not see much fighting"
+en_fleeing,กำลังหนี,fleeing
+en_pinned,ถูกมดตรึงไว้,pinned down by the ants
+en_mobbed,มดรุมอยู่,being mobbed
+en_hunting,กำลังล่า,hunting
+en_row,%s · %s · พลังเหลือ %d%% · มดเกาะ %d · จับมดได้ %d,%s · %s · %d%% strength left · ants holding on: %d · ants caught: %d
+# top bar,,
+clock_line,ปีที่ %d · %s · %s  %s,Year %d · %s · %s  %s
+sky_rain,ฝนตก,rain
+sky_night,กลางคืน,night
+sky_clear,แจ่มใส,clear
+weather_line,อากาศ %.1f°C · %s · มดออกหากิน %d%%,Air %.1f°C · %s · foraging %d%%
+fps_line,%d FPS · จริง %.1f×,%d FPS · real %.1f×
+queen_fat,ไขมัน %d%%,Fat %d%%
+queen_not_laying,หยุดวางไข่,Not laying
+death_starve,อดอาหาร,starved
+death_thirst,ขาดน้ำ,thirst
+death_old,แก่ตาย,old age
+death_out,หายตอนออกหากิน,lost foraging
+death_enemy,ศัตรูกัด,enemies
+death_other,ไม่ทราบ (เซฟเก่า),unknown (older save)
+death_causes,สาเหตุ: ,Causes: 
+brood_dead_tip,ไข่/ตัวอ่อน/ดักแด้ที่ตายเพราะแห้ง ราขึ้น หรือร้อนเกิน %d · ตัวอ่อนที่มดงานกินตอนขาดโปรตีน %d,"Eggs, larvae and pupae lost to drought, mould or heat %d · larvae eaten by the workers when short of protein %d"
+cycle_stopped,หยุด,stopped
+cm3,%.1f ซม³,%.1f cm³
+depth_short,%.1f ซม · %d ห้อง,%.1f cm · %d chambers
+mm,%.1f มม.,%.1f mm
+# species page,,
+sp_queen_cap,ราชินี · ยาว 8–9 มม. อกโหนกใหญ่ (เคยมีกล้ามเนื้อบิน) ปีกหลุดไปหลังบินผสมพันธุ์ ขาและหนวดสีอำพัน,"Queen · 8–9 mm long, a big humped thorax (it held the flight muscles); the wings came off after the mating flight; amber legs and antennae"
+sp_major_cap,มดงานตัวใหญ่ · ราว 5 มม. — มดงานทุกตัวเป็นตัวเมียที่ไม่วางไข่ ขนาดต่างกันเล็กน้อย ไม่แบ่งวรรณะ,"Large worker · about 5 mm — every worker is a female that lays no eggs; sizes differ a little, with no separate castes"
+sp_minor_cap,มดงานตัวเล็ก · ราว 3.5 มม. — มดงานรุ่นแรกที่ราชินีเลี้ยงเองมักตัวเล็ก,"Small worker · about 3.5 mm — the first workers, raised by the queen alone, are often small (nanitics)"
+sp_callow_cap,มดงานเพิ่งออกจากรังไหม · ตัวซีดนิ่ม จะเข้มขึ้นในไม่กี่วัน ช่วงแรกอยู่ดูแลลูกมดในรัง,"A worker just out of her cocoon (a callow) · pale and soft, darkening within days; at first she stays in to tend the brood"
+sp_egg_cap,ไข่ · ยาวราว 0.5 มม. ขาวใส เหนียว ติดกันเป็นก้อน พี่เลี้ยงคาบไปทั้งก้อน,"Eggs · about 0.5 mm, translucent white and sticky, stuck together in a clump the nurses carry whole"
+sp_larva_cap,ตัวอ่อน · ไม่มีขา โค้งตัว พี่เลี้ยงป้อนอาหารปากต่อปาก ตัวอ่อนกินของแข็งได้ (มดโตกินได้แต่ของเหลว),"Larva · legless and curved, fed mouth to mouth by the nurses; larvae can eat solid food (adults only liquids)"
+sp_pupa_cap,ดักแด้ในรังไหม · สีครีม จุดดำที่ปลายคือของเสียที่ขับก่อนเข้าดักแด้ ไม่กินอาหาร,Pupa in its cocoon · cream-coloured; the dark spot at the end is the waste passed before pupating; it does not eat
+sp_queen,ราชินี,Queen
+sp_major,มดงานตัวใหญ่,Large worker
+sp_minor,มดงานตัวเล็ก,Small worker
+sp_callow,มดงานเกิดใหม่,Callow
+sp_egg,ไข่,Eggs
+sp_larva,ตัวอ่อน,Larva
+sp_pupa,รังไหม,Cocoon
+sp_source,ที่มา: ,Source: 
+sp_title,เลือกชนิดมด,Choose a species
+sp_species,ชนิดมด,Species
+sp_more_later,ชนิดอื่นจะตามมาในเวอร์ชันหลัง,More species will come in later versions
+sp_traits,นิสัยและจุดเด่น,Habits and traits
+sp_difficulty,ความยากในการเลี้ยง,How hard to keep
+sp_models,โมเดลเดียวกับในเกม · ลากเพื่อหมุนดู · ขนาดบนจอไม่เท่ากัน (ขยายให้เห็นชัด),The game's own models · drag to turn · not to scale with each other (enlarged to see)
+sp_choose,เลือกชนิดนี้ ›,Choose this one ›
+# settings,,
+set_language,ภาษา / Language,Language / ภาษา
+# ant info box,,
+tip_elsewhere,\n(%s — สลับมุมมองเพื่อดูตัว),\n(%s — switch the view to see it)

@@ -44,8 +44,10 @@ func _init():
 	var before: int = a.log_entries.size()
 	a._kill(w, "enemy")
 	var e: Dictionary = a.log_entries[0]
-	print("death notice: [%s] %s" % [e.kind, e.text])
-	ok = ok and e.kind == "named" and e.text.contains(w.name) and e.text.contains("ศัตรู")
+	a.L.use("en")
+	var said: String = a.L.entry_text(e)
+	print("death notice: [%s] %s" % [e.kind, said])
+	ok = ok and e.kind == "named" and said.contains(w.name) and said.contains("enemy") and e.key == a.T.named_died
 	var u = null
 	for x in a.workers:
 		if x.name == "" and not x.dead:

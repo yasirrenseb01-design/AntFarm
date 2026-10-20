@@ -54,6 +54,11 @@ func _ready() -> void:
 		Store.base = "user://growtest/%s/" % _opts["testsave"]
 		_persist = true
 		next_slot = int(_opts.get("slot", "1"))
+	# the language: the keeper's choice, else the machine's - Thai on a Thai machine, English elsewhere (--lang=th|en: dev)
+	if _persist:
+		_settings = Store.settings()
+	var lang := String(_opts.get("lang", _settings.get("lang", "")))
+	L.use(lang if lang != "" else L.default_lang())
 	var loaded := false
 	var first_run := _persist and next_nest == "" and not _opts.has("testsave") and range(1, Store.SLOTS + 1).all(func(s): return not Store.exists(s))
 	if _persist:
@@ -66,7 +71,7 @@ func _ready() -> void:
 			if v > Sim.SAVE_VERSION:
 				# saved by a newer game: play a scratch colony and never write over that save
 				_persist = false
-				_load_note = "รัง %d ถูกบันทึกด้วยเกมเวอร์ชันใหม่กว่านี้ (รูปแบบเซฟ %d) เกมนี้จึงเปิดรังทดลองให้แทน\nและจะไม่บันทึกทับรังนั้น — อัปเดตเกมแล้วรังจะกลับมาเหมือนเดิม" % [slot, v]
+				_load_note = tr("save_newer") % [slot, v]
 			elif v >= 1:
 				if v < Sim.SAVE_VERSION:
 					Store.backup(slot, "before-v%d" % Sim.SAVE_VERSION)
@@ -76,7 +81,7 @@ func _ready() -> void:
 				_plan_catchup(data.meta)
 			elif Store.exists(slot):
 				Store.backup(slot, "unreadable-%d" % int(Time.get_unix_time_from_system()))
-				_load_note = "อ่านเซฟรัง %d ไม่ได้ เก็บไฟล์เดิมไว้ในโฟลเดอร์เซฟแล้ว (slot%d.unreadable-…) และเริ่มรังใหม่" % [slot, slot]
+				_load_note = tr("save_unreadable") % [slot, slot]
 		_settings["slot"] = slot
 		Store.save_settings(_settings)
 	if not loaded:
@@ -126,6 +131,7 @@ func _ready() -> void:
 	hud.settings = _settings
 	hud.colony_new.connect(func(s, kind): _go_to(s, kind))
 	hud.colony_play.connect(func(s): _go_to(s, ""))
+	hud.language_changed.connect(_change_language)
 	hud.settings_changed.connect(func(st):
 		_settings.merge(st, true)
 		Store.save_settings(_settings))
@@ -140,7 +146,7 @@ func _ready() -> void:
 	if one != null:
 		one.wake.connect(_wake)
 	hud.desktop_requested.connect(_enter_desktop)
-	desktop.failed.connect(func(msg): hud.show_report("โหมดเดสก์ท็อป", msg))
+	desktop.failed.connect(func(msg): hud.show_report(tr("desk_title"), msg))
 	hud.speed_changed.connect(func(v):
 		speed = v
 		# at fast-forward each ant moves every few ticks with a longer stride to keep frame time flat
@@ -155,7 +161,7 @@ func _ready() -> void:
 	if _persist and not loaded:
 		_save_now()
 	if _load_note != "":
-		hud.show_report("เซฟ", _load_note)
+		hud.show_report(tr("save_title"), _load_note)
 	if _catchup_left > 0:
 		_show_catchup_overlay()
 	if _opts.has("title") or (_persist and not skip_title and not _opts.has("testsave") and not _opts.has("desktop")
@@ -242,9 +248,9 @@ func _notification(what: int) -> void:
 func _enter_desktop() -> void:
 	if _persist and not bool(_settings.get("desk_told", false)) and not _opts.has("desktop") and not _opts.has("desktop-after"):
 		# the first time: where the way back is (the tray icon - Windows 11 often hides a new one under the ^)
-		hud.confirm("วอลเปเปอร์", "รังมดจะไปอยู่เป็นภาพพื้นหลังเดสก์ท็อป หลังไอคอน (เกมเซฟแล้วเปิดตัวเองใหม่ ครั้งแรกอาจใช้เวลาครึ่งนาที)\n\n" +
-			"กลับมาเล่น: คลิกไอคอนมดที่ถาดระบบ มุมขวาล่างของจอ — Windows 11 มักซ่อนไอคอนใหม่ไว้ใต้ลูกศร ^\n" +
-			"(ลากไอคอนมดออกมาวางข้างนาฬิกาจะหาง่ายขึ้น) · คลิกขวาที่ไอคอน: เมนูปิดเกม", "ตั้งเป็นวอลเปเปอร์", func():
+		hud.confirm(tr("wallpaper"), tr("desk_intro_1") +
+			tr("desk_intro_2") +
+			tr("desk_intro_3"), tr("desk_go"), func():
 				_settings["desk_told"] = true
 				Store.save_settings(_settings)
 				_enter_desktop())
@@ -300,3 +306,15 @@ func _wake() -> void:
 	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_move_to_foreground()
+
+
+## The keeper picked another language (settings): saved, and the game starts its scene again in it - back where the
+## keeper was (the title page if it was open, else the colony).
+func _change_language(lang: String) -> void:
+	_settings["lang"] = lang
+	if _persist:
+		Store.save_settings(_settings)
+	_save_now()
+	next_slot = slot
+	skip_title = title == null or not title.is_open
+	get_tree().reload_current_scene()

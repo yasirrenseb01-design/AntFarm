@@ -17,11 +17,11 @@ func _build_panel(root: Control) -> void:
 	col.add_theme_constant_override("separation", 14)
 	panel.add_child(col)
 	# folded away, a tab is left at the right edge to bring it back (on a narrow window it covered the top bar's buttons)
-	var fold := _button("พับ ›", false)
-	fold.tooltip_text = "พับแผงสถานะเก็บ (ดูฉากได้กว้างขึ้น)"
+	var fold := _button(tr("panel_fold"), false)
+	fold.tooltip_text = tr("panel_fold_tip")
 	fold.pressed.connect(func(): set_side_open(false))
-	_side_tab = _button("‹ สถานะรัง", false)
-	_side_tab.tooltip_text = "เปิดแผงสถานะรัง บันทึก และกราฟประชากร"
+	_side_tab = _button(tr("panel_open"), false)
+	_side_tab.tooltip_text = tr("panel_open_tip")
 	_side_tab.anchor_left = 1.0
 	_side_tab.anchor_right = 1.0
 	_side_tab.offset_right = -12
@@ -31,7 +31,7 @@ func _build_panel(root: Control) -> void:
 	root.add_child(_side_tab)
 	root.get_viewport().size_changed.connect(_layout_side)
 
-	var st := _section(col, "สถานะรัง")
+	var st := _section(col, tr("panel_status"))
 	var head: Control = st.get_child(0)          # (the section's title, with the fold button beside it)
 	st.remove_child(head)
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -48,10 +48,10 @@ func _build_panel(root: Control) -> void:
 	st.add_child(grid)
 	for key in ["queen", "workers", "out", "nurses", "callow", "eggs", "larvae", "pupae", "sugar", "fat", "protein",
 			"nest_t", "dev", "dead", "brood_dead", "cycle", "vol", "depth", "size"]:
-		var names := {"queen": "ราชินี", "workers": "มดงาน", "out": "นอกรัง", "nurses": "พี่เลี้ยง",
-			"callow": "ตัวใหม่", "eggs": "ไข่", "larvae": "ตัวอ่อน", "pupae": "ดักแด้", "sugar": "น้ำตาล", "fat": "ไขมันสะสม",
-			"protein": "โปรตีน", "nest_t": "ในรัง", "dev": "พัฒนาการ", "dead": "มดงานตาย", "brood_dead": "ลูกมดตาย", "cycle": "ไข่→มดงาน",
-			"vol": "ปริมาตรรัง", "depth": "ลึก", "size": "ขนาดมดงาน"}
+		var names := {"queen": tr("queen"), "workers": tr("panel_workers"), "out": tr("panel_out"), "nurses": tr("panel_nurses"),
+			"callow": tr("panel_callow"), "eggs": tr("eggs"), "larvae": tr("larvae"), "pupae": tr("pupae"), "sugar": tr("panel_sugar"), "fat": tr("panel_fat"),
+			"protein": tr("panel_protein"), "nest_t": tr("panel_nest_temp"), "dev": tr("panel_dev"), "dead": tr("panel_dead"), "brood_dead": tr("panel_brood_dead"), "cycle": tr("panel_cycle"),
+			"vol": tr("panel_volume"), "depth": tr("panel_depth"), "size": tr("panel_size")}
 		var l := _label(names[key], 13, MUTED)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var v := _label("-", 13, INK, _mono)
@@ -62,7 +62,7 @@ func _build_panel(root: Control) -> void:
 		grid.add_child(v)
 		_vals[key] = v
 	var hum_row := HBoxContainer.new()
-	hum_row.add_child(_label("ความชื้นในรัง", 13, MUTED))
+	hum_row.add_child(_label(tr("panel_humidity"), 13, MUTED))
 	_hum_bar = ProgressBar.new()
 	_hum_bar.min_value = 0
 	_hum_bar.max_value = 100
@@ -78,20 +78,20 @@ func _build_panel(root: Control) -> void:
 	hum_row.add_child(hv)
 	st.add_child(hum_row)
 
-	var ns := _section(col, "ภาพตัดขวางรัง")
+	var ns := _section(col, tr("panel_section"))
 	_nest = Control.new()
 	_nest.custom_minimum_size = Vector2(0, 190)
 	_nest.clip_contents = true
 	_nest.draw.connect(_draw_nest)
 	ns.add_child(_nest)
 
-	var cs := _section(col, "ประชากรรายวัน")
+	var cs := _section(col, tr("panel_chart"))
 	_chart = Control.new()
 	_chart.custom_minimum_size = Vector2(0, 92)
 	_chart.draw.connect(_draw_chart)
 	cs.add_child(_chart)
 
-	var ls := _section(col, "บันทึกผู้เลี้ยง")
+	var ls := _section(col, tr("panel_journal"))
 	ls.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log = RichTextLabel.new()
 	_log.bbcode_enabled = true
@@ -106,7 +106,7 @@ func _render_log() -> void:
 	var lines := PackedStringArray()
 	for e in sim.log_entries.slice(0, 40):
 		var col := "#e8664f" if e.kind == "bad" else ("#9cc565" if e.kind == "ok" else ("#e9a23b" if e.kind == "named" else "#f1e6d6"))
-		lines.append("[color=#8a7562]%s[/color]  [color=%s]%s[/color]" % [e.stamp, col, e.text])
+		lines.append("[color=#8a7562]%s[/color]  [color=%s]%s[/color]" % [L.stamp(e), col, L.entry_text(e)])
 	_log.text = "\n".join(lines)
 
 
@@ -173,7 +173,7 @@ func _draw_nest() -> void:
 	var lvl: float = (sim.humidity if sim.scenario == "wild" else sim.water) * (res.size.y - 6)
 	c.draw_rect(Rect2(res.position.x + 3, res.end.y - 3 - lvl, res.size.x - 6, lvl), Color(0.3, 0.55, 0.8, 0.75))
 	c.draw_rect(res, Color(0.55, 0.5, 0.45, 0.6), false, 1.0)
-	_nest_label(c, "น้ำ", Vector2(8, 16))
+	_nest_label(c, tr("panel_water"), Vector2(8, 16))
 
 	# the nest itself, fitted to the remaining space
 	var area := Rect2(40, 12, w - 46, h - 16)
@@ -196,7 +196,7 @@ func _draw_nest() -> void:
 		if sim.queen.alive and qp != Vector3.ZERO:
 			var qs: Vector2 = to_screen.call(qp)
 			Kit.ant(c, qs, sin(_t * 0.3) * 0.25, 0.75 * s, 0.0, Ant.NONE, Color("24170e"), false)
-			_nest_label(c, "ราชินี", qs + Vector2(-14, -2.4 * s))
+			_nest_label(c, tr("queen"), qs + Vector2(-14, -2.4 * s))
 		# nestmates: the same ants that walk the 3D nest, or a few resting in the chambers
 		var body: Color = sim.sp["body_color"]
 		if not nest_view._mates.is_empty():
@@ -224,7 +224,7 @@ func _draw_nest() -> void:
 				var p: Vector3 = all[int(_seeded(i, 21) * all.size()) % all.size()]
 				Kit.ant(c, to_screen.call(p), _seeded(i, 22) * TAU, 0.32 * s, _t * 3.0 + i, Ant.NONE, body, false)
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
-	_nest_label(c, "ลึก %.1f ซม · %d ห้อง" % [nv.depth_cm(), nv.chambers.size()], Vector2(org.x + 4, org.y + 12))
+	_nest_label(c, tr("depth_chambers") % [nv.depth_cm(), nv.chambers.size()], Vector2(org.x + 4, org.y + 12))
 
 
 func _brood_dots(c: Control, to_screen: Callable, spots: Array, count: int, cap: int, col: Color, r: float,
@@ -268,8 +268,8 @@ func _draw_chart() -> void:
 		if line.size() >= 2:
 			c.draw_polyline(line, series[1], 2.0, true)
 		c.draw_circle(line[line.size() - 1], 3.0, series[1])
-	c.draw_string(font, Vector2(left, h), "วันที่ %d" % maxi(1, sim.day() - n + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MUTED)
-	c.draw_string(font, Vector2(w - 60, h), "วันนี้", HORIZONTAL_ALIGNMENT_RIGHT, 60, 10, MUTED)
+	c.draw_string(font, Vector2(left, h), tr("panel_day_n") % maxi(1, sim.day() - n + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MUTED)
+	c.draw_string(font, Vector2(w - 60, h), tr("panel_today"), HORIZONTAL_ALIGNMENT_RIGHT, 60, 10, MUTED)
 
 
 ## The side panel folded away or out (kept in the settings; the first time folded on a window too narrow for both it

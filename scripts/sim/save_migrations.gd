@@ -29,6 +29,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				_v8_to_v9(d)
 			9:
 				_v9_to_v10(d)
+			10:
+				pass        # v0.11.11: journal lines are {key, args} now; the older ones keep their Thai text and show as saved
 		v += 1
 		d["version"] = v
 	return d

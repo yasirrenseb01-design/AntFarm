@@ -240,19 +240,19 @@ func top_ants() -> Array:
 	if workers.is_empty():
 		return out
 	var lines := [
-		["big", "ตัวใหญ่ที่สุด", func(w): return w.size, func(w): return "ยาว %.1f มม." % (w.size * 4.2)],
-		["small", "ตัวเล็กที่สุด", func(w): return -w.size, func(w): return "ยาว %.1f มม." % (w.size * 4.2)],
-		["old", "อายุมากที่สุด", func(w): return w.age, func(w): return "อายุ %d วัน" % int(w.age)],
-		["hurt", "บาดเจ็บแต่ยังรอด", func(w): return w.hurt, func(w): return "บาดเจ็บ %d%%" % roundi(w.hurt * 100.0)],
-		["feed_larvae", "ป้อนตัวอ่อนมากที่สุด", func(w): return w.n_larvae, func(w): return "ป้อนตัวอ่อน %d ครั้ง" % w.n_larvae],
-		["carry_brood", "คาบลูกมดมากที่สุด", func(w): return w.n_brood, func(w): return "คาบลูกมด %d ครั้ง" % w.n_brood],
-		["feed_mates", "ป้อนน้ำหวานเพื่อนมากที่สุด", func(w): return w.n_mates, func(w): return "ป้อนน้ำหวานเพื่อน %d ครั้ง" % w.n_mates],
-		["rest", "ยืนพักมากที่สุด", func(w): return w.rest_h, func(w): return "ยืนพัก %d ชั่วโมง" % int(w.rest_h)],
-		["dig", "ขุดดินมากที่สุด", func(w): return w.dig_h, func(w): return "ขุดดิน %d ชั่วโมง" % int(w.dig_h)],
-		["sugar_trips", "ขนน้ำหวานกลับรังมากที่สุด", func(w): return w.n_sugar, func(w): return "ขนน้ำหวาน %d เที่ยว" % w.n_sugar],
-		["prey", "ขนเหยื่อมากที่สุด", func(w): return w.n_prey, func(w): return "ขนเหยื่อ %d ชิ้น" % w.n_prey],
-		["corpses", "ขนศพออกมากที่สุด", func(w): return w.n_corpses, func(w): return "ขนศพออก %d ตัว" % w.n_corpses],
-		["fights", "รุมศัตรูแล้วรอดมากที่สุด", func(w): return w.n_fights, func(w): return "รุมศัตรูแล้วรอด %d ครั้ง" % w.n_fights]]
+		["big", L.t("top_big"), func(w): return w.size, func(w): return L.f("top_big_text", [(w.size * 4.2)])],
+		["small", L.t("top_small"), func(w): return -w.size, func(w): return L.f("top_small_text", [(w.size * 4.2)])],
+		["old", L.t("top_old"), func(w): return w.age, func(w): return L.f("top_old_text", [int(w.age)])],
+		["hurt", L.t("top_hurt"), func(w): return w.hurt, func(w): return L.f("top_hurt_text", [roundi(w.hurt * 100.0)])],
+		["feed_larvae", L.t("top_feed_larvae"), func(w): return w.n_larvae, func(w): return L.f("top_feed_larvae_text", [w.n_larvae])],
+		["carry_brood", L.t("top_carry_brood"), func(w): return w.n_brood, func(w): return L.f("top_carry_brood_text", [w.n_brood])],
+		["feed_mates", L.t("top_feed_mates"), func(w): return w.n_mates, func(w): return L.f("top_feed_mates_text", [w.n_mates])],
+		["rest", L.t("top_rest"), func(w): return w.rest_h, func(w): return L.f("top_rest_text", [int(w.rest_h)])],
+		["dig", L.t("top_dig"), func(w): return w.dig_h, func(w): return L.f("top_dig_text", [int(w.dig_h)])],
+		["sugar_trips", L.t("top_sugar_trips"), func(w): return w.n_sugar, func(w): return L.f("top_sugar_trips_text", [w.n_sugar])],
+		["prey", L.t("top_prey"), func(w): return w.n_prey, func(w): return L.f("top_prey_text", [w.n_prey])],
+		["corpses", L.t("top_corpses"), func(w): return w.n_corpses, func(w): return L.f("top_corpses_text", [w.n_corpses])],
+		["fights", L.t("top_fights"), func(w): return w.n_fights, func(w): return L.f("top_fights_text", [w.n_fights])]]
 	for line in lines:
 		var score: Callable = line[2]
 		var best = null

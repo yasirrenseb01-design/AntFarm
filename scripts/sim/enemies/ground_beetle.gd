@@ -5,11 +5,12 @@ extends RefCounted
 ## seldom kills one; mostly it is harried until it leaves. Registered in parts/sim_enemies.gd ENEMY_KINDS.
 
 const T := preload("res://scripts/sim/text_th.gd")
+const L := preload("res://scripts/sim/lang.gd")
 const IN_NEST := 0
 
-const NAME := "ด้วงดิน"
+const NAME := "enemy_ground_beetle"            # (keys of lang/strings.csv)
 const LATIN := "Carabidae"
-const ABOUT := "เกราะแข็ง กัดและกรดฟอร์มิกของมดแทบไม่เข้า · กรามบดแรง · พ่นสารเคมีจากปลายท้องจนมดที่เกาะร่วงหมด · มดมักฆ่าไม่ได้ ได้แค่ไล่ให้หนี"      # (the HUD's enemy panel)
+const ABOUT := "enemy_ground_beetle_about"      # (the HUD's enemy panel)
 const CHASED := T.beetle_chased
 const STATS := {
 	"hp": 1.4,
@@ -49,7 +50,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.phase += 0.35 * maxf(free, 0.3)
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true
-		sim._log(T.enemy_flees % NAME, "ok")
+		sim._log(T.enemy_flees, "ok", [L.k(NAME)])
 	var leaving: bool = c.life <= 0 or c.get("fleeing", false) or (sim.daylight() > 0.35 and not c.get("released", false))
 	var best = null
 	var bd := 140.0
@@ -99,6 +100,6 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 			sim._shake_off(clinging[sim.rng.randi() % held], c)
 	c.strike = maxi(0, int(c.get("strike", 0)) - 1)
 	if leaving and not Rect2(Vector2(-40, -40), world + Vector2(80, 80)).has_point(c.pos):
-		sim._log(T.beetle_leaves % c.kills)
+		sim._log(T.beetle_leaves, "", [c.kills])
 		return false
 	return true

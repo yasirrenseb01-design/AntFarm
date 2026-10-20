@@ -6,11 +6,12 @@ extends RefCounted
 ## A creature is a plain Dictionary (saved as is): kind, id, pos, ang, hp, held, life, ...
 
 const T := preload("res://scripts/sim/text_th.gd")
+const L := preload("res://scripts/sim/lang.gd")
 const IN_NEST := 0
 
-const NAME := "แมงมุมหมาป่า"
+const NAME := "enemy_wolf_spider"            # (keys of lang/strings.csv)
 const LATIN := "Lycosidae"
-const ABOUT := "ล่าได้ทั้งกลางวันและกลางคืน เดินเข้ามาไล่จับมดที่ออกหากิน · มดเกาะขาได้ 8 ตัว ถ้า 5 ตัวขึ้นไปมันจะขยับไม่ได้ · กัดมดตายบ่อย สะบัดมดหลุด · ถ้ามดรุมได้ มักฆ่ามันได้"      # (the HUD's enemy panel)
+const ABOUT := "enemy_wolf_spider_about"      # (the HUD's enemy panel)
 const CHASED := T.spider_chased        # journal line when the keeper removes it
 const STATS := {
 	"hp": 1.0,          # health; formic acid and bites wear it down
@@ -50,7 +51,7 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	s.phase += 0.3 * maxf(free, 0.25)                                  # pinned: legs still thrash
 	if s.hp < STATS.flee_at and not s.get("fleeing", false):
 		s.fleeing = true
-		sim._log(T.enemy_flees % NAME, "ok")
+		sim._log(T.enemy_flees, "ok", [L.k(NAME)])
 	var leaving: bool = s.life <= 0 or s.get("fleeing", false)
 	var best = null
 	var bd := 150.0
@@ -92,6 +93,6 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 		sim._shake_off(clinging[sim.rng.randi() % held], s)
 	s.strike = maxi(0, int(s.get("strike", 0)) - 1)
 	if leaving and not Rect2(Vector2(-30, -30), world + Vector2(60, 60)).has_point(s.pos):
-		sim._log(T.spider_leaves % s.kills)
+		sim._log(T.spider_leaves, "", [s.kills])
 		return false
 	return true

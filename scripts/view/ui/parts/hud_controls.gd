@@ -15,8 +15,8 @@ func _build_top(root: Control) -> void:
 
 	var title := VBoxContainer.new()
 	title.add_theme_constant_override("separation", 0)
-	title.add_child(_label(sim.sp["name_th"], 22, INK, _display))
-	title.add_child(_label("%s · รังเดี่ยว ราชินี 1 ตัว · %s 60×37 ซม. · v%s" % [sim.sp["name"], "แปลงสวน" if sim.scenario == "wild" else "กล่อง", ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED))
+	title.add_child(_label(tr(sim.sp["name_th"]), 22, INK, _display))
+	title.add_child(_label(tr("top_subtitle") % [sim.sp["name"], tr("top_plot") if sim.scenario == "wild" else tr("top_box"), ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED))
 	row.add_child(title)
 
 	var clock := VBoxContainer.new()
@@ -32,7 +32,7 @@ func _build_top(root: Control) -> void:
 	speeds.alignment = BoxContainer.ALIGNMENT_CENTER
 	var g := ButtonGroup.new()
 	# a calm pace for watching (0.5× is where a new game starts); longer stretches pass while the game is closed
-	for pair in [["หยุด", 0.0], ["0.2×", 0.2], ["0.5×", 0.5], ["1×", 1.0], ["2×", 2.0], ["5×", 5.0]]:
+	for pair in [[tr("speed_pause"), 0.0], ["0.2×", 0.2], ["0.5×", 0.5], ["1×", 1.0], ["2×", 2.0], ["5×", 5.0]]:
 		var b := _button(pair[0], true, g)
 		b.button_pressed = pair[1] == 0.5
 		var v: float = pair[1]
@@ -44,7 +44,7 @@ func _build_top(root: Control) -> void:
 		var v: float = pair[1]
 		b.pressed.connect(func(): speed_changed.emit(v))
 		b.visible = false
-		b.tooltip_text = "ความเร็วสำหรับนักพัฒนา (F10 ซ่อน/แสดง)"
+		b.tooltip_text = tr("speed_dev")
 		speeds.add_child(b)
 		_dev_speed_buttons.append(b)
 	var wrap := CenterContainer.new()
@@ -54,7 +54,7 @@ func _build_top(root: Control) -> void:
 	var views := HBoxContainer.new()
 	views.add_theme_constant_override("separation", 4)
 	var vg := ButtonGroup.new()
-	for pair in [["พื้นดิน 3 มิติ", "outworld"], ["ในรัง 3 มิติ", "nest"]]:
+	for pair in [[tr("view_outworld"), "outworld"], [tr("view_nest"), "nest"]]:
 		var b := _button(pair[0], true, vg)
 		b.button_pressed = pair[1] == "outworld"
 		_view_btns[pair[1]] = b
@@ -67,36 +67,36 @@ func _build_top(root: Control) -> void:
 	vwrap.add_child(views)
 	row.add_child(vwrap)
 
-	var foes := _button("ศัตรู", false)
-	foes.tooltip_text = "ปล่อยแมงมุมหมาป่า ตะขาบหิน หรือด้วงดิน มาดูมดสู้"
+	var foes := _button(tr("enemies"), false)
+	foes.tooltip_text = tr("enemies_tip")
 	foes.pressed.connect(toggle_enemies)
 	var ewrap := CenterContainer.new()
 	ewrap.add_child(foes)
 	row.add_child(ewrap)
 
-	var stars := _button("มดเด่น", false)
-	stars.tooltip_text = "มดที่ทำงานแต่ละอย่างมากที่สุด และมดที่ตั้งชื่อไว้"
+	var stars := _button(tr("stars"), false)
+	stars.tooltip_text = tr("stars_tip")
 	stars.pressed.connect(toggle_stars)
 	var swrap := CenterContainer.new()
 	swrap.add_child(stars)
 	row.add_child(swrap)
 
-	var mine := _button("รังของฉัน", false)
+	var mine := _button(tr("my_colonies"), false)
 	mine.pressed.connect(open_colonies)
 	var fwrap := CenterContainer.new()
 	fwrap.add_child(mine)
 	row.add_child(fwrap)
 
 	# the nest as the desktop wallpaper, behind the icons (back: the ant icon in the system tray)
-	var desk := _button("วอลเปเปอร์", false)
-	desk.tooltip_text = "ให้รังมดเป็นภาพพื้นหลังเดสก์ท็อป อยู่หลังไอคอน\nกลับเข้าเกม: คลิกไอคอนมดที่ถาดระบบ (มุมขวาล่าง)"
+	var desk := _button(tr("wallpaper"), false)
+	desk.tooltip_text = tr("wallpaper_tip")
 	desk.pressed.connect(func(): desktop_requested.emit())
 	var dwrap := CenterContainer.new()
 	dwrap.add_child(desk)
 	row.add_child(dwrap)
 
-	var menu := _button("เมนู", false)
-	menu.tooltip_text = "กลับหน้าแรก (Esc)"
+	var menu := _button(tr("menu"), false)
+	menu.tooltip_text = tr("menu_tip")
 	menu.pressed.connect(func(): menu_requested.emit())
 	var mwrap := CenterContainer.new()
 	mwrap.add_child(menu)
@@ -115,12 +115,12 @@ func _build_tools(root: Control) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	panel.add_child(row)
-	var place_label := _label("วางในแปลง" if sim.scenario == "wild" else "วางในกล่อง", 12, MUTED)
+	var place_label := _label(tr("place_plot") if sim.scenario == "wild" else tr("place_box"), 12, MUTED)
 	row.add_child(place_label)
 	_outside_tools.append(place_label)
 	_cut_row = HBoxContainer.new()
 	_cut_row.visible = false
-	_cut_row.add_child(_label("ระนาบตัด", 12, MUTED))
+	_cut_row.add_child(_label(tr("cut_plane"), 12, MUTED))
 	var cut := HSlider.new()
 	_cut_slider = cut
 	cut.min_value = -32
@@ -133,7 +133,7 @@ func _build_tools(root: Control) -> void:
 	cut.value_changed.connect(func(v): if nest_view: nest_view.cut_offset = v)
 	_cut_row.add_child(cut)
 	row.add_child(_cut_row)
-	_xray_btn = _button("มองทะลุดิน", true)
+	_xray_btn = _button(tr("xray"), true)
 	_xray_btn.visible = false
 	_xray_btn.toggled.connect(func(on):
 		if nest_view:
@@ -141,30 +141,30 @@ func _build_tools(root: Control) -> void:
 		_cut_row.visible = not on and not sim.nest.slab)
 	row.add_child(_xray_btn)
 	var g := ButtonGroup.new()
-	for pair in [["มือ (เลื่อนจอ)", "pan"]] + FoodKinds.tools() + [["ก้อนหิน", "rock"], ["ลบกลิ่น", "erase"]]:
-		var b := _button(pair[0], true, g)
+	for pair in [["tool_pan", "pan"]] + FoodKinds.tools() + [["tool_rock", "rock"], ["tool_erase", "erase"]]:
+		var b := _button(tr(pair[0]), true, g)
 		b.button_pressed = pair[1] == ground.tool
 		var t: String = pair[1]
 		b.pressed.connect(func(): ground.tool = t)
 		row.add_child(b)
 		_outside_tools.append(b)
 	row.add_child(VSeparator.new())
-	var water := _button("เติมน้ำในรัง", false)
+	var water := _button(tr("add_water"), false)
 	water.pressed.connect(func(): sim.add_water())
 	water.visible = sim.scenario == "keeper"     # outdoors the rain waters the nest
 	row.add_child(water)
-	var pher := _button("แสดงกลิ่น", true)
+	var pher := _button(tr("show_scent"), true)
 	pher.button_pressed = ground.show_pheromones
 	pher.toggled.connect(func(on): ground.show_pheromones = on)
 	row.add_child(pher)
 	_outside_tools.append(pher)
-	var heat := _button("แผ่นความร้อน", true)
+	var heat := _button(tr("heater"), true)
 	heat.toggled.connect(func(on):
 		sim.heater = on
-		sim._log("เปิดแผ่นความร้อนใต้รัง อุณหภูมิในรังจะค่อยๆ สูงขึ้น" if on else "ปิดแผ่นความร้อน"))
+		sim._log(T.heater_on if on else T.heater_off))
 	heat.visible = sim.scenario == "keeper"      # outdoors there is no heat mat
 	row.add_child(heat)
-	var cold := _button("จำศีลในตู้เย็น", true)
+	var cold := _button(tr("fridge"), true)
 	cold.button_pressed = sim.fridge_on
 	cold.toggled.connect(func(on):
 		sim.fridge_on = on
@@ -200,7 +200,7 @@ func _build_camera_pad(root: Control) -> void:
 	row.add_theme_constant_override("separation", 4)
 	col.add_child(row)
 	for spec in [["−", "zoom_out", "both"], ["+", "zoom_in", "both"], ["⟲", "left", "3d"], ["⟳", "right", "3d"],
-			["มุมบน", "top", "out"], ["เต็มจอ", "reset", "both"]]:
+			[tr("cam_top"), "top", "out"], [tr("cam_fit"), "reset", "both"]]:
 		var b := _button(spec[0], false)
 		b.custom_minimum_size = Vector2(34, 0)
 		var a: String = spec[1]
@@ -213,10 +213,10 @@ func _build_camera_pad(root: Control) -> void:
 	var go := HBoxContainer.new()
 	go.add_theme_constant_override("separation", 4)
 	col.add_child(go)
-	var lbl := _label("ไปที่", 12, MUTED)
+	var lbl := _label(tr("cam_go"), 12, MUTED)
 	go.add_child(lbl)
-	for spec in [["ปากรัง", "nest", "outworld"], ["ราชินี", "queen", "nest"], ["ตัวอ่อน", "larvae", "nest"],
-			["ดักแด้", "pupae", "nest"], ["ปากรัง", "entrance", "nest"]]:
+	for spec in [[tr("cam_entrance"), "nest", "outworld"], [tr("queen"), "queen", "nest"], [tr("larvae"), "larvae", "nest"],
+			[tr("pupae"), "pupae", "nest"], [tr("cam_entrance"), "entrance", "nest"]]:
 		var b := _button(spec[0], false)
 		var a: String = spec[1]
 		b.pressed.connect(func(): cam_action.emit(a))
@@ -246,5 +246,5 @@ func _apply_mode(m: String) -> void:
 		c.visible = outside
 	_cut_row.visible = m == "nest" and not sim.nest.slab and not _xray_btn.button_pressed
 	_xray_btn.visible = m == "nest"
-	_hint.text = ("ลากซ้าย หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูม · ดับเบิลคลิก ไปที่ห้องนั้น · W/S หน้า-หลัง · A/D ซ้าย-ขวา · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง"
-		if m == "nest" else "ลากซ้าย (มือ) หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง")
+	_hint.text = (tr("hint_nest")
+		if m == "nest" else tr("hint_outworld"))

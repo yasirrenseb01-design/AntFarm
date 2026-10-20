@@ -4,28 +4,29 @@ extends RefCounted
 
 ## What the species page (view/ui/species_window.gd) says about it, before a colony starts. Each line: [text, where it
 ## comes from] - a study of L. niger itself, of ants in general, keepers' advice, or my own inference (docs/BIOLOGY.md).
+## All keys of lang/strings.csv ("ln_..."): the species page puts them in words.
 const CARD := {
-	"blurb": "มดที่พบมากที่สุดในสวนและทุ่งหญ้าทั่วยุโรป ตัวดำ ขนาดเล็ก 3.5–5 มม. รังหนึ่งมีราชินีตัวเดียว เป็นมดที่คนเลี้ยงมดนิยมเริ่มเลี้ยงเป็นชนิดแรก",
+	"blurb": "ln_blurb",
 	"traits": [
-		["ราชินีตั้งรังเองตัวเดียว: ขังตัวในห้องเล็กใต้ดิน เลี้ยงลูกรุ่นแรกด้วยไขมันและกล้ามเนื้อปีกในตัว ไม่ออกมากินเลยจนมดงานรุ่นแรกออก", "งานวิจัย L. niger (Janet 1907), AntWiki"],
-		["เลี้ยงเพลี้ยเอาน้ำหวาน: ใช้หนวดเคาะหลังเพลี้ยให้ปล่อยหยดน้ำหวาน และไล่ผู้ล่าอย่างเต่าทองออกจากกลุ่มเพลี้ย", "งานวิจัย L. niger (Banks 1962)"],
-		["ไม่มีเหล็กไน: สู้ด้วยการกัดแล้วงอท้องพ่นกรดฟอร์มิก และรุมกันดึงขาศัตรูจนขยับไม่ได้", "มดวงศ์ย่อย Formicinae ทั่วไป"],
-		["ชวนพวกไปหาอาหารด้วยทางกลิ่นจากปลายท้อง และปล่อยกลิ่นเตือนภัยเมื่อเจอศัตรู", "งานวิจัย L. niger (Bestmann 1992)"],
-		["ราชินีอายุยืนมาก: บันทึกในที่เลี้ยงนานเกือบ 29 ปี (มีบันทึกเดียว)", "งานวิจัย L. niger (Kutter & Stumper 1969)"],
+		["ln_trait_founding", "ln_src_janet"],
+		["ln_trait_aphids", "ln_src_banks"],
+		["ln_trait_no_sting", "ln_src_formicinae"],
+		["ln_trait_trails", "ln_src_bestmann"],
+		["ln_trait_queen_age", "ln_src_kutter"],
 	],
-	"difficulty": "ง่าย — เหมาะกับมือใหม่",
+	"difficulty": "ln_difficulty",
 	"care": [
-		["กินง่าย: น้ำหวาน (น้ำผึ้ง เพลี้ย) กับแมลงเล็กๆ เป็นโปรตีนให้ตัวอ่อน", "คำแนะนำผู้เลี้ยง"],
-		["อยู่ได้ที่อุณหภูมิห้อง ลูกมดโตเร็วที่สุดราว 20–28°C ต่ำกว่า ~13°C หยุดโต", "คำแนะนำผู้เลี้ยง + ค่าในเกม"],
-		["ต้องจำศีลหน้าหนาว (ราวปลาย ต.ค.–ต้น มี.ค.) ไม่อย่างนั้นราชินีวางไข่น้อยลงเรื่อยๆ", "คำแนะนำผู้เลี้ยง"],
-		["รังใหม่โตช้า: จากไข่ใบแรกถึงมดงานตัวแรกราว 6–10 สัปดาห์ ปีแรกยังมีมดไม่มาก", "คำแนะนำผู้เลี้ยง + Wikipedia"],
+		["ln_care_food", "ln_src_keepers"],
+		["ln_care_temp", "ln_src_keepers_game"],
+		["ln_care_winter", "ln_src_keepers"],
+		["ln_care_slow", "ln_src_keepers_wiki"],
 	],
 }
 
 const DATA := {
 	"id": "lasius_niger",
 	"name": "Lasius niger",
-	"name_th": "มดดำสวน",
+	"name_th": "ln_name",          # (a key of lang/strings.csv: its common name)
 
 	# Brood development at optimum (~28 °C); slows linearly toward dev_min_c and stops below it.
 	"egg_days": 10.0,

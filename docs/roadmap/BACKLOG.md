@@ -37,6 +37,23 @@
   - โลโก้เป็นอังกฤษอยู่แล้ว; หน้าแรก "สมุดบันทึกผู้เลี้ยงมด" → "Keeper's field notebook"
   - เทสต์ใหม่: ทุกรหัสที่โค้ดใช้มีในไฟล์ทั้งสองภาษา, `%` ตรงกันทั้งสองภาษา, ไม่มีข้อความไทยเหลือในโค้ด (ยกเว้น comment)
   - ส่งไฟล์ CSV ให้ผู้ใช้ตรวจคำแปลก่อนรวม
+- **R1 ทำแล้ว v0.11.11 (คลาวด์) — ผู้ใช้ตรวจคำแปลใน `lang/strings.csv` และ session บนเครื่องดูภาพภาษาอังกฤษทุกหน้า:**
+  - 461 รหัส (กลุ่ม: journal, calendar, enemies, foods, star ants, species, settings, desktop mode, saves and wallpaper, time away, title,
+    ant info box, new colony, my colonies, controls, side panel, top bar, species page); บันทึกผู้เลี้ยงเก็บรหัส (เซฟ v11) แสดงตามภาษาที่เลือก
+  - **คำที่ไม่แน่ใจ ให้ผู้ใช้เลือก:** ชุดเลี้ยง = "Formicarium" · ตู้แอนท์ฟาร์ม = "Ant farm (glass)" · ก้อนดิน = "Block of soil" · มดเด่น = "Star ants" ·
+    มดสำรอง = "Reserve" · นิสัย = "Leanings" (หรือ "Temperament") · กองขยะ = "midden" · บันทึกผู้เลี้ยง = "Keeper's journal" ·
+    สัตว์ร้าย = "Predators" · ระนาบตัด = "Cut" · ปุ่มกล้อง เต็มจอ = "Whole" (หรือ "Fit") · จำศีลในตู้เย็น = "Hibernate in fridge" ·
+    แผ่นความร้อน = "Heat mat" · มดงานตัวใหญ่/เล็ก = "Large/Small worker" (ไม่ใช้ major/minor: L. niger ไม่แบ่งวรรณะ) ·
+    สาเหตุตายต่อท้าย "X has died — starved / of thirst / of old age / lost while foraging / bitten by an enemy" ·
+    หัวบันทึก "Day 12 06:30" · ชื่อหน้าแรก "Keeper's field notebook" · มดงานออกหากิน = "foraging %d%%" (แถบอากาศ)
+  - **อาจล้น (ภาษาอังกฤษยาวกว่า) — ยังไม่ได้ดูภาพ:** แถบบน (Outworld 3D / Nest 3D / Enemies / Star ants / My colonies / Wallpaper / Menu —
+    แถบบนเคยล้นที่ 1600 อยู่แล้ว); แถบเครื่องมือล่าง (Hand (move the view), Drop of honey, Dead cricket, Stone, Wipe scent, See through the soil,
+    Add water, Show scent, Heat mat, Hibernate in fridge); ตารางแผงข้าง 4 คอลัมน์ กว้าง 352 (Workers died, Brood lost, Egg→worker, Nest volume,
+    Fat reserve, Development, Worker size); ตัวเลือกเวลาตอนปิดเกม (1 game day = 24 real hours (real time)); ปุ่มรังใหม่ (Garden / meadow (outdoors),
+    A 3-month-old colony (14 workers)); แถวในแผงมดเด่น (Brought home the most honeydew); ปุ่มในหน้าเลือกชนิดมด; คำใบ้ปุ่มกล้องมุมซ้ายล่าง
+  - ยังไม่ได้ทำ: ฟอนต์ที่มีทั้งสองภาษาแบบลายมือ/พิมพ์ดีด (ตอนนี้ฟอนต์เดิม); ชื่อเดือนในบันทึกเก่า (ก่อน v0.11.11) ยังเป็นไทย;
+    Label ของ Godot แปลข้อความเองถ้าตรงกับรหัสพอดี (เช่น มดชื่อ "queen" จะขึ้นเป็นคำแปล) — ถ้าเจอให้ปิด `auto_translate_mode` ที่ root ของ HUD;
+    `_act_name` ใน `ant_tip.gd` มี `22:` สองครั้ง (มีมาก่อน — กิจกรรม 22 "ออกไปหากินนอกแปลง" ไม่เคยขึ้น)
 - **R3 โหมดถ่ายคลิป:** ปุ่มลัด (เช่น F9) ซ่อน UI ทั้งหมด + ทางเลือกกล้องเดินชมรังอัตโนมัติ (แบบหน้าแรก ไม่มีเมนู/ป้าย) — ไว้ให้ผู้ใช้อัดคลิปโปรโมท
 - **R4 แนะนำผู้เล่นใหม่:** ตอนเริ่มรังแรก ชี้ทีละขั้นสั้นๆ (เติมน้ำ/ให้อาหาร, คลิกมด, ดูในรัง, เวลาตอนปิดเกม) ปิดได้ ไม่ขึ้นซ้ำ
 - **R5 ปล่อย:** zip เกม + AntDesk.exe + README สั้น; ทดสอบเครื่องที่ไม่เคยเล่น (user dir ใหม่), ตรวจว่าตัวเลือก dev (`--...`, F10 ความเร็ว 100×) ไม่รบกวนผู้เล่น

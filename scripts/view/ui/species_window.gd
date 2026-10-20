@@ -11,13 +11,13 @@ const Paper := preload("res://scripts/view/ui/paper.gd")
 const SPECIES := [LasiusNiger]
 ## what can be shown: [button, caption, kind, scale, body colour key]
 const SHOWN := [
-	["ราชินี", "ราชินี · ยาว 8–9 มม. อกโหนกใหญ่ (เคยมีกล้ามเนื้อบิน) ปีกหลุดไปหลังบินผสมพันธุ์ ขาและหนวดสีอำพัน", "queen", 1.75, ""],
-	["มดงานตัวใหญ่", "มดงานตัวใหญ่ · ราว 5 มม. — มดงานทุกตัวเป็นตัวเมียที่ไม่วางไข่ ขนาดต่างกันเล็กน้อย ไม่แบ่งวรรณะ", "worker", 1.15, "body_color"],
-	["มดงานตัวเล็ก", "มดงานตัวเล็ก · ราว 3.5 มม. — มดงานรุ่นแรกที่ราชินีเลี้ยงเองมักตัวเล็ก", "worker", 0.8, "body_color"],
-	["มดงานเกิดใหม่", "มดงานเพิ่งออกจากรังไหม · ตัวซีดนิ่ม จะเข้มขึ้นในไม่กี่วัน ช่วงแรกอยู่ดูแลลูกมดในรัง", "worker", 1.0, "callow_color"],
-	["ไข่", "ไข่ · ยาวราว 0.5 มม. ขาวใส เหนียว ติดกันเป็นก้อน พี่เลี้ยงคาบไปทั้งก้อน", "egg", 1.0, ""],
-	["ตัวอ่อน", "ตัวอ่อน · ไม่มีขา โค้งตัว พี่เลี้ยงป้อนอาหารปากต่อปาก ตัวอ่อนกินของแข็งได้ (มดโตกินได้แต่ของเหลว)", "larva", 1.0, ""],
-	["รังไหม", "ดักแด้ในรังไหม · สีครีม จุดดำที่ปลายคือของเสียที่ขับก่อนเข้าดักแด้ ไม่กินอาหาร", "pupa", 1.0, ""],
+	["sp_queen", "sp_queen_cap", "queen", 1.75, ""],
+	["sp_major", "sp_major_cap", "worker", 1.15, "body_color"],
+	["sp_minor", "sp_minor_cap", "worker", 0.8, "body_color"],
+	["sp_callow", "sp_callow_cap", "worker", 1.0, "callow_color"],
+	["sp_egg", "sp_egg_cap", "egg", 1.0, ""],
+	["sp_larva", "sp_larva_cap", "larva", 1.0, ""],
+	["sp_pupa", "sp_pupa_cap", "pupa", 1.0, ""],
 ]
 
 signal chosen(species_id: String)
@@ -36,7 +36,7 @@ var _ant_mm: MultiMesh
 
 func setup(h) -> void:
 	hud = h
-	title = "เลือกชนิดมด"
+	title = tr("sp_title")
 	theme = h._colonies.theme
 	transient = true
 	exclusive = true
@@ -55,13 +55,13 @@ func setup(h) -> void:
 	list.add_theme_constant_override("separation", 6)
 	list.custom_minimum_size.x = 170
 	row.add_child(list)
-	list.add_child(h._label("ชนิดมด", 13, Paper.PENCIL))
+	list.add_child(h._label(tr("sp_species"), 13, Paper.PENCIL))
 	for S in SPECIES:
-		var b: Button = h._button("%s\n%s" % [S.DATA.name_th, S.DATA.name], true)
+		var b: Button = h._button("%s\n%s" % [tr(S.DATA.name_th), S.DATA.name], true)
 		b.button_pressed = true
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		list.add_child(b)
-	list.add_child(_wrap(h, "ชนิดอื่นจะตามมาในเวอร์ชันหลัง", 12, Paper.PENCIL, 170))
+	list.add_child(_wrap(h, tr("sp_more_later"), 12, Paper.PENCIL, 170))
 	_build_card(row, SPECIES[0])
 
 
@@ -81,19 +81,19 @@ func _build_card(row: Control, S) -> void:
 	row.add_child(text)
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 10)
-	name_row.add_child(h._label(S.DATA.name_th, 26, Paper.INK, h._display))
+	name_row.add_child(h._label(tr(S.DATA.name_th), 26, Paper.INK, h._display))
 	var latin: Label = h._label(S.DATA.name, 15, Paper.PENCIL)
 	latin.size_flags_vertical = Control.SIZE_SHRINK_END
 	name_row.add_child(latin)
 	text.add_child(name_row)
-	text.add_child(_wrap(h, card.blurb, 13, Paper.INK, 430))
-	text.add_child(h._label("นิสัยและจุดเด่น", 15, Paper.ACCENT))
+	text.add_child(_wrap(h, tr(card.blurb), 13, Paper.INK, 430))
+	text.add_child(h._label(tr("sp_traits"), 15, Paper.ACCENT))
 	for t in card.traits:
 		_point(text, t)
 	var diff := HBoxContainer.new()
 	diff.add_theme_constant_override("separation", 8)
-	diff.add_child(h._label("ความยากในการเลี้ยง", 15, Paper.ACCENT))
-	diff.add_child(h._label(card.difficulty, 15, Paper.LEAF))
+	diff.add_child(h._label(tr("sp_difficulty"), 15, Paper.ACCENT))
+	diff.add_child(h._label(tr(card.difficulty), 15, Paper.LEAF))
 	text.add_child(diff)
 	for t in card.care:
 		_point(text, t)
@@ -118,21 +118,21 @@ func _build_card(row: Control, S) -> void:
 	right.add_child(picks)
 	var g := ButtonGroup.new()
 	for i in SHOWN.size():
-		var b: Button = h._button(SHOWN[i][0], true, g)
+		var b: Button = h._button(tr(SHOWN[i][0]), true, g)
 		b.button_pressed = i == 0
 		var k: int = i
 		b.pressed.connect(func(): _show(k))
 		picks.add_child(b)
 	_caption = _wrap(h, "", 12, Paper.INK, 420)
 	right.add_child(_caption)
-	right.add_child(_wrap(h, "โมเดลเดียวกับในเกม · ลากเพื่อหมุนดู · ขนาดบนจอไม่เท่ากัน (ขยายให้เห็นชัด)", 11, Paper.PENCIL, 420))
+	right.add_child(_wrap(h, tr("sp_models"), 11, Paper.PENCIL, 420))
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
 	foot.add_theme_constant_override("separation", 8)
-	var cancel: Button = h._button("ยกเลิก", false)
+	var cancel: Button = h._button(tr("cancel"), false)
 	cancel.pressed.connect(queue_free)
 	foot.add_child(cancel)
-	var go: Button = h._button("เลือกชนิดนี้ ›", false)
+	var go: Button = h._button(tr("sp_choose"), false)
 	go.pressed.connect(func():
 		chosen.emit(S.DATA.id)
 		queue_free())
@@ -143,9 +143,9 @@ func _build_card(row: Control, S) -> void:
 
 func _point(parent: Control, t: Array) -> void:
 	var h = hud
-	var l: Label = _wrap(h, "• " + String(t[0]), 13, Paper.INK, 430)
+	var l: Label = _wrap(h, "• " + tr(String(t[0])), 13, Paper.INK, 430)
 	parent.add_child(l)
-	var src: Label = _wrap(h, "   ที่มา: " + String(t[1]), 11, Paper.PENCIL, 430)
+	var src: Label = _wrap(h, "   " + tr("sp_source") + tr(String(t[1])), 11, Paper.PENCIL, 430)
 	parent.add_child(src)
 
 
@@ -201,7 +201,7 @@ func _show(i: int) -> void:
 		c.queue_free()
 	_ant_mm = null
 	var s: Array = SHOWN[i]
-	_caption.text = s[1]
+	_caption.text = tr(s[1])
 	var sp: Dictionary = LasiusNiger.DATA
 	match s[2]:
 		"queen", "worker":

@@ -16,7 +16,7 @@ const Paper := preload("res://scripts/view/ui/paper.gd")
 var main
 var is_open := false
 var _root: Control
-var _go_on: Button                    # "เล่นต่อ" (not for the colony shown before the first one is started)
+var _go_on: Button                    # tr("title_go_on") (not for the colony shown before the first one is started)
 var _go_on_note: Label
 var _caption: Label                   # what the camera is looking at, bottom right
 var _page                             # the notebook page the menu is written on (Page)
@@ -72,20 +72,20 @@ func setup(m) -> void:
 	col.size = Vector2(PAGE_W - 80, 420)
 	col.add_theme_constant_override("separation", 0)
 	_page.add_child(col)
-	var head: Label = h._label("สมุดบันทึกผู้เลี้ยงมด", 15, Paper.ACCENT)
+	var head: Label = h._label(tr("title_notebook"), 15, Paper.ACCENT)
 	head.custom_minimum_size.y = Page.LINE * 1.5
 	head.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	col.add_child(head)
-	_go_on = _item(col, "เล่นต่อ", close, true)
+	_go_on = _item(col, tr("title_go_on"), close, true)
 	_go_on_note = h._label("", 12, Paper.PENCIL)
 	_go_on_note.custom_minimum_size.y = Page.LINE
 	_go_on_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	col.add_child(_go_on_note)
-	_item(col, "รังใหม่", func(): main._title_new_colony())
-	_item(col, "รังของฉัน", func(): h.open_colonies())
-	_item(col, "ตั้งค่า", func(): h.open_settings())
-	_item(col, "วอลเปเปอร์", func(): main._enter_desktop())
-	_item(col, "ออกจากเกม", func(): main.get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST))
+	_item(col, tr("title_new"), func(): main._title_new_colony())
+	_item(col, tr("my_colonies"), func(): h.open_colonies())
+	_item(col, tr("settings"), func(): h.open_settings())
+	_item(col, tr("wallpaper"), func(): main._enter_desktop())
+	_item(col, tr("title_quit"), func(): main.get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST))
 	var ver: Label = h._label("v%s" % ProjectSettings.get_setting("application/config/version", "dev"), 12, h.MUTED)
 	ver.anchor_top = 1.0
 	ver.anchor_bottom = 1.0
@@ -204,8 +204,8 @@ func open(can_go_on := true) -> void:
 	_go_on.visible = can_go_on
 	_go_on_note.visible = can_go_on
 	var s = main.sim
-	_go_on_note.text = "รัง %d · ปีที่ %d · %s · มดงาน %d ตัว%s" % [main.slot, s.year(), s.date_text(), s.workers.size(),
-		"" if s.queen.alive else " · ราชินีตายแล้ว"]
+	_go_on_note.text = tr("title_colony_note") % [main.slot, s.year(), s.date_text(), s.workers.size(),
+		"" if s.queen.alive else tr("title_queen_dead")]
 	_shot = -1
 	_named_turn = false
 	_next_shot()
@@ -305,13 +305,13 @@ func _take(i: int) -> bool:
 			ow.reset_view()
 			ow.pitch_t = 0.8
 			ow.yaw_t = _rng.randf_range(-0.6, 0.6)
-			_caption.text = "พื้นที่หาอาหาร" if s.scenario == "keeper" else "แปลงดินรอบรัง"
+			_caption.text = tr("shot_outworld") if s.scenario == "keeper" else tr("shot_plot")
 			return true
 		1:
 			var out: Array = s.outside.filter(func(a): return (a.vpos as Vector2).x != INF)
 			if out.is_empty():
 				return false
-			return _watch(out[_rng.randi() % out.size()], "มดงานออกหากิน")
+			return _watch(out[_rng.randi() % out.size()], tr("shot_forager"))
 		2:
 			return _queen_shot("")
 		3:
@@ -321,14 +321,14 @@ func _take(i: int) -> bool:
 				if p != Vector3.INF:
 					nv.pitch_t = 0.5
 					nv.aim_at(p, 20.0)
-					_caption.text = {"larvae": "ตัวอ่อน", "pupae": "รังไหม (ดักแด้)", "eggs": "ไข่"}[kind]
+					_caption.text = {"larvae": tr("larvae"), "pupae": tr("shot_cocoons"), "eggs": tr("eggs")}[kind]
 					return true
 			return false
 		4:
 			var inside: Array = s.workers.filter(func(w): return not s.outside.has(w))
 			if inside.is_empty():
 				return false
-			return _watch(inside[_rng.randi() % inside.size()], "มดงานในรัง")
+			return _watch(inside[_rng.randi() % inside.size()], tr("shot_nest_worker"))
 	return false
 
 
@@ -344,7 +344,7 @@ func _queen_shot(qname: String) -> bool:
 		return false
 	nv.pitch_t = 0.45
 	nv.aim_at(q, 22.0)
-	_caption.text = "ราชินี" if qname == "" else "ราชินี \"%s\"" % qname
+	_caption.text = tr("queen") if qname == "" else tr("shot_queen_named") % qname
 	return true
 
 

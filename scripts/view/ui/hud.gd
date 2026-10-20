@@ -46,10 +46,10 @@ func setup(s, w) -> void:
 
 func _on_logged(e: Dictionary) -> void:
 	_log_dirty = true
-	if e.text in [T.warn_lowwater, T.warn_nowater, T.warn_lowhum] and _chime != null:
+	if e.get("key", "") in [T.warn_lowwater, T.warn_nowater, T.warn_lowhum] and _chime != null:
 		_chime.play()
 	if e.kind == "named":
-		_named_news(e.text)
+		_named_news(L.entry_text(e))
 
 
 # ---------------------------------------------------------------- a named ant has died (EA3b)
@@ -130,9 +130,9 @@ func refresh(delta: float) -> void:
 	_t += delta
 	_tick_banner(delta)
 	_tick_stars()
-	_clock.text = "ปีที่ %d · %s · %s  %s" % [sim.year(), sim.date_text(), sim.season_name(), sim.clock_text()]
-	var sky := "ฝนตก" if sim.climate.raining() else ("กลางคืน" if sim.sun_height() < -0.05 else "แจ่มใส")
-	_weather.text = "อากาศ %.1f°C · %s · มดออกหากิน %d%%" % [sim.climate.air, sky, int(sim.activity * 100)]
+	_clock.text = tr("clock_line") % [sim.year(), sim.date_text(), sim.season_name(), sim.clock_text()]
+	var sky := tr("sky_rain") if sim.climate.raining() else (tr("sky_night") if sim.sun_height() < -0.05 else tr("sky_clear"))
+	_weather.text = tr("weather_line") % [sim.climate.air, sky, int(sim.activity * 100)]
 	_frame += 1
 	if _frame == 2:
 		_fps_label.visible = bool(settings.get("show_fps", false))
@@ -144,7 +144,7 @@ func refresh(delta: float) -> void:
 			music.volume = float(settings.get("music", 0.6))
 			add_child(music)
 	if _fps_label != null and _fps_label.visible:
-		_fps_label.text = "%d FPS · จริง %.1f×" % [Engine.get_frames_per_second(), real_speed]
+		_fps_label.text = tr("fps_line") % [Engine.get_frames_per_second(), real_speed]
 	if _frame % 4 == 0 and _nest.is_visible_in_tree():
 		_nest.queue_redraw()
 	if _log_dirty:
@@ -154,16 +154,16 @@ func refresh(delta: float) -> void:
 		return
 	var q: Label = _vals["queen"]
 	if not sim.queen.alive:
-		_show(q, "ตายแล้ว", DANGER)
+		_show(q, tr("tip_dead"), DANGER)
 	elif sim.hibernating() or sim.climate.nest < 6.0:
 		# winter rest: by season (outdoors) or the fridge (indoors), not by the hour
-		_show(q, "จำศีล", INK)
+		_show(q, tr("tip_hibernating"), INK)
 	elif sim.founding():
-		_show(q, "ไขมัน %d%%" % int(sim.queen.reserve / float(sim.sp["queen_reserve"]) * 100.0), LEAF)   # sealed in, living on her reserves
+		_show(q, tr("queen_fat") % int(sim.queen.reserve / float(sim.sp["queen_reserve"]) * 100.0), LEAF)   # sealed in, living on her reserves
 	elif sim.starving or sim.queen.starve > 0.5:
-		_show(q, "หยุดวางไข่", DANGER)
+		_show(q, tr("queen_not_laying"), DANGER)
 	else:
-		_show(q, "วางไข่", LEAF)
+		_show(q, tr("tip_laying"), LEAF)
 	_show(_vals["workers"], str(sim.workers.size()))
 	_show(_vals["out"], str(sim.out_count))
 	_show(_vals["nurses"], str(sim.nurses))
@@ -181,17 +181,17 @@ func refresh(delta: float) -> void:
 	_show(_vals["brood_dead"], str(sim.stats.brood_dead + sim.stats.cannibalized))
 	var by: Dictionary = sim.stats.dead_by
 	var causes := []
-	for k in [["starve", "อดอาหาร"], ["thirst", "ขาดน้ำ"], ["old", "แก่ตาย"], ["out", "หายตอนออกหากิน"], ["enemy", "ศัตรูกัด"], ["other", "ไม่ทราบ (เซฟเก่า)"]]:
+	for k in [["starve", tr("death_starve")], ["thirst", tr("death_thirst")], ["old", tr("death_old")], ["out", tr("death_out")], ["enemy", tr("death_enemy")], ["other", tr("death_other")]]:
 		if int(by.get(k[0], 0)) > 0:
 			causes.append("%s %d" % [k[1], by[k[0]]])
-	_vals["dead"].tooltip_text = "สาเหตุ: " + (", ".join(causes) if not causes.is_empty() else "-")
-	_vals["brood_dead"].tooltip_text = "ไข่/ตัวอ่อน/ดักแด้ที่ตายเพราะแห้ง ราขึ้น หรือร้อนเกิน %d · ตัวอ่อนที่มดงานกินตอนขาดโปรตีน %d" % [
+	_vals["dead"].tooltip_text = tr("death_causes") + (", ".join(causes) if not causes.is_empty() else "-")
+	_vals["brood_dead"].tooltip_text = tr("brood_dead_tip") % [
 		sim.stats.brood_dead, sim.stats.cannibalized]
 	var cyc: float = sim.cycle_days()
-	_show(_vals["cycle"], "หยุด" if cyc == INF else "%d วัน" % int(cyc))
-	_show(_vals["vol"], "%.1f ซม³" % sim.nest.volume_cm3(), DANGER if sim.nest.air < sim.target_air() * 0.7 and not fnd else INK)
-	_show(_vals["depth"], "%.1f ซม · %d ห้อง" % [sim.nest.depth_cm(), sim.nest.chambers.size()])
-	_show(_vals["size"], "%.1f มม." % sim.mean_worker_mm() if not sim.workers.is_empty() else "ยังไม่มี")
+	_show(_vals["cycle"], tr("cycle_stopped") if cyc == INF else tr("days_d") % int(cyc))
+	_show(_vals["vol"], tr("cm3") % sim.nest.volume_cm3(), DANGER if sim.nest.air < sim.target_air() * 0.7 and not fnd else INK)
+	_show(_vals["depth"], tr("depth_short") % [sim.nest.depth_cm(), sim.nest.chambers.size()])
+	_show(_vals["size"], tr("mm") % sim.mean_worker_mm() if not sim.workers.is_empty() else tr("not_yet"))
 	var hum: float = sim.humidity
 	_hum_bar.value = hum * 100.0
 	var ok: bool = hum >= sim.sp["humidity_ok_min"] and hum <= sim.sp["humidity_ok_max"]

@@ -60,7 +60,8 @@ func release_enemy(kind: String) -> int:
 		return 0
 	_spawn_creature(kind)
 	creatures[-1]["released"] = true            # (a night hunter let in by day stays out till its time is up)
-	log_entries[0].text = T.enemy_released % ENEMY_KINDS[kind].NAME     # (in place of its wild arrival line: "at night" may not be true)
+	log_entries[0].key = T.enemy_released     # (in place of its wild arrival line: "at night" may not be true)
+	log_entries[0].args = [L.k(ENEMY_KINDS[kind].NAME)]
 	return creatures[-1].id
 
 
@@ -139,7 +140,7 @@ func _creature_dies(c: Dictionary, clinging: Array) -> void:
 	foods.append(f)
 	_food_dirty = true
 	stats["enemies_killed"] = int(stats.get("enemies_killed", 0)) + 1
-	_log(T.enemy_killed % K.NAME, "ok")
+	_log(T.enemy_killed, "ok", [L.k(K.NAME)])
 
 
 func _release(c: Dictionary, clinging: Array) -> void:

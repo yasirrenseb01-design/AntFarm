@@ -36,14 +36,14 @@ func setup(m: Node) -> void:
 	main = m
 	_tray = StatusIndicator.new()
 	_tray.icon = _ant_icon()
-	_tray.tooltip = "AntFarm · คลิกเพื่อกลับไปเล่นเกม"
+	_tray.tooltip = tr("tray_tooltip")
 	_tray.visible = false
 	_tray.pressed.connect(func(button: int, _at: Vector2i):
 		if button == MOUSE_BUTTON_LEFT:
 			leave())                             # (a click on the ant: back to the game; the right button opens the menu)
 	_menu = PopupMenu.new()
-	_menu.add_item("กลับไปเล่นเกม", 0)
-	_menu.add_item("ปิดเกม (เซฟแล้วออก)", 1)
+	_menu.add_item(tr("tray_back"), 0)
+	_menu.add_item(tr("tray_quit"), 1)
 	_menu.id_pressed.connect(_on_menu)
 	add_child(_menu)
 	add_child(_tray)
@@ -69,7 +69,7 @@ func enter() -> void:
 	if on or _job != null:
 		return
 	if not available():
-		failed.emit("ใช้โหมดเดสก์ท็อปไม่ได้: ไม่พบ AntDesk.exe ข้างไฟล์เกม" if OS.get_name() == "Windows" else "โหมดเดสก์ท็อปมีเฉพาะ Windows")
+		failed.emit(tr("desk_no_helper") if OS.get_name() == "Windows" else tr("desk_windows_only"))
 		return
 	_saved = {"mode": DisplayServer.window_get_mode(), "pos": DisplayServer.window_get_position(),
 		"size": DisplayServer.window_get_size(), "borderless": DisplayServer.window_get_flag(DisplayServer.WINDOW_FLAG_BORDERLESS),
@@ -172,7 +172,7 @@ func _done(kind: String, code: int, out: String) -> void:
 			if code != 0:
 				_restore_window()
 				main.hud.visible = true
-				failed.emit("ตั้งเป็นวอลเปเปอร์ไม่ได้ (%s)" % out)
+				failed.emit(tr("desk_failed") % out)
 				return
 			on = true
 			hidden = false

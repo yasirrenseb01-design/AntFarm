@@ -6,13 +6,13 @@ extends RefCounted
 const SLOTS := 3
 static var base := "user://"      # tests point this at a sandbox folder so they never touch real saves
 
-## Game days that pass per real hour while the game is closed (0 = time stops).
+## Game days that pass per real hour while the game is closed (0 = time stops); the words are keys of lang/strings.csv.
 const AWAY_RATES := [
-	["หยุดเวลาตอนปิดเกม", 0.0],
-	["1 วันในเกม = 24 ชม. จริง (เวลาจริง)", 1.0 / 24.0],
-	["1 วันในเกม = 6 ชม. จริง", 1.0 / 6.0],
-	["1 วันในเกม = 1 ชม. จริง", 1.0],
-	["1 วันในเกม = 15 นาทีจริง", 4.0],
+	["away_stop", 0.0],
+	["away_real", 1.0 / 24.0],
+	["away_6h", 1.0 / 6.0],
+	["away_1h", 1.0],
+	["away_15m", 4.0],
 ]
 const MAX_AWAY_DAYS := 120.0   # longest absence simulated on return
 
@@ -103,7 +103,7 @@ static func settings() -> Dictionary:
 	var cf := ConfigFile.new()
 	cf.load(_settings_path())
 	return {"slot": cf.get_value("game", "slot", 1), "away": cf.get_value("game", "away", 3),
-		"care": cf.get_value("game", "care", true)}
+		"care": cf.get_value("game", "care", true), "lang": cf.get_value("game", "lang", "")}     # (lang "": the machine's)
 
 
 static func save_settings(s: Dictionary) -> void:

@@ -5,6 +5,7 @@ const Sim := preload("res://scripts/sim/simulation.gd")
 const Hud := preload("res://scripts/view/ui/hud.gd")
 const NestView := preload("res://scripts/view/nest/nest_view.gd")
 const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
+const L := preload("res://scripts/sim/lang.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const Title := preload("res://scripts/game/title.gd")
 const SingleInstance := preload("res://scripts/game/single_instance.gd")
@@ -134,7 +135,7 @@ func _run_catchup() -> void:
 		if care and sim.tick % sim.TPD == sim.TPD / 4:
 			sim.auto_care(sim.day())
 	var done := _catchup_total - _catchup_left
-	_overlay_label.text = "ระหว่างที่คุณไม่อยู่ รังยังมีชีวิตต่อ…\nกำลังจำลอง %.1f จาก %.1f วันในเกม" % [
+	_overlay_label.text = tr("away_running") % [
 		float(done) / sim.TPD, float(_catchup_total) / sim.TPD]
 	_overlay_bar.value = 100.0 * done / maxf(1.0, _catchup_total)
 	if _catchup_left <= 0:
@@ -148,35 +149,35 @@ func _report_away() -> void:
 	var b: Dictionary = _away_before
 	var a: Dictionary = sim.summary()
 	var lines := PackedStringArray()
-	lines.append("คุณไม่อยู่ %s → ในรังผ่านไป %.1f วัน (วันที่ %d → %d)%s" % [_hours_text(_away_hours),
-		float(_catchup_total) / sim.TPD, b.day, a.day, "\n(จำลองให้สูงสุด %d วันในเกม)" % int(Store.MAX_AWAY_DAYS) if _away_capped else ""])
+	lines.append(tr("away_summary") % [_hours_text(_away_hours),
+		float(_catchup_total) / sim.TPD, b.day, a.day, tr("away_capped") % int(Store.MAX_AWAY_DAYS) if _away_capped else ""])
 	lines.append("")
-	lines.append("มดงาน  %d → %d   (เกิดใหม่ %d · ตาย %d · ลูกมดตาย %d)" % [b.workers, a.workers, a.born - b.born, a.dead - b.dead,
+	lines.append(tr("away_workers") % [b.workers, a.workers, a.born - b.born, a.dead - b.dead,
 		int(a.get("brood_dead", 0)) - int(b.get("brood_dead", 0))])
-	lines.append("ไข่ %d · ตัวอ่อน %d · ดักแด้ %d" % [a.eggs, a.larvae, a.pupae])
-	lines.append("ห้องในรัง  %d → %d   · ปริมาตร %.1f ซม³" % [b.chambers, a.chambers, a.volume])
-	lines.append("ความชื้นในรังตอนนี้ %d%%%s" % [int(a.humidity * 100), "  (ควรเติมน้ำ)" if a.humidity < 0.35 else ""])
+	lines.append(tr("away_brood") % [a.eggs, a.larvae, a.pupae])
+	lines.append(tr("away_chambers") % [b.chambers, a.chambers, a.volume])
+	lines.append(tr("away_humidity") % [int(a.humidity * 100), tr("away_add_water") if a.humidity < 0.35 else ""])
 	if not a.queen:
-		lines.append("ราชินีตายระหว่างที่คุณไม่อยู่")
+		lines.append(tr("away_queen_died"))
 	if not _away_events.is_empty():
 		lines.append("")
-		lines.append("เรื่องที่เกิดขึ้น:")
+		lines.append(tr("away_events"))
 		var shown := 0
 		for e in _away_events:
 			if shown >= 8:
-				lines.append("…และอีก %d เรื่อง" % (_away_events.size() - shown))
+				lines.append(tr("away_more") % (_away_events.size() - shown))
 				break
-			lines.append("• %s  %s" % [e.stamp, e.text])
+			lines.append("• %s  %s" % [sim.L.stamp(e), sim.L.entry_text(e)])
 			shown += 1
 	if title != null and title.is_open:
-		title.pending_report = ["ระหว่างที่คุณไม่อยู่", "\n".join(lines)]     # (shown once the keeper goes on into the game)
+		title.pending_report = [tr("away_title"), "\n".join(lines)]     # (shown once the keeper goes on into the game)
 	else:
-		hud.show_report("ระหว่างที่คุณไม่อยู่", "\n".join(lines))
+		hud.show_report(tr("away_title"), "\n".join(lines))
 
 
 func _hours_text(h: float) -> String:
 	if h < 1.0:
-		return "%d นาที" % int(h * 60.0)
+		return tr("minutes_n") % int(h * 60.0)
 	if h < 48.0:
-		return "%.1f ชั่วโมง" % h
-	return "%.1f วัน" % (h / 24.0)
+		return tr("hours_n") % h
+	return tr("days_n") % (h / 24.0)

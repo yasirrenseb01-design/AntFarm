@@ -10,12 +10,14 @@ const SpeciesWindow := preload("res://scripts/view/ui/species_window.gd")
 const Paper := preload("res://scripts/view/ui/paper.gd")
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const T := preload("res://scripts/sim/text_th.gd")
+const L := preload("res://scripts/sim/lang.gd")
 
 signal speed_changed(speed: float)
 signal view_changed(mode: String)
 signal colony_new(slot: int, nest_kind: String)
 signal colony_play(slot: int)
 signal settings_changed(settings: Dictionary)
+signal language_changed(lang: String)     # the keeper picked another language: main.gd saves and starts the scene again
 signal save_requested
 signal cam_action(action: String)
 signal desktop_requested               # the keeper wants the nest as the desktop wallpaper (game/desktop_mode.gd)

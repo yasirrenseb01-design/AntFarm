@@ -59,12 +59,12 @@ func _init():
 	print("top_ants: %d lines (%s), shape ok %s" % [tops.size(), ", ".join(tops.map(func(r): return r.key)), shape_ok])
 	ok = ok and shape_ok and a.duty_of(-99).is_empty()
 	# the queen: a name, and her death told like a named worker's
-	a.name_queen("  แม่ใหญ่  ")
-	ok = ok and a.queen.name == "แม่ใหญ่"
+	a.name_queen("  Big Mama  ")
+	ok = ok and a.queen.name == "Big Mama"
 	a.queen.starve = 999.0
 	a._queen(0.01)
-	var told: bool = a.log_entries[0].kind == "named" and a.log_entries[0].text.contains("แม่ใหญ่")
-	print("named queen's death told: %s (%s)" % [told, a.log_entries[0].text])
+	var told: bool = a.log_entries[0].kind == "named" and a.L.entry_text(a.log_entries[0]).contains("Big Mama")
+	print("named queen's death told: %s (%s)" % [told, a.L.entry_text(a.log_entries[0])])
 	ok = ok and told and not a.queen.alive
 	print("DUTY TEST PASSED" if ok else "DUTY TEST FAILED")
 	quit()

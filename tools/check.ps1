@@ -57,6 +57,8 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/enemy_tes
 Report "released enemies come in and are fought" ($r -match "ENEMY TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/name_test.gd") 300
 Report "ant names kept, change nothing, a named death is told" ($r -match "NAME TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/lang_test.gd") 300
+Report "words: every key in both languages, same placeholders, no Thai left in the code" ($r -match "LANG TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/duty_test.gd") 300
 Report "duties in the nest: repeatable, counted, run while closed" ($r -match "DUTY TEST PASSED")
 $sandbox = Join-Path $env:APPDATA "Godot\app_userdata\AntFarm\sandbox\saves\slot1.antfarm"

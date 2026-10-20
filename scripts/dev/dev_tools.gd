@@ -297,7 +297,7 @@ func _take_shot() -> void:
 		if i == 64 and _opts.has("named-death"):
 			# (--named-death: the banner a named ant's death puts up, with the words the simulation would use)
 			var TT = load("res://scripts/sim/text_th.gd")
-			sim._log(TT.named_died % ["แม่มดน้อย", TT.death_causes.starve, 42], "named")
+			sim._log(TT.named_died, "named", ["Mimi", sim.L.k(TT.death_causes.starve), 42])
 		if i == 60 and _opts.has("hover"):
 			_hover_some_ant(String(_opts["hover"]))
 		elif i > 10 and _opts.has("perf"):
@@ -939,5 +939,5 @@ func _selftest(days: int, autokeep: bool) -> void:
 	print("queen alive: ", sim.queen.alive, "  sim time: %.1fs  slowest day: %d ms (headroom at 60× speed: %.1f×)" % [
 		(Time.get_ticks_msec() - t0) / 1000.0, slowest, 1000.0 / maxf(1.0, slowest)])
 	for e in sim.log_entries.slice(0, int(_opts.get("logs", "12"))):
-		print("  ", e.stamp, "  ", e.text)
+		print("  ", sim.L.stamp(e), "  ", sim.L.entry_text(e))
 	get_tree().quit()

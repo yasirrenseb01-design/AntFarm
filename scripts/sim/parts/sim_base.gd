@@ -78,7 +78,7 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 		_log(T.founding_sealed)
 		_log(T.founding_reserves, "ok")
 	else:
-		_log(T.young_colony % start_workers)
+		_log(T.young_colony, "", [start_workers])
 		_log(T.young_needs_protein, "ok")
 
 
@@ -141,7 +141,8 @@ func daylight() -> float:
 
 # ---------------------------------------------------------------- calendar
 
-const MONTHS := ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]
+const MONTHS := ["month_jan", "month_feb", "month_mar", "month_apr", "month_may", "month_jun", "month_jul", "month_aug",
+	"month_sep", "month_oct", "month_nov", "month_dec"]      # (keys of lang/strings.csv)
 const MONTH_DAYS := [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 
@@ -160,18 +161,18 @@ func date_text() -> String:
 	while m < 11 and d >= MONTH_DAYS[m]:
 		d -= MONTH_DAYS[m]
 		m += 1
-	return "%d %s" % [d + 1, MONTHS[m]]
+	return L.f("date_day_month", [d + 1, L.t(MONTHS[m])])
 
 
 func season_name() -> String:
 	var d := doy_f()
 	if d < 59 or d >= 334:
-		return "ฤดูหนาว"
+		return L.t("season_winter")
 	if d < 151:
-		return "ใบไม้ผลิ"
+		return L.t("season_spring")
 	if d < 243:
-		return "ฤดูร้อน"
-	return "ใบไม้ร่วง"
+		return L.t("season_summer")
+	return L.t("season_autumn")
 
 
 ## How much the outdoors is alive (aphids, flies, wandering predators): 0 in the cold, 1 when warm.
@@ -227,7 +228,7 @@ func place_food(kind: String, p: Vector2) -> bool:
 func add_water() -> void:
 	water = 1.0                                   # the keeper fills the nest's water tank
 	humidity = minf(1.0, humidity + 0.2)
-	_log(T.water_added % int(humidity * 100))
+	_log(T.water_added, "", [int(humidity * 100)])
 
 
 func add_rock(p: Vector2, r: float) -> bool:
@@ -368,7 +369,7 @@ func _kill(a: Ant, cause := "other") -> void:
 	stats.dead += 1
 	stats.dead_by[cause] = int(stats.dead_by.get(cause, 0)) + 1
 	if a.name != "":
-		_log(T.named_died % [a.name, T.death_causes.get(cause, T.death_causes.other), int(a.age)], "named")    # (the HUD: a chime, a banner)
+		_log(T.named_died, "named", [a.name, L.k(T.death_causes.get(cause, T.death_causes.other)), int(a.age)])    # (the HUD: a chime, a banner)
 	if a.state == Ant.IN_NEST:
 		corpses_inside += 1
 	else:
@@ -384,7 +385,7 @@ func name_ant(id: int, new_name: String) -> bool:
 	for a in workers:
 		if a.id == id:
 			if nm != a.name:
-				_log(T.ant_named % [a.id, nm] if nm != "" else T.ant_unnamed % [a.name, a.id])
+				_log(T.ant_named, "", [a.id, nm]) if nm != "" else _log(T.ant_unnamed, "", [a.name, a.id])
 			a.name = nm
 			return true
 	return false
@@ -394,7 +395,7 @@ func name_ant(id: int, new_name: String) -> bool:
 func name_queen(new_name: String) -> void:
 	var nm := new_name.strip_edges().left(NAME_MAX)
 	if nm != String(queen.get("name", "")):
-		_log(T.queen_named % nm if nm != "" else T.queen_unnamed % queen.get("name", ""))
+		_log(T.queen_named, "", [nm]) if nm != "" else _log(T.queen_unnamed, "", [queen.get("name", "")])
 	queen["name"] = nm
 
 
@@ -418,8 +419,10 @@ func _event(kind: String, size := 1.0) -> void:
 		events.pop_front()
 
 
-func _log(text: String, kind: String = "") -> void:
-	var e := {"stamp": "ว.%d %s" % [day(), clock_text()], "text": text, "kind": kind}
+## A line in the keeper's journal: a key of lang/strings.csv (T.<name>) and the values for its placeholders, put in words
+## when shown (L.entry_text) - so a saved journal reads in the language the game is in.
+func _log(key: String, kind: String = "", args: Array = []) -> void:
+	var e := {"day": day(), "clock": clock_text(), "key": key, "args": args, "kind": kind}
 	log_entries.push_front(e)
 	if log_entries.size() > 80:
 		log_entries.pop_back()

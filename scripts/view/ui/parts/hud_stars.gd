@@ -1,7 +1,7 @@
 extends "res://scripts/view/ui/parts/hud_enemies.gd"
 ## HUD, layer 4 of 7: the star ants panel (PART EA3a) - the first in each line of work (biggest, smallest, oldest, the
 ## nurse who fed the larvae most, the forager who brought most honeydew home...) and every ant the keeper has named,
-## the queen first. "ไปดู" switches to the view the ant is in, picks it (its outline and info box) and the camera rides
+## the queen first. tr("go_see") switches to the view the ant is in, picks it (its outline and info box) and the camera rides
 ## along until the keeper moves it.
 ## The rankings come from sim.top_ants() (the simulation's duties, EA3a round 1 - Cloud): a list of
 ## {"key", "title", "id" (worker id), "text" (what it did, in words)}; until it is there, what the colony already knows
@@ -9,9 +9,9 @@ extends "res://scripts/view/ui/parts/hud_enemies.gd"
 
 const STARS_W := 400.0
 ## lines of work the duties will count (shown waiting until sim.top_ants() gives them)
-const STAR_COMING := [["feed_larvae", "ป้อนตัวอ่อนมากที่สุด"], ["carry_brood", "คาบลูกมดมากที่สุด"], ["feed_mates", "ป้อนน้ำหวานเพื่อนมากที่สุด"],
-	["rest", "ยืนพักมากที่สุด"], ["dig", "ขุดดินมากที่สุด"], ["sugar_trips", "ขนน้ำหวานกลับรังมากที่สุด"], ["prey", "ขนเหยื่อมากที่สุด"],
-	["corpses", "ขนศพออกมากที่สุด"], ["fights", "รุมศัตรูแล้วรอดมากที่สุด"]]
+const STAR_COMING := [["feed_larvae", "top_feed_larvae"], ["carry_brood", "top_carry_brood"], ["feed_mates", "top_feed_mates"],
+	["rest", "top_rest"], ["dig", "top_dig"], ["sugar_trips", "top_sugar_trips"], ["prey", "top_prey"],
+	["corpses", "top_corpses"], ["fights", "top_fights"]]
 
 var _stars_list: VBoxContainer
 var _named_list: VBoxContainer
@@ -34,23 +34,23 @@ func _build_stars(root: Control) -> void:
 	col.custom_minimum_size = Vector2(STARS_W - 16, 0)
 	scroll.add_child(col)
 	var head := HBoxContainer.new()
-	var title := _label("มดเด่นในรัง", 17, INK, _display)
+	var title := _label(tr("stars_title"), 17, INK, _display)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	var close := _button("×", false)
 	close.pressed.connect(func(): _stars.visible = false)
 	head.add_child(close)
 	col.add_child(head)
-	col.add_child(_label("มดที่ตั้งชื่อไว้", 13, MUTED))
+	col.add_child(_label(tr("stars_named"), 13, MUTED))
 	_named_list = VBoxContainer.new()
 	_named_list.add_theme_constant_override("separation", 4)
 	col.add_child(_named_list)
-	var how := _label("ตั้งชื่อ: คลิกมดในฉาก แล้วพิมพ์ในกล่องข้อมูลของมัน", 12, MUTED)
+	var how := _label(tr("stars_how"), 12, MUTED)
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	how.custom_minimum_size.x = STARS_W - 40
 	col.add_child(how)
 	col.add_child(HSeparator.new())
-	col.add_child(_label("อันดับ 1 ของแต่ละด้าน", 13, MUTED))
+	col.add_child(_label(tr("stars_firsts"), 13, MUTED))
 	_stars_list = VBoxContainer.new()
 	_stars_list.add_theme_constant_override("separation", 4)
 	col.add_child(_stars_list)
@@ -80,12 +80,12 @@ func _top_now() -> Array:
 	var big = by.call(func(w): return w.size)
 	var small = by.call(func(w): return -w.size)
 	var old = by.call(func(w): return w.age)
-	out.append({"key": "big", "title": "ตัวใหญ่ที่สุด", "id": big.id, "text": "ยาว %.1f มม." % (big.size * 4.2)})
-	out.append({"key": "small", "title": "ตัวเล็กที่สุด", "id": small.id, "text": "ยาว %.1f มม." % (small.size * 4.2)})
-	out.append({"key": "old", "title": "อายุมากที่สุด", "id": old.id, "text": "อายุ %d วัน" % int(old.age)})
+	out.append({"key": "big", "title": tr("top_big"), "id": big.id, "text": tr("top_big_text") % (big.size * 4.2)})
+	out.append({"key": "small", "title": tr("top_small"), "id": small.id, "text": tr("top_big_text") % (small.size * 4.2)})
+	out.append({"key": "old", "title": tr("top_old"), "id": old.id, "text": tr("top_old_text") % int(old.age)})
 	var hurt = by.call(func(w): return w.hurt)
 	if hurt.hurt > 0.0:
-		out.append({"key": "hurt", "title": "บาดเจ็บแต่ยังรอด", "id": hurt.id, "text": "บาดเจ็บ %d%%" % roundi(hurt.hurt * 100.0)})
+		out.append({"key": "hurt", "title": tr("top_hurt"), "id": hurt.id, "text": tr("top_hurt_text") % roundi(hurt.hurt * 100.0)})
 	return out
 
 
@@ -97,7 +97,7 @@ func _worker(id: int):
 
 
 func _ant_label(w) -> String:
-	return ("\"%s\" · #%d" % [w.name, w.id]) if String(w.get("name") if w.get("name") != null else "") != "" else "มดงาน #%d" % w.id
+	return ("\"%s\" · #%d" % [w.name, w.id]) if String(w.get("name") if w.get("name") != null else "") != "" else tr("tip_worker_n") % w.id
 
 
 ## The panel as things are now (called every 0.2 s while it is open; the rows are built again only when they change).
@@ -124,27 +124,27 @@ func _refresh_stars() -> void:
 		_star_row(_stars_list, t.title, "%s · %s" % [_ant_label(w), t.text], int(t.id))
 	for c in STAR_COMING:
 		if not have.has(c[0]):
-			_star_row(_stars_list, c[1], "จะเริ่มนับในรุ่นถัดไป (การจำลองเลือกเวรงานรายตัว)", -2)
+			_star_row(_stars_list, tr(c[1]), tr("stars_coming"), -2)
 	if qname != "" and sim.queen.alive:
-		_star_row(_named_list, "ราชินี \"%s\"" % qname, "ในห้องราชินี", -1)
+		_star_row(_named_list, tr("tip_queen_named") % qname, tr("stars_in_queen_room"), -1)
 	for w in named:
-		_star_row(_named_list, _ant_label(w), "%s · อายุ %d วัน" % [_job_word(w), int(w.age)], w.id)
+		_star_row(_named_list, _ant_label(w), tr("stars_job_age") % [_job_word(w), int(w.age)], w.id)
 	if named.is_empty() and qname == "":
-		_named_list.add_child(_label("ยังไม่มี", 12, MUTED))
+		_named_list.add_child(_label(tr("not_yet"), 12, MUTED))
 
 
 func _job_word(w) -> String:
 	if sim.outside.has(w):
-		return "อยู่นอกรัง"
+		return tr("tip_outside")
 	match int(w.task):
-		1: return "มดใหม่ ตัวยังซีด"
-		2: return "พี่เลี้ยง"
-		3: return "มดสำรองในรัง"
-		4: return "ขุดดิน"
-	return "ในรัง"
+		1: return tr("stars_callow")
+		2: return tr("stars_nurse")
+		3: return tr("stars_reserve")
+		4: return tr("stars_digging")
+	return tr("stars_in_nest")
 
 
-## One line: what, who and how much, and "ไปดู" (`id`: a worker, -1 the queen, -2 nothing to see yet).
+## One line: what, who and how much, and tr("go_see") (`id`: a worker, -1 the queen, -2 nothing to see yet).
 func _star_row(parent: Control, title: String, text: String, id: int) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
@@ -158,7 +158,7 @@ func _star_row(parent: Control, title: String, text: String, id: int) -> void:
 	info.add_child(t)
 	row.add_child(info)
 	if id != -2:
-		var go := _button("ไปดู", false)
+		var go := _button(tr("go_see"), false)
 		go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		go.pressed.connect(func(): go_to_ant(id))
 		row.add_child(go)

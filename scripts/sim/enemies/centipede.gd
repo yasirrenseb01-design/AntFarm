@@ -6,11 +6,12 @@ extends RefCounted
 ## parts/sim_enemies.gd ENEMY_KINDS.
 
 const T := preload("res://scripts/sim/text_th.gd")
+const L := preload("res://scripts/sim/lang.gd")
 const IN_NEST := 0
 
-const NAME := "ตะขาบหิน"
+const NAME := "enemy_centipede"            # (keys of lang/strings.csv)
 const LATIN := "Lithobius forficatus"
-const ABOUT := "ยาว ~25 มม. วิ่งเร็วมาก กัดด้วยเขี้ยวพิษ ปกติออกล่าตอนกลางคืน · มดเกาะตามขาได้ 10 ตัว · บิดตัวสะบัดมดหลุดเก่ง และหนีเร็วเมื่อเจ็บ"      # (the HUD's enemy panel)
+const ABOUT := "enemy_centipede_about"      # (the HUD's enemy panel)
 const CHASED := T.centipede_chased
 const STATS := {
 	"hp": 0.9,          # a little tougher than a spider of its size
@@ -52,7 +53,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.phase += 0.45 * maxf(free, 0.3)
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true
-		sim._log(T.enemy_flees % NAME, "ok")
+		sim._log(T.enemy_flees, "ok", [L.k(NAME)])
 	# daylight sends it back under cover (not one the keeper let in: it hunts on till its time is up)
 	var leaving: bool = c.life <= 0 or c.get("fleeing", false) or (sim.daylight() > 0.35 and not c.get("released", false))
 	var head: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.length * 0.5
@@ -94,6 +95,6 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 		sim._shake_off(clinging[sim.rng.randi() % held], c)
 	c.strike = maxi(0, int(c.get("strike", 0)) - 1)
 	if leaving and not Rect2(Vector2(-90, -90), world + Vector2(180, 180)).has_point(c.pos):
-		sim._log(T.centipede_leaves % c.kills)
+		sim._log(T.centipede_leaves, "", [c.kills])
 		return false
 	return true

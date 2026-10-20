@@ -27,7 +27,7 @@ func _new_day() -> void:
 			_log(T.rest_low, "bad")
 	match nest.plan_chambers(eggs.size() + larvae.size() + pupae.size(), workers.size(), target_air()):
 		"planned":
-			_log(T.chamber_planned % nest.chambers.size(), "ok")
+			_log(T.chamber_planned, "ok", [nest.chambers.size()])
 		"opened":
 			_log(T.chamber_opened, "ok")
 		"grown":
@@ -314,9 +314,9 @@ func _queen(dt: float) -> void:
 	if queen.starve > sp["starve_days_queen"] or queen.dry > sp["starve_days_queen"] * 1.5:
 		queen.alive = false
 		var why := T.cause_starvation if queen.starve > sp["starve_days_queen"] else T.cause_thirst
-		_log(T.queen_died % why, "bad")
+		_log(T.queen_died, "bad", [L.k(why)])
 		if String(queen.get("name", "")) != "":
-			_log(T.named_queen_died % [queen.name, why], "named")       # (the HUD: a chime, a banner)
+			_log(T.named_queen_died, "named", [queen.name, L.k(why)])       # (the HUD: a chime, a banner)
 		return
 	if starving:
 		return
@@ -411,7 +411,7 @@ func _brood(dt: float) -> void:
 			protein += 0.3
 			stats.cannibalized += 1
 			if stats.cannibalized == 1 or stats.cannibalized % 10 == 0:
-				_log(T.cannibalism % stats.cannibalized, "bad")
+				_log(T.cannibalism, "bad", [stats.cannibalized])
 
 	for i in range(pupae.size() - 1, -1, -1):
 		pupae[i].p += dt / sp["pupa_days"] * dev
@@ -426,7 +426,7 @@ func _brood(dt: float) -> void:
 			workers.append(nw)
 			stats.born += 1
 			if stats.born <= 3 or stats.born % 25 == 0:
-				_log(T.new_worker % stats.born, "ok")
+				_log(T.new_worker, "ok", [stats.born])
 
 	if climate.nest > sp["dev_lethal_c"] - 2.0:
 		var p := 0.4 * dt
