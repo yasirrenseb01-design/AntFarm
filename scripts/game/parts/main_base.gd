@@ -6,6 +6,8 @@ const Hud := preload("res://scripts/view/ui/hud.gd")
 const NestView := preload("res://scripts/view/nest/nest_view.gd")
 const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
 const Store := preload("res://scripts/game/save_store.gd")
+const Title := preload("res://scripts/game/title.gd")
+const SingleInstance := preload("res://scripts/game/single_instance.gd")
 const Migrations := preload("res://scripts/sim/save_migrations.gd")
 
 var sim
@@ -15,10 +17,14 @@ var outworld
 var mode := "outworld"             # "outworld" (3D, above ground) or "nest" (3D underground)
 static var next_nest := ""      # "<soil|glass>:<queen|young>:<wild|keeper>": start a fresh colony after the reload
 static var next_slot := 0       # which save slot to open after the reload (0 = the last one played)
+static var skip_title := false  # reloaded for another colony from the game: straight into it, not the title screen
 var slot := 1
 var _persist := false
 var _load_note := ""                # told to the keeper once the HUD is up (a save that could not be used)           # tests and screenshots never touch the player's saves
 var _settings := {}
+var title                       # game/title.gd: the title screen
+var one                         # game/single_instance.gd: one game at a time (null in tests)
+var _demo := false              # no colony saved yet: the one behind the title screen is only to look at, never saved
 var _autosave_t := 0.0
 var _catchup_left := 0          # ticks still to simulate for the time the game was closed
 var _catchup_total := 0
@@ -52,7 +58,7 @@ func _set_mode(m: String) -> void:
 # ---------------------------------------------------------------- saving and time away
 
 func _save_now() -> void:
-	if _persist and sim != null and not _opts.has("testsave"):        # (a grown test colony stays as it was)
+	if _persist and sim != null and not _demo and not _opts.has("testsave"):        # (a grown test colony stays as it was)
 		Store.save(slot, sim)
 		_autosave_t = 0.0
 
@@ -64,6 +70,7 @@ func _go_to(target_slot: int, kind: String) -> void:
 		Store.delete(target_slot)
 	next_slot = target_slot
 	next_nest = kind
+	skip_title = true
 	get_tree().reload_current_scene()
 
 

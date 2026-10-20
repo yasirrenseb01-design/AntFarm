@@ -19,7 +19,7 @@ var desktop                    # desktop mode: the nest as the wallpaper (PART 1
 ##       --at-ant=<i>|walker|act2|act9|act10 (outworld: look at a forager, or one busy at that kind of food)   --at-food=<kind> (drop one and look at it)
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)   --newcolony   --fridge
 ##       --enemy=wolf_spider [--enemy-at=x,y] [--fight=<ticks>] (stage a fight next to the nest)
-##       --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
+##       --title (the title screen, as the game opens on it; with --shot too)   --species   --settings (those windows open)   --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
 ##   --scenario=keeper|wild (indoor formicarium, or a plot of ground with seasons and predators)
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
@@ -39,12 +39,23 @@ func _ready() -> void:
 	_persist = not (_opts.has("selftest") or _opts.has("shot")) or _opts.has("sandbox")
 	if _opts.has("sandbox"):
 		Store.base = "user://sandbox/"
+	# one game at a time: a game running already (maybe as the wallpaper) is told to come forward, and this copy goes
+	var one_port: int = SingleInstance.PORT + (1 if _opts.has("sandbox") else 0)
+	if _persist and not _opts.has("testsave"):
+		if not _opts.has("desktop") and SingleInstance.tell_running(one_port):
+			_persist = false              # (this copy never saves: the one running has the colony)
+			get_tree().quit()
+			return
+		one = SingleInstance.new()
+		add_child(one)
+		one.listen(one_port)
 	if _opts.has("testsave"):
 		# a colony grown by tests/year_run.gd: opened read-only, no time-away catch-up
 		Store.base = "user://growtest/%s/" % _opts["testsave"]
 		_persist = true
 		next_slot = int(_opts.get("slot", "1"))
 	var loaded := false
+	var first_run := _persist and next_nest == "" and not _opts.has("testsave") and range(1, Store.SLOTS + 1).all(func(s): return not Store.exists(s))
 	if _persist:
 		_settings = Store.settings()
 		slot = next_slot if next_slot > 0 else int(_settings.get("slot", 1))
@@ -71,6 +82,10 @@ func _ready() -> void:
 	if not loaded:
 		# a fresh colony: from the menu, or the very first launch (a lone founding queen)
 		var choice: String = next_nest if next_nest != "" else "%s:%s" % [_opts.get("nest", "soil"), "young" if _opts.has("workers") else "queen"]
+		if first_run and not _opts.has("workers"):
+			# nothing saved yet: a young garden colony behind the title screen until the keeper starts their own
+			_demo = true
+			choice = "soil:young:wild"
 		next_nest = ""
 		var parts := choice.split(":")
 		var start: int = int(_opts.get("workers", "14")) if parts[1] == "young" else 0
@@ -118,6 +133,12 @@ func _ready() -> void:
 	desktop = DesktopMode.new()
 	add_child(desktop)
 	desktop.setup(self)
+	title = Title.new()
+	add_child(title)
+	title.setup(self)
+	hud.menu_requested.connect(func(): title.open(not _demo))
+	if one != null:
+		one.wake.connect(_wake)
 	hud.desktop_requested.connect(_enter_desktop)
 	desktop.failed.connect(func(msg): hud.show_report("โหมดเดสก์ท็อป", msg))
 	hud.speed_changed.connect(func(v):
@@ -137,6 +158,10 @@ func _ready() -> void:
 		hud.show_report("เซฟ", _load_note)
 	if _catchup_left > 0:
 		_show_catchup_overlay()
+	if _opts.has("title") or (_persist and not skip_title and not _opts.has("testsave") and not _opts.has("desktop")
+			and not _opts.has("desktop-after")):
+		title.open.call_deferred(not _demo)          # (what the game opens on; deferred: the views place their cameras first)
+	skip_title = false
 	if _opts.has("shot"):
 		_take_shot()
 	elif _opts.has("desktop-after"):
@@ -245,9 +270,33 @@ func _enter_desktop() -> void:
 		var wp := DisplayServer.window_get_position()
 		var ws := DisplayServer.window_get_size()
 		args.append("--win=%d,%d,%d,%d,%d" % [wp.x, wp.y, ws.x, ws.y, DisplayServer.window_get_mode()])
+		if one != null:
+			one.stop()                            # (the new copy listens for the shortcut from now on)
 		OS.create_process(OS.get_executable_path(), args)
 		# (quit after a moment: at once, in the first frames, the views' threads were still starting and it crashed)
 		get_tree().create_timer(2.0).timeout.connect(func(): get_tree().quit())
 		return
 	desktop.enter()
 
+
+## "รังใหม่" on the title screen: into the first empty slot (the colony shown before the first one: slot 1); all
+## three hold a colony - "my colonies", to pick which to start again.
+func _title_new_colony() -> void:
+	var to := slot if _demo else 0
+	for s in range(1, Store.SLOTS + 1):
+		if to == 0 and not Store.exists(s):
+			to = s
+	if to == 0:
+		hud.open_colonies()
+		return
+	hud.open_species(to, false)
+
+
+## The desktop shortcut was used while this game runs (single_instance.gd): out of the wallpaper, or the window forward.
+func _wake() -> void:
+	if desktop.on:
+		desktop.leave()
+		return
+	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_move_to_foreground()

@@ -32,7 +32,8 @@
 ## โฟลเดอร์
 ```
 scripts/
-  game/        main.gd (จุดเริ่ม), save_store.gd, desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), parts/ (main_base, main_camera)
+  game/        main.gd (จุดเริ่ม), save_store.gd, desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), title.gd (หน้าแรก + กล้องเดินชมรัง),
+               single_instance.gd (เกมเดียวต่อเครื่อง: ตัวที่สองบอกตัวแรกให้ขึ้นมา, พอร์ต 47815), parts/ (main_base, main_camera)
   dev/         dev_tools.gd (--shot, --selftest), ตัวเลือกบรรทัดคำสั่งอยู่หัว main.gd
   sim/         simulation.gd + parts/ (sim_base, sim_foragers, sim_enemies, sim_colony),
                ant.gd, climate.gd, nest_volume.gd (+ parts/nest_voxels, nest_chambers), pheromone_field.gd, species/
@@ -42,7 +43,7 @@ scripts/
                ground_data.gd (ภาพผิวดิน, ภาพกลิ่นทาง, ของประดับ, แสงฟ้า, เครื่องมือที่เลือก — เดิมอยู่ในมุมบน 2 มิติ ลบ v0.11.5),
                prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader)
     nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
-    ui/        hud.gd + parts/ (base, colonies, enemies, controls, panel), draw_kit.gd (วาดมด 2 มิติในภาพตัดขวางของแผงข้าง), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()),
+    ui/        hud.gd + parts/ (base, colonies, enemies, controls, panel), draw_kit.gd (วาดมด 2 มิติในภาพตัดขวางของแผงข้าง), species_window.gd (เลือกชนิดมดตอนเริ่มรังใหม่), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()),
                sounds.gd (เสียงเตือน), lofi.gd (เพลงพื้นหลังที่สร้างในโค้ด ทำในเธรดเบื้องหลัง)
 shaders/       ants/, creatures/, terrain/ (+ ground_h.gdshaderinc: ความสูงพื้นข้างนอก ใช้ร่วมพื้นกับสัตว์), plants/
 assets/models/ ants/, prey/, plants/   (ไฟล์ .antmesh/.json ที่ Blender สร้าง — ห้ามแก้มือ ให้รันสคริปต์ Blender ใหม่)

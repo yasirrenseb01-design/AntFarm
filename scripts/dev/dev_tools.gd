@@ -228,6 +228,11 @@ func _take_shot() -> void:
 		nest_view._queen_mode_left = 1.0e9
 	if _opts.has("newcolony"):
 		hud._open_new_colony(1, true)
+	if _opts.has("species"):
+		var sw: Window = hud.open_species(1, true)
+		sw._show(int(_opts["species"]) if String(_opts["species"]).is_valid_int() else 0)      # (--species=<i>: which model)
+	if _opts.has("settings"):
+		hud.open_settings()
 	if _opts.has("enemy-panel") or _opts.has("release"):
 		hud.toggle_enemies()                 # (the enemy panel open; --release=<kind>: as if its button were pressed)
 		if _opts.has("release"):

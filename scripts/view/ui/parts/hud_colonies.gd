@@ -1,5 +1,5 @@
 extends "res://scripts/view/ui/parts/hud_base.gd"
-## HUD, layer 2 of 6: the "my colonies" window (save slots, time while closed) and report dialogs.
+## HUD, layer 2 of 6: the "my colonies" window (save slots), the settings window and report dialogs.
 
 
 ## "My colonies": the save slots (play one, start a new colony in one) and what happens to time
@@ -18,6 +18,16 @@ func _build_colonies(root: Control) -> void:
 	_colonies_body = PanelContainer.new()
 	_colonies_body.add_theme_stylebox_override("panel", _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 0, 16, 14))
 	_colonies.add_child(_colonies_body)
+	_settings_win = Window.new()
+	_settings_win.title = "ตั้งค่า"
+	_settings_win.theme = root.theme
+	_settings_win.transient = true
+	_settings_win.exclusive = true
+	_settings_win.unresizable = true
+	_settings_win.wrap_controls = true
+	_settings_win.visible = false
+	_settings_win.close_requested.connect(_settings_win.hide)
+	root.add_child(_settings_win)
 	_report = AcceptDialog.new()
 	_report.theme = root.theme
 	_report.ok_button_text = "ดูรัง"
@@ -60,10 +70,46 @@ func open_colonies() -> void:
 		var occupied: bool = not m.is_empty()
 		fresh.pressed.connect(func():
 			_colonies.hide()
-			_open_new_colony(slot_k, occupied))
+			open_species(slot_k, occupied))
 		row.add_child(fresh)
 		col.add_child(row)
 	col.add_child(HSeparator.new())
+	var foot := HBoxContainer.new()
+	var note := _label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · ตอนปิดเกม เพลง และอื่นๆ อยู่ใน \"ตั้งค่า\" ที่หน้าแรก", 12, MUTED)
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	foot.add_child(note)
+	var save_now := _button("เซฟตอนนี้", false)
+	save_now.pressed.connect(func():
+		save_requested.emit()
+		save_now.text = "เซฟแล้ว")
+	foot.add_child(save_now)
+	col.add_child(foot)
+	_colonies.reset_size()
+	_colonies.popup_centered()
+
+
+## A new colony, step 1: which ant (view/ui/species_window.gd), then where and how it starts (_open_new_colony).
+func open_species(slot: int, occupied: bool) -> Window:
+	var w := SpeciesWindow.new()
+	_colonies.get_parent().add_child(w)
+	w.setup(self)
+	w.chosen.connect(func(_id): _open_new_colony(slot, occupied))
+	w.reset_size()
+	w.popup_centered()
+	return w
+
+
+## Settings (from the title screen): time while the game is closed, the helper, music, the frame rate.
+func open_settings() -> void:
+	for c in _settings_win.get_children():
+		c.queue_free()
+	var body := PanelContainer.new()
+	body.add_theme_stylebox_override("panel", _box(Color(0.1, 0.075, 0.055, 0.98), LINE, 0, 16, 14))
+	_settings_win.add_child(body)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	col.custom_minimum_size = Vector2(520, 0)
+	body.add_child(col)
 	var away := HBoxContainer.new()
 	away.add_child(_label("ตอนปิดเกม", 13, MUTED))
 	var opt := OptionButton.new()
@@ -105,18 +151,24 @@ func open_colonies() -> void:
 	tune.add_child(vol)
 	tune.add_child(vol_txt)
 	col.add_child(tune)
+	var fps := CheckBox.new()
+	fps.text = "แสดงอัตราเฟรม (FPS) มุมซ้ายบน · ปุ่มลัด F3"
+	fps.button_pressed = bool(settings.get("show_fps", false))
+	fps.toggled.connect(func(on):
+		settings["show_fps"] = on
+		if _fps_label != null:
+			_fps_label.visible = on
+		settings_changed.emit(settings))
+	col.add_child(fps)
+	col.add_child(_label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม" % int(Store.MAX_AWAY_DAYS), 12, MUTED))
 	var foot := HBoxContainer.new()
-	var note := _label("เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม" % int(Store.MAX_AWAY_DAYS), 12, MUTED)
-	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	foot.add_child(note)
-	var save_now := _button("เซฟตอนนี้", false)
-	save_now.pressed.connect(func():
-		save_requested.emit()
-		save_now.text = "เซฟแล้ว")
-	foot.add_child(save_now)
+	foot.alignment = BoxContainer.ALIGNMENT_END
+	var done := _button("เสร็จ", false)
+	done.pressed.connect(_settings_win.hide)
+	foot.add_child(done)
 	col.add_child(foot)
-	_colonies.reset_size()
-	_colonies.popup_centered()
+	_settings_win.reset_size()
+	_settings_win.popup_centered()
 
 
 ## A slider for how often natural enemies come (sim.enemy_rate: 0 - 300% of the usual), saying about how many days apart

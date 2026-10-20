@@ -88,6 +88,13 @@ func _build_top(root: Control) -> void:
 	dwrap.add_child(desk)
 	row.add_child(dwrap)
 
+	var menu := _button("เมนู", false)
+	menu.tooltip_text = "กลับหน้าแรก (Esc)"
+	menu.pressed.connect(func(): menu_requested.emit())
+	var mwrap := CenterContainer.new()
+	mwrap.add_child(menu)
+	row.add_child(mwrap)
+
 
 func _build_tools(root: Control) -> void:
 	var panel := PanelContainer.new()

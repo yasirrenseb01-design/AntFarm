@@ -179,6 +179,24 @@ func setup(s) -> void:
 
 # ---------------------------------------------------------------- per frame
 
+## Where a worker is drawn in the nest now (INF if it is not: outside, or not drawn as a nestmate) - the title
+## screen's camera follows it. The queen: "queen" spot.
+func mate_pos(wid: int) -> Vector3:
+	for m in _mates:
+		if int(m.get("wid", -1)) == wid and m.has("xf"):
+			return (m.xf as Transform3D).origin
+	return Vector3.INF
+
+
+func queen_pos() -> Vector3:
+	return _spots.queen if _spots.queen != Vector3.ZERO else Vector3.INF
+
+
+func brood_pos(kind: String) -> Vector3:
+	var at: Array = _spots.get(kind, [])
+	return at[at.size() / 2] if not at.is_empty() else Vector3.INF
+
+
 func set_active(on: bool) -> void:
 	active = on
 	visible = on

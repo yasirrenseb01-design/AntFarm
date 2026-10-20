@@ -6,6 +6,7 @@ extends CanvasLayer
 const Ant := preload("res://scripts/sim/ant.gd")
 const Kit := preload("res://scripts/view/ui/draw_kit.gd")
 const Store := preload("res://scripts/game/save_store.gd")
+const SpeciesWindow := preload("res://scripts/view/ui/species_window.gd")
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const T := preload("res://scripts/sim/text_th.gd")
 
@@ -17,6 +18,7 @@ signal settings_changed(settings: Dictionary)
 signal save_requested
 signal cam_action(action: String)
 signal desktop_requested               # the keeper wants the nest as the desktop wallpaper (game/desktop_mode.gd)
+signal menu_requested                  # back to the title screen (game/title.gd)
 
 const PANEL_W := 352.0
 const INK := Color("f1e6d6")
@@ -43,6 +45,7 @@ var _frame := 0
 var current_slot := 1
 var settings := {}
 var _colonies: Window
+var _settings_win: Window
 var _colonies_body: PanelContainer
 var _report: AcceptDialog
 var _proj_tex: ImageTexture
@@ -115,6 +118,9 @@ func _make_theme() -> Theme:
 	for st in ["normal", "pressed", "hover", "hover_pressed", "focus"]:
 		th.set_stylebox(st, "CheckBox", StyleBoxEmpty.new())
 	th.set_color("font_pressed_color", "CheckBox", INK)
+	# (the engine's own boxes are dark grey: unticked, one could not be seen on these dark panels)
+	th.set_icon("unchecked", "CheckBox", _check_icon(false))
+	th.set_icon("checked", "CheckBox", _check_icon(true))
 	th.set_color("font_hover_pressed_color", "CheckBox", INK)
 	th.set_stylebox("normal", "Button", _box(Color(0.17, 0.13, 0.1), LINE, 6, 10, 5))
 	th.set_stylebox("hover", "Button", _box(Color(0.22, 0.17, 0.12), MUTED, 6, 10, 5))
@@ -131,6 +137,31 @@ func _make_theme() -> Theme:
 	th.set_constant("separation", "HBoxContainer", 8)
 	th.set_constant("separation", "VBoxContainer", 8)
 	return th
+
+
+## A tick box for the theme: an outline (off) or an amber box with a tick (on).
+static func _check_icon(on: bool) -> ImageTexture:
+	var n := 18
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for y in n:
+		for x in n:
+			var edge := x <= 1 or y <= 1 or x >= n - 2 or y >= n - 2
+			if on:
+				img.set_pixel(x, y, AMBER)
+			elif edge:
+				img.set_pixel(x, y, MUTED)
+	if on:
+		# the tick: down from the left, then up to the right
+		for t in 30:
+			var u := t / 29.0
+			var p := Vector2(4, 9).lerp(Vector2(7.5, 13), u * 2.0) if u < 0.5 else Vector2(7.5, 13).lerp(Vector2(14, 5), (u - 0.5) * 2.0)
+			for dy in [-1, 0, 1]:
+				for dx in [0, 1]:
+					var q := Vector2i(int(p.x) + dx, int(p.y) + dy)
+					if q.x >= 0 and q.y >= 0 and q.x < n and q.y < n:
+						img.set_pixel(q.x, q.y, Color(0.12, 0.08, 0.05))
+	return ImageTexture.create_from_image(img)
 
 
 func _label(text: String, size := 14, color := INK, font: Font = null) -> Label:

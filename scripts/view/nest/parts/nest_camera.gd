@@ -105,6 +105,17 @@ func focus(what: String) -> void:
 	target_t = p
 	if what != "entrance":
 		dist_t = minf(dist_t, 26.0)
+	_cut_to(p)
+
+
+## Glide to a point and slide the cut so it shows (the title screen's camera tour follows an ant with it).
+func aim_at(p: Vector3, dist: float) -> void:
+	target_t = p
+	dist_t = dist
+	_cut_to(p)
+
+
+func _cut_to(p: Vector3) -> void:
 	if not xray and not nest.slab:
 		# slide the cut so the spot sits just behind it
 		var dir := Vector3(sin(yaw_t), 0, cos(yaw_t))
