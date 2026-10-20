@@ -64,6 +64,9 @@ func _give_name() -> void:
 	if sel.get("kind", "") == "worker":
 		sim.name_ant(int(sel.id), _name_edit.text)
 		_name_edit.text = _find_worker(int(sel.id)).name if _find_worker(int(sel.id)) != null else ""
+	elif sel.get("kind", "") == "queen" and sim.queen.alive:
+		sim.name_queen(_name_edit.text)
+		_name_edit.text = String(sim.queen.get("name", ""))
 	_name_edit.release_focus()
 	_t = 1.0                                 # (the words with the new name at once)
 
@@ -151,16 +154,19 @@ func _process(delta: float) -> void:
 
 ## The name box shows for a worker still in the colony, filled with its name when it was chosen (not while typing).
 func _update_name_box() -> void:
+	var queen: bool = sel.get("kind", "") == "queen" and sim.queen.alive
 	var w = _find_worker(int(sel.id)) if sel.get("kind", "") == "worker" else null
-	_name_row.visible = w != null
-	if w == null:
+	_name_row.visible = w != null or queen
+	if w == null and not queen:
 		_name_for = -2
 		_name_edit.release_focus()
 		return
-	if _name_for != w.id and not _name_edit.has_focus():
-		_name_for = w.id
-		_name_edit.text = w.name
-		_name_edit.placeholder_text = "ตั้งชื่อมดตัวนี้…" if w.name == "" else "ว่างไว้ = เอาชื่อออก"
+	var id: int = -1 if queen else w.id                 # (the queen: -1)
+	var now: String = String(sim.queen.get("name", "")) if queen else w.name
+	if _name_for != id and not _name_edit.has_focus():
+		_name_for = id
+		_name_edit.text = now
+		_name_edit.placeholder_text = ("ตั้งชื่อราชินี…" if queen else "ตั้งชื่อมดตัวนี้…") if now == "" else "ว่างไว้ = เอาชื่อออก"
 
 
 ## The words for an ant found by a view: {"kind": "worker"|"queen"|"digger", "w": Ant or null, "role", "act"}.
@@ -168,7 +174,8 @@ func describe(info: Dictionary) -> String:
 	if info.kind in ["eggs", "larvae", "pupae"]:
 		return _brood_words(info.kind, info.item)
 	if info.kind == "queen":
-		var lines := ["ราชินี"]
+		var qn := String(sim.queen.get("name", ""))
+		var lines := ["ราชินี" if qn == "" else "ราชินี \"%s\"" % qn]
 		if not sim.queen.alive:
 			lines.append("ตายแล้ว")
 		elif sim.hibernating() or sim.climate.nest < 6.0:
