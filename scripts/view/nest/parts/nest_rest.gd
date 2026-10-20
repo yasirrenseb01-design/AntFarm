@@ -374,6 +374,7 @@ func _settle_on(m: Dictionary) -> bool:
 	match m.role:
 		"nurse": near_to = _nearest_spot(Vector3(start), _spots.larvae) if not _spots.larvae.is_empty() else Vector3.INF
 		"attend": near_to = _spots.queen if _spots.queen != Vector3.ZERO else Vector3.INF
+		"giver", "groomer": near_to = m.get("near_to", Vector3.INF)       # (its partner: nest_duties)
 	# a resting ant settles on the floor: walls and the ceiling only if nothing else is free nearby (ants do
 	# walk on them, but a chamber full of ants resting upside down looked chaotic)
 	var score := func(c: Vector3i, depth: int) -> float:
@@ -544,15 +545,27 @@ func _bind_workers() -> void:
 		m.born = sim.tick - int(w.age * sim.TPD)
 		if m.carry or m.has("script") or m.has("deliver") or m.role == "carry":
 			continue
-		var want := "idle"
-		if attend.has(wid):
-			want = "attend"
-		elif (w.task == Ant.TASK_NURSE or w.task == Ant.TASK_CALLOW) and w.threshold(Ant.TH_ATTEND) < 1.15:
-			want = "nurse"                             # (the rest of the nurses rest nearby, off the brood pile)
-		elif m.role == "traffic" and m.goal != -1 and sim.tick - int(w.came_in) < int(sim.TPD * 0.05):
-			want = "traffic"                           # still walking in from the entrance
+		var want := _role_for(m, w, attend.has(wid))
 		if want != m.role:
 			m.role = want
 			m.goal = _queen_room() if want == "attend" else (_brood_room(_larva_group) if want == "nurse" else _random_room())
 			m.wander = 0
 			m.rest = mini(m.rest, 5)
+			if want == "wander":
+				m.wander = 0                            # (walking about the nest: chamber to chamber along the tunnels)
+
+
+## What a drawn nestmate does, from its worker: queen's retinue, nurse at the brood, walking in, or resting. (The nest
+## view's duties layer, nest_duties.gd, gives it the duty the simulation set instead - this is what is left without one.)
+func _role_for(m: Dictionary, w, attends: bool) -> String:
+	if attends:
+		return "attend"
+	if (w.task == Ant.TASK_NURSE or w.task == Ant.TASK_CALLOW) and w.threshold(Ant.TH_ATTEND) < 1.15:
+		return "nurse"                             # (the rest of the nurses rest nearby, off the brood pile)
+	if _walking_in(m, w):
+		return "traffic"                           # still walking in from the entrance
+	return "idle"
+
+
+func _walking_in(m: Dictionary, w) -> bool:
+	return m.role == "traffic" and m.goal != -1 and sim.tick - int(w.came_in) < int(sim.TPD * 0.05)

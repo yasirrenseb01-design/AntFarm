@@ -4,6 +4,7 @@ extends "res://scripts/game/parts/main_camera.gd"
 
 
 var _walker = null          # --at-ant=walker: the forager the camera follows
+var _duty_seen = null       # --follow-duty: the meeting the camera is on
 var _watch_food = null       # --at-ant=hauler: the prey being hauled home
 var _watch_creature = null   # --watch-fight=<n>: the enemy the camera follows once n ants hold it
 
@@ -512,6 +513,44 @@ func _take_shot() -> void:
 						if i == 0 or pm != _pushed_said:
 							_pushed_said = pm
 							print("  pushed ant: sepv %.2f mv %.2f gait %.2f rest %d" % [(pm.sepv as Vector3).length(), pm.get("mv", 0.0), pm.get("gait", 0.0), pm.rest])
+				if _opts.has("stage-groom") and mode == "nest" and k == 1 and i == 0:
+					# (--stage-groom: two nestmates on open floor, one set to lick the other clean - the pose seen from all round)
+					var best = null
+					var bd := INF
+					for m in nest_view._mates:
+						if m.role != "idle" or m.has("script") or not m.has("vp") or (m.vu as Vector3).y < 0.9:
+							continue
+						var crowd := 0
+						for o in nest_view._mates:
+							if o.has("vp") and (o.vp as Vector3).distance_to(m.vp) < 4.0:
+								crowd += 1
+						if crowd < bd:
+							bd = crowd
+							best = m
+					var other = null
+					if best != null:
+						var od := INF
+						for o in nest_view._mates:
+							if o != best and o.has("vp") and not o.has("script") and (o.vu as Vector3).y > 0.85 and (o.vp as Vector3).distance_to(best.vp) < od:
+								od = (o.vp as Vector3).distance_to(best.vp)
+								other = o
+					if other != null:
+						# the groomer brought beside it (as if it had walked up), then the licking starts
+						other.vp = (best.vp as Vector3) + Vector3(2.0, 0, 0.6)
+						print("  staged groom: ", nest_view._start_groom(other, best), " crowd ", bd)
+				if _opts.has("follow-duty") and mode == "nest":
+					# (--follow-duty=groom|feed: the camera on a nestmate licking another clean / giving a drop, once one starts)
+					var want: String = String(_opts["follow-duty"])
+					var on = null
+					for an in nest_view._anims:
+						if an.k == want and nest_view._mates.has(an.giver) and an.giver.has("xf"):
+							on = an
+					if on != null:
+						if on != _duty_seen:
+							_duty_seen = on
+							print("  %s starts at frame %d" % [want, k])
+						nest_view.target_t = ((on.giver.xf as Transform3D).origin + (on.taker.xf as Transform3D).origin) * 0.5 if on.taker.has("xf") else (on.giver.xf as Transform3D).origin
+						nest_view.dist_t = float(_opts.get("dist", "9"))
 				if _opts.has("follow-crossing") and mode == "nest":
 					# watch a nestmate up on the brood pile (crossing it), once one is
 					for m in nest_view._mates:
@@ -530,6 +569,9 @@ func _take_shot() -> void:
 					outworld.target = outworld.target_t
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(path.get_basename() + "_%d.png" % k)
+			if _opts.has("duty-log") and mode == "nest":
+				print(nest_view.debug_summary().left(220))       # (--duty-log: the nest acting out its duties, frame by frame)
+				print(nest_view.duty_trace())
 			if _opts.has("trace") and mode == "nest":
 				for an in nest_view._anims:
 					print("  anim %s u %.2f p %s vis %s cocoons-fx %d" % [an.k, an.t / an.d, an.get("p"), nest_view._visible(an.get("p", Vector3.ZERO)), nest_view._fx_cocoon_mm.instance_count])

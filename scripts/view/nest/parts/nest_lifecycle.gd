@@ -36,7 +36,7 @@ func _helpers(p: Vector3, n: int, max_d := 6.0) -> Array:
 			continue
 		var d := Vector3(m.cell).distance_to(p)
 		if d < max_d:
-			cands.append([d, m])
+			cands.append([d - (4.0 if int(m.get("vd", -1)) == Ant.D_CARRY else 0.0), m])     # (set to carry brood: first)
 	cands.sort_custom(func(a, b): return a[0] < b[0])
 	var out := []
 	for c in cands.slice(0, n):
@@ -244,7 +244,7 @@ func _call_nurse(a: Dictionary) -> void:
 		var best = null
 		var bd := INF
 		for m in _mates:
-			if m.has("script") or m.has("deliver") or m.carry or not m.role in ["nurse", "idle", "attend"]:
+			if m.has("script") or m.has("deliver") or m.carry or not m.role in ["nurse", "idle", "attend", "wander"]:
 				continue
 			var d := Vector3(m.cell).distance_to(a.p)
 			if d < bd:
@@ -657,6 +657,25 @@ func _step_anims(adt: float) -> void:
 						r.cool = randf_range(8.0, 14.0)
 						g.cool = randf_range(8.0, 14.0)
 						a.p = rp
+			"groom":
+				# a nestmate licked clean (nest_duties._start_groom): the groomer steps up beside it, licks along its body
+				# (the tending pose, its head turning from thorax to gaster), the other stands still
+				var g = a.giver
+				var r = a.taker
+				if not _mates.has(g) or not _mates.has(r) or not g.has("script") or not r.has("script") or u >= 1.0:
+					a.done = true
+					for m in [g, r]:
+						if _mates.has(m):
+							m.erase("partner")
+							_release(m)
+							m.cool = randf_range(6.0, 12.0)
+				else:
+					g.script.goal = a.spot
+					var along: Vector3 = (r.xf as Transform3D).basis.x * (0.35 * sin(a.t * 0.9)) if r.has("xf") else Vector3.ZERO
+					g.script.face = (r.script.pos as Vector3) + along
+					var met: bool = (g.script.pos as Vector3).distance_to(g.script.goal) < 0.08
+					g.script.act = ACT_TEND if met else ACT_WALK
+					r.script.act = ACT_REST
 			"husk":
 				var h = a.get("helper")
 				if h != null and not _mates.has(h):

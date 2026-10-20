@@ -17,6 +17,7 @@ const REST_SHARE := 0.4                # of the ants inside standing still, on a
 # cleaning: half of those neither resting nor at work ([ญาติ] ~15% of the time self-grooming, ~6% each other)
 const GIVES := 3                       # nestmates one ant with a full crop feeds in a round
 const FED_ENERGY := 0.15               # strength a nestmate gets back from a drop of honeydew
+const ALLOGROOM_SHARE := 0.29         # of the cleaners, those cleaning a nestmate (6 of 15+6 [ญาติ], Bueno et al.)
 
 
 ## One duty round. Every ant inside gets a duty; outside it is D_OUT.
@@ -63,6 +64,20 @@ func _duties() -> void:
 			a.duty = Ant.D_GROOM
 		else:
 			a.duty = Ant.D_IDLE
+	_groom_mates(inside)
+
+
+## Some of the cleaners clean a nestmate standing still rather than themselves ([ญาติ] ~6% of the time against ~15%:
+## about 2 in 7): the groomer's partner is the one it licks, and that one's (D_REST) partner is its groomer.
+func _groom_mates(inside: Array) -> void:
+	var still: Array = inside.filter(func(a): return a.duty == Ant.D_REST)
+	for a in inside:
+		if a.duty != Ant.D_GROOM or still.is_empty() or duty_rng.randf() >= ALLOGROOM_SHARE:
+			continue
+		var r = still[duty_rng.randi() % still.size()]
+		still.erase(r)
+		a.partner = r.id
+		r.partner = a.id
 
 
 ## Larvae are fed one by one, the hungriest first (hungry larvae are fed more often [ญาติ]): one feeding a round,

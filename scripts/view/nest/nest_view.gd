@@ -2,7 +2,7 @@ extends "res://scripts/view/nest/parts/nest_mates.gd"
 ## 3D view of the underground nest: the soil block sliced open by a camera-facing cut plane, with
 ## diggers from the simulation, resting nestmates, brood piles and the queen. This file is the top of
 ## the chain: building the scene, switching on/off, the per-frame update and input.
-## Layers: parts/nest_scene <- nest_camera <- nest_brood <- nest_piles <- nest_lifecycle <- nest_bodies <- nest_mates <- nest_view (see docs/ARCHITECTURE.md).
+## Layers: parts/nest_scene <- nest_camera <- nest_brood <- nest_piles <- nest_lifecycle <- nest_bodies <- nest_rest <- nest_contact <- nest_duties <- nest_mates <- nest_view (see docs/ARCHITECTURE.md).
 
 
 func setup(s) -> void:
@@ -476,7 +476,19 @@ func debug_summary() -> String:
 		acts[m.act] = acts.get(m.act, 0) + 1
 		if m.carry:
 			carrying += 1
-	return "anims %d cam %s d%.1f yaw%.2f cut%.1f | %s %s  roles %s  acts %s  carrying %d  larvae moved %d/%d (%s→%s)  rooms %d  fields %d" % [_anims.size(), target, cam_dist, yaw, cut_offset, sim.clock_text(),
+	var held := 0
+	var match_ := 0
+	for m in _mates:
+		if m.has("vd") and m.has("wid"):
+			held += 1
+			for w in sim.workers:
+				if w.id == m.wid:
+					match_ += 1 if int(w.duty) == int(m.vd) else 0
+	var sim_d := {}
+	for w in sim.workers:
+		sim_d[int(w.duty)] = int(sim_d.get(int(w.duty), 0)) + 1
+	var dutyline := "sim duties %s · held %d (same as the worker's now %d) %s | " % [sim_d, held, match_, duty_stats]
+	return dutyline + "anims %d cam %s d%.1f yaw%.2f cut%.1f | %s %s  roles %s  acts %s  carrying %d  larvae moved %d/%d (%s→%s)  rooms %d  fields %d" % [_anims.size(), target, cam_dist, yaw, cut_offset, sim.clock_text(),
 		"air>nest" if sim.climate.air > sim.climate.nest + 0.5 else "air<nest", roles, acts, carrying,
 		mini(_moved, sim.larvae.size()), sim.larvae.size(), _larva_prev, _larva_group, _rooms.size(), _fields.size()]
 

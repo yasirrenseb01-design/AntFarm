@@ -429,7 +429,7 @@ func pick_ant(sp: Vector2) -> Dictionary:
 		if m.has("xf") and m.get("wid", -1) >= 0:
 			var d := _body_gap(m.xf, sp)
 			if d < 14.0:
-				cands.append([d, eye.distance_to((m.xf as Transform3D).origin), {"kind": "worker", "w": all.get(m.wid), "role": m.role, "act": m.act}])
+				cands.append([d, eye.distance_to((m.xf as Transform3D).origin), {"kind": "worker", "w": all.get(m.wid), "role": m.role, "act": _shown_act(m)}])
 	# diggers: the colony's diggers are the workers set to dig, lowest id first, one per digger drawn
 	var dig_ws: Array = sim.workers.filter(func(w): return w.task == Ant.TASK_DIG)
 	dig_ws.sort_custom(func(a, b): return a.id < b.id)
@@ -497,10 +497,22 @@ func info_for(kind: String, id: int) -> Dictionary:
 		if int(m.get("wid", -1)) == id:
 			for w in sim.workers:
 				if w.id == id:
-					return {"kind": "worker", "w": w, "role": m.role, "act": m.act}
+					return {"kind": "worker", "w": w, "role": m.role, "act": _shown_act(m)}
 	return {}
 
 
 ## Whether a click may select an ant here (the nest view has no tools).
 func can_select() -> bool:
 	return true
+
+
+## What the info box says it is doing: as drawn, but licking a nestmate (the tending pose, nest_duties) is told apart
+## from tending the brood (22), and so is standing still while being licked (23).
+func _shown_act(m: Dictionary) -> int:
+	var p = m.get("partner")
+	if p is Dictionary and m.role == "groomer" and int(m.act) == ACT_TEND:
+		return 22
+	if p is Dictionary and p.get("role", "") == "groomer" and int(m.act) == ACT_REST:
+		return 23
+	return int(m.act)
+

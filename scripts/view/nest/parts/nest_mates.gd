@@ -1,5 +1,5 @@
-extends "res://scripts/view/nest/parts/nest_contact.gd"
-## Nest view, layer 9 of 10: the nestmates walking the real tunnels, their roles and activities,
+extends "res://scripts/view/nest/parts/nest_duties.gd"
+## Nest view, layer 10 of 11: the nestmates walking the real tunnels, their roles and activities,
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 
@@ -23,7 +23,7 @@ func _arrive(m: Dictionary) -> void:
 		m.item = ""
 		if m.goal == -1:
 			m.goal = _brood_room(_larva_group)
-	if m.role in ["nurse", "attend", "idle", "traffic"]:
+	if m.role in ["nurse", "attend", "idle", "traffic", "wander"]:
 		var tries := int(m.get("tries", 0))
 		if not _settle(m) and (tries < 3 or (not _cell_fits(m.cell) and tries < 6)):
 			# no room in this chamber at all: rest in another one (and never in a narrow tunnel, where everyone
@@ -44,6 +44,15 @@ func _arrive(m: Dictionary) -> void:
 			m.rest = randi_range(60, 240)
 			if randf() < 0.25:
 				m.goal = _random_room()
+		"wander":
+			# walking about: a stop, a look round, and every other time on to another chamber (walking the tunnels all
+			# the time, they were in the soil and over the brood twice as often - and side steps had them skating)
+			m.rest = randi_range(20, 60)
+			m.wander = randi_range(2, 5)
+			if randf() < 0.5:
+				m.goal = _random_room()
+		"giver", "groomer":
+			m.rest = 0                                 # on its way to its partner (nest_duties._duty_pairs steers it)
 		"traffic":
 			# a forager passing through: in at the entrance (crop full of honeydew if it brought some), down to a chamber
 			m.rest = randi_range(2, 10)
@@ -204,15 +213,11 @@ func _meetings() -> void:
 			var o = by_cell.get(m.cell + d)
 			if o == null or is_same(o, m) or o.cool > 0.0 or o.act in STILL_ACTS or o.carry:
 				continue
-			if m.fed or o.fed:
-				if not _start_feed(m if m.fed else o, o if m.fed else m):       # the one with a full crop gives
-					var secs := randf_range(1.0, 2.2)                  # (no room to: antennae only)
-					_begin(m, ACT_ANTENNATE, secs, o.vp if o.has("vp") else o.to)
-					_begin(o, ACT_ANTENNATE, secs, m.vp if m.has("vp") else m.to)
-			else:
-				var secs := randf_range(1.0, 2.2)
-				_begin(m, ACT_ANTENNATE, secs, o.vp if o.has("vp") else o.to)
-				_begin(o, ACT_ANTENNATE, secs, m.vp if m.has("vp") else m.to)
+			# (who gives whom a drop is the simulation's: nest_duties walks the giver to its partner; met by chance,
+			# two ants only drum antennae)
+			var secs := randf_range(1.0, 2.2)
+			_begin(m, ACT_ANTENNATE, secs, o.vp if o.has("vp") else o.to)
+			_begin(o, ACT_ANTENNATE, secs, m.vp if m.has("vp") else m.to)
 			m.cool = randf_range(5.0, 10.0)
 			o.cool = randf_range(5.0, 10.0)
 			break
@@ -249,8 +254,10 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 			m.face = _spots.queen
 			if fmod(m.anim, 16.0) > 9.0 and not sim.eggs.is_empty() and not _spots.eggs.is_empty():
 				m.face = _egg_xf(0).origin            # licking the egg packet clean
-		elif randf() < 0.04 * delta:
-			_begin(m, ACT_GROOM, randf_range(2.0, 4.5))     # resting ants groom every so often
+		elif int(m.get("vd", -1)) == Ant.D_GROOM and randf() < 0.5 * delta:
+			_begin(m, ACT_GROOM, randf_range(3.0, 6.0))     # its duty: cleaning itself (in bouts)
+		elif int(m.get("vd", -1)) != Ant.D_REST and randf() < 0.04 * delta:
+			_begin(m, ACT_GROOM, randf_range(2.0, 4.5))     # resting ants groom every so often (not one set to stand still)
 		else:
 			m.act = ACT_REST
 	else:
@@ -259,18 +266,23 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 
 func _update_ants(delta: float) -> void:
 	_bind_workers()                         # one drawn nestmate per real worker inside
+	_end_approaches()                       # (nest_duties: givers and groomers that have walked up to their partner)
+	_duty_pairs()
 	# while larvae are being moved between chambers, a few nurses do the carrying
 	if _moved < sim.larvae.size():
 		var carriers := 0
 		for m in _mates:
 			if m.role == "carry":
 				carriers += 1
-		for m in _mates:
+		# those the simulation set to carry brood first (nest_duties), then nurses, then anyone resting
+		var order := _mates.duplicate()
+		order.sort_custom(func(a, b): return int(a.get("vd", -1) == Ant.D_CARRY) > int(b.get("vd", -1) == Ant.D_CARRY))
+		for m in order:
 			if carriers >= 4:
 				break
 			if m.has("script") or m.has("deliver"):
 				continue
-			if m.role == "nurse" or (m.role == "idle" and carriers == 0):
+			if int(m.get("vd", -1)) == Ant.D_CARRY or m.role == "nurse" or (m.role == "idle" and carriers == 0):
 				m.role = "carry"
 				m.goal = _brood_room(_larva_prev)
 				m.rest = 0
