@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_enemies.gd"
-## Simulation, layer 4 of 5: colony physiology (days, roles, feeding, moisture, the queen, brood, the outworld's food and weather).
+## Simulation, layer 5 of 7: colony physiology (days, roles, feeding, moisture, the queen, brood, the outworld's food and weather).
 
 
 const QUEEN_KEEP := 20.0     # body reserve a founding queen will not spend on brood

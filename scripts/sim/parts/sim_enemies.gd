@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_foragers.gd"
-## Simulation, layer 3 of 5: natural enemies in the outworld and how Lasius niger fights them.
+## Simulation, layer 4 of 7: natural enemies in the outworld and how Lasius niger fights them.
 ## Each enemy kind lives in its own file under scripts/sim/enemies/ and is registered here;
 ## sim.creatures holds the ones present (saved as is).
 ##

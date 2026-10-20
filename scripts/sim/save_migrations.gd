@@ -1,7 +1,7 @@
 extends RefCounted
 ## Brings a saved colony from an older version of the game up to the current format, one step at a
 ## time, so a keeper's colony survives every update. When the save format changes:
-##   1. raise SAVE_VERSION in parts/sim_base.gd,
+##   1. raise SAVE_VERSION in parts/sim_state.gd,
 ##   2. add a step `_vN_to_vN+1(d)` here and call it from migrate(),
 ##   3. extend tests/migration_test.gd.
 ## Each step only edits the plain dictionary that Simulation.to_dict() produced.

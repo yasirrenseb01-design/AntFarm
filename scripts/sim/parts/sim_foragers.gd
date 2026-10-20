@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_base.gd"
-## Simulation, layer 2 of 5: foragers in the outworld (trails, food, encounters, obstacles).
+## Simulation, layer 3 of 7: foragers in the outworld (trails, food, encounters, obstacles).
 
 
 ## Two foragers meeting head-on stop for a moment and drum each other with their antennae
