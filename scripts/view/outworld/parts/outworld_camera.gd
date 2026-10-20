@@ -5,12 +5,22 @@ extends "res://scripts/view/outworld/parts/outworld_creatures.gd"
 # ---------------------------------------------------------------- camera
 
 var follow_cid := 0          # an enemy the camera keeps in view (the HUD's enemy panel), 0 = none
+var follow_wid := -1         # a worker the camera keeps in view (the HUD's star ants panel), -1 = none
+
+
+## Keeps a worker in view while it is outside (the HUD's star ants panel), until the keeper moves the camera.
+func follow_ant(id: int) -> void:
+	follow_wid = id
+	follow_cid = 0
+	dist_t = minf(dist_t, 60.0)
+	pitch_t = clampf(pitch_t, 0.6, 1.1)
 
 
 ## Keeps an enemy in view (sim.creatures id): the camera eases to it and rides along until it is gone or the keeper
 ## moves the camera.
 func follow_creature(id: int) -> void:
 	follow_cid = id
+	follow_wid = -1
 	dist_t = minf(dist_t, 110.0)
 	pitch_t = clampf(pitch_t, 0.6, 1.1)
 
@@ -34,6 +44,7 @@ func _fit_dist() -> float:
 
 func reset_view() -> void:
 	follow_cid = 0
+	follow_wid = -1
 	yaw_t = 0.0
 	pitch_t = 0.95
 	target_t = Vector3(sim.WORLD.x * U * 0.5, 0, sim.WORLD.y * U * 0.5 + 6.0)
@@ -42,6 +53,7 @@ func reset_view() -> void:
 
 func top_down() -> void:
 	follow_cid = 0
+	follow_wid = -1
 	yaw_t = 0.0
 	pitch_t = 1.5
 	target_t = Vector3(sim.WORLD.x * U * 0.5, 0, sim.WORLD.y * U * 0.5)
@@ -50,6 +62,7 @@ func top_down() -> void:
 
 func focus_nest() -> void:
 	follow_cid = 0
+	follow_wid = -1
 	target_t = _on_ground(sim.nest_pos)
 	dist_t = 60.0
 	pitch_t = clampf(pitch_t, 0.6, 1.1)
@@ -81,12 +94,24 @@ func _ease_camera(delta: float) -> void:
 	if mv != Vector2.ZERO:
 		target_t += (_right() * mv.x + _forward() * mv.y) * dist_t * 0.9 * delta
 		follow_cid = 0
+		follow_wid = -1
 	if follow_cid != 0:
 		var c = sim._creature(follow_cid)
 		if c == null:
 			follow_cid = 0                    # it left, or the ants killed it (the camera stays on where it fell)
+			follow_wid = -1
 		else:
 			target_t = _on_ground((c.pos as Vector2).clamp(Vector2.ZERO, sim.WORLD))
+	if follow_wid >= 0:
+		var w = null
+		for o in sim.outside:
+			if o.id == follow_wid:
+				w = o
+		if w == null:
+			follow_wid = -1                   # it went in (the HUD follows it into the nest) or died
+		else:
+			var at: Vector2 = w.vpos if (w.vpos as Vector2).x != INF else w.pos
+			target_t = _on_ground(at.clamp(Vector2.ZERO, sim.WORLD))
 	# (Q/E the camera down and up - nearer the ground or farther - and Z/C turn: the same keys as in the nest)
 	if _key(KEY_Q):
 		zoom_by(1.0 - 1.2 * delta)

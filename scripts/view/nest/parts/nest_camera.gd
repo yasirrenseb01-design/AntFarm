@@ -31,6 +31,7 @@ func _ease_camera(delta: float) -> void:
 	if _key(KEY_Q):
 		mv.y -= 1
 	if mv != Vector3.ZERO:
+		follow_wid = -1                         # (moved by hand: stop following an ant)
 		var right := _cam.global_transform.basis.x
 		right.y = 0.0
 		right = right.normalized()
@@ -67,6 +68,7 @@ func turn_by(a: float) -> void:
 
 
 func reset_view() -> void:
+	follow_wid = -1
 	if nest.slab:
 		yaw_t = 0.0
 		pitch_t = 0.12
@@ -92,6 +94,7 @@ func reset_view() -> void:
 
 ## Glide the camera to something worth looking at: "queen", "larvae", "pupae", "entrance".
 func focus(what: String) -> void:
+	follow_wid = -1
 	var p := Vector3.INF
 	match what:
 		"queen":

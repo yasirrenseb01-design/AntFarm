@@ -1,5 +1,5 @@
 extends "res://scripts/view/ui/parts/hud_colonies.gd"
-## HUD, layer 3 of 6: the enemy panel - how often natural enemies come (sim.set_enemy_rate); the keeper lets a wolf
+## HUD, layer 3 of 7: the enemy panel - how often natural enemies come (sim.set_enemy_rate); the keeper lets a wolf
 ## spider, a stone centipede or a ground beetle into the outworld to watch how the ants fight it (sim.release_enemy),
 ## sees the ones in there now (health, ants holding on) and sends the camera after one (enemy_watch -> main.gd ->
 ## outworld.follow_creature).
@@ -85,6 +85,8 @@ func _wrapped(text: String, size: int, color: Color) -> Label:
 func toggle_enemies() -> void:
 	_enemies.visible = not _enemies.visible
 	if _enemies.visible:
+		if _stars != null:
+			_stars.visible = false             # (one panel on the left at a time)
 		_refresh_enemies()
 
 

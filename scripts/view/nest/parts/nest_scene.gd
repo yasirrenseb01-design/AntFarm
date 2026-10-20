@@ -34,6 +34,7 @@ var _last_click := 0
 var _cam: Camera3D
 var _mat: ShaderMaterial
 var _xray_mat: ShaderMaterial
+var follow_wid := -1            # a worker the camera keeps in view (the HUD's star ants panel; nest_view.refresh), -1 = none
 var xray := false                 # "see through the soil": tunnels drawn as a translucent cast
 var _ghost: MeshInstance3D        # faint outline of the soil block in x-ray view
 var _ant_meshes := {}             # "hi"/"lo" -> [pose A, pose B]

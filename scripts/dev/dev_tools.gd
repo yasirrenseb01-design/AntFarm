@@ -230,6 +230,10 @@ func _take_shot() -> void:
 		nest_view._queen_mode_left = 1.0e9
 	if _opts.has("newcolony"):
 		hud._open_new_colony(1, true)
+	if _opts.has("stars"):
+		hud.toggle_stars()                   # (--stars: the star ants panel open; --star-go=<worker id|-1 queen>: its "ไปดู")
+	if _opts.has("star-go"):
+		hud.go_to_ant(sim.outside[0].id if _opts["star-go"] == "out" and not sim.outside.is_empty() else int(_opts["star-go"]))     # (out: a forager)
 	if _opts.has("species"):
 		var sw: Window = hud.open_species(1, true)
 		sw._show(int(_opts["species"]) if String(_opts["species"]).is_valid_int() else 0)      # (--species=<i>: which model)

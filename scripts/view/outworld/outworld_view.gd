@@ -203,6 +203,7 @@ func _unhandled_input(e: InputEvent) -> void:
 						target_t = at
 						dist_t = minf(dist_t * 0.5, 90.0)
 						follow_cid = 0
+						follow_wid = -1
 				_pan = e.pressed and e.shift_pressed
 				_rot = e.pressed and not e.shift_pressed
 			elif e.pressed:
@@ -215,6 +216,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			_rot = false
 			if e.pressed:
 				follow_cid = 0                     # (moved by hand: stop following an enemy)
+				follow_wid = -1
 	elif e is InputEventMouseMotion:
 		hover = pick(e.position)
 		if _rot:

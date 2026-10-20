@@ -199,6 +199,29 @@ func mate_pos(wid: int) -> Vector3:
 	return Vector3.INF
 
 
+## Keeps the camera on a worker (follow_wid, from the HUD's star ants panel) - its drawn body, wherever it goes in the
+## nest; a moment to find it after switching here (the nest places its ants over the first frames), then it stops.
+var _follow_lost := 0.0
+
+func follow_ant(id: int) -> void:
+	follow_wid = id
+	_follow_lost = 0.0
+	dist_t = minf(dist_t, 24.0)
+
+
+func _follow_ant(delta: float) -> void:
+	if follow_wid < 0:
+		return
+	var p := mate_pos(follow_wid)
+	if p == Vector3.INF:
+		_follow_lost += delta
+		if _follow_lost > 2.0:
+			follow_wid = -1                       # (gone out, or died)
+		return
+	_follow_lost = 0.0
+	aim_at(p, dist_t)
+
+
 func queen_pos() -> Vector3:
 	return _spots.queen if _spots.queen != Vector3.ZERO else Vector3.INF
 
@@ -221,6 +244,7 @@ func refresh(delta: float) -> void:
 	if not active:
 		return
 	_t += delta
+	_follow_ant(delta)
 	var t0 := Time.get_ticks_usec()
 	if not nest.dirty.is_empty():
 		_vol_dirty = true
@@ -293,12 +317,17 @@ func _unhandled_input(e: InputEvent) -> void:
 			zoom_by(1.18)
 		elif e.button_index == MOUSE_BUTTON_LEFT:
 			if e.pressed and e.double_click:
+				follow_wid = -1
 				_focus_at(e.position)
 			_pan = e.pressed and e.shift_pressed
+			if _pan:
+				follow_wid = -1                    # (moved by hand: stop following; turning round it goes on)
 			_rot = e.pressed and not e.shift_pressed
 		elif e.button_index == MOUSE_BUTTON_RIGHT or e.button_index == MOUSE_BUTTON_MIDDLE:
 			_pan = e.pressed
 			_rot = false
+			if e.pressed:
+				follow_wid = -1
 	elif e is InputEventMouseMotion:
 		if _rot:
 			yaw_t -= e.relative.x * 0.007

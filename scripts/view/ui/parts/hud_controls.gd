@@ -1,5 +1,5 @@
-extends "res://scripts/view/ui/parts/hud_enemies.gd"
-## HUD, layer 4 of 6: the top bar (clock, speed, views), the tool bar and the camera pad.
+extends "res://scripts/view/ui/parts/hud_stars.gd"
+## HUD, layer 5 of 7: the top bar (clock, speed, views), the tool bar and the camera pad.
 
 
 # ---------------------------------------------------------------- layout
@@ -73,6 +73,13 @@ func _build_top(root: Control) -> void:
 	var ewrap := CenterContainer.new()
 	ewrap.add_child(foes)
 	row.add_child(ewrap)
+
+	var stars := _button("มดเด่น", false)
+	stars.tooltip_text = "มดที่ทำงานแต่ละอย่างมากที่สุด และมดที่ตั้งชื่อไว้"
+	stars.pressed.connect(toggle_stars)
+	var swrap := CenterContainer.new()
+	swrap.add_child(stars)
+	row.add_child(swrap)
 
 	var mine := _button("รังของฉัน", false)
 	mine.pressed.connect(open_colonies)

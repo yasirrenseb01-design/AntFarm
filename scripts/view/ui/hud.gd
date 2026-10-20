@@ -1,7 +1,7 @@
 extends "res://scripts/view/ui/parts/hud_panel.gd"
 ## Keeper's instrument panel: clock and speed on top, tools at the bottom, colony readout, nest
 ## cross-section, population chart and journal on the right. This file is the top of the chain.
-## Layers: parts/hud_base <- hud_colonies <- hud_enemies <- hud_controls <- hud_panel <- hud.
+## Layers: parts/hud_base <- hud_colonies <- hud_enemies <- hud_stars <- hud_controls <- hud_panel <- hud.
 
 const AntTip := preload("res://scripts/view/ui/ant_tip.gd")
 const Sounds := preload("res://scripts/view/ui/sounds.gd")
@@ -24,6 +24,7 @@ func setup(s, w) -> void:
 	_build_camera_pad(root)
 	_build_colonies(root)
 	_build_enemies(root)
+	_build_stars(root)
 	# a soft chime when the keeper must act (water), and the frame rate when asked for (F3)
 	_chime = AudioStreamPlayer.new()
 	_chime.stream = Sounds.chime()
@@ -128,6 +129,7 @@ func _unhandled_key_input(e: InputEvent) -> void:
 func refresh(delta: float) -> void:
 	_t += delta
 	_tick_banner(delta)
+	_tick_stars()
 	_clock.text = "ปีที่ %d · %s · %s  %s" % [sim.year(), sim.date_text(), sim.season_name(), sim.clock_text()]
 	var sky := "ฝนตก" if sim.climate.raining() else ("กลางคืน" if sim.sun_height() < -0.05 else "แจ่มใส")
 	_weather.text = "อากาศ %.1f°C · %s · มดออกหากิน %d%%" % [sim.climate.air, sky, int(sim.activity * 100)]
@@ -196,3 +198,4 @@ func refresh(delta: float) -> void:
 	_show(_vals["hum"], "%d%%" % int(hum * 100), INK if ok else DANGER)
 	_chart.queue_redraw()
 	_refresh_enemies()
+	_refresh_stars()
