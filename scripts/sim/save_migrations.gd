@@ -25,6 +25,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				pass        # v0.8.20: ants may be hauling prey (state DRAG); nothing in an older save changes
 			7:
 				_v7_to_v8(d)
+			8:
+				_v8_to_v9(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -92,3 +94,9 @@ static func _v5_to_v6(d: Dictionary) -> void:
 ## what it had: the usual rate, or none where natural enemies were off (enemies stays the on/off it was).
 static func _v7_to_v8(d: Dictionary) -> void:
 	d["enemy_rate"] = 1.0 if d.enemies else 0.0
+
+
+## v0.11.7: the keeper can name any worker (Ant.name, the last of ANT_FIELDS); none has a name yet.
+static func _v8_to_v9(d: Dictionary) -> void:
+	for row in d.workers:
+		row.append("")

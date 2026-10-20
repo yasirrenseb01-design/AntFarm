@@ -61,6 +61,7 @@ var phase := 0.0        # gait phase for leg animation
 var foe := 0            # id of the enemy it is fighting (sim.creatures), 0 = none
 var hurt := 0.0          # 0..1 injuries from enemy bites (a lost leg or antenna); slows it for good
 var dead := false
+var name := ""            # what the keeper calls it ("" = no name; saved, never read by the simulation)
 
 # view-only smoothing state (the simulation never reads these)
 var vpos := Vector2(INF, INF)

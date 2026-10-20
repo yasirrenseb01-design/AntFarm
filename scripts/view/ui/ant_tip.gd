@@ -3,8 +3,11 @@ extends PanelContainer
 ## is - its job in the colony, what it is doing now, its age and size, injuries, and its leanings (the thresholds
 ## that decide which work it takes up first). Click empty ground or press Esc to let it go. The views find the
 ## ant under the mouse (pick_ant) and report the selected one as it is now (info_for).
+## A worker can be given a name here (sim.name_ant; any number of them): the title tour follows named ants, and the
+## HUD tells the keeper when one dies.
 
 const Ant := preload("res://scripts/sim/ant.gd")
+const Hud := preload("res://scripts/view/ui/parts/hud_base.gd")
 
 var sim
 var views: Array = []            # the 3D views (pick_ant, info_for, can_select, sel_kind / sel_id)
@@ -13,6 +16,9 @@ var test_mouse := Vector2.INF    # dev (--hover): select the ant at this screen 
 var _press := Vector2.INF
 var _text: Label
 var _t := 0.0
+var _name_row: HBoxContainer
+var _name_edit: LineEdit
+var _name_for := -2              # the worker id the name box was filled for (-2: none yet)
 
 
 func setup(s, view_list: Array, font: Font) -> void:
@@ -22,11 +28,51 @@ func setup(s, view_list: Array, font: Font) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	z_index = 50
 	position = Vector2(18, 140)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(col)
 	_text = Label.new()
 	if font != null:
 		_text.add_theme_font_override("font", font)
 	_text.add_theme_font_size_override("font_size", 14)
-	add_child(_text)
+	col.add_child(_text)
+	# the name box (workers only): type, then Enter or the button; an empty name takes it away
+	_name_row = HBoxContainer.new()
+	_name_row.add_theme_constant_override("separation", 6)
+	_name_row.visible = false
+	col.add_child(_name_row)
+	_name_edit = LineEdit.new()
+	_name_edit.max_length = sim.NAME_MAX
+	_name_edit.placeholder_text = "ตั้งชื่อมดตัวนี้…"
+	_name_edit.custom_minimum_size.x = 190
+	_name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name_edit.add_theme_color_override("font_color", Hud.INK)
+	_name_edit.add_theme_color_override("font_placeholder_color", Hud.MUTED)
+	_name_edit.add_theme_font_size_override("font_size", 14)
+	_name_edit.text_submitted.connect(func(_t): _give_name())
+	_name_row.add_child(_name_edit)
+	var save := Button.new()
+	save.text = "ตั้งชื่อ"
+	save.focus_mode = Control.FOCUS_NONE
+	save.pressed.connect(_give_name)
+	_name_row.add_child(save)
+
+
+## The name in the box goes to the selected worker (sim.name_ant: only words, nothing in the simulation changes).
+func _give_name() -> void:
+	if sel.get("kind", "") == "worker":
+		sim.name_ant(int(sel.id), _name_edit.text)
+		_name_edit.text = _find_worker(int(sel.id)).name if _find_worker(int(sel.id)) != null else ""
+	_name_edit.release_focus()
+	_t = 1.0                                 # (the words with the new name at once)
+
+
+func _find_worker(id: int):
+	for w in sim.workers:
+		if w.id == id:
+			return w
+	return null
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -70,6 +116,8 @@ func _select(info: Dictionary) -> void:
 			v.sel_kind = sel.get("kind", "")
 			v.sel_id = int(sel.get("id", -1))
 	visible = not sel.is_empty()
+	_name_edit.release_focus()
+	_t = 1.0                                 # (its words now, not in a quarter of a second)
 
 
 func _process(delta: float) -> void:
@@ -97,7 +145,22 @@ func _process(delta: float) -> void:
 	else:
 		_text.text = describe(info) + ("
 (" + info.elsewhere + " — สลับมุมมองเพื่อดูตัว)" if info.has("elsewhere") else "")
+	_update_name_box()
 	reset_size()
+
+
+## The name box shows for a worker still in the colony, filled with its name when it was chosen (not while typing).
+func _update_name_box() -> void:
+	var w = _find_worker(int(sel.id)) if sel.get("kind", "") == "worker" else null
+	_name_row.visible = w != null
+	if w == null:
+		_name_for = -2
+		_name_edit.release_focus()
+		return
+	if _name_for != w.id and not _name_edit.has_focus():
+		_name_for = w.id
+		_name_edit.text = w.name
+		_name_edit.placeholder_text = "ตั้งชื่อมดตัวนี้…" if w.name == "" else "ว่างไว้ = เอาชื่อออก"
 
 
 ## The words for an ant found by a view: {"kind": "worker"|"queen"|"digger", "w": Ant or null, "role", "act"}.
@@ -118,7 +181,7 @@ func describe(info: Dictionary) -> String:
 		return "\n".join(lines)
 	var w = info.get("w")
 	var lines := []
-	lines.append("มดงาน #%d" % w.id if w != null else "มดงาน")
+	lines.append(("\"%s\" · มดงาน #%d" % [w.name, w.id] if w.name != "" else "มดงาน #%d" % w.id) if w != null else "มดงาน")
 	lines.append("หน้าที่: " + _job(w, info))
 	lines.append("กำลังทำ: " + _act_name(int(info.get("act", 0))))
 	if w != null:

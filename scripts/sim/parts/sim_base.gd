@@ -471,12 +471,30 @@ func _kill(a: Ant, cause := "other") -> void:
 	_any_dead = true
 	stats.dead += 1
 	stats.dead_by[cause] = int(stats.dead_by.get(cause, 0)) + 1
+	if a.name != "":
+		_log(T.named_died % [a.name, T.death_causes.get(cause, T.death_causes.other), int(a.age)], "named")    # (the HUD: a chime, a banner)
 	if a.state == Ant.IN_NEST:
 		corpses_inside += 1
 	else:
 		corpses.append({"pos": a.pos, "ang": a.ang, "age": 0.0})
 		if a.carry == Ant.CORPSE:
 			corpses.append({"pos": a.pos + Vector2(4, 2), "ang": a.ang + 1.0, "age": 0.0})
+
+
+## The keeper names a worker (any number of them; "" takes the name away). Returns false if it is not in the colony.
+## Only words: nothing the simulation does depends on it, and it draws nothing from sim.rng.
+func name_ant(id: int, new_name: String) -> bool:
+	var nm := new_name.strip_edges().left(NAME_MAX)
+	for a in workers:
+		if a.id == id:
+			if nm != a.name:
+				_log(T.ant_named % [a.id, nm] if nm != "" else T.ant_unnamed % [a.name, a.id])
+			a.name = nm
+			return true
+	return false
+
+
+const NAME_MAX := 24            # characters in an ant's name
 
 
 func blocked(p: Vector2) -> bool:
@@ -504,6 +522,6 @@ func _log(text: String, kind: String = "") -> void:
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 8              # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 9              # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
-	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt"]
+	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt", "name"]

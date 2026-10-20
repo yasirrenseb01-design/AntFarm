@@ -105,7 +105,7 @@ func _build_panel(root: Control) -> void:
 func _render_log() -> void:
 	var lines := PackedStringArray()
 	for e in sim.log_entries.slice(0, 40):
-		var col := "#e8664f" if e.kind == "bad" else ("#9cc565" if e.kind == "ok" else "#f1e6d6")
+		var col := "#e8664f" if e.kind == "bad" else ("#9cc565" if e.kind == "ok" else ("#e9a23b" if e.kind == "named" else "#f1e6d6"))
 		lines.append("[color=#8a7562]%s[/color]  [color=%s]%s[/color]" % [e.stamp, col, e.text])
 	_log.text = "\n".join(lines)
 

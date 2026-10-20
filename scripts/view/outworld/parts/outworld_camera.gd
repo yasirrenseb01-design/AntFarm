@@ -63,15 +63,20 @@ func turn_by(a: float) -> void:
 	yaw_t += a
 
 
+## A camera key held down - not while the keeper is typing (an ant's name: the letters are camera keys too).
+func _key(k: Key) -> bool:
+	return Input.is_key_pressed(k) and not (get_viewport().gui_get_focus_owner() is LineEdit)
+
+
 func _ease_camera(delta: float) -> void:
 	var mv := Vector2.ZERO
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+	if _key(KEY_A) or _key(KEY_LEFT):
 		mv.x -= 1
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+	if _key(KEY_D) or _key(KEY_RIGHT):
 		mv.x += 1
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+	if _key(KEY_W) or _key(KEY_UP):
 		mv.y += 1
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+	if _key(KEY_S) or _key(KEY_DOWN):
 		mv.y -= 1
 	if mv != Vector2.ZERO:
 		target_t += (_right() * mv.x + _forward() * mv.y) * dist_t * 0.9 * delta
@@ -83,21 +88,21 @@ func _ease_camera(delta: float) -> void:
 		else:
 			target_t = _on_ground((c.pos as Vector2).clamp(Vector2.ZERO, sim.WORLD))
 	# (Q/E the camera down and up - nearer the ground or farther - and Z/C turn: the same keys as in the nest)
-	if Input.is_key_pressed(KEY_Q):
+	if _key(KEY_Q):
 		zoom_by(1.0 - 1.2 * delta)
-	if Input.is_key_pressed(KEY_E):
+	if _key(KEY_E):
 		zoom_by(1.0 + 1.2 * delta)
-	if Input.is_key_pressed(KEY_Z):
+	if _key(KEY_Z):
 		yaw_t += 1.4 * delta
-	if Input.is_key_pressed(KEY_C):
+	if _key(KEY_C):
 		yaw_t -= 1.4 * delta
-	if Input.is_key_pressed(KEY_R):
+	if _key(KEY_R):
 		pitch_t = clampf(pitch_t + 0.9 * delta, 0.12, 1.54)
-	if Input.is_key_pressed(KEY_F):
+	if _key(KEY_F):
 		pitch_t = clampf(pitch_t - 0.9 * delta, 0.12, 1.54)
-	if Input.is_key_pressed(KEY_EQUAL) or Input.is_key_pressed(KEY_KP_ADD):
+	if _key(KEY_EQUAL) or _key(KEY_KP_ADD):
 		zoom_by(1.0 - 1.6 * delta)
-	if Input.is_key_pressed(KEY_MINUS) or Input.is_key_pressed(KEY_KP_SUBTRACT):
+	if _key(KEY_MINUS) or _key(KEY_KP_SUBTRACT):
 		zoom_by(1.0 + 1.6 * delta)
 	var hi := Vector3(sim.WORLD.x * U + 30.0, 0, sim.WORLD.y * U + 30.0)
 	target_t = target_t.clamp(Vector3(-30, 0, -30), hi)

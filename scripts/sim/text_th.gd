@@ -56,3 +56,8 @@ const winter_rest_done := "รังผ่านความหนาวมา�
 const rain_stop := "ฝนหยุดแล้ว เส้นทางกลิ่นส่วนใหญ่ถูกชะล้างไป"
 const cause_starvation := "ขาดอาหาร"
 const cause_thirst := "ขาดน้ำ"
+const ant_named := "ตั้งชื่อมดงาน #%d ว่า \"%s\""
+const ant_unnamed := "เอาชื่อ \"%s\" ออกจากมดงาน #%d"
+const named_died := "%s ตายแล้ว — %s (อายุ %d วัน)"
+const death_causes := {"starve": "อดอาหาร", "thirst": "ขาดน้ำ", "old": "แก่ตาย", "out": "หายไปตอนออกหากิน",
+	"enemy": "ถูกศัตรูกัด", "other": "ไม่ทราบสาเหตุ"}
