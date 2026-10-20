@@ -233,6 +233,12 @@ func _take_shot() -> void:
 		nest_view._queen_mode_left = 1.0e9
 	if _opts.has("newcolony"):
 		hud._open_new_colony(1, true)
+	if _opts.has("enemy-panel") or _opts.has("release"):
+		hud.toggle_enemies()                 # (the enemy panel open; --release=<kind>: as if its button were pressed)
+		if _opts.has("release"):
+			hud._release_enemy(String(_opts["release"]))
+			for i in int(_opts.get("fight", "0")):
+				sim.step()
 	if _opts.has("dev-speeds"):
 		for b in hud._dev_speed_buttons:
 			b.visible = true                 # (as F10 does)

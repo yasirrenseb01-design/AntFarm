@@ -19,6 +19,7 @@ var desktop                    # desktop mode: the nest as the wallpaper (PART 1
 ##       --at-ant=<i>|walker|act2|act9|act10 (outworld: look at a forager, or one busy at that kind of food)   --at-food=<kind> (drop one and look at it)
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)   --newcolony   --fridge
 ##       --enemy=wolf_spider [--enemy-at=x,y] [--fight=<ticks>] (stage a fight next to the nest)
+##       --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
 ##   --scenario=keeper|wild (indoor formicarium, or a plot of ground with seasons and predators)
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
@@ -26,6 +27,7 @@ var desktop                    # desktop mode: the nest as the wallpaper (PART 1
 ##   --desktop   start as the desktop wallpaper (desktop_mode.gd; back to the game from the tray icon)
 ##       [--win=x,y,w,h,mode] (the game window to go back to: passed on when the game starts itself again)
 ##       [--no-cover-check] (dev: draw even under a full-screen app)   --quit-after=<s> (dev: close after s seconds)
+##       --leave-after=<s> (dev: back to the game after s seconds, as the tray icon)
 ##       --gpu=<i> (dev: started again with D3D12 on that GPU: 1 = the RTX here)   --desktop-after=<s> (dev: as if the button were pressed)
 
 
@@ -149,6 +151,9 @@ func _ready() -> void:
 	elif _opts.has("desktop"):
 		_enter_desktop.call_deferred()          # (started as the wallpaper: --desktop)
 		desktop.check_cover = not _opts.has("no-cover-check")
+		if _opts.has("leave-after"):
+			# (dev: back to the game after that many seconds, as a click on the tray icon does)
+			get_tree().create_timer(float(_opts["leave-after"])).timeout.connect(desktop.leave)
 	if _opts.has("quit-after") and not _opts.has("shot"):
 		# (dev: close as the keeper would after that many seconds - desktop mode checked on the real desktop)
 		get_tree().create_timer(float(_opts["quit-after"])).timeout.connect(func():
@@ -243,7 +248,7 @@ func _enter_desktop() -> void:
 			args += ["--gpu-index", str(_opts["gpu"])]                       # (dev: the RTX, not the Intel UHD)
 		args.append("--")
 		args.append("--desktop")
-		for k in ["testsave", "slot", "sandbox", "no-cover-check", "quit-after", "view", "gpu", "desk-driver"]:
+		for k in ["testsave", "slot", "sandbox", "no-cover-check", "quit-after", "leave-after", "view", "gpu", "desk-driver"]:
 			if _opts.has(k):
 				args.append("--%s=%s" % [k, _opts[k]])
 		# the window as it is, to come back to (desktop_mode.gd)

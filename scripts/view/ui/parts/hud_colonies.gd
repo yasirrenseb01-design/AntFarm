@@ -219,8 +219,10 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 			b.pressed.connect(func():
 				picked[key] = o[0]
 				note.text = o[2]
-				if key == "scenario" and not picked.has("rate_set"):
-					rates.set_rate(1.0 if o[0] == "wild" else 0.0, o[0]))       # (each scene's usual, until the keeper picks one)
+				if key == "scenario":
+					if not picked.has("rate_set"):
+						picked["rate"] = 1.0 if o[0] == "wild" else 0.0       # (each scene's usual, until the keeper picks one;
+					rates.set_rate(picked.rate, o[0]))                      # it showed 0% for the formicarium and sent 100%)
 			row.add_child(b)
 		col.add_child(note)
 	col.add_child(_label("สัตว์ร้าย (แมงมุมหมาป่า ตะขาบหิน ด้วงดิน)", 15, AMBER))

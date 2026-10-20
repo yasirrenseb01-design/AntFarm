@@ -188,6 +188,8 @@ func _done(kind: String, code: int, out: String) -> void:
 			main.hud.visible = true
 			_tray.visible = false
 			DisplayServer.window_move_to_foreground()
+			_log("window %d detach -> %d %s; back to mode %d at %s size %s (wanted %s)" % [_hwnd, code, out,
+				DisplayServer.window_get_mode(), DisplayServer.window_get_position(), DisplayServer.window_get_size(), _saved])
 		"quit":
 			on = false
 			get_tree().quit()
@@ -210,10 +212,14 @@ func _restore_window() -> void:
 	if _saved.is_empty():
 		return
 	Engine.max_fps = int(_saved.fps)
-	# the frame back: set the flag both ways so the engine works the window's style out again (the helper changed it
-	# behind the engine's back, which still thought it borderless: the window came back with no title bar - v0.11.0)
+	# the frame back first: set the flag both ways so the engine works the window's style out again (the helper changed
+	# it behind the engine's back, which still thought it borderless: no title bar, v0.11.0). Only then windowed and the
+	# old size: a borderless window over the whole screen the engine takes for full screen (mode 4), and while it is
+	# borderless it stays so and ignores a new size (came back framed but maximized - tested on Windows, v0.11.4)
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, bool(_saved.borderless))
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	DisplayServer.window_set_size(_saved.size)
 	DisplayServer.window_set_position(_saved.pos)
 	if int(_saved.mode) != DisplayServer.WINDOW_MODE_WINDOWED:
