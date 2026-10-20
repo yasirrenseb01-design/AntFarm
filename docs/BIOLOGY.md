@@ -208,6 +208,91 @@
 - ยุโรปทั้งหมด เอเชียบางส่วน อเมริกาเหนือบางส่วน (ต้องตรวจทางอนุกรมวิธาน) **[Ln]**
 - สวน ทุ่งหญ้า สวนสาธารณะ เมือง ไร่ ชายป่า; เป็นมดที่พบมากที่สุดในวอร์ซอ; รังใต้ดิน เนินทราย รอยแตกผนัง ไม้ผุ ขอบทางเท้า **[Ln]**
 
+## เวรงานของมดในรัง (ค้นสำหรับ PART EA3a, 2026-10-20) — **รอผู้ใช้ตกลงก่อนเขียนโค้ด**
+ป้าย: **[Ln]** = งานวิจัยใน *Lasius niger* · **[ญาติ]** = มดชนิดอื่น (บอกชื่อ) · **[ผู้เลี้ยง]** = คู่มือผู้เลี้ยง · **[อนุมาน]** = ผมคิดเอง ไม่มีหลักฐานตรง
+ข้อจำกัด: เครื่องคลาวด์เปิดบทความเต็มไม่ได้ (เครือข่ายบล็อก nature.com / ncbi / springer) — ตัวเลขทั้งหมดมาจากบทคัดย่อและข้อความที่ค้นเจอ;
+ตัวที่มีเครื่องหมาย ⚠ มาจากบทสรุปรอง ควรเปิดบทความเต็มยืนยันก่อนเชื่อ
+
+### ก. หลักฐาน
+| เรื่อง | ค่าที่พบ | ป้าย | แหล่ง |
+|---|---|---|---|
+| มดที่ไม่ทำงาน | ราว 25% ไม่เคยทำงานตลอดช่วงสังเกต, >70% พักเป็นช่วงๆ (*Temnothorax rugatulus*) | [ญาติ] | Charbonneau & Dornhaus 2015 [1] |
+| มดที่ไม่ทำงาน | เฉลี่ย ~40% "แทบไม่ทำอะไร" ต่างกันตามฤดู/รัง/ชนิด; อีกงาน: สัดส่วนที่จัดเป็นมดว่าง 0.32 | [ญาติ] | Charbonneau (วิทยานิพนธ์) [1], Charbonneau et al. [2] |
+| มดที่ไม่ทำงาน | งานวิจัยแมลงสังคมหลายกลุ่มรายงานว่า >50% ของมดงานว่างอยู่; ในป่าเท่ากับในห้องแล็บ | [ญาติ] | Charbonneau, Hillis & Dornhaus 2015 [3] |
+| ใครว่าง | ความขี้เกียจเป็นนิสัยประจำตัว (ตัวเดิมว่างซ้ำๆ) | [ญาติ] | Charbonneau et al. 2015 [2] |
+| มดว่างมีไว้ทำไม | เอามด 20% ที่ขยันสุดออก → มดว่างขึ้นมาทำแทนภายในสัปดาห์; เอาตัวที่ว่างสุดออก → ไม่มีใครมาแทน | [ญาติ] | Charbonneau et al. 2017 [1] |
+| กิจกรรมในรัง | ระดับกิจกรรมเฉลี่ยของแต่ละรังคงที่ตลอดสัปดาห์ (เป็นนิสัยของรัง); รังที่อดอาหาร **ลดกิจกรรมในรัง** | [Ln] | Activity cycles in ant colonies (ALTAA) [4] |
+| ป้อนปากต่อปาก: ความถี่ | ชนิดอาหาร (ซูโครส / โปรตีน / เมเลซิโทส) เปลี่ยน **จำนวนครั้ง** ที่ป้อน แต่ **ไม่เปลี่ยนความนาน** ของแต่ละครั้ง → รังคุมการแจกอาหารด้วยความถี่ | [Ln] | Buffin et al. 2011 [5] |
+| ป้อน: ความนาน | โอกาสเลิกป้อนต่อหน่วยเวลาคงที่ (ความนานเป็นแบบ exponential); ผู้ให้ที่อิ่ม → ผู้รับที่หิว ป้อนนานกว่า ⚠ | [Ln] | Buffin et al. 2011 [5] |
+| ป้อน: ปริมาณ | ต่อครั้ง ~0.9 µl (ซูโครส), ~0.5 (โปรตีน), ~0.6 (เมเลซิโทส) ไม่ต่างกันทางสถิติ ⚠ | [Ln] | สรุปของ [5] |
+| ใครให้ใครรับ | มดหาอาหารเริ่มให้ก่อน (ครั้งแรกที่ให้: มัธยฐาน ~41.6 นาที เทียบมดในรัง ~66 นาที); มดในรัง **ให้มากกว่า**มดหาอาหารเล็กน้อย (p = 0.067) | [Ln] | Quque et al. 2019 [6] |
+| อาหารกระจาย | ครึ่งหนึ่งของมดหาอาหารได้รับครั้งแรกใน ~45 นาที มดในรัง ~57 นาที (รังอด 4 วัน, ซูโครส 1 M); เร็วกว่าเครือข่ายสุ่ม ~50% | [Ln] | Quque et al. 2019 [6] |
+| เครือข่าย | เป็นลำดับชั้น: มดในรังบางตัวเป็น "คนกลาง" ระหว่างมดหาอาหารกับมดในรังตัวอื่น; มีลูกมดแล้วเครือข่ายแข็งแรงขึ้น (ตัวอ่อนต้องกิน) | [Ln] | Quque et al. 2021 [7] |
+| อาหารกระจายเร็วแค่ไหน | กระจายเสร็จภายในไม่ถึง 1 ชม. (โค้ง 1 − e^(−0.036t)) | [ญาติ] *Camponotus sanctus* | Greenwald et al. 2015 [8] |
+| ป้อนตัวอ่อน | ปริมาณต่อครั้งน้อยและเกือบคงที่ → มดคุมด้วย **ความถี่**; ตัวอ่อนที่หิวได้ป้อนถี่ขึ้น; ต้องป้อน ~8 ชม. จนอิ่ม (*Solenopsis invicta*) | [ญาติ] | Cassill & Tschinkel 1995 [9] |
+| ป้อนตัวอ่อน | ตัวอ่อนแก่ต้องการการป้อนถี่และนานกว่าตัวอ่อนเล็ก | [ญาติ] | Walsh et al. (bioRxiv 218834) [10] |
+| พี่เลี้ยงพอไหม | มด:ลูกมด ≥ 1:1 ยังป้อนทัน; ต่ำกว่า 1:1 ตัวอ่อนได้ดูแล/ป้อนน้อยลง (*S. invicta*) | [ญาติ] | Effects of colony-level attributes on larval feeding [11] |
+| พี่เลี้ยงพอไหม | มดงานมากขึ้น → ลูกมดรอดเป็นตัวเต็มวัยมากขึ้น แต่เพิ่มขึ้นน้อยลงเรื่อยๆ (20 ตัว > 5–10 ตัว; *Monomorium pharaonis*) | [ญาติ] | Baek & Kim 2026 [12] |
+| อาหารตอนเป็นตัวอ่อน | ขนาด วรรณะ และการสืบพันธุ์ของตัวเต็มวัยส่วนหนึ่งกำหนดโดยอาหารช่วงตัวอ่อน | [ญาติ] | Cassill & Tschinkel 1995 [9] |
+| ราชินีตั้งรัง | ราชินีที่ได้อาหารสม่ำเสมอเลี้ยงดักแด้/มดงานได้มากกว่า | [Ln] | Lasius niger claustral queens 2023 [13] |
+| ราชินีตั้งรัง | น้ำหนักราชินีตอนเริ่ม ↔ จำนวนลูกตอนมดงานรุ่นแรกออก และผลผลิตของรังก่อนจำศีล | [Ln] | Fjerdingstad & Keller 2004 [14] |
+| คาบลูกมด | ความเร็วในการคาบลูกมดกลับของราชินี สัมพันธ์กับมดงานรุ่นแรก และกับผลผลิตของรัง | [Ln] | Phenotypic correlation between queen and worker brood care [15] |
+| ราชินี | ฟีโรโมนราชินี 3-MeC31 (100–200 ng บนผิว และบนไข่) ลดความก้าวร้าวของมดงาน ยับยั้งรังไข่ของมดงาน | [Ln] | Holman et al. 2010, 2013 [16] |
+| ล้อมราชินี | **ไม่พบตัวเลขของมด** — ผึ้ง: 6–10 ตัว (มากกว่า 8 เมื่อราชินีอยู่นิ่ง) | [ญาติไกล] ผึ้ง | [17] |
+| แต่งตัว | ทำความสะอาดตัวเอง ~14.6% ของเวลา, เลียตัวให้กัน ~5.8%, ที่เหลือ ~79.6% (การทดลองเดียว) | [ญาติ] | Bueno et al. 2026 [18] |
+| ขุด | ปริมาตรรังและอัตราการขุดเพิ่มตามจำนวนมด; ขุดแล้วความหนาแน่นลด → ขุดน้อยลงเอง (feedback ย้อนกลับ); **ไม่พบสัดส่วนมดที่ขุด** | [Ln] | Rasse & Deneubourg 2001 [19] |
+| แบ่งงาน | *L. niger* ไม่มีวรรณะตามรูปร่าง แต่มดหาอาหารตัวใหญ่กว่ามดในรัง; แบ่งเป็น 3 กลุ่มที่โปรตีนต่างกัน; บทบาทสำคัญกว่าอายุ | [Ln] | [20] [21] |
+| แบ่งงาน | พี่เลี้ยง ~40% หาอาหาร ~30% ย้ายกลุ่มตามอายุ (*Camponotus fellah*, มาจากข่าว — ข้อเดิมข้างบน) | [ญาติ] | Mersch et al. 2013 |
+
+**ที่ยังไม่มีหลักฐาน (ต้องอนุมาน):** สัดส่วนมด *L. niger* ที่ยืนพัก, จำนวนครั้งที่ป้อนตัวอ่อนต่อชั่วโมง, ขนาดวงล้อมราชินี, สัดส่วนมดที่ขุด,
+ผลของการล้อมราชินีต่อการวางไข่
+
+### ข. ค่าที่เสนอจะใช้ในเกม (เวรทุก 30 นาทีในเกม เฉพาะมดที่อยู่ในรัง)
+| เวร | ใครได้ | สัดส่วน / จำนวนต่อรอบ | ผล | ที่มา |
+|---|---|---|---|---|
+| ยืนพัก | ทุกตัวที่ยังไม่ได้เวรอื่น; ตัวที่เกณฑ์สูง (ขี้เกียจ) ได้บ่อยกว่า และได้ซ้ำตัวเดิม | ฐาน ~40% ของมดในรัง (กลางคืน/หนาว/อิ่ม มากขึ้น; รังอด**ก็มากขึ้น** ตามหลักฐาน) | ไม่มีผล (เป็น "กองหนุน" ที่ออกหากิน/ป้องกันได้) | [ญาติ] 25–50%+ [1][2][3]; รังอดลดกิจกรรมในรัง [Ln][4]; ตัวเลข 40% [อนุมาน] |
+| ป้อนตัวอ่อน | พี่เลี้ยง (`TASK_NURSE`) ก่อน แล้วมดพักที่เกณฑ์ต่ำ | ตัวอ่อนแต่ละตัวต้องการ 1 ครั้ง/รอบ (หิว: 2); พี่เลี้ยง 1 ตัวป้อนได้ 6 ตัว/รอบ (= `larvae_per_nurse` เดิม) | ตัวอ่อนที่**ไม่ได้ป้อน**รอบนั้น: ไม่โต + หิวขึ้น (แทน `r` แบบรวมเดิม); คุณภาพอาหาร → ขนาดตัวเมื่อโต (มีอยู่แล้ว) | [ญาติ] ความถี่ [9][10], 1:1 [11]; อัตรา 6 ตัว: ค่าเกมเดิม [อนุมาน] |
+| คาบลูกมด | พี่เลี้ยง | เท่าที่การจำลองย้ายลูกมดจริง (ย้ายห้อง/วางไข่/รังไหม) | นับอย่างเดียว | [Ln] การคาบมีผลต่อผลผลิต [15]; จำนวน [อนุมาน] |
+| ป้อนน้ำหวานเพื่อน | ผู้ให้: มดที่เพิ่งขนน้ำหวานกลับ + มดในรังที่เพิ่งได้รับ (ส่งต่อเป็นทอด); ผู้รับ: มดในรังที่ energy ต่ำสุด | คู่ต่อรอบ ∝ น้ำหวานที่เข้ารังช่วงนั้น (ผู้ให้ 1 ตัวให้ได้ ~3 ตัว/รอบ) | ผู้รับ energy +0.15; น้ำหวานยังหักจากกองกลางเหมือนเดิม | [Ln] คุมด้วยความถี่ [5], มดในรังเป็นคนกลาง [7], กระจาย <1 ชม. [6][8]; ตัวเลข [อนุมาน] |
+| ล้อมราชินี | มดที่เกณฑ์ `TH_ATTEND` ต่ำสุด | 2–6 ตัว (~5% ของมดในรัง) | ไม่มีผลต่อการวางไข่ (ไม่มีหลักฐาน) — นับอย่างเดียว | [ญาติไกล] ผึ้ง 6–10 [17]; [อนุมาน] |
+| แต่งตัว | สุ่มจากมดที่เหลือ | ~15% ของมดในรัง | นับอย่างเดียว | [ญาติ] 14.6% + 5.8% [18] |
+| ขุด | ตามกฎเดิม (`diggers_wanted`) | เดิม | เดิม (ขยายรัง) | [Ln] [19] + ค่าเกมเดิม |
+| ออกนอกรัง | ไม่เปลี่ยน (หาอาหาร ป้องกัน ขนศพ) | เดิม | เดิม | — |
+
+**เป้าการจูน:** การเติบโตของรัง (`tests/year_run.gd` รังสวน + ชุดเลี้ยง หลาย seed) ต้องใกล้ v0.11.7 — ผลหลักที่เปลี่ยนคือการป้อนตัวอ่อนเป็นรายตัว
+(เดิมเป็นสัดส่วนรวม `r`) ถ้ารังโตช้าลงมาก จะปรับจำนวนตัวอ่อนที่พี่เลี้ยง 1 ตัวป้อนได้ ไม่ใช่เพิ่มอาหาร
+
+**คำถามให้ผู้ใช้เลือก:**
+1. รังที่อดอาหาร: งานวิจัย *L. niger* บอกว่า**กิจกรรมในรังลดลง** — ให้มดยืนพักมากขึ้นตอนอด ตามหลักฐาน ใช่ไหม
+2. ล้อมราชินี: ไม่มีหลักฐานว่ามีผลต่อการวางไข่ — ให้เป็นแค่ตัวนับ (ไม่มีผล) ใช่ไหม หรืออยากให้มีผลเล็กน้อย (เช่น ไม่มีใครล้อม → วางไข่ช้าลง 10%)
+3. ผู้รับน้ำหวานได้แรง (energy) แต่ energy ตอนนี้แทบไม่มีผลกับอย่างอื่น — พอไหม หรืออยากให้ energy ต่ำทำให้เดินช้า/ทำงานน้อยลงด้วย
+
+### แหล่งอ้างอิงของหัวข้อนี้
+[1] Charbonneau & Dornhaus 2015 / Charbonneau et al. 2017 (สรุปข่าว): https://www.mentalfloss.com/article/66789/study-shows-some-worker-ants-dont-work-all ,
+    https://www.futurity.org/?p=1538642 , https://www.atlasobscura.com/articles/lazy-ants-worker-reserves-colony-science , https://repository.arizona.edu/handle/10150/621287
+[2] Charbonneau D., Dornhaus A. et al. (2015) Workers 'specialized' on inactivity. Behav Ecol Sociobiol https://link.springer.com/article/10.1007/s00265-015-1958-1
+[3] Charbonneau D., Hillis N., Dornhaus A. (2015) 'Lazy' in nature: ant colony time budgets show high 'inactivity' in the field as well as in the lab. Insectes Soc https://link.springer.com/article/10.1007/s00040-014-0370-6
+[4] Activity cycles in ant colonies: worker interactions and decentralized control https://www.researchgate.net/publication/301232902
+[5] Buffin A., Mailleux A.-C., Detrain C., Deneubourg J.-L. (2011) Trophallaxis in *Lasius niger*: a variable frequency and constant duration for three food types. Insectes Soc 58:177–183
+    https://link.springer.com/article/10.1007/s00040-010-0133-y ; สรุป: https://www.academia.edu/100448203
+[6] Quque M. et al. (2019) A spatiotemporal analysis of the food dissemination process and the trophallactic network in the ant *Lasius niger*. Sci Rep https://www.nature.com/articles/s41598-019-52019-6
+[7] Quque M. et al. (2021) Hierarchical networks of food exchange in the black garden ant *Lasius niger*. Insect Sci https://onlinelibrary.wiley.com/doi/10.1111/1744-7917.12792
+[8] Greenwald E. et al. (2015) Ant trophallactic networks: simultaneous measurement of interaction patterns and food dissemination. Sci Rep https://www.nature.com/articles/srep12496
+[9] Cassill D.L., Tschinkel W.R. (1995) Allocation of liquid food to larvae via trophallaxis in colonies of the fire ant. https://www.bio.fsu.edu/~tschink/publications/1995-1.pdf
+[10] Ant nurse workers exhibit behavioral and transcriptomic signatures of specialization on larval stage. bioRxiv https://www.biorxiv.org/content/10.1101/218834.full.pdf
+[11] Effects of colony-level attributes on larval feeding in the fire ant *Solenopsis invicta*. https://link.springer.com/article/10.1007/s000400050144
+[12] Baek H.J., Kim B. (2026) Influences of pupal presence and worker number on the survival and development of pharaoh ant brood. https://www.tandfonline.com/doi/full/10.1080/19768354.2026.2657636
+[13] (2023) *Lasius niger* claustral queens fed regularly raise more pupae and workers — พบผ่านผลค้นหา ยังไม่ได้ชื่อบทความเต็ม ⚠
+[14] Fjerdingstad E.J., Keller L. (2004) Relationships between phenotype, mating behavior, and fitness of queens in the ant *Lasius niger*. Evolution 58 https://serval.unil.ch/notice/serval:BIB_3DEC95C5DA59
+[15] Phenotypic correlation between queen and worker brood care supports the role of maternal care in the evolution of eusociality https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6238135/
+[16] Holman L. et al. (2010) Identification of an ant queen pheromone regulating worker sterility https://www.lukeholman.org/publication/lasius_queen_pheromone_2010/ ;
+     Holman et al. (2013) The evolution of queen pheromones in the ant genus *Lasius* https://onlinelibrary.wiley.com/doi/full/10.1111/jeb.12162
+[17] วงล้อมราชินีผึ้ง: https://beeculture.com/queens-court/ , https://honeybee.drawwing.org/book/queen-retinue
+[18] Bueno et al. (2026) Understanding the hygienic behavioral dynamics of ants using multi-state models. Entomol Exp Appl https://onlinelibrary.wiley.com/doi/10.1111/eea.70072 ; https://arxiv.org/pdf/2402.05924
+[19] Rasse P., Deneubourg J.-L. (2001) J Insect Behav 14:433–449 https://link.springer.com/article/10.1023/A:1011163804217
+[20] Body size differences between foraging and intranidal workers of the monomorphic ant *Lasius niger* https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7411844/
+[21] Division of labour in the black garden ant (*Lasius niger*) leads to three distinct proteomes https://www.researchgate.net/publication/334081636 ; บทบาท > อายุ (Sci Rep 2023) https://doaj.org/article/cea2f747088d483dadeb4a33c9519100
+
 ## แหล่งอ้างอิง
 - Zollikofer C.P.E. (1994) Stepping patterns in ants I–III. J Exp Biol 192:95–127
 - Reinhardt L., Blickhan R. (2014) Level locomotion in wood ants: evidence for grounded running. J Exp Biol 217:2358–2370
