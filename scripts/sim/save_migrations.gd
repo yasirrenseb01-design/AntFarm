@@ -27,6 +27,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				_v7_to_v8(d)
 			8:
 				_v8_to_v9(d)
+			9:
+				_v9_to_v10(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -100,3 +102,17 @@ static func _v7_to_v8(d: Dictionary) -> void:
 static func _v8_to_v9(d: Dictionary) -> void:
 	for row in d.workers:
 		row.append("")
+
+
+## v0.11.8: duties in the nest (parts/sim_duties.gd). Every worker gets its duty and what it has done in its life, all
+## nothing yet (the ANT_FIELDS after "name": duty, partner, sweet, n_larvae, n_brood, n_mates, rest_h, dig_h, n_sugar,
+## n_prey, n_corpses, n_fights) and its task is saved now (the duties read it: worked out again at the next colony step);
+## the queen can be named; the larvae count as fed until the first duty round.
+static func _v9_to_v10(d: Dictionary) -> void:
+	for row in d.workers:
+		row.append_array([0, 0, 0.0, 0, 0, 0, 0.0, 0.0, 0, 0, 0, 0, 0])
+	d.queen["name"] = ""
+	d["queen_tended"] = true
+	d["carry_due"] = 0
+	d["unloaded"] = []
+	d["duty_rng"] = [int(d.rng_seed) ^ 0x2B992DDF]       # (DUTY_SEED: a fresh generator for the duties)

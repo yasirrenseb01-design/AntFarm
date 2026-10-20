@@ -35,7 +35,7 @@ scripts/
   game/        main.gd (จุดเริ่ม), save_store.gd, desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), title.gd (หน้าแรก + กล้องเดินชมรัง),
                single_instance.gd (เกมเดียวต่อเครื่อง: ตัวที่สองบอกตัวแรกให้ขึ้นมา, พอร์ต 47815), parts/ (main_base, main_camera)
   dev/         dev_tools.gd (--shot, --selftest), ตัวเลือกบรรทัดคำสั่งอยู่หัว main.gd
-  sim/         simulation.gd + parts/ (sim_base, sim_foragers, sim_enemies, sim_colony),
+  sim/         simulation.gd + parts/ (sim_state, sim_base, sim_foragers, sim_enemies, sim_colony, sim_duties),
                ant.gd, climate.gd, nest_volume.gd (+ parts/nest_voxels, nest_chambers), pheromone_field.gd, species/
   view/
     common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset)
@@ -60,7 +60,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 ไฟล์ชั้นบนสุดอยู่ที่ path เดิม คนอื่น preload ไฟล์นี้
 | ระบบ | ลำดับชั้น (ล่าง → บน) |
 |---|---|
-| การจำลอง | `sim_base` (สถานะ, setup, เวลา, การกระทำของผู้เล่น) ← `sim_foragers` ← `sim_enemies` ← `sim_colony` ← `simulation` (step, เซฟ) |
+| การจำลอง | `sim_state` (ค่าคงที่ ตัวแปร รูปแบบเซฟ; แยก v0.11.8) ← `sim_base` (setup, เวลา, การกระทำของผู้เล่น, ชื่อ) ← `sim_foragers` ← `sim_enemies` ← `sim_colony` ← `sim_duties` (เวรในรังทุกครึ่งชั่วโมง, `top_ants`, `duty_of`; ใหม่ v0.11.8) ← `simulation` (step, เซฟ) |
 | รัง (การจำลอง) | `nest_voxels` (ช่องดิน, ขุดทั้งห้อง, ความหนาแน่นให้ mesher, เซฟ) ← `nest_chambers` (แผนห้อง) ← `nest_volume` (มดขุด) — แยก v0.8.5 |
 | รัง 3 มิติ | `nest_scene` ← `nest_camera` ← `nest_brood` ← `nest_piles` (กองลูกมด: ของแต่ละชิ้นอยู่ที่เดิม; แยก v0.8.31) ← `nest_lifecycle` ← `nest_bodies` (เดินตามทาง, ตัวกันชน; แยก v0.8.5) ← `nest_rest` (ที่หยุดพัก, ตัวพ้นดิน/ผนัง, ก้าวหลบเมื่อถูกเบียด, ผูกมดที่วาดกับมดงานจริง; แยก v0.8.55) ← `nest_contact` (มองข้างหน้าแล้วชะลอ/หยุด, ปีนข้ามมดและลูกมดจากรูปทรงจริง, หันหนีผนังและขอบที่ไม่มีพื้น, ดันออกจากผนังอุโมงค์; ใหม่ v0.8.63) ← `nest_mates` ← `nest_view` (setup, refresh, input) |
 | โมเดลของในกล่อง | `mesh_kit_base` (เครื่องมือสร้าง, asset, หิน/ใบไม้/หญ้า/ต้นถั่ว) ← `mesh_kit` (เพลี้ย, จิ้งหรีด, ลูกมด, แมลงวัน, แมงมุม) — แยก v0.8.5 |
@@ -108,7 +108,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 
 ## เซฟ
 - `scripts/game/save_store.gd`: 3 ช่อง (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
-- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_base.gd` (ตอนนี้ 9)
+- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 10)
 - **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
   และ**ไม่บันทึกทับ**; อ่านไม่ได้ → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (บอกผู้เล่นทุกกรณี)

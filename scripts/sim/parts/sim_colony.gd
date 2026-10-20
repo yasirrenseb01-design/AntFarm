@@ -110,12 +110,9 @@ func _colony(dt: float) -> void:
 			a.task = Ant.TASK_RESERVE
 	# the reserve, eagerest foragers last (pop_back takes them first)
 	idle.sort_custom(func(x, y): return x.threshold(Ant.TH_FORAGE) > y.threshold(Ant.TH_FORAGE) or (x.threshold(Ant.TH_FORAGE) == y.threshold(Ant.TH_FORAGE) and x.id > y.id))
-	# Older ants resting inside still help with brood care when nurses are short.
+	# (who feeds which larva is worked out every half hour by the duties, parts/sim_duties.gd; the older ants resting
+	# inside help when nurses are short, and a founding queen feeds her first larvae herself)
 	var lpn: float = sp["larvae_per_nurse"]
-	var nurse_cap: float = nurses * lpn + idle.size() * lpn * 0.8 + callow * 1.0
-	if queen.alive and workers.size() < 15:
-		# a founding queen licks and feeds her first larvae herself, handing over as workers appear
-		nurse_cap += 15.0 * (1.0 - workers.size() / 15.0)
 	var care_short: bool = larvae.size() > nurses * lpn + callow
 
 	# Undertakers carry nestmates that died inside out to the refuse pile.
@@ -191,7 +188,7 @@ func _colony(dt: float) -> void:
 	_metabolism(dt)
 	_moisture(dt)
 	_queen(dt)
-	_brood(dt, nurse_cap)
+	_brood(dt)
 	_outworld(dt)
 
 
@@ -318,6 +315,8 @@ func _queen(dt: float) -> void:
 		queen.alive = false
 		var why := T.cause_starvation if queen.starve > sp["starve_days_queen"] else T.cause_thirst
 		_log(T.queen_died % why, "bad")
+		if String(queen.get("name", "")) != "":
+			_log(T.named_queen_died % [queen.name, why], "named")       # (the HUD: a chime, a banner)
 		return
 	if starving:
 		return
@@ -345,6 +344,8 @@ func _queen(dt: float) -> void:
 		var upkeep: float = 7.0 * (mouths * sp["sugar_worker"] + sp["sugar_queen"])     # a week, at full warmth
 		var earning := sugar_income / upkeep
 		rate *= clampf((earning - 1.0) / 0.5, 0.05, 1.0)
+	if not queen_tended:
+		rate *= UNTENDED_LAYING          # nobody attended her this half hour (parts/sim_duties.gd)
 	egg_acc += rate * dt
 	while egg_acc >= 1.0:
 		egg_acc -= 1.0
@@ -353,7 +354,7 @@ func _queen(dt: float) -> void:
 		_event("egg")
 
 
-func _brood(dt: float, nurse_cap: float) -> void:
+func _brood(dt: float) -> void:
 	for i in range(eggs.size() - 1, -1, -1):
 		eggs[i].p += dt / sp["egg_days"] * dev
 		if eggs[i].p >= 1.0:
@@ -362,24 +363,31 @@ func _brood(dt: float, nurse_cap: float) -> void:
 
 	var n := larvae.size()
 	if n > 0:
-		# larvae eat to grow: one held still by the cold barely feeds
-		var need: float = n * sp["protein_larva"] * dt * clampf(dev, 0.1, 1.0)
+		# larvae eat to grow, each as far as it was fed in the last duty round ("f"; parts/sim_duties.gd): one held still by
+		# the cold barely feeds
+		var each: float = sp["protein_larva"] * dt * clampf(dev, 0.1, 1.0)
+		var cared := 0.0
+		for l in larvae:
+			cared += float(l.get("f", 1.0))
+		var need := each * cared
 		if protein < need and queen.reserve > QUEEN_KEEP and workers.size() < 5:
 			# the founding queen feeds her larvae from her own reserves (trophic eggs, saliva), but
 			# keeps back enough body fat to see herself through the winter
 			var give := minf(need - protein + 0.01, queen.reserve - QUEEN_KEEP)
 			queen.reserve -= give
 			protein += give
-		var r := minf(1.0, minf(nurse_cap / n, protein / need))
-		larva_fed = r
+		var r := minf(1.0, protein / need) if need > 0.0 else 1.0       # (the protein there is, shared out)
+		larva_fed = r * cared / n
 		protein = maxf(0.0, protein - need * r)
 		var hungriest := -1
 		var worst: float = sp["larva_starve_days"]
 		# late in the year the last larvae stop short of pupating and overwinter as larvae (diapause)
 		var diapause := winding_down() or fridge_on
 		var cold := clampf(dev * 2.0, 0.0, 1.0)          # a larva held still by the cold does not go hungry
+		var r_all := r
 		for i in range(n - 1, -1, -1):
 			var l = larvae[i]
+			r = r_all * float(l.get("f", 1.0))      # (a larva nobody fed this half hour: no growth, hungrier)
 			l.p += dt / sp["larva_days"] * dev * r
 			if diapause:
 				l.p = minf(l.p, 0.95)

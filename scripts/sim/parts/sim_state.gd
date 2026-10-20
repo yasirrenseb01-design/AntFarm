@@ -49,7 +49,7 @@ var eggs: Array = []
 var larvae: Array = []
 var pupae: Array = []
 var water := 1.0               # the nest's water tank (keeper's formicarium), 0..1: keeps the nest damp while it lasts
-var queen := {"alive": true, "starve": 0.0, "reserve": 0.0}   # reserve: fat body + dissolved wing muscle
+var queen := {"alive": true, "starve": 0.0, "reserve": 0.0, "name": ""}   # reserve: fat body + dissolved wing muscle; name: the keeper's
 var sugar := 6.0
 var sugar_income := 0.0             # sugar brought home, averaged over about a week (units per week)
 var sugar_spend := 0.0              # sugar eaten by the colony, averaged the same way
@@ -108,10 +108,22 @@ var _log_food := log(FOOD_EVAP)
 var _log_rain := log(RAIN_EVAP)
 var _log_alarm := log(ALARM_EVAP)
 
+# duties in the nest (parts/sim_duties.gd; saved)
+## The duties draw on their own generator, seeded from the colony's (deterministic, saved): drawn from sim.rng, every
+## later draw of the colony moved on and each colony grew as another one would - more or less at random (5 seeds: the
+## same colony 137-219 workers at day 420 against 159-259 with v0.11.7; on its own generator seed 1 grew exactly as before)
+var duty_rng := RandomNumberGenerator.new()
+const DUTY_SEED := 0x2B992DDF                  # (mixed into the colony's seed for the duties' generator)
+const UNTENDED_LAYING := 0.9             # a queen nobody attended lays this much (the keeper's choice: no evidence either way)
+var queen_tended := true                 # someone attended the queen this half hour (none: she lays UNTENDED_LAYING)
+var _carry_due := 0                      # brood to carry since the last duty round (eggs laid, larvae pupating, workers out)
+var _unloaded: Array = []                # foragers (ids) who brought honeydew home since the last duty round
+
 
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 9              # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 10             # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
-	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt", "name"]
+	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt", "name",
+	"duty", "partner", "sweet", "n_larvae", "n_brood", "n_mates", "rest_h", "dig_h", "n_sugar", "n_prey", "n_corpses", "n_fights", "task"]

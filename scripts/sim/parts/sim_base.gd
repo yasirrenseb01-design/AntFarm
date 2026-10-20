@@ -10,6 +10,7 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 		rng.seed = seed_value
 	else:
 		rng.randomize()
+	duty_rng.seed = rng.seed ^ DUTY_SEED
 	gw = int(WORLD.x / CELL)
 	gh = int(WORLD.y / CELL)
 	home = Field.new(gw, gh, CELL)
@@ -389,6 +390,14 @@ func name_ant(id: int, new_name: String) -> bool:
 	return false
 
 
+## The keeper names the queen ("" takes it away): words only, like name_ant.
+func name_queen(new_name: String) -> void:
+	var nm := new_name.strip_edges().left(NAME_MAX)
+	if nm != String(queen.get("name", "")):
+		_log(T.queen_named % nm if nm != "" else T.queen_unnamed % queen.get("name", ""))
+	queen["name"] = nm
+
+
 const NAME_MAX := 24            # characters in an ant's name
 
 
@@ -401,6 +410,8 @@ func blocked(p: Vector2) -> bool:
 # ---------------------------------------------------------------- log
 
 func _event(kind: String, size := 1.0) -> void:
+	if kind in ["egg", "pupate", "eclose"]:
+		_carry_due += 1                  # (brood to carry: the next duty round gives it to nurses)
 	event_seq += 1
 	events.append({"n": event_seq, "k": kind, "s": size})
 	if events.size() > 24:

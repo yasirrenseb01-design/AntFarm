@@ -61,3 +61,6 @@ const ant_unnamed := "เอาชื่อ \"%s\" ออกจากมดง�
 const named_died := "%s ตายแล้ว — %s (อายุ %d วัน)"
 const death_causes := {"starve": "อดอาหาร", "thirst": "ขาดน้ำ", "old": "แก่ตาย", "out": "หายไปตอนออกหากิน",
 	"enemy": "ถูกศัตรูกัด", "other": "ไม่ทราบสาเหตุ"}
+const queen_named := "ตั้งชื่อราชินีว่า \"%s\""
+const queen_unnamed := "เอาชื่อ \"%s\" ออกจากราชินี"
+const named_queen_died := "ราชินี %s ตายแล้ว — %s"

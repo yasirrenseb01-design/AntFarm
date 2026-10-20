@@ -150,6 +150,8 @@ func _release(c: Dictionary, clinging: Array) -> void:
 	for a in outside:
 		if a.foe == c.id:
 			a.foe = 0
+			if not a.dead:
+				a.n_fights += 1          # came through a fight with it alive
 
 
 ## The enemy bites an ant: often fatal, otherwise it limps on maimed (a leg or antenna lost).

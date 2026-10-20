@@ -151,6 +151,7 @@ func _step_ant(a: Ant) -> void:
 			corpses.append({"pos": pos + Vector2(rng.randf_range(-6, 6), rng.randf_range(-6, 6)),
 				"ang": rng.randf() * TAU, "age": 0.0})
 			a.carry = Ant.NONE
+			a.n_corpses += 1
 			a.state = Ant.HOME
 			a.since = 0
 	else:
@@ -354,11 +355,15 @@ func _arrive(a: Ant) -> void:
 		if humidity < 0.8:
 			humidity = minf(0.8, humidity + 0.004)  # honeydew is mostly water (the ants get rid of any excess)
 		stats.sugar_in += 1
+		a.n_sugar += 1
+		if _unloaded.size() < 200:
+			_unloaded.append(a.id)       # (it feeds a nestmate at the entrance: the next duty round, parts/sim_duties.gd)
 	elif a.carry == Ant.PROTEIN:
 		protein = minf(protein_cap(), protein + 1.0)
 		if humidity < 0.8:
 			humidity = minf(0.8, humidity + 0.002)
 		stats.protein_in += 1
+		a.n_prey += 1
 	a.brought = a.carry
 	a.carry = Ant.NONE
 	if had and activity > 0.2:

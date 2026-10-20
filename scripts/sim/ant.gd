@@ -14,7 +14,7 @@ const WORKER := 0
 const GYNE := 1
 const MALE := 2
 
-# what a worker in the nest is doing (set each colony step; not saved — worked out again after loading)
+# what a worker in the nest is doing (set each colony step; saved since v0.11.8 for the duties)
 const TASK_OUT := 0        # outside (foraging, defending, carrying out the dead, hauling)
 const TASK_CALLOW := 1     # just eclosed, still pale
 const TASK_NURSE := 2      # young: tends the brood and the queen
@@ -28,6 +28,18 @@ const TH_UNDERTAKE := 2
 const TH_DEFEND := 3
 const TH_DIG := 4
 const TH_ATTEND := 5       # drawn to the queen (her retinue, in the nest view)
+
+# what a worker inside is doing this half hour (its duty, set by parts/sim_duties.gd from the colony's needs; saved)
+const D_OUT := 0           # outside (foraging, defending, carrying out the dead, hauling)
+const D_REST := 1          # standing still: the colony's reserve
+const D_FEED_LARVAE := 2
+const D_CARRY := 3         # carrying brood (an egg to the pile, a larva to spin, an empty cocoon away)
+const D_FEED_MATE := 4     # giving honeydew mouth to mouth (partner: who gets it)
+const D_FED := 5           # being given honeydew (partner: who gives it)
+const D_QUEEN := 6         # attending the queen
+const D_GROOM := 7         # cleaning itself or a nestmate
+const D_DIG := 8
+const D_IDLE := 9          # walking about the nest
 
 const NONE := 0
 const SUGAR := 1
@@ -53,7 +65,7 @@ var slide := 1.0        # which way it turns to follow a wall (+1 left, -1 right
 var busy := 0           # ticks left standing still doing something (eating, milking aphids, meeting)
 var act := 0            # what it is doing for the view: 0 walk, 2 bite/cut, 3 antennate, 9 milk aphids, 10 drink
 var meet_cd := 0         # ticks before it will stop for another encounter
-var task := TASK_OUT     # (see TASK_*)
+var task := TASK_OUT     # (see TASK_*; saved since v0.11.8: the duties read it)
 var came_in := -1000000  # tick it last came back into the nest (the view walks it in from the entrance)
 var brought := 0         # (view only, not saved) what it last brought in: SUGAR shows as a swollen gaster inside
 var turn_after := false  # turn round once the current task is done
@@ -62,6 +74,19 @@ var foe := 0            # id of the enemy it is fighting (sim.creatures), 0 = no
 var hurt := 0.0          # 0..1 injuries from enemy bites (a lost leg or antenna); slows it for good
 var dead := false
 var name := ""            # what the keeper calls it ("" = no name; saved, never read by the simulation)
+var duty := D_OUT        # what it does this half hour inside (D_*; parts/sim_duties.gd)
+var partner := 0         # who it gives honeydew to / gets it from (worker id), 0 = nobody
+var sweet := 0.0         # honeydew in its crop to pass on, 0..1 (fills when it brings sugar home or is given some)
+# what it has done in its life (the star ants panel; never read by the simulation)
+var n_larvae := 0        # times it fed a larva
+var n_brood := 0         # eggs, larvae and cocoons carried
+var n_mates := 0         # nestmates it fed mouth to mouth
+var rest_h := 0.0        # hours standing still
+var dig_h := 0.0         # hours digging
+var n_sugar := 0         # loads of honeydew brought home
+var n_prey := 0          # pieces of prey brought home
+var n_corpses := 0       # dead nestmates carried out
+var n_fights := 0        # fights with an enemy it came through alive
 
 # view-only smoothing state (the simulation never reads these)
 var vpos := Vector2(INF, INF)

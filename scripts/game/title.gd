@@ -270,9 +270,10 @@ func _process(delta: float) -> void:
 			_next_shot()                       # (it went in or out, or died: on to the next shot)
 
 
-## Ants with a name the keeper gave them (EA3b; none before that).
+## Ants with a name the keeper gave them (EA3b; none before that) - the queen first ("queen") when she has one.
 func _named() -> Array:
-	return main.sim.workers.filter(func(w): return String(w.get("name") if w.get("name") != null else "") != "")
+	var out: Array = ["queen"] if main.sim.queen.alive and String(main.sim.queen.get("name", "")) != "" else []
+	return out + main.sim.workers.filter(func(w): return String(w.get("name") if w.get("name") != null else "") != "")
 
 
 func _next_shot() -> void:
@@ -282,7 +283,10 @@ func _next_shot() -> void:
 	_named_turn = not _named_turn and not named.is_empty()        # every other shot a named ant, when there are some
 	if _named_turn:
 		_named_i = (_named_i + 1) % named.size()
-		if _watch(named[_named_i], String(named[_named_i].get("name"))):
+		if named[_named_i] is String:
+			if _queen_shot(String(main.sim.queen.name)):        # (the named queen)
+				return
+		elif _watch(named[_named_i], String(named[_named_i].get("name"))):
 			return
 	for tries in 5:
 		_shot = (_shot + 1) % 5
@@ -309,16 +313,7 @@ func _take(i: int) -> bool:
 				return false
 			return _watch(out[_rng.randi() % out.size()], "มดงานออกหากิน")
 		2:
-			if not s.queen.alive:
-				return false
-			_set_view("nest")
-			var q: Vector3 = nv.queen_pos()
-			if q == Vector3.INF:
-				return false
-			nv.pitch_t = 0.45
-			nv.aim_at(q, 22.0)
-			_caption.text = "ราชินี"
-			return true
+			return _queen_shot("")
 		3:
 			_set_view("nest")
 			for kind in (["larvae", "pupae", "eggs"] if _rng.randf() < 0.5 else ["pupae", "larvae", "eggs"]):
@@ -338,6 +333,21 @@ func _take(i: int) -> bool:
 
 
 ## Rides along with one ant, in whichever view it is in.
+## The queen in the nest (caption: her name, if the keeper gave her one); false if she is dead or not placed yet.
+func _queen_shot(qname: String) -> bool:
+	var nv = main.nest_view
+	if not main.sim.queen.alive:
+		return false
+	_set_view("nest")
+	var q: Vector3 = nv.queen_pos()
+	if q == Vector3.INF:
+		return false
+	nv.pitch_t = 0.45
+	nv.aim_at(q, 22.0)
+	_caption.text = "ราชินี" if qname == "" else "ราชินี \"%s\"" % qname
+	return true
+
+
 func _watch(w, caption: String) -> bool:
 	var out: bool = main.sim.outside.has(w)
 	_set_view("outworld" if out else "nest")

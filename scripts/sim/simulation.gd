@@ -25,6 +25,8 @@ func step() -> void:
 	var t0 := Time.get_ticks_usec()
 	if tick % COLONY_EVERY == 0:
 		_colony(float(COLONY_EVERY) / TPD)
+	if tick % DUTY_EVERY == 0:
+		_duties()
 	if tick % NestVolume.STEP_EVERY == 0:
 		var tn := Time.get_ticks_usec()
 		nest.step(tick, diggers_wanted, target_air(), humidity)
@@ -89,6 +91,7 @@ func to_dict() -> Dictionary:
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
 		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "water": water, "mold": mold, "heater": heater, "enemies": enemies, "enemy_rate": enemy_rate,
 		"creatures": creatures, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
+		"queen_tended": queen_tended, "carry_due": _carry_due, "unloaded": _unloaded, "duty_rng": [duty_rng.seed, duty_rng.state],
 		"history": history, "log": log_entries, "warned": _warned, "next_id": _next_id,
 		"cannibal_cd": _cannibal_cd, "recruits": _recruits,
 		# values the colony tick derives but foragers read in between
@@ -158,6 +161,12 @@ func from_dict(d: Dictionary) -> void:
 	enemy_rate = d.enemy_rate
 	creatures = d.creatures
 	corpses_inside = d.corpses_inside
+	queen_tended = d.queen_tended
+	_carry_due = d.carry_due
+	_unloaded = d.unloaded
+	duty_rng.seed = d.duty_rng[0]
+	if d.duty_rng.size() > 1:
+		duty_rng.state = d.duty_rng[1]
 	egg_acc = d.egg_acc
 	stats = d.stats
 	history = d.history
