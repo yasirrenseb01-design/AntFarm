@@ -8,6 +8,7 @@ func _build_top(root: Control) -> void:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(14, 12)
 	root.add_child(panel)
+	_top = panel
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 20)
 	panel.add_child(row)
@@ -177,6 +178,7 @@ func _build_camera_pad(root: Control) -> void:
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	root.add_child(panel)
+	_cam_pad = panel
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 6)
 	panel.add_child(col)

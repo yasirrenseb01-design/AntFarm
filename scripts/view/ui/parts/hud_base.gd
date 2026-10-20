@@ -68,6 +68,10 @@ var _log_dirty := true
 var _view_btns := {}
 var _cam_3d: Array = []          # rotate buttons: both 3D views
 var _cam_out: Array = []
+var _top: PanelContainer         # the top bar
+var _side: PanelContainer        # the side panel (folds away: set_side_open)
+var _side_tab: Button            # what is left of it folded: a tab to fold it out again
+var _cam_pad: PanelContainer     # the camera buttons (move right while the side panel is folded)
 
 
 # ---------------------------------------------------------------- theme

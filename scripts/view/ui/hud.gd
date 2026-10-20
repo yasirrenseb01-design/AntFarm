@@ -74,6 +74,7 @@ func refresh(delta: float) -> void:
 	_frame += 1
 	if _frame == 2:
 		_fps_label.visible = bool(settings.get("show_fps", false))
+		set_side_open(bool(settings.get("side_open", not _crowded())), false)     # (the top bar has its size by now)
 		# background music, at the keeper's volume (not in test shots and runs)
 		var testing := Array(OS.get_cmdline_user_args()).any(func(a): return a.begins_with("--shot") or a.begins_with("--selftest"))
 		if not testing:

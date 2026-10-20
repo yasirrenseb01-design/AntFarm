@@ -24,6 +24,7 @@ const FLUON_BAND := 12.0          # the slippery band painted under the rim (~1.
 const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.6, 0.0))   # in the mandibles of a raised head (shader act 8)
 const THROWN_S := 1.6                # seconds: thrown off an enemy, on its back, righted again
 const SIDE_PANEL_PX := 364.0         # the HUD's side panel covers the right of the window
+var side_px := SIDE_PANEL_PX         # ... unless it is folded away (0; the HUD sets it)
 
 var sim
 var ground                           # ground_data.gd: textures, pheromone image, scenery and the keeper's tool

@@ -12,11 +12,35 @@ func _build_panel(root: Control) -> void:
 	panel.offset_top = 12
 	panel.offset_bottom = -12
 	root.add_child(panel)
+	_side = panel
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
 	panel.add_child(col)
+	# folded away, a tab is left at the right edge to bring it back (on a narrow window it covered the top bar's buttons)
+	var fold := _button("พับ ›", false)
+	fold.tooltip_text = "พับแผงสถานะเก็บ (ดูฉากได้กว้างขึ้น)"
+	fold.pressed.connect(func(): set_side_open(false))
+	_side_tab = _button("‹ สถานะรัง", false)
+	_side_tab.tooltip_text = "เปิดแผงสถานะรัง บันทึก และกราฟประชากร"
+	_side_tab.anchor_left = 1.0
+	_side_tab.anchor_right = 1.0
+	_side_tab.offset_right = -12
+	_side_tab.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_side_tab.visible = false
+	_side_tab.pressed.connect(func(): set_side_open(true))
+	root.add_child(_side_tab)
+	root.get_viewport().size_changed.connect(_layout_side)
 
 	var st := _section(col, "สถานะรัง")
+	var head: Control = st.get_child(0)          # (the section's title, with the fold button beside it)
+	st.remove_child(head)
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var head_row := HBoxContainer.new()
+	head_row.add_child(head)
+	head_row.add_child(fold)
+	st.add_child(head_row)
+	st.move_child(head_row, 0)
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 10)
@@ -246,3 +270,28 @@ func _draw_chart() -> void:
 		c.draw_circle(line[line.size() - 1], 3.0, series[1])
 	c.draw_string(font, Vector2(left, h), "วันที่ %d" % maxi(1, sim.day() - n + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MUTED)
 	c.draw_string(font, Vector2(w - 60, h), "วันนี้", HORIZONTAL_ALIGNMENT_RIGHT, 60, 10, MUTED)
+
+
+## The side panel folded away or out (kept in the settings; the first time folded on a window too narrow for both it
+## and the top bar). Folded, the outworld's camera centres on the whole window and the camera buttons move right.
+func set_side_open(open: bool, keep := true) -> void:
+	_side.visible = open
+	_side_tab.visible = not open
+	_cam_pad.offset_right = (-PANEL_W - 14.0) if open else -14.0
+	if outworld:
+		outworld.side_px = outworld.SIDE_PANEL_PX if open else 0.0
+	if keep:
+		settings["side_open"] = open
+		settings_changed.emit(settings)
+	_layout_side()
+
+
+## Whether the top bar runs in under the side panel (a window narrower than ~1700 px).
+func _crowded() -> bool:
+	return _top.position.x + _top.size.x + 10.0 > _side.get_viewport_rect().size.x - PANEL_W
+
+
+## Open on a crowded window, the side panel starts below the top bar, so no button is under it.
+func _layout_side() -> void:
+	_side.offset_top = (_top.position.y + _top.size.y + 10.0) if _crowded() else 12.0
+	_side_tab.offset_top = _side.offset_top

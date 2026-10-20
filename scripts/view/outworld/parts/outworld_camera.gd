@@ -25,7 +25,7 @@ func snap_camera() -> void:
 
 func _fit_dist() -> float:
 	var vp := get_viewport().get_visible_rect().size
-	var area_w := maxf(200.0, vp.x - SIDE_PANEL_PX)
+	var area_w := maxf(200.0, vp.x - side_px)
 	var tanh := tan(deg_to_rad(_cam.fov * 0.5))
 	var by_w: float = sim.WORLD.x * U * 1.06 / area_w * vp.y / (2.0 * tanh)
 	var by_h: float = sim.WORLD.y * U * 1.1 * sin(pitch_t) / (2.0 * tanh) + 40.0
@@ -123,7 +123,7 @@ func _update_camera() -> void:
 	_cam.look_at(target, Vector3.UP if pitch < 1.55 else _forward())
 	# keep the point of interest in the middle of the area left of the side panel
 	var vp := get_viewport().get_visible_rect().size
-	_cam.h_offset = SIDE_PANEL_PX * 0.5 * 2.0 * cam_dist * tan(deg_to_rad(_cam.fov * 0.5)) / vp.y
+	_cam.h_offset = side_px * 0.5 * 2.0 * cam_dist * tan(deg_to_rad(_cam.fov * 0.5)) / vp.y
 
 
 ## Point on the ground under a screen position (INF if the ray misses).
