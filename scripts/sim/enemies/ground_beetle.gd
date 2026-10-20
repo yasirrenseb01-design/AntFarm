@@ -16,7 +16,7 @@ const STATS := {
 	"armor": 0.7,       # thick, smooth cuticle: little purchase for mandibles or acid
 	"r": 10.0,          # px: ants grab its legs and antennae round its body
 	"hold": 7,
-	"pin": 8,           # strong: hard to hold still
+	"pin": 16,          # strong: a full load of 7 ants only halves its pace (8: they held it, and killed 5 of 8, v0.11.1)
 	"flee_at": 0.8,     # harried by a mob it soon gives up and leaves
 	"speed": 1.0,       # px per tick: a fast runner
 	"bite": 0.015,
@@ -25,7 +25,7 @@ const STATS := {
 	"spray": 0.005,     # chance per tick, with ants on it, of a defensive spray that drops them all
 	"carcass": "ground_beetle_dead",
 	"night": true,
-	"rate": 0.18,       # chance per day of one turning up (counted over the night only)
+	"rate": 0.05,       # chance per day of one turning up (counted over the night only; v0.11.2: was 0.18)
 }
 
 
@@ -69,12 +69,9 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var burst := 1.0 if fmod(c.phase, 9.0) < 7.0 or leaving else 0.15
 	var np: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.speed * free * burst
 	var world: Vector2 = sim.WORLD
-	# walls and stones turn it once it is in. blocked() counts the 3 px band along the edge as wall, so judged where it
-	# steps a slow enemy coming in turns back there: wild spiders and beetles have not come in since v0.8.25. One the
-	# keeper lets in is judged where it is; wild ones keep the old rule until their rates are balanced again (PART EA4,
-	# docs/roadmap/BACKLOG.md) - with it fixed a lone wild colony of 14 was held at ~11-16 workers all its first year.
-	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos) if c.get("released", false) \
-		else (np.x > 0 and np.y > 0 and np.x < world.x and np.y < world.y)
+	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band
+	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
+	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos)
 	if not leaving and inside and sim.blocked(np):
 		c.ang += 1.8
 	else:

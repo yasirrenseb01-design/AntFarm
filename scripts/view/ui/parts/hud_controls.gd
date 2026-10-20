@@ -156,14 +156,6 @@ func _build_tools(root: Control) -> void:
 		sim._log(T.fridge_in if on else T.fridge_out))
 	cold.visible = sim.scenario == "keeper"      # outdoors winter comes by itself
 	row.add_child(cold)
-	var enemy := _button("ศัตรูธรรมชาติ", true)
-	enemy.button_pressed = sim.enemies
-	enemy.toggled.connect(func(on):
-		sim.enemies = on
-		if not on:
-			sim.remove_enemies())
-	row.add_child(enemy)
-	_surface_tools.append(enemy)
 	_hint = _label("", 12, MUTED)
 	_hint.anchor_top = 1.0
 	_hint.anchor_bottom = 1.0

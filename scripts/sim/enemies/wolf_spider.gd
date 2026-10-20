@@ -24,7 +24,7 @@ const STATS := {
 	"shake": 0.0016,    # chance per tick, per clinging ant, to throw one off
 	"carcass": "wolf_spider_dead",
 	"night": false,     # hunts by day as well
-	"rate": 0.25,       # chance per day of one wandering in
+	"rate": 0.07,       # chance per day of one wandering in (v0.11.2: 0.25 came every ~4 days once it could come in at all)
 }
 
 
@@ -68,12 +68,9 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	s.ang += wrapf(target_ang - s.ang, -PI, PI) * 0.08
 	var np: Vector2 = s.pos + Vector2.from_angle(s.ang) * STATS.speed * free * (1.5 if s.get("fleeing", false) else 1.0)
 	var world: Vector2 = sim.WORLD
-	# walls and stones turn it once it is in. blocked() counts the 3 px band along the edge as wall, so judged where it
-	# steps a slow enemy coming in turns back there: wild spiders and beetles have not come in since v0.8.25. One the
-	# keeper lets in is judged where it is; wild ones keep the old rule until their rates are balanced again (PART EA4,
-	# docs/roadmap/BACKLOG.md) - with it fixed a lone wild colony of 14 was held at ~11-16 workers all its first year.
-	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(s.pos) if s.get("released", false) \
-		else (np.x > 0 and np.y > 0 and np.x < world.x and np.y < world.y)
+	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band
+	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
+	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(s.pos)
 	if not leaving and inside and sim.blocked(np):
 		s.ang += 2.0
 	else:

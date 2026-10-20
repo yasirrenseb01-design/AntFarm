@@ -23,6 +23,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				_v5_to_v6(d)
 			6:
 				pass        # v0.8.20: ants may be hauling prey (state DRAG); nothing in an older save changes
+			7:
+				_v7_to_v8(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -84,3 +86,9 @@ static func _v4_to_v5(d: Dictionary) -> void:
 static func _v5_to_v6(d: Dictionary) -> void:
 	d.stats["brood_dead"] = 0
 	d.stats["dead_by"] = {"other": int(d.stats.dead)}
+
+
+## v0.11.2: how often natural enemies come is the keeper's choice (enemy_rate, x each kind's rate). An older colony keeps
+## what it had: the usual rate, or none where natural enemies were off (enemies stays the on/off it was).
+static func _v7_to_v8(d: Dictionary) -> void:
+	d["enemy_rate"] = 1.0 if d.enemies else 0.0

@@ -73,6 +73,8 @@ func _ready() -> void:
 		var start: int = int(_opts.get("workers", "14")) if parts[1] == "young" else 0
 		var scen: String = parts[2] if parts.size() > 2 else String(_opts.get("scenario", "keeper"))
 		sim.setup(int(_opts.get("seed", "0")), start, parts[0] == "glass", scen)
+		if parts.size() > 3:
+			sim.set_enemy_rate(float(parts[3]))            # (the keeper's choice in the new-colony window)
 	sim.ant_substep = int(_opts.get("substep", "1"))
 	if _opts.has("selftest"):
 		_selftest(int(_opts["selftest"]), _opts.has("autokeep"))

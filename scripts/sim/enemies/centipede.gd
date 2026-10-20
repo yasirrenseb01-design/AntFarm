@@ -28,7 +28,7 @@ const STATS := {
 	"shake": 0.002,     # writhes free
 	"carcass": "centipede_dead",
 	"night": true,      # only comes out in the dark, leaves at dawn
-	"rate": 0.3,        # common in gardens (counted over the night only)
+	"rate": 0.12,       # common in gardens (counted over the night only; v0.11.2: was 0.3)
 }
 
 
@@ -73,12 +73,9 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.ang += wrapf(target_ang - c.ang, -PI, PI) * 0.06
 	var np: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.speed * free * (1.3 if leaving else 1.0)
 	var world: Vector2 = sim.WORLD
-	# walls and stones turn it once it is in. blocked() counts the 3 px band along the edge as wall, so judged where it
-	# steps a slow enemy coming in turns back there: wild spiders and beetles have not come in since v0.8.25. One the
-	# keeper lets in is judged where it is; wild ones keep the old rule until their rates are balanced again (PART EA4,
-	# docs/roadmap/BACKLOG.md) - with it fixed a lone wild colony of 14 was held at ~11-16 workers all its first year.
-	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos) if c.get("released", false) \
-		else (np.x > 0 and np.y > 0 and np.x < world.x and np.y < world.y)
+	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band
+	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
+	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos)
 	if not leaving and inside and sim.blocked(np + Vector2.from_angle(c.ang) * STATS.length * 0.5):
 		c.ang += 1.6
 	else:

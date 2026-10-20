@@ -119,10 +119,62 @@ func open_colonies() -> void:
 	_colonies.popup_centered()
 
 
+## A slider for how often natural enemies come (sim.enemy_rate: 0 - 300% of the usual), saying about how many days apart
+## that is - in the new-colony window and the enemy panel.
+class EnemyRate extends VBoxContainer:
+	signal changed(rate: float)
+	var _hud
+	var _slider: HSlider
+	var _text: Label
+	var _scen := "wild"
+
+	func _init(hud, rate: float, scen: String) -> void:
+		_hud = hud
+		add_theme_constant_override("separation", 2)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		row.add_child(hud._label("ไม่มี", 12, hud.MUTED))
+		_slider = HSlider.new()
+		_slider.min_value = 0.0
+		_slider.max_value = 3.0
+		_slider.step = 0.25
+		_slider.focus_mode = Control.FOCUS_NONE
+		_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(_slider)
+		row.add_child(hud._label("บ่อยมาก", 12, hud.MUTED))
+		add_child(row)
+		_text = hud._label("", 12, hud.INK)
+		_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_text.custom_minimum_size.x = 300
+		add_child(_text)
+		set_rate(rate, scen)
+		_slider.value_changed.connect(func(v):
+			_show()
+			changed.emit(v))
+
+	## Shows a rate without telling anyone (a new scene's usual, or the colony's own).
+	func set_rate(rate: float, scen: String) -> void:
+		_scen = scen
+		_slider.set_value_no_signal(rate)
+		_show()
+
+	func _show() -> void:
+		var v := _slider.value
+		if v <= 0.0:
+			_text.text = "0% · ไม่มีศัตรูมาเอง (ยังปล่อยมาดูได้จากปุ่ม \"ศัตรู\")"
+			return
+		var days: float = _hud.sim.enemy_days(v)
+		var when := ("ราวๆ วันละ %.1f ตัว" % (1.0 / days)) if days < 1.0 else "ราวๆ ทุก %s วัน" % ("%.1f" % days if days < 3.0 else str(roundi(days)))
+		var level := "น้อย" if v < 0.75 else ("ตามธรรมชาติ" if v <= 1.25 else ("บ่อย" if v <= 2.0 else "บ่อยมาก"))
+		_text.text = "%d%% (%s) · %s%s" % [roundi(v * 100.0), level, when,
+			" ในหน้าร้อน · ฤดูใบไม้ผลิ/ร่วงน้อยลง หน้าหนาวไม่มี" if _scen == "wild" else " ทั้งปี"]
+
+
 ## Choices for a new colony: where it lives, what it lives in, and how it starts.
 const NEW_SCENARIOS := [
 	["wild", "สวน/ทุ่งหญ้า (กลางแจ้ง)", "แปลงดินโล่งมีแดดแบบที่มดดำสวนชอบทำรัง สี่ฤดูแบบเขตอบอุ่น ไม่ต้องดูแล: ฝนให้น้ำ มดหาน้ำหวานจากเพลี้ยและล่าแมลงเอง หน้าหนาวต้องสะสมไขมันไว้จำศีล มีศัตรูธรรมชาติ (แมงมุม ตะขาบ ด้วงดิน) รังมีปีดีปีร้ายตามธรรมชาติ"],
-	["keeper", "ชุดเลี้ยง (ในห้อง)", "ฟอร์มิคาเรียมบนชั้นในห้อง อุณหภูมิห้องทั้งปี มีแผ่นความร้อน ไม่มีศัตรูธรรมชาติ ราชินีที่ไม่ได้จำศีลจะวางไข่น้อยลงเรื่อยๆ"]]
+	["keeper", "ชุดเลี้ยง (ในห้อง)", "ฟอร์มิคาเรียมบนชั้นในห้อง อุณหภูมิห้องทั้งปี มีแผ่นความร้อน ปกติไม่มีศัตรู (ตั้งได้ข้างล่าง) ราชินีที่ไม่ได้จำศีลจะวางไข่น้อยลงเรื่อยๆ"]]
 const NEW_NESTS := [["soil", "ก้อนดิน", "มดขุดอุโมงค์เองในดินทั้งก้อน"], ["glass", "ตู้แอนท์ฟาร์ม", "ดินแผ่นบางระหว่างกระจกสองแผ่น มองเห็นทุกห้อง"]]
 const NEW_STARTS := [["queen", "ราชินีตัวเดียว", "ราชินีหลังบินผสมพันธุ์ปลายเดือนกรกฎาคม ขังตัวเองเลี้ยงลูกชุดแรกด้วยไขมันในตัว"],
 	["young", "รังอายุ 3 เดือน (14 ตัว)", "ราชินีกับมดงาน 14 ตัว เริ่มกลางเดือนเมษายน"]]
@@ -147,6 +199,7 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	col.custom_minimum_size = Vector2(540, 0)
 	body.add_child(col)
 	var picked := {}
+	var rates := EnemyRate.new(self, 1.0, "wild")
 	for group in [["scenario", "ฉาก", NEW_SCENARIOS], ["nest", "รัง", NEW_NESTS], ["start", "เริ่มจาก", NEW_STARTS]]:
 		var key: String = group[0]
 		var opts: Array = group[2]
@@ -165,9 +218,17 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 			b.button_pressed = o == opts[0]
 			b.pressed.connect(func():
 				picked[key] = o[0]
-				note.text = o[2])
+				note.text = o[2]
+				if key == "scenario" and not picked.has("rate_set"):
+					rates.set_rate(1.0 if o[0] == "wild" else 0.0, o[0]))       # (each scene's usual, until the keeper picks one)
 			row.add_child(b)
 		col.add_child(note)
+	col.add_child(_label("สัตว์ร้าย (แมงมุมหมาป่า ตะขาบหิน ด้วงดิน)", 15, AMBER))
+	picked["rate"] = 1.0
+	rates.changed.connect(func(v):
+		picked["rate"] = v
+		picked["rate_set"] = true)
+	col.add_child(rates)
 	col.add_child(HSeparator.new())
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END
@@ -182,7 +243,7 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	var go := _button("เริ่มรังนี้", false)
 	go.pressed.connect(func():
 		win.queue_free()
-		colony_new.emit(slot, "%s:%s:%s" % [picked.nest, picked.start, picked.scenario]))
+		colony_new.emit(slot, "%s:%s:%s:%s" % [picked.nest, picked.start, picked.scenario, picked.rate]))
 	foot.add_child(go)
 	col.add_child(foot)
 	win.reset_size()

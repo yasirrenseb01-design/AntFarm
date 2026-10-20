@@ -1,7 +1,8 @@
 extends "res://scripts/view/ui/parts/hud_colonies.gd"
-## HUD, layer 3 of 6: the enemy panel - the keeper lets a wolf spider, a stone centipede or a ground beetle into
-## the outworld to watch how the ants fight it (sim.release_enemy), sees the ones in there now (health, ants
-## holding on) and sends the camera after one (enemy_watch -> main.gd -> outworld.follow_creature).
+## HUD, layer 3 of 6: the enemy panel - how often natural enemies come (sim.set_enemy_rate); the keeper lets a wolf
+## spider, a stone centipede or a ground beetle into the outworld to watch how the ants fight it (sim.release_enemy),
+## sees the ones in there now (health, ants holding on) and sends the camera after one (enemy_watch -> main.gd ->
+## outworld.follow_creature).
 
 signal enemy_watch(id: int)          # the camera should follow this enemy (sim.creatures id) in the 3D outworld
 
@@ -33,7 +34,12 @@ func _build_enemies(root: Control) -> void:
 	close.pressed.connect(func(): _enemies.visible = false)
 	head.add_child(close)
 	col.add_child(head)
-	col.add_child(_wrapped("ศัตรูเดินเข้ามาจากขอบพื้นที่หาอาหาร ล่าอยู่ราวครึ่งวันในเกมแล้วจากไป ถ้ามดไม่รุมฆ่าหรือไล่ไปก่อน · มดที่เจอจะปล่อยกลิ่นเตือนภัย พวกพ้องกรูมากัดและพ่นกรดฟอร์มิก · ศัตรูที่ตายกลายเป็นอาหารของรัง", 12, MUTED))
+	col.add_child(_label("ศัตรูธรรมชาติมาเองบ่อยแค่ไหน", 13, MUTED))
+	var rates := EnemyRate.new(self, sim.enemy_rate, sim.scenario)
+	rates.changed.connect(func(v): sim.set_enemy_rate(v))
+	col.add_child(rates)
+	col.add_child(HSeparator.new())
+	col.add_child(_wrapped("ปล่อยเอง: ศัตรูเดินเข้ามาจากขอบพื้นที่หาอาหาร ล่าอยู่ราวครึ่งวันในเกมแล้วจากไป ถ้ามดไม่รุมฆ่าหรือไล่ไปก่อน · มดที่เจอจะปล่อยกลิ่นเตือนภัย พวกพ้องกรูมากัดและพ่นกรดฟอร์มิก · ศัตรูที่ตายกลายเป็นอาหารของรัง", 12, MUTED))
 	for kind in sim.ENEMY_KINDS:
 		var K = sim.ENEMY_KINDS[kind]
 		var row := HBoxContainer.new()

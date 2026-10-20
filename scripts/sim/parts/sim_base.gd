@@ -58,6 +58,7 @@ var humidity := 0.7
 var mold := 0.0
 var heater := false
 var enemies := true
+var enemy_rate := 1.0              # how often natural enemies come: x each kind's own rate (the keeper's choice, set_enemy_rate)
 var _next_cid := 1                 # next creature id
 var creatures: Array = []          # enemies in the outworld: {"kind", "pos", ...} (see parts/sim_enemies.gd)
 var corpses_inside := 0
@@ -128,7 +129,8 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 	climate.scenario = scen
 	# a lone queen starts just after the summer mating flight; a young colony in spring
 	start_doy = 205 if start_workers == 0 else 105
-	enemies = scen == "wild"         # a keeper's formicarium has no wild predators
+	enemies = scen == "wild"         # a keeper's formicarium has no wild predators (unless the keeper wants them: set_enemy_rate)
+	enemy_rate = 1.0 if enemies else 0.0
 	queen["rested"] = 1.0
 	nest = NestVolume.new()
 	nest.setup(rng, glass_nest, start_workers == 0)
@@ -502,6 +504,6 @@ func _log(text: String, kind: String = "") -> void:
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 7              # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 8              # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
 	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt"]

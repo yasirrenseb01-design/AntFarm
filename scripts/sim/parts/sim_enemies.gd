@@ -20,6 +20,9 @@ const FIGHT_FROM := 20      # a colony smaller than this hides from big enemies 
 const RELEASE_MAX := 3      # enemies in the box at once when the keeper lets them in (the HUD's enemy panel)
 
 
+const NIGHT_SHARE := 0.33   # of a summer day dark enough for the night hunters (enemy_days: an estimate for the keeper)
+
+
 ## Now and then an enemy finds its way into the box (one at a time); night hunters only after dark.
 func _maybe_spawn(dt: float) -> void:
 	if not creatures.is_empty():
@@ -28,9 +31,25 @@ func _maybe_spawn(dt: float) -> void:
 		var S: Dictionary = ENEMY_KINDS[kind].STATS
 		if S.get("night", false) and daylight() > 0.15:
 			continue
-		if rng.randf() < S.rate * dt * season_life():
+		if rng.randf() < S.rate * enemy_rate * dt * season_life():
 			_spawn_creature(kind)
 			return
+
+
+## How often natural enemies come (x each kind's rate; 0 = none): the keeper's choice when the colony starts, and
+## in the enemy panel. Enemies already in the box stay.
+func set_enemy_rate(v: float) -> void:
+	enemy_rate = maxf(0.0, v)
+	enemies = enemy_rate > 0.0
+
+
+## About how many days apart natural enemies come in high summer at this rate (INF: never) - for the keeper.
+static func enemy_days(rate: float) -> float:
+	var per_day := 0.0
+	for kind in ENEMY_KINDS:
+		var S: Dictionary = ENEMY_KINDS[kind].STATS
+		per_day += S.rate * rate * (NIGHT_SHARE if S.get("night", false) else 1.0)
+	return INF if per_day <= 0.0 else 1.0 / per_day
 
 
 ## The keeper lets an enemy into the box (HUD enemy panel): it comes in from an edge as a wild one does, by day
@@ -64,6 +83,7 @@ func _spawn_creature(kind: String) -> void:
 	c["hp"] = ENEMY_KINDS[kind].STATS.hp
 	c["held"] = 0
 	creatures.append(c)
+	stats["enemies_came"] = int(stats.get("enemies_came", 0)) + 1
 
 
 func _creature(id: int):
