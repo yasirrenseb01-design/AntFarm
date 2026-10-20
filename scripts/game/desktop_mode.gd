@@ -2,7 +2,9 @@ extends Node
 ## Desktop mode (PART 11): the nest as the desktop wallpaper, behind the icons. The game's window is put into the
 ## shell's wallpaper layer by a small Win32 helper (tools/desktop/antdesk.cs -> AntDesk.exe next to the game), the
 ## HUD is hidden, the frame rate is held at 30, and while a maximized or full-screen app covers the desktop nothing is
-## drawn (the colony lives on). An ant icon in the system tray switches back to the game or quits.
+## drawn (the colony lives on). An ant icon in the system tray switches back to the game (a click) or quits (its menu);
+## back in the game the window is as the keeper had it before the wallpaper button (`--win`, passed on by main.gd when
+## the game starts itself again with Direct3D 12), framed and closable.
 ## main.gd owns it: enter() / leave(), `hidden` (skip the views' work), close() (quit, out of the wallpaper first).
 ##
 ## The helper is always run in a thread, never on the main thread: changing the game's window from another process
@@ -27,17 +29,21 @@ var _job: Thread                     # the helper running (one at a time)
 var _job_kind := ""                  # "attach", "detach", "quit" (detach, then quit) or "covered"
 var _job_out := []                   # [exit code, output] once done (set by the thread)
 var _job_mutex := Mutex.new()
+var _started_win_used := false       # (--win: the game window from before the restart, used the first time only)
 
 
 func setup(m: Node) -> void:
 	main = m
 	_tray = StatusIndicator.new()
 	_tray.icon = _ant_icon()
-	_tray.tooltip = "AntFarm"
+	_tray.tooltip = "AntFarm · คลิกเพื่อกลับไปเล่นเกม"
 	_tray.visible = false
+	_tray.pressed.connect(func(button: int, _at: Vector2i):
+		if button == MOUSE_BUTTON_LEFT:
+			leave())                             # (a click on the ant: back to the game; the right button opens the menu)
 	_menu = PopupMenu.new()
-	_menu.add_item("เปิดหน้าต่างเกม", 0)
-	_menu.add_item("ปิดเกม", 1)
+	_menu.add_item("กลับไปเล่นเกม", 0)
+	_menu.add_item("ปิดเกม (เซฟแล้วออก)", 1)
 	_menu.id_pressed.connect(_on_menu)
 	add_child(_menu)
 	add_child(_tray)
@@ -68,6 +74,14 @@ func enter() -> void:
 	_saved = {"mode": DisplayServer.window_get_mode(), "pos": DisplayServer.window_get_position(),
 		"size": DisplayServer.window_get_size(), "borderless": DisplayServer.window_get_flag(DisplayServer.WINDOW_FLAG_BORDERLESS),
 		"fps": Engine.max_fps}
+	var was: PackedStringArray = String(main._opts.get("win", "")).split(",")
+	if was.size() == 5 and not _started_win_used:
+		# started again for the wallpaper: the window to go back to is the one the keeper had in the game before
+		_started_win_used = true
+		_saved.pos = Vector2i(int(was[0]), int(was[1]))
+		_saved.size = Vector2i(maxi(640, int(was[2])), maxi(400, int(was[3])))
+		_saved.mode = int(was[4])
+		_saved.borderless = false
 	var screen := DisplayServer.get_primary_screen()
 	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
@@ -196,6 +210,9 @@ func _restore_window() -> void:
 	if _saved.is_empty():
 		return
 	Engine.max_fps = int(_saved.fps)
+	# the frame back: set the flag both ways so the engine works the window's style out again (the helper changed it
+	# behind the engine's back, which still thought it borderless: the window came back with no title bar - v0.11.0)
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, true)
 	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, bool(_saved.borderless))
 	DisplayServer.window_set_size(_saved.size)
 	DisplayServer.window_set_position(_saved.pos)

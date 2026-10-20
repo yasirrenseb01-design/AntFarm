@@ -1,7 +1,7 @@
 // AntDesk: the Win32 side of AntFarm's desktop mode (PART 11). The game (scripts/game/desktop_mode.gd) runs it with:
 //   antdesk attach <hwnd>   put the game's window into the desktop's wallpaper layer, behind the icons, over the
 //                           primary monitor; prints "ok <layout>" (exit 0) or an error (exit 2)
-//   antdesk detach <hwnd>   take it out again (a top-level popup window) and have the shell repaint the wallpaper
+//   antdesk detach <hwnd>   take it out again (a normal top-level window, framed) and have the shell repaint the wallpaper
 //                           (else the last frame stays on the desktop)
 //   antdesk covered         prints 1 if a window covers the primary monitor (a maximized or full-screen app: the
 //                           wallpaper cannot be seen, the game stops drawing), else 0
@@ -49,6 +49,7 @@ static class AntDesk
     const int GWL_STYLE = -16, GWL_EXSTYLE = -20;
     const long WS_CHILD = 0x40000000, WS_POPUP = 0x80000000, WS_VISIBLE = 0x10000000;
     const long WS_CAPTION = 0x00C00000, WS_THICKFRAME = 0x00040000, WS_SYSMENU = 0x00080000;
+    const long WS_OVERLAPPEDWINDOW = 0x00CF0000;     // caption, system menu, sizing frame, minimize and maximize boxes
     const long WS_EX_APPWINDOW = 0x00040000, WS_EX_TOOLWINDOW = 0x00000080;
     const uint SWP_NOACTIVATE = 0x0010, SWP_SHOWWINDOW = 0x0040, SWP_FRAMECHANGED = 0x0020, SWP_NOZORDER = 0x0004;
     const uint SMTO_ABORTIFHUNG = 0x0002;
@@ -210,8 +211,10 @@ static class AntDesk
         if (IsWindow(hwnd))
         {
             SetParent(hwnd, IntPtr.Zero);
+            // a normal window again, with its title bar and frame (attach took them off; left a frameless popup, the game
+            // came back with no border and no close button - v0.11.0, the player); the game then sets its own style
             long st = GetWindowLongPtr(hwnd, GWL_STYLE).ToInt64();
-            st = (st & ~WS_CHILD) | WS_POPUP | WS_VISIBLE;
+            st = (st & ~(WS_CHILD | WS_POPUP)) | WS_OVERLAPPEDWINDOW | WS_VISIBLE;
             SetWindowLongPtr(hwnd, GWL_STYLE, new IntPtr(st));
             long ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE).ToInt64();
             SetWindowLongPtr(hwnd, GWL_EXSTYLE, new IntPtr((ex & ~(WS_EX_TOOLWINDOW | WS_EX_LAYERED)) | WS_EX_APPWINDOW));

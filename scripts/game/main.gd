@@ -24,6 +24,7 @@ var desktop                    # desktop mode: the nest as the wallpaper (PART 1
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
 ##   --testsave=<name> [--slot=<year>]   open a colony grown by tests/year_run.gd (read-only)
 ##   --desktop   start as the desktop wallpaper (desktop_mode.gd; back to the game from the tray icon)
+##       [--win=x,y,w,h,mode] (the game window to go back to: passed on when the game starts itself again)
 ##       [--no-cover-check] (dev: draw even under a full-screen app)   --quit-after=<s> (dev: close after s seconds)
 ##       --gpu=<i> (dev: started again with D3D12 on that GPU: 1 = the RTX here)   --desktop-after=<s> (dev: as if the button were pressed)
 
@@ -219,6 +220,15 @@ func _notification(what: int) -> void:
 ## showed, tested 2026-10-16), and the game draws with Vulkan (D3D12 lost the device on the Intel UHD here): so it is
 ## saved and started again with D3D12, as the wallpaper.
 func _enter_desktop() -> void:
+	if _persist and not bool(_settings.get("desk_told", false)) and not _opts.has("desktop") and not _opts.has("desktop-after"):
+		# the first time: where the way back is (the tray icon - Windows 11 often hides a new one under the ^)
+		hud.confirm("วอลเปเปอร์", "รังมดจะไปอยู่เป็นภาพพื้นหลังเดสก์ท็อป หลังไอคอน (เกมเซฟแล้วเปิดตัวเองใหม่ ครั้งแรกอาจใช้เวลาครึ่งนาที)\n\n" +
+			"กลับมาเล่น: คลิกไอคอนมดที่ถาดระบบ มุมขวาล่างของจอ — Windows 11 มักซ่อนไอคอนใหม่ไว้ใต้ลูกศร ^\n" +
+			"(ลากไอคอนมดออกมาวางข้างนาฬิกาจะหาง่ายขึ้น) · คลิกขวาที่ไอคอน: เมนูปิดเกม", "ตั้งเป็นวอลเปเปอร์", func():
+				_settings["desk_told"] = true
+				Store.save_settings(_settings)
+				_enter_desktop())
+		return
 	if OS.get_name() == "Windows" and RenderingServer.get_current_rendering_driver_name() != _opts.get("desk-driver", "d3d12"):
 		if not desktop.available():
 			desktop.enter()                       # (says why it cannot)
@@ -236,6 +246,10 @@ func _enter_desktop() -> void:
 		for k in ["testsave", "slot", "sandbox", "no-cover-check", "quit-after", "view", "gpu", "desk-driver"]:
 			if _opts.has(k):
 				args.append("--%s=%s" % [k, _opts[k]])
+		# the window as it is, to come back to (desktop_mode.gd)
+		var wp := DisplayServer.window_get_position()
+		var ws := DisplayServer.window_get_size()
+		args.append("--win=%d,%d,%d,%d,%d" % [wp.x, wp.y, ws.x, ws.y, DisplayServer.window_get_mode()])
 		OS.create_process(OS.get_executable_path(), args)
 		# (quit after a moment: at once, in the first frames, the views' threads were still starting and it crashed)
 		get_tree().create_timer(2.0).timeout.connect(func(): get_tree().quit())

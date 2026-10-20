@@ -250,6 +250,22 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	win.popup_centered()
 
 
+## Asks before doing something (a dialog with the keeper's own OK and "ยกเลิก").
+func confirm(title: String, text: String, ok_text: String, on_ok: Callable) -> void:
+	var d := ConfirmationDialog.new()
+	d.theme = _report.theme
+	d.title = title
+	d.dialog_text = text
+	d.ok_button_text = ok_text
+	d.cancel_button_text = "ยกเลิก"
+	d.confirmed.connect(on_ok)
+	d.visibility_changed.connect(func():
+		if not d.visible:
+			d.queue_free())
+	_report.get_parent().add_child(d)
+	d.popup_centered(Vector2i(560, 0))
+
+
 func show_report(title: String, text: String) -> void:
 	_report.title = title
 	_report.dialog_text = text
