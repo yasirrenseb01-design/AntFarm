@@ -10,7 +10,7 @@ const Lofi := preload("res://scripts/view/ui/lofi.gd")
 
 func setup(s, w) -> void:
 	sim = s
-	world = w
+	ground = w
 	sim.logged.connect(_on_logged)
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -37,7 +37,7 @@ func setup(s, w) -> void:
 	root.add_child(tip)
 	tip.setup(sim, [nest_view, outworld], _display)
 	ant_tip = tip
-	_apply_mode("surface")
+	_apply_mode("outworld")
 	refresh(1.0)
 
 

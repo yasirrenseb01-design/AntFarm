@@ -9,7 +9,7 @@ var desktop                    # desktop mode: the nest as the wallpaper (PART 1
 ##                                    run headless and print colony stats, then quit
 ##   --shot=<png> [--warm=<days>] [--tod=<0..1>] [--frames=<n>] [--live]   fast-forward, screenshot, quit
 ##       --seq=<n> [--seq-every=<frames>]   a strip of frames with the clock running instead of one shot
-##       --view=outworld|surface|nest   which view; camera: --yaw --pitch --dist --target=x,y,z --cut --xray
+##       --view=outworld|nest   which view; camera: --yaw --pitch --dist --target=x,y,z --cut --xray
 ##       --look=queen|larvae|pupae|entrance (nest)   --anim=egg,pupate,eclose,care [--care=eggs|larvae|pupae] (act out life-cycle moments)   --queen-act=<id> (hold the queen in one activity)
 ##       --orbit=<n> [--orbit-pitch] (nest, after --seq: the last moment from n sides)   --follow-fit[=over|turn] [--side]
 ##       --follow-pushed   --follow-soil (nest: follow an ant on a slope / climbing over / bending round a turn / pushed /
@@ -83,22 +83,17 @@ func _ready() -> void:
 		_selftest(int(_opts["selftest"]), _opts.has("autokeep"))
 		return
 
-	camera = Camera2D.new()
-	add_child(camera)
-	world = WorldView.new()
-	add_child(world)
-	world.setup(sim)
 	nest_view = NestView.new()
 	add_child(nest_view)
 	nest_view.setup(sim)
 	outworld = OutworldView.new()
 	add_child(outworld)
-	outworld.setup(sim, world)
+	outworld.setup(sim)
 	hud = Hud.new()
 	add_child(hud)
 	hud.nest_view = nest_view
 	hud.outworld = outworld
-	hud.setup(sim, world)
+	hud.setup(sim, outworld.ground)
 	hud.view_changed.connect(func(m):
 		_set_mode(m)
 		if _persist:
@@ -129,11 +124,9 @@ func _ready() -> void:
 		speed = v
 		# at fast-forward each ant moves every few ticks with a longer stride to keep frame time flat
 		sim.ant_substep = 1 if v <= 5 else (2 if v <= 20 else 4))
-	get_viewport().size_changed.connect(_fit_camera)
-	_fit_camera()
-	camera.position = _pos_t
-	camera.zoom = Vector2.ONE * _zoom_t
 	var start_view: String = _opts.get("view", _settings.get("view", "outworld"))
+	if start_view != "nest":
+		start_view = "outworld"                 # (a "surface" kept from before v0.11.5: the 2D view is gone)
 	if start_view != "nest" or not _opts.has("shot"):          # (a screenshot of the nest sets its own view below)
 		hud._apply_mode(start_view)
 		_set_mode(start_view)
@@ -163,7 +156,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if world == null:
+	if outworld == null:
 		return
 	if _catchup_left > 0:
 		_run_catchup()
@@ -197,11 +190,8 @@ func _process(delta: float) -> void:
 	t0 = _pt("sim", t0)
 	if desktop != null and desktop.hidden:
 		return                 # (the wallpaper, under a full-screen app: nothing to draw - the colony lives on)
-	if mode == "surface":
-		_ease_surface(delta)
-		world.refresh(delta, speed)
-	elif mode == "outworld":
-		world.tick_pheromones()
+	if mode == "outworld":
+		outworld.ground.tick_pheromones()
 	t0 = _pt("pheromones", t0)
 	outworld.speed = speed
 	outworld.refresh(delta)
@@ -261,21 +251,3 @@ func _enter_desktop() -> void:
 		return
 	desktop.enter()
 
-
-func _unhandled_input(e: InputEvent) -> void:
-	if camera == null or mode != "surface":
-		return
-	if e is InputEventMouseButton:
-		if e.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and e.pressed:
-			surface_zoom(1.2 if e.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / 1.2, e.position)
-		elif e.button_index in [MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]:
-			_panning = e.pressed
-		elif e.button_index == MOUSE_BUTTON_LEFT and world.tool == "pan":
-			_panning = e.pressed
-			if e.pressed and e.double_click:
-				surface_zoom(2.0, e.position)
-	elif e is InputEventMouseMotion and _panning:
-		_pos_t -= e.relative / _zoom_t
-		_clamp_camera()
-	elif e is InputEventKey and e.pressed and e.keycode == KEY_HOME:
-		_fit_camera()

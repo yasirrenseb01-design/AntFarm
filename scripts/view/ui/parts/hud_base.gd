@@ -4,7 +4,7 @@ extends CanvasLayer
 ## HUD, layer 1 of 6: state, colours, the theme and small widget helpers.
 ## Layers: hud_base <- hud_colonies <- hud_enemies <- hud_controls <- hud_panel <- hud.
 const Ant := preload("res://scripts/sim/ant.gd")
-const Kit := preload("res://scripts/view/surface2d/draw_kit.gd")
+const Kit := preload("res://scripts/view/ui/draw_kit.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const T := preload("res://scripts/sim/text_th.gd")
@@ -28,7 +28,7 @@ const BG := Color(0.1, 0.075, 0.055, 0.92)
 const LINE := Color(0.3, 0.22, 0.16)
 
 var sim
-var world
+var ground                     # the outworld's ground_data.gd: the keeper's tool, trails shown or not
 var _vals := {}
 var _log: RichTextLabel
 var _hum_bar: ProgressBar
@@ -57,11 +57,11 @@ var _fps_label: Label
 var _dev_speed_buttons: Array = []   # 20× 50× 100× (F10)
 var real_speed := 0.0               # the speed the game is really running at (set by main)
 var music                   # ui/lofi.gd (null in test runs)
-var _surface_tools: Array = []
+var _outside_tools: Array = []
 var _cut_row: HBoxContainer
 var _xray_btn: Button
 var _cut_slider: HSlider
-var _cam_surface: Array = []
+var _cam_outside: Array = []
 var _cam_nest: Array = []
 var _hint: Label
 var _log_dirty := true

@@ -14,6 +14,7 @@ var sel_id := -1
 var _sel_mm: MultiMesh            # its white outline
 var _sel_shader_mat: ShaderMaterial
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
+const GroundData := preload("res://scripts/view/outworld/ground_data.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units
 const ANT_SCALE := 1.1
@@ -25,7 +26,7 @@ const THROWN_S := 1.6                # seconds: thrown off an enemy, on its back
 const SIDE_PANEL_PX := 364.0         # the HUD's side panel covers the right of the window
 
 var sim
-var world                            # the top-down view: shared textures, pheromone image, scenery and tool
+var ground                           # ground_data.gd: textures, pheromone image, scenery and the keeper's tool
 var active := false
 var speed := 1.0
 
@@ -191,11 +192,11 @@ func _build_ground() -> void:
 	detail.noise = dn
 	_ground_mat = ShaderMaterial.new()
 	_ground_mat.shader = load("res://shaders/terrain/outworld_ground.gdshader")
-	_ground_mat.set_shader_parameter("soil_tex", world._soil.texture)
-	_ground_mat.set_shader_parameter("damp_tex", world._damp.texture)
-	_ground_mat.set_shader_parameter("grain_tex", world._grain.texture)
+	_ground_mat.set_shader_parameter("soil_tex", ground.soil_tex)
+	_ground_mat.set_shader_parameter("damp_tex", ground.damp_tex)
+	_ground_mat.set_shader_parameter("grain_tex", ground.grain_tex)
 	_ground_mat.set_shader_parameter("detail", detail)
-	_ground_mat.set_shader_parameter("pher_tex", world._pher_tex)
+	_ground_mat.set_shader_parameter("pher_tex", ground.pher_tex)
 	_ground_mat.set_shader_parameter("world_size", Vector2(w, d))
 	_ground_mat.set_shader_parameter("nest_xz", _nest_xz)
 	mi.material_override = _ground_mat
@@ -295,19 +296,19 @@ func _box(size: Vector3, pos: Vector3, mat: Material) -> void:
 ## Litter, pebbles, moss, grass and the crater/midden grains, from the top-down view's layout.
 func _build_scenery() -> void:
 	_props_h.setup(Vector2(sim.WORLD) * U)
-	for l in world._litter:
+	for l in ground.litter:
 		if l.twig:
 			_props_h.stamp_twig(l.p * U, l.a, l.l * 2.0 * U, 0.85, 0.5 + 0.05)
 		else:
 			_props_h.stamp_leaf(l.p * U, l.a, l.l * U, l.w * U, l.curl, 0.05)
-	for p in world._pebbles:
+	for p in ground.pebbles:
 		var pr: Vector2 = p.r * U
 		_props_h.stamp_cap(p.p * U, p.a, pr, minf(pr.x, pr.y) * 0.65)
-	for m in world._moss:
+	for m in ground.moss:
 		for b in m:
 			_props_h.stamp_cap(b[0] * U, 0.0, Vector2.ONE * b[1] * U, b[1] * U * 0.55 + 0.05)
 	_props_h.keep_litter()
-	for l in world._litter:
+	for l in ground.litter:
 		var mi := MeshInstance3D.new()
 		var ang: float = l.a
 		if l.twig:
@@ -319,16 +320,16 @@ func _build_scenery() -> void:
 		mi.basis = Basis(Vector3.UP, -ang)
 		add_child(mi)
 	var stone := _multimesh(_blob_mesh(Vector3.ONE), _vc_mat(0.9, false, false), true)
-	stone.instance_count = world._pebbles.size()
-	for i in world._pebbles.size():
-		var p: Dictionary = world._pebbles[i]
+	stone.instance_count = ground.pebbles.size()
+	for i in ground.pebbles.size():
+		var p: Dictionary = ground.pebbles[i]
 		var r: Vector2 = p.r * U
 		var b := Basis(Vector3.UP, -p.a).scaled(Vector3(r.x, minf(r.x, r.y) * 0.65, r.y))
 		stone.set_instance_transform(i, Transform3D(b, _on_ground(p.p, 0.0)))
 		stone.set_instance_color(i, (p.c as Color).darkened(0.3).srgb_to_linear())
 	var moss := _multimesh(_blob_mesh(Vector3.ONE), _vc_mat(1.0, false, false), true)
 	var blobs := []
-	for m in world._moss:
+	for m in ground.moss:
 		blobs.append_array(m)
 	moss.instance_count = blobs.size()
 	for i in blobs.size():
@@ -340,7 +341,7 @@ func _build_scenery() -> void:
 	var blades := []
 	var gr := RandomNumberGenerator.new()
 	gr.seed = 777
-	for t in world._tufts:
+	for t in ground.tufts:
 		var n := gr.randi_range(9, 16)
 		for k in n:
 			var yaw := gr.randf() * TAU
@@ -360,8 +361,8 @@ func _build_scenery() -> void:
 		grass.set_instance_color(i, (b[4] as Color).srgb_to_linear())
 	var grains := _multimesh(_blob_mesh(Vector3.ONE), _vc_mat(0.95, false, false), true)
 	var bits := []
-	bits.append_array(world._crater)
-	bits.append_array(world._midden_bits)
+	bits.append_array(ground.crater)
+	bits.append_array(ground.midden_bits)
 	grains.instance_count = bits.size()
 	for i in bits.size():
 		var g: Dictionary = bits[i]

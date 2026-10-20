@@ -12,10 +12,9 @@
 ## ตารางชนิดของ (เพิ่มของใหม่ = เพิ่มรายการ ไม่ต้องไล่แก้หลายไฟล์)
 - **อาหาร** `scripts/sim/food_kinds.gd` (`KINDS`): ค่าการจำลอง, เวลาเก็บ, ข้อความตอนเจอ, ปุ่มวางของ, ท่าที่มดยืนกิน, การกลบดิน
   - ภาพ 3 มิติ: ฟังก์ชัน `_food_<ชนิด>()` ใน `view/outworld/parts/outworld_props.gd` (ไม่มีก็ได้ก้อนเรียบๆ แทน)
-  - ภาพ 2 มิติ: `_draw_items()` ใน `view/surface2d/world_view.gd`
 - **ศัตรู** `scripts/sim/enemies/<ชนิด>.gd` (static `spawn(sim)`, `step(sim, c) -> bool`, `CHASED`) ลงทะเบียนใน `ENEMY_KINDS` ของ `sim/parts/sim_enemies.gd`;
   ตัวที่อยู่ในกล่องอยู่ใน `sim.creatures` (Dictionary ที่มี `kind`, `pos`, ... ถูกเซฟตรงๆ)
-  - ภาพ 3 มิติ: `_update_spider()` ใน `outworld_creatures.gd` (PART 6 จะแยกเป็นไฟล์ละชนิดแบบเดียวกัน); ภาพ 2 มิติ: `_draw_ants()` ใน `world_view.gd`
+  - ภาพ 3 มิติ: `_update_spider()` ใน `outworld_creatures.gd` (PART 6 จะแยกเป็นไฟล์ละชนิดแบบเดียวกัน)
 - **การต่อสู้** (`sim/parts/sim_enemies.gd`): มดสถานะ `Ant.DEFEND` วิ่งหาศัตรู (`ant.foe` = id) แล้วเกาะ (`busy > 0`)
   ไปกับตัวศัตรูที่จุดเกาะรอบตัว, ลดพลังชีวิต `hp` ด้วยกรด; สนามกลิ่นเตือนภัย `sim.alarm` (ระเหยเร็ว); ศัตรูกัดกลับผ่าน `sim._bite()`,
   สะบัดผ่าน `sim._shake_off()`; ตาย → อาหาร `<ชนิด>_dead` ในตารางอาหาร; `ant.hurt` = บาดเจ็บถาวร (เดินช้าลง)
@@ -40,10 +39,10 @@ scripts/
   view/
     common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset)
     outworld/  พื้นที่หาอาหาร 3 มิติ: outworld_view.gd + parts/ (scene, props, creatures, camera),
+               ground_data.gd (ภาพผิวดิน, ภาพกลิ่นทาง, ของประดับ, แสงฟ้า, เครื่องมือที่เลือก — เดิมอยู่ในมุมบน 2 มิติ ลบ v0.11.5),
                prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader)
     nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
-    surface2d/ มุมบน 2 มิติ: world_view.gd, ant_batch.gd, draw_kit.gd
-    ui/        hud.gd + parts/ (base, colonies, controls, panel), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()),
+    ui/        hud.gd + parts/ (base, colonies, enemies, controls, panel), draw_kit.gd (วาดมด 2 มิติในภาพตัดขวางของแผงข้าง), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()),
                sounds.gd (เสียงเตือน), lofi.gd (เพลงพื้นหลังที่สร้างในโค้ด ทำในเธรดเบื้องหลัง)
 shaders/       ants/, creatures/, terrain/ (+ ground_h.gdshaderinc: ความสูงพื้นข้างนอก ใช้ร่วมพื้นกับสัตว์), plants/
 assets/models/ ants/, prey/, plants/   (ไฟล์ .antmesh/.json ที่ Blender สร้าง — ห้ามแก้มือ ให้รันสคริปต์ Blender ใหม่)

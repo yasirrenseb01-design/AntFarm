@@ -53,7 +53,7 @@ func _build_top(root: Control) -> void:
 	var views := HBoxContainer.new()
 	views.add_theme_constant_override("separation", 4)
 	var vg := ButtonGroup.new()
-	for pair in [["พื้นดิน 3 มิติ", "outworld"], ["มุมบน 2 มิติ", "surface"], ["ในรัง 3 มิติ", "nest"]]:
+	for pair in [["พื้นดิน 3 มิติ", "outworld"], ["ในรัง 3 มิติ", "nest"]]:
 		var b := _button(pair[0], true, vg)
 		b.button_pressed = pair[1] == "outworld"
 		_view_btns[pair[1]] = b
@@ -102,7 +102,7 @@ func _build_tools(root: Control) -> void:
 	panel.add_child(row)
 	var place_label := _label("วางในแปลง" if sim.scenario == "wild" else "วางในกล่อง", 12, MUTED)
 	row.add_child(place_label)
-	_surface_tools.append(place_label)
+	_outside_tools.append(place_label)
 	_cut_row = HBoxContainer.new()
 	_cut_row.visible = false
 	_cut_row.add_child(_label("ระนาบตัด", 12, MUTED))
@@ -128,21 +128,21 @@ func _build_tools(root: Control) -> void:
 	var g := ButtonGroup.new()
 	for pair in [["มือ (เลื่อนจอ)", "pan"]] + FoodKinds.tools() + [["ก้อนหิน", "rock"], ["ลบกลิ่น", "erase"]]:
 		var b := _button(pair[0], true, g)
-		b.button_pressed = pair[1] == world.tool
+		b.button_pressed = pair[1] == ground.tool
 		var t: String = pair[1]
-		b.pressed.connect(func(): world.tool = t)
+		b.pressed.connect(func(): ground.tool = t)
 		row.add_child(b)
-		_surface_tools.append(b)
+		_outside_tools.append(b)
 	row.add_child(VSeparator.new())
 	var water := _button("เติมน้ำในรัง", false)
 	water.pressed.connect(func(): sim.add_water())
 	water.visible = sim.scenario == "keeper"     # outdoors the rain waters the nest
 	row.add_child(water)
 	var pher := _button("แสดงกลิ่น", true)
-	pher.button_pressed = world.show_pheromones
-	pher.toggled.connect(func(on): world.show_pheromones = on)
+	pher.button_pressed = ground.show_pheromones
+	pher.toggled.connect(func(on): ground.show_pheromones = on)
 	row.add_child(pher)
-	_surface_tools.append(pher)
+	_outside_tools.append(pher)
 	var heat := _button("แผ่นความร้อน", true)
 	heat.toggled.connect(func(on):
 		sim.heater = on
@@ -162,7 +162,7 @@ func _build_tools(root: Control) -> void:
 	_hint.offset_left = 18
 	_hint.offset_top = -92
 	root.add_child(_hint)
-	_apply_mode("surface")
+	_apply_mode("outworld")
 
 
 ## On-screen camera buttons, bottom-right of the view (left of the side panel).
@@ -199,7 +199,7 @@ func _build_camera_pad(root: Control) -> void:
 	col.add_child(go)
 	var lbl := _label("ไปที่", 12, MUTED)
 	go.add_child(lbl)
-	for spec in [["ปากรัง", "nest", "surface"], ["ราชินี", "queen", "nest"], ["ตัวอ่อน", "larvae", "nest"],
+	for spec in [["ปากรัง", "nest", "outworld"], ["ราชินี", "queen", "nest"], ["ตัวอ่อน", "larvae", "nest"],
 			["ดักแด้", "pupae", "nest"], ["ปากรัง", "entrance", "nest"]]:
 		var b := _button(spec[0], false)
 		var a: String = spec[1]
@@ -208,7 +208,7 @@ func _build_camera_pad(root: Control) -> void:
 		if spec[2] == "nest":
 			_cam_nest.append(b)
 		else:
-			_cam_surface.append(b)
+			_cam_outside.append(b)
 
 
 func set_cut(v: float) -> void:
@@ -222,16 +222,13 @@ func _apply_mode(m: String) -> void:
 		_view_btns[m].button_pressed = true
 	for c in _cam_nest:
 		c.visible = m == "nest"
-	for c in _cam_surface:
+	for c in _cam_outside:
 		c.visible = outside
-	for c in _cam_3d:
-		c.visible = m != "surface"
 	for c in _cam_out:
 		c.visible = m == "outworld"
-	for c in _surface_tools:
+	for c in _outside_tools:
 		c.visible = outside
 	_cut_row.visible = m == "nest" and not sim.nest.slab and not _xray_btn.button_pressed
 	_xray_btn.visible = m == "nest"
 	_hint.text = ("ลากซ้าย หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูม · ดับเบิลคลิก ไปที่ห้องนั้น · W/S หน้า-หลัง · A/D ซ้าย-ขวา · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง"
-		if m == "nest" else "ลากซ้าย (มือ) หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง"
-		if m == "outworld" else "ลากซ้าย (มือ) หรือลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · +/− ซูม")
+		if m == "nest" else "ลากซ้าย (มือ) หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง")

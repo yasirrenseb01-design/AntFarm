@@ -19,11 +19,6 @@ func _take_shot() -> void:
 		var target := int(float(_opts["tod"]) * sim.TPD)
 		while sim.tick % sim.TPD != target:
 			sim.step()
-	if _opts.has("zoom"):
-		_zoom_t *= float(_opts["zoom"])
-		camera.zoom = Vector2.ONE * _zoom_t
-		var fc: PackedStringArray = _opts.get("focus", "%d,%d" % [sim.nest_pos.x, sim.nest_pos.y]).split(",")
-		_center_on(Vector2(float(fc[0]), float(fc[1])))
 	if _opts.has("rock"):
 		# drop a stone (keeper's tool) and look at it: --rock=<dx>,<dy>,<r> from the nest entrance
 		var rp: PackedStringArray = String(_opts["rock"]).split(",")
@@ -153,7 +148,7 @@ func _take_shot() -> void:
 			sim.place_food(String(_opts["at-food"]), fp)
 			outworld.target_t = Vector3(fp.x, 0, fp.y) * outworld.U
 		outworld.snap_camera()
-	if _opts.get("view", "surface") == "nest":
+	if _opts.get("view", "outworld") == "nest":
 		hud._apply_mode("nest")
 		_set_mode("nest")
 		# only override the view's own starting camera when asked

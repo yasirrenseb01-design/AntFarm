@@ -4,7 +4,7 @@ extends "res://scripts/view/outworld/parts/outworld_props.gd"
 
 
 func _light() -> void:
-	var sky: Color = world._sky_color()
+	var sky: Color = ground.sky_color()
 	var day: float = sim.daylight()
 	_sun.light_color = sky
 	_sun.light_energy = 0.25 + 0.72 * day       # a little moonlight at night
@@ -369,7 +369,7 @@ func _update_rain(delta: float, raining: bool) -> void:
 
 
 func _update_ring() -> void:
-	var t: String = world.tool
+	var t: String = ground.tool
 	_ring.visible = hover != Vector3.INF and t in ["rock", "erase"]
 	if _ring.visible:
 		var r := (10.0 if t == "rock" else 24.0) * U
@@ -469,7 +469,7 @@ func info_for(kind: String, id: int) -> Dictionary:
 
 ## A click selects an ant only with the hand (camera) tool; the other tools place things.
 func can_select() -> bool:
-	return world.tool == "pan"
+	return ground.tool == "pan"
 
 
 ## The forager under the mouse (a screen position) for the selection (ui/ant_tip.gd), or {}.

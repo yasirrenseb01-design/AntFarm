@@ -5,9 +5,10 @@ extends "res://scripts/view/outworld/parts/outworld_camera.gd"
 ## Layers: parts/outworld_scene <- outworld_props <- outworld_creatures <- outworld_camera <- outworld_view.
 
 
-func setup(s, w) -> void:
+func setup(s) -> void:
 	sim = s
-	world = w
+	ground = GroundData.new()
+	ground.setup(sim)
 	_nest_xz = sim.nest_pos * U
 	target = Vector3(sim.WORLD.x * U * 0.5, 0, sim.WORLD.y * U * 0.5)
 
@@ -157,7 +158,7 @@ func refresh(delta: float) -> void:
 		_sync_foods()
 		_update_mound()
 	_ease_foods(delta)
-	_ground_mat.set_shader_parameter("pher_on", 1.0 if world.show_pheromones else 0.0)
+	_ground_mat.set_shader_parameter("pher_on", 1.0 if ground.show_pheromones else 0.0)
 	var raining: bool = sim.climate.raining()
 	_wet = move_toward(_wet, 1.0 if raining else 0.0, delta * 0.3 * maxf(speed, 0.5))
 	_ground_mat.set_shader_parameter("wet", _wet)
@@ -184,7 +185,7 @@ func refresh(delta: float) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if not active:
 		return
-	var tool: String = world.tool
+	var tool: String = ground.tool
 	if e is InputEventMouseButton:
 		if e.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN] and e.pressed:
 			var f := 1.0 / 1.18 if e.button_index == MOUSE_BUTTON_WHEEL_UP else 1.18
@@ -240,7 +241,6 @@ func _use_tool(tool: String, at: Vector3) -> void:
 		"rock":
 			if p.distance_to(_last_paint) > 9.0 and sim.can_place(p) and sim.add_rock(p, 10.0):
 				_last_paint = p
-				world.redraw_scenery()
 				_items_timer = 0.0
 		"erase":
 			sim.erase_pheromones(p, 24.0)

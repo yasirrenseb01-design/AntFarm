@@ -2,7 +2,6 @@ extends Node2D
 ## Game, layer 1 of 4: state, switching views, saving, and catching up on the time the game was
 ## closed. Layers: main_base <- main_camera <- dev/dev_tools <- main.
 const Sim := preload("res://scripts/sim/simulation.gd")
-const WorldView := preload("res://scripts/view/surface2d/world_view.gd")
 const Hud := preload("res://scripts/view/ui/hud.gd")
 const NestView := preload("res://scripts/view/nest/nest_view.gd")
 const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
@@ -10,11 +9,10 @@ const Store := preload("res://scripts/game/save_store.gd")
 const Migrations := preload("res://scripts/sim/save_migrations.gd")
 
 var sim
-var world
 var hud
 var nest_view
 var outworld
-var mode := "surface"              # "outworld" (3D), "surface" (top-down 2D) or "nest" (3D underground)
+var mode := "outworld"             # "outworld" (3D, above ground) or "nest" (3D underground)
 static var next_nest := ""      # "<soil|glass>:<queen|young>:<wild|keeper>": start a fresh colony after the reload
 static var next_slot := 0       # which save slot to open after the reload (0 = the last one played)
 var slot := 1
@@ -31,7 +29,6 @@ var _away_capped := false
 var _overlay: CanvasLayer
 var _overlay_label: Label
 var _overlay_bar: ProgressBar
-var camera: Camera2D
 var speed := 0.5             # a calm pace to watch the ants by (the HUD offers 0.2× - 5×)
 var _acc := 0.0
 var _sim_us := 0                 # how long the last frame's simulation took (main.gd: the budget for fast-forward)
@@ -43,18 +40,11 @@ func _pt(key: String, t0: int) -> int:
 	var now := Time.get_ticks_usec()
 	fprof[key] = fprof.get(key, 0) + now - t0
 	return now
-var _panning := false
-var _zoom_t := 1.0
-var _pos_t := Vector2.ZERO
 var _opts := {}
 
 
 func _set_mode(m: String) -> void:
 	mode = m
-	var surface := m == "surface"
-	world.visible = surface
-	world.set_process_unhandled_input(surface)
-	camera.enabled = surface
 	outworld.set_active(m == "outworld")
 	nest_view.set_active(m == "nest")
 

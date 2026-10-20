@@ -1,7 +1,7 @@
 extends RefCounted
 ## Every kind of food the outworld can hold, in one table. The simulation and all the views read it,
 ## so a new food is: one entry here + (optionally) a 3D builder in view/outworld/parts/outworld_props.gd
-## and a 2D drawing in view/surface2d/world_view.gd (both fall back to something plain).
+## (it falls back to something plain without one).
 ##   type       what a forager carries home (Ant.SUGAR / Ant.PROTEIN)
 ##   amt, cap   loads available now / at most;  regen  loads per day it renews (aphids)
 ##   r          radius in px within which foragers handle it
