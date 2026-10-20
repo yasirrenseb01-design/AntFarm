@@ -185,6 +185,17 @@ func mate_pos(wid: int) -> Vector3:
 	for m in _mates:
 		if int(m.get("wid", -1)) == wid and m.has("xf"):
 			return (m.xf as Transform3D).origin
+	# a digger is drawn at the dig face, not as a nestmate: the workers set to dig, lowest id first, one per digger
+	# drawn (as pick_ant / info_for pair them)
+	var dig_ws: Array = sim.workers.filter(func(w): return w.task == Ant.TASK_DIG and w.state == Ant.IN_NEST)
+	dig_ws.sort_custom(func(a, b): return a.id < b.id)
+	var ds: Array = nest.diggers.duplicate()
+	ds.sort_custom(func(a, b): return a.id < b.id)
+	for i in mini(ds.size(), dig_ws.size()):
+		if dig_ws[i].id == wid:
+			var v: Dictionary = _dig_vis.get(ds[i].id, {})
+			if v.has("xf"):
+				return (v.xf as Transform3D).origin
 	return Vector3.INF
 
 

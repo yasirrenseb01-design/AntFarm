@@ -220,6 +220,8 @@ func _take_shot() -> void:
 			nest_view.snap_camera()
 	if _opts.has("colonies"):
 		hud.open_colonies()
+	if _opts.has("name-first") and not sim.workers.is_empty():
+		sim.name_ant(sim.workers[0].id, String(_opts["name-first"]))     # (--name-first=<name>: the title tour follows it)
 	if _opts.has("fridge"):
 		sim.fridge_on = true
 		sim.climate.fridge = 1.0
@@ -283,6 +285,14 @@ func _take_shot() -> void:
 				if m.has("xf") and nest_view._shown(m.xf):
 					hud.ant_tip._click(nest_view._cam.unproject_position((m.xf as Transform3D) * Vector3(-0.8, 0.4, 0)))
 					break
+		if i == 62 and _opts.has("name-ant") and not hud.ant_tip.sel.is_empty():
+			# (--name-ant=<name>, with --select: type a name into the chosen ant's box, as the keeper does)
+			hud.ant_tip._name_edit.text = String(_opts["name-ant"])
+			hud.ant_tip._give_name()
+		if i == 64 and _opts.has("named-death"):
+			# (--named-death: the banner a named ant's death puts up, with the words the simulation would use)
+			var TT = load("res://scripts/sim/text_th.gd")
+			sim._log(TT.named_died % ["แม่มดน้อย", TT.death_causes.starve, 42], "named")
 		if i == 60 and _opts.has("hover"):
 			_hover_some_ant(String(_opts["hover"]))
 		elif i > 10 and _opts.has("perf"):

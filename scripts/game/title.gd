@@ -7,6 +7,7 @@ extends CanvasLayer
 
 const SHOT_S := 14.0                  # seconds a shot lasts
 const TURN := 0.05                    # radians a second the camera drifts round
+const FIND_S := 2.0                   # seconds to find an ant in the nest just switched to (it is drawn after a few frames)
 const MENU_PX := 470.0                # how much of the window's left the menu takes
 const PAGE_W := 380.0                 # the notebook page
 const LOGO_W := 760.0
@@ -27,6 +28,7 @@ var _shot_t := 0.0
 var _named_turn := false
 var _named_i := -1
 var _follow = null                    # the ant the camera rides with (an Ant), or null
+var _follow_t := 0.0                  # seconds it has been followed
 var _view_before := "outworld"
 var _xray_before := false
 var pending_report: Array = []        # [title, text]: the time-away report, kept until the keeper goes on into the game
@@ -263,6 +265,7 @@ func _process(delta: float) -> void:
 		var vp: Vector2 = nv.get_viewport().get_visible_rect().size
 		nv._cam.h_offset = -MENU_PX * 0.5 * 2.0 * nv.cam_dist * tan(deg_to_rad(nv._cam.fov * 0.5)) / vp.y
 	if _follow != null:
+		_follow_t += delta
 		if not _keep_following(_follow):
 			_next_shot()                       # (it went in or out, or died: on to the next shot)
 
@@ -338,10 +341,8 @@ func _take(i: int) -> bool:
 func _watch(w, caption: String) -> bool:
 	var out: bool = main.sim.outside.has(w)
 	_set_view("outworld" if out else "nest")
-	if not out and main.nest_view.mate_pos(w.id) == Vector3.INF:
-		_set_view("outworld")
-		return false
 	_follow = w
+	_follow_t = 0.0
 	_caption.text = caption
 	if out:
 		main.outworld.dist_t = 40.0
@@ -365,6 +366,7 @@ func _keep_following(w) -> bool:
 		return false
 	var p: Vector3 = main.nest_view.mate_pos(w.id)
 	if p == Vector3.INF:
-		return false
+		# (just switched to the nest: it places its ants over the first frames - up to FIND_S to find this one)
+		return _follow_t < FIND_S
 	main.nest_view.aim_at(p, 18.0)
 	return true
