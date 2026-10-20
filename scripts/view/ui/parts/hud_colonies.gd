@@ -125,6 +125,12 @@ func open_settings() -> void:
 	opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	away.add_child(opt)
 	col.add_child(away)
+	# (two clocks: the colony's, cut short, and the ants' own pace - said here once, the time away being the one that differs)
+	var clocks := _label("ระหว่างเล่น 1 วันในเกม = 1 นาทีที่ความเร็ว 1× (ปุ่ม 0.2×–5× ที่แถบบน) — มดเดินด้วยความเร็วจริง แต่วันเดือนของรังย่อลง" +
+		"ให้เห็นรังโต · ตอนปิดเกม เวลาเดินตามที่เลือกข้างบน (ปกติช้ากว่าตอนเล่น รังจะได้ไม่ขาดน้ำขาดอาหารตอนคุณไม่อยู่นาน)", 12, Paper.PENCIL)
+	clocks.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	clocks.custom_minimum_size.x = 500
+	col.add_child(clocks)
 	var care := CheckBox.new()
 	care.text = "ผู้ช่วยเติมน้ำและให้อาหารตอนที่ไม่อยู่ (เฉพาะชุดเลี้ยง)"
 	care.button_pressed = settings.get("care", true)
