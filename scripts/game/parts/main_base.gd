@@ -8,6 +8,7 @@ const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
 const L := preload("res://scripts/sim/lang.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const Title := preload("res://scripts/game/title.gd")
+const Graphics := preload("res://scripts/game/graphics.gd")
 const SingleInstance := preload("res://scripts/game/single_instance.gd")
 const Migrations := preload("res://scripts/sim/save_migrations.gd")
 

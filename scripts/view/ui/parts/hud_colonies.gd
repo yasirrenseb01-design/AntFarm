@@ -183,6 +183,31 @@ func open_settings() -> void:
 			_fps_label.visible = on
 		settings_changed.emit(settings))
 	col.add_child(fps)
+	# graphics quality and the frame-rate cap (game/graphics.gd; main applies them as the settings change)
+	var gfx := HBoxContainer.new()
+	gfx.add_theme_constant_override("separation", 8)
+	gfx.add_child(_label(tr("set_quality"), 13, Paper.PENCIL))
+	var q := OptionButton.new()
+	q.focus_mode = Control.FOCUS_NONE
+	for k in ["quality_low", "quality_medium", "quality_high"]:
+		q.add_item(tr(k))
+	q.select(maxi(0, ["low", "medium", "high"].find(String(settings.get("quality", "medium")))))
+	q.item_selected.connect(func(i):
+		settings["quality"] = ["low", "medium", "high"][i]
+		settings_changed.emit(settings))
+	gfx.add_child(q)
+	gfx.add_child(_label(tr("set_fps_cap"), 13, Paper.PENCIL))
+	var f := OptionButton.new()
+	f.focus_mode = Control.FOCUS_NONE
+	for k in ["fps_30", "fps_60", "fps_free"]:
+		f.add_item(tr(k))
+	f.select(clampi(int(settings.get("fps_cap", 1)), 0, 2))
+	f.item_selected.connect(func(i):
+		settings["fps_cap"] = i
+		settings_changed.emit(settings))
+	gfx.add_child(f)
+	col.add_child(gfx)
+	col.add_child(_label(tr("set_quality_note"), 12, Paper.PENCIL))
 	var again_row := HBoxContainer.new()
 	again_row.add_theme_constant_override("separation", 10)
 	var again := _button(tr("settings_guide"), false)

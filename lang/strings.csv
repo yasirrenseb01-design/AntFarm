@@ -500,3 +500,13 @@ guide_away,ปิดเกมแล้วรังยังมีชีวิต
 guide_keys,เมนูหรือ Esc = กลับหน้าแรก · F9 ซ่อนหน้าจอ · F8 กล้องเดินชมรังให้เอง (ไว้ถ่ายคลิป) · ขอให้สนุกกับการเลี้ยงมด!,Menu or Esc takes you back to the title screen · F9 hides everything on screen · F8 lets the camera tour the colony by itself (for filming). Enjoy your ants!
 settings_guide,แสดงคำแนะนำผู้เล่นใหม่อีกครั้ง,Show the getting-started guide again
 settings_guide_note,จะขึ้นตอนกลับเข้าเกม,It shows when you go back to the game
+# graphics (game/graphics.gd),,
+set_quality,คุณภาพภาพ,Graphics
+quality_low,ต่ำ (เครื่องสเปกต่ำ / ประหยัดแบต),Low (older PCs / battery)
+quality_medium,กลาง,Medium
+quality_high,สูง,High
+set_fps_cap,จำกัดเฟรม,Frame cap
+fps_30,30 fps,30 fps
+fps_60,60 fps,60 fps
+fps_free,ไม่จำกัด,No cap
+set_quality_note,ครั้งแรกเกมเลือกให้ตามการ์ดจอ · ตอนสลับไปใช้หน้าต่างอื่นเกมวาดน้อยลงเอง (รังยังเดินต่อ),Chosen from your graphics card the first time · while you use another window the game draws less (the colony lives on)

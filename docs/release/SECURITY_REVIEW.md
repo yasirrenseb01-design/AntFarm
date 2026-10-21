@@ -1,4 +1,4 @@
-# ตรวจความปลอดภัย (PART EA-R ข้อ R8) — v0.11.14
+# ตรวจความปลอดภัย (PART EA-R ข้อ R8) — v0.11.15
 
 ตรวจจากโค้ดทั้งโปรเจกต์ (main c325636 / v0.11.13) และลองจริงด้วย Godot 4.7.2 headless บน Linux (cloud session)
 เทสต์ที่ใช้พิสูจน์: `tests/save_fuzz_test.gd` (อยู่ใน `tools/check.ps1` แล้ว) — ผล self-test 25 วันตรงเดิม

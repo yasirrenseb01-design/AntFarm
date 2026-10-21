@@ -308,7 +308,7 @@ func _settings() -> void:
 	# (the reason for all this: read as it was, the file would have run the script)
 	var cf := ConfigFile.new()
 	cf.parse("[game]\nx=Resource(\"%sevil.gd\")\n" % DIR)
-	_case("(read as before v0.11.14: the script ran)", "ran" if FileAccess.file_exists(ran) else "not run", ["ran"])
+	_case("(read as before v0.11.15: the script ran)", "ran" if FileAccess.file_exists(ran) else "not run", ["ran"])
 	DirAccess.remove_absolute(cfg)
 
 
