@@ -19,7 +19,7 @@ var desktop                    # desktop mode: the nest as the wallpaper (PART 1
 ##       --at-ant=<i>|walker|act2|act9|act10 (outworld: look at a forager, or one busy at that kind of food)   --at-food=<kind> (drop one and look at it)
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)   --newcolony   --fridge
 ##       --enemy=wolf_spider [--enemy-at=x,y] [--fight=<ticks>] (stage a fight next to the nest)
-##       --guide[=<step>] (the first-colony guide)   --clip (clip mode, as F8)   --title [--title-hover=<i>] (the title screen, as the game opens on it; with --shot too; the pointer on word i)   --species   --settings (those windows open)   --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
+##       --quality=low|medium|high (graphics)   --guide[=<step>] (the first-colony guide)   --clip (clip mode, as F8)   --title [--title-hover=<i>] (the title screen, as the game opens on it; with --shot too; the pointer on word i)   --species   --settings (those windows open)   --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
 ##   --scenario=keeper|wild (indoor formicarium, or a plot of ground with seasons and predators)
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
@@ -134,7 +134,9 @@ func _ready() -> void:
 	hud.language_changed.connect(_change_language)
 	hud.settings_changed.connect(func(st):
 		_settings.merge(st, true)
-		Store.save_settings(_settings))
+		Store.save_settings(_settings)
+		_apply_graphics())
+	_apply_graphics()
 	hud.save_requested.connect(_save_now)
 	desktop = DesktopMode.new()
 	add_child(desktop)
@@ -198,6 +200,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if outworld == null:
 		return
+	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED and not desktop.on:
+		Engine.max_fps = Graphics.FPS_MINIMIZED                      # (minimized: next to nothing to draw)
+	elif Engine.max_fps == Graphics.FPS_MINIMIZED and not desktop.on:
+		Engine.max_fps = _fps_cap if _window_in_use else Graphics.FPS_IDLE
 	if _catchup_left > 0:
 		_run_catchup()
 		return
@@ -243,7 +249,34 @@ func _process(delta: float) -> void:
 	_pt("hud", t0)
 
 
+## Graphics quality and the frame-rate cap from the settings (game/graphics.gd); the first time, from the graphics card.
+func _apply_graphics() -> void:
+	if not _settings.has("quality"):
+		_settings["quality"] = Graphics.auto_level()
+		if _settings.quality == "low" and not _settings.has("fps_cap"):
+			_settings["fps_cap"] = 0               # (30 fps: an integrated card's CPU is the limit in a big nest - steady, and half the work)
+		if _persist:
+			Store.save_settings(_settings)
+	_fps_cap = Graphics.FPS_CAPS[clampi(int(_settings.get("fps_cap", 1)), 0, Graphics.FPS_CAPS.size() - 1)]
+	if _opts.has("quality"):
+		_settings["quality"] = String(_opts["quality"])     # (dev: --quality=low|medium|high)
+	if _opts.has("shot") or _opts.has("selftest"):
+		_fps_cap = 0                              # (screenshots and the speed checks: as fast as it goes)
+	if desktop != null and desktop.on:
+		return                                    # (the wallpaper keeps its own 30 fps; this comes back after)
+	Graphics.apply(self, String(_settings.quality), _fps_cap if _window_in_use else mini(Graphics.FPS_IDLE, _fps_cap if _fps_cap > 0 else 999))
+
+
+var _fps_cap := 60
+var _window_in_use := true
+
+
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		# another window in front: fewer frames (the colony lives on just the same); back to the cap when in use again
+		_window_in_use = what == NOTIFICATION_APPLICATION_FOCUS_IN
+		if desktop != null and not desktop.on and outworld != null and not _opts.has("shot"):
+			Engine.max_fps = _fps_cap if _window_in_use else mini(Graphics.FPS_IDLE, _fps_cap if _fps_cap > 0 else 999)
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_save_now()
 		if desktop != null:
