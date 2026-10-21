@@ -57,6 +57,10 @@ func _build_panel(root: Control) -> void:
 		var v := _label("-", 13, INK, _mono)
 		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		v.custom_minimum_size.x = 64
+		v.clip_text = true                         # (a longer value - another language - trimmed, not pushing the panel wider)
+		v.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		l.clip_text = true
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		v.mouse_filter = Control.MOUSE_FILTER_PASS      # tooltips (causes of death)
 		grid.add_child(l)
 		grid.add_child(v)
@@ -279,7 +283,7 @@ func set_side_open(open: bool, keep := true) -> void:
 	_side_tab.visible = not open
 	_cam_pad.offset_right = (-PANEL_W - 14.0) if open else -14.0
 	if outworld:
-		outworld.side_px = outworld.SIDE_PANEL_PX if open else 0.0
+		outworld.side_px = (PANEL_W + 12.0) if open else 0.0
 	if keep:
 		settings["side_open"] = open
 		settings_changed.emit(settings)
@@ -288,10 +292,46 @@ func set_side_open(open: bool, keep := true) -> void:
 
 ## Whether the top bar runs in under the side panel (a window narrower than ~1700 px).
 func _crowded() -> bool:
-	return _top.position.x + _top.size.x + 10.0 > _side.get_viewport_rect().size.x - PANEL_W
+	_fit_top(_room_beside())
+	return _top.get_combined_minimum_size().x > _room_beside()
+
+
+## Room for the top bar left of an open side panel.
+func _room_beside() -> float:
+	return _side.get_viewport_rect().size.x - _top.position.x - PANEL_W - 24.0
 
 
 ## Open on a crowded window, the side panel starts below the top bar, so no button is under it.
 func _layout_side() -> void:
-	_side.offset_top = (_top.position.y + _top.size.y + 10.0) if _crowded() else 12.0
+	var whole := _side.get_viewport_rect().size.x - _top.position.x - 14.0
+	var crowded := _crowded()                     # (fits the bar beside the panel: tighter, without the species' name)
+	if crowded or not _side.visible:
+		_fit_top(whole)                           # (the panel below it or folded away: the bar has the whole width)
+	_side.offset_top = (_top.position.y + _top.size.y + 10.0) if crowded else 12.0
 	_side_tab.offset_top = _side.offset_top
+	_fit_bottom()
+
+
+## The camera buttons above the tool bar where the two would meet (a narrow window, longer English words).
+func _fit_bottom() -> void:
+	if _tools_bar == null:
+		return
+	_cam_pad.offset_bottom = -12.0
+	var vp := _side.get_viewport_rect().size
+	var pad_left: float = vp.x + _cam_pad.offset_right - _cam_pad.get_combined_minimum_size().x
+	if _tools_bar.position.x + _tools_bar.get_combined_minimum_size().x + 8.0 > pad_left:
+		_cam_pad.offset_bottom = -12.0 - _tools_bar.get_combined_minimum_size().y - 34.0
+
+
+## The top bar fitted to the window: all of it if there is room; else tighter, then without the species' name (in
+## English the buttons are longer: at 1600 px the last ones were off the screen).
+func _fit_top(room: float) -> void:
+	_top_title.visible = true
+	_top_row.add_theme_constant_override("separation", 20)
+	_top.reset_size()
+	if _top.get_combined_minimum_size().x > room:
+		_top_row.add_theme_constant_override("separation", 10)
+		_top.reset_size()
+	if _top.get_combined_minimum_size().x > room:
+		_top_title.visible = false
+		_top.reset_size()

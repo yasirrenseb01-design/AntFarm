@@ -48,7 +48,7 @@ func _build_enemies(root: Control) -> void:
 		info.add_theme_constant_override("separation", 1)
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var name_row := HBoxContainer.new()
-		name_row.add_child(_label(tr(K.NAME), 15, AMBER))
+		name_row.add_child(_label(_cap(tr(K.NAME)), 15, AMBER))       # ("wolf spider" in a sentence, "Wolf spider" as a heading)
 		name_row.add_child(_label(K.LATIN, 12, MUTED))
 		info.add_child(name_row)
 		info.add_child(_wrapped(tr(K.ABOUT), 12, INK))
@@ -146,3 +146,8 @@ func _refresh_enemies() -> void:
 		_enemy_rows[c.id].text = tr("en_row") % [tr(sim.ENEMY_KINDS[c.kind].NAME), doing,
 			roundi(maxf(0.0, float(c.hp)) / float(S.hp) * 100.0), held, int(c.get("kills", 0))]
 	_enemy_clear.visible = not ids.is_empty()
+
+
+## A name as a heading: its first letter a capital (English; Thai has none).
+static func _cap(s: String) -> String:
+	return s.left(1).to_upper() + s.substr(1)

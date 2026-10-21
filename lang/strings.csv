@@ -184,7 +184,7 @@ hours_n,%.1f ชั่วโมง,%.1f hours
 days_n,%.1f วัน,%.1f days
 # title,,
 title_notebook,สมุดบันทึกผู้เลี้ยงมด,Keeper's field notebook
-title_go_on,เล่นต่อ,Go on
+title_go_on,เล่นต่อ,Continue
 title_new,รังใหม่,New colony
 my_colonies,รังของฉัน,My colonies
 settings,ตั้งค่า,Settings
@@ -218,6 +218,7 @@ tip_hibernating,จำศีล,Hibernating
 tip_queen_founding,ปิดตัวเลี้ยงลูกรุ่นแรกด้วยไขมันของตัวเอง (เหลือ %d%%),"Sealed in, raising her first brood on her own fat (%d%% left)"
 tip_queen_not_laying,หยุดวางไข่ (อาหารไม่พอ),Not laying (not enough food)
 tip_laying,วางไข่,Laying eggs
+panel_laying,วางไข่,Laying
 tip_doing,กำลังทำ: ,Doing: 
 tip_worker_named,"""%s"" · มดงาน #%d","""%s"" · worker #%d"
 tip_worker_n,มดงาน #%d,Worker #%d
@@ -380,7 +381,7 @@ stars_title,มดเด่นในรัง,Star ants
 stars_named,มดที่ตั้งชื่อไว้,Ants you named
 stars_how,ตั้งชื่อ: คลิกมดในฉาก แล้วพิมพ์ในกล่องข้อมูลของมัน,To name one: click an ant in the scene and type in its info box
 stars_firsts,อันดับ 1 ของแต่ละด้าน,First in each line of work
-stars_coming,จะเริ่มนับในรุ่นถัดไป (การจำลองเลือกเวรงานรายตัว),Counted from the next version on (the simulation gives each ant its duties)
+stars_coming,ยังไม่มีใครทำ,Nobody yet
 stars_in_queen_room,ในห้องราชินี,in the queen's chamber
 stars_job_age,%s · อายุ %d วัน,%s · %d days old
 not_yet,ยังไม่มี,None yet
@@ -454,7 +455,7 @@ death_causes,สาเหตุ: ,Causes:
 brood_dead_tip,ไข่/ตัวอ่อน/ดักแด้ที่ตายเพราะแห้ง ราขึ้น หรือร้อนเกิน %d · ตัวอ่อนที่มดงานกินตอนขาดโปรตีน %d,"Eggs, larvae and pupae lost to drought, mould or heat %d · larvae eaten by the workers when short of protein %d"
 cycle_stopped,หยุด,stopped
 cm3,%.1f ซม³,%.1f cm³
-depth_short,%.1f ซม · %d ห้อง,%.1f cm · %d chambers
+depth_short,%.1f ซม,%.1f cm
 mm,%.1f มม.,%.1f mm
 # species page,,
 sp_queen_cap,ราชินี · ยาว 8–9 มม. อกโหนกใหญ่ (เคยมีกล้ามเนื้อบิน) ปีกหลุดไปหลังบินผสมพันธุ์ ขาและหนวดสีอำพัน,"Queen · 8–9 mm long, a big humped thorax (it held the flight muscles); the wings came off after the mating flight; amber legs and antennae"

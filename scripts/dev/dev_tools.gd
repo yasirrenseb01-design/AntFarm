@@ -231,6 +231,19 @@ func _take_shot() -> void:
 		nest_view._queen_mode_left = 1.0e9
 	if _opts.has("newcolony"):
 		hud._open_new_colony(1, true)
+	if _opts.has("widest"):
+		# (--widest: what makes the side panel wider than PANEL_W - longer words in another language)
+		await get_tree().process_frame
+		var found := []
+		var walk := func(n, f):
+			for c in n.get_children():
+				if c is Control and c.get_combined_minimum_size().x > hud.PANEL_W - 30.0:
+					found.append("%s %s %.0f '%s'" % [c.get_class(), c.name, c.get_combined_minimum_size().x, String(c.get("text")).left(40) if c.get("text") != null else ""])
+				f.call(c, f)
+		walk.call(hud._side, walk)
+		print("side panel min width %.0f (PANEL_W %.0f)" % [hud._side.get_combined_minimum_size().x, hud.PANEL_W])
+		for s in found.slice(-12):
+			print("  ", s)
 	if _opts.has("stars"):
 		hud.toggle_stars()                   # (--stars: the star ants panel open; --star-go=<worker id|-1 queen>: its "ไปดู")
 	if _opts.has("star-go"):

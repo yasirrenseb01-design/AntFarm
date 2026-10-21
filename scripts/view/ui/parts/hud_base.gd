@@ -23,7 +23,7 @@ signal cam_action(action: String)
 signal desktop_requested               # the keeper wants the nest as the desktop wallpaper (game/desktop_mode.gd)
 signal menu_requested                  # back to the title screen (game/title.gd)
 
-const PANEL_W := 352.0
+var PANEL_W := 352.0             # the side panel (wider in English: its words are longer; hud.setup)
 const INK := Color("f1e6d6")
 const MUTED := Color("b09a83")
 const AMBER := Color("e9a23b")
@@ -76,6 +76,9 @@ var _view_btns := {}
 var _cam_3d: Array = []          # rotate buttons: both 3D views
 var _cam_out: Array = []
 var _top: PanelContainer         # the top bar
+var _top_row: HBoxContainer      # ... its row (tighter on a narrow window)
+var _tools_bar: PanelContainer   # the tool bar at the bottom
+var _top_title: Control          # ... the species and the box, left out on a window too narrow for it all
 var _side: PanelContainer        # the side panel (folds away: set_side_open)
 var _side_tab: Button            # what is left of it folded: a tab to fold it out again
 var _cam_pad: PanelContainer     # the camera buttons (move right while the side panel is folded)

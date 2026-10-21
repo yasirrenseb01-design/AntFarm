@@ -15,6 +15,7 @@ func setup(s, w) -> void:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	PANEL_W = 410.0 if TranslationServer.get_locale().left(2) == "en" else 352.0
 	root.theme = _make_theme()
 	_paper_theme = Paper.theme(root.theme)
 	add_child(root)
@@ -163,7 +164,7 @@ func refresh(delta: float) -> void:
 	elif sim.starving or sim.queen.starve > 0.5:
 		_show(q, tr("queen_not_laying"), DANGER)
 	else:
-		_show(q, tr("tip_laying"), LEAF)
+		_show(q, tr("panel_laying"), LEAF)      # (short: the panel's narrow column)
 	_show(_vals["workers"], str(sim.workers.size()))
 	_show(_vals["out"], str(sim.out_count))
 	_show(_vals["nurses"], str(sim.nurses))
@@ -190,7 +191,7 @@ func refresh(delta: float) -> void:
 	var cyc: float = sim.cycle_days()
 	_show(_vals["cycle"], tr("cycle_stopped") if cyc == INF else tr("days_d") % int(cyc))
 	_show(_vals["vol"], tr("cm3") % sim.nest.volume_cm3(), DANGER if sim.nest.air < sim.target_air() * 0.7 and not fnd else INK)
-	_show(_vals["depth"], tr("depth_short") % [sim.nest.depth_cm(), sim.nest.chambers.size()])
+	_show(_vals["depth"], tr("depth_short") % sim.nest.depth_cm())        # (the chambers: in the cross-section's heading)
 	_show(_vals["size"], tr("mm") % sim.mean_worker_mm() if not sim.workers.is_empty() else tr("not_yet"))
 	var hum: float = sim.humidity
 	_hum_bar.value = hum * 100.0

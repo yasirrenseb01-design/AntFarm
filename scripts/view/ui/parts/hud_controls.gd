@@ -12,12 +12,14 @@ func _build_top(root: Control) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 20)
 	panel.add_child(row)
+	_top_row = row
 
 	var title := VBoxContainer.new()
 	title.add_theme_constant_override("separation", 0)
 	title.add_child(_label(tr(sim.sp["name_th"]), 22, INK, _display))
 	title.add_child(_label(tr("top_subtitle") % [sim.sp["name"], tr("top_plot") if sim.scenario == "wild" else tr("top_box"), ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED))
 	row.add_child(title)
+	_top_title = title
 
 	var clock := VBoxContainer.new()
 	clock.add_theme_constant_override("separation", 0)
@@ -112,6 +114,7 @@ func _build_tools(root: Control) -> void:
 	panel.offset_bottom = -12
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	root.add_child(panel)
+	_tools_bar = panel
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	panel.add_child(row)
