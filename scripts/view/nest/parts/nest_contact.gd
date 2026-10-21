@@ -66,7 +66,7 @@ func _climb(m: Dictionary, tr: Transform3D, md: float, at: float) -> Transform3D
 				m.bc_at = tr.origin
 				m.bc_f = tr.basis.x
 				# (over the brood up to two cocoons high: a heap of them is ~2 units - capped at 1.3 the body stayed in it)
-				m.bc = _headroom(tr, up, _need_lift(_climb_need(tr, _brood_spheres(tr.origin), up, _tends_brood(m)), float(m.size), 2.4))
+				m.bc = _headroom(tr, up, _need_lift(_climb_need(tr, _brood_spheres(tr.origin), up, _tends_brood(m)), float(m.size), 1.8))
 			want = (m.bc as Vector2).x
 			tip = (m.bc as Vector2).y
 		else:

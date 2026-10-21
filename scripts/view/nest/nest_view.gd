@@ -283,7 +283,7 @@ func refresh(delta: float) -> void:
 		_upload_volume()
 	else:
 		_foot_timer -= delta
-		if _foot_timer <= 0.0 and not _brood_occ.is_empty():
+		if _foot_timer <= 0.0 and (not _brood_occ.is_empty() or _foot_climbs > 0 or _mates.any(func(m): return m.has("over_on"))):
 			_upload_foot_volume()                  # (the brood laid out anew)
 	_pump_chunks(_queue)
 	t0 = _nprof("soil mesh", t0)

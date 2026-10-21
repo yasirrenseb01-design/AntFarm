@@ -95,6 +95,7 @@ var _vol_timer := 0.0
 var _foot_vol: ImageTexture3D       # the soil with the brood in it, for the ants' feet (they stand on eggs, larvae, cocoons)
 var _foot_rho := PackedByteArray()
 var _foot_timer := 0.0
+var _foot_climbs := 0                # nestmates climbing over others at the last foot-map upload (then it is renewed sooner)
 var _vol_dirty := true
 var _feed                          # EventFeed: life-cycle moments from the simulation (set up in setup())
 var _anims: Array = []             # life-cycle moments being acted out
@@ -342,22 +343,37 @@ func _upload_volume() -> void:
 ## pile had its feet set down on the soil under the cocoons, through them (or, out of reach, hanging in the air).
 ## The brood's bodies (nest_piles: as drawn) are stamped in as solid voxels. Again at most twice a second.
 func _upload_foot_volume() -> void:
-	_foot_timer = 0.5
+	_foot_timer = 0.5 if _foot_climbs == 0 else 0.2
 	_foot_rho = nest.rho.duplicate()
 	var nx: int = nest.nx
 	var ny: int = nest.ny
 	var nz: int = nest.nz
+	var all_sph := []
 	for bin in _brood_occ.values():
 		for o in bin:
-			var sph: Array = o[5] if o.size() >= 6 else ([[o[0], 0.25]] if o.size() == 2 else [])
+			all_sph.append(o[5] if o.size() >= 6 else ([[o[0], 0.25]] if o.size() == 2 else []))
+	# and the nestmates someone is climbing over: the climber's feet stand on their backs
+	_foot_climbs = 0
+	for m in _mates:
+		var o = m.get("over_on")
+		if o != null and o.has("xf") and float(m.get("over", 0.0)) > 0.2:
+			all_sph.append(call("_body_spheres", o))
+			_foot_climbs += 1
+	for sph in all_sph:
+		if true:
 			for q in sph:
+				# (a density falling off across a voxel at the body's surface: read trilinearly, as the shader reads it,
+				# it crosses one half right at the surface - stamped solid, the feet stood up to half a voxel off it)
 				var c: Vector3 = q[0]
-				var r: float = float(q[1]) + 0.2
-				for z in range(maxi(0, floori(c.z - r)), mini(nz, ceili(c.z + r) + 1)):
-					for y in range(maxi(0, floori(c.y - r)), mini(ny, ceili(c.y + r) + 1)):
-						for x in range(maxi(0, floori(c.x - r)), mini(nx, ceili(c.x + r) + 1)):
-							if Vector3(x, y, z).distance_to(c) <= r:
-								_foot_rho[(z * ny + y) * nx + x] = 255
+				var r: float = float(q[1])
+				var e := r + 0.8
+				for z in range(maxi(0, floori(c.z - e)), mini(nz, ceili(c.z + e) + 1)):
+					for y in range(maxi(0, floori(c.y - e)), mini(ny, ceili(c.y + e) + 1)):
+						for x in range(maxi(0, floori(c.x - e)), mini(nx, ceili(c.x + e) + 1)):
+							var v := int(clampf(0.6 + (r - Vector3(x, y, z).distance_to(c)), 0.0, 1.0) * 255.0)     # (0.6: its surface a touch outside the body - the feet on it, not in it)
+							var ix := (z * ny + y) * nx + x
+							if v > _foot_rho[ix]:
+								_foot_rho[ix] = v
 	var layers: Array[Image] = []
 	var slice: int = nx * ny
 	for z in nz:

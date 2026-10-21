@@ -140,40 +140,77 @@ func _custom(v: Dictionary, act: int) -> Color:
 	v.vact = AntModel.act_step(v.get("vact", Vector3(-1, 0, 0)), act, clock)    # poses ease into one another
 	var gx := AntModel.gait_x(v.get("gait", 0.0), v.get("bend", Vector2.ZERO))       # (and the waist and neck bent to the ground)
 	var cz := AntModel.clock_z(clock, v.get("lat", 0.0))                              # (and bent sideways round a turn)
-	if v.has("over_on") and float(v.get("over", 0.0)) > 0.3:
-		cz += 16384.0          # (up on a nestmate's back: its feet stand on the back under it, not reaching for the soil below)
-	else:
-		# lifted off the floor - up on the brood, or by the soil pushing it clear (nest_mates clr): its feet reach
-		# further down for the floor (2: as far again, 3: twice as far); they hung in the air under a lifted body
-		var lifted := maxf(float(v.get("over", 0.0)), float(v.get("clr", 0.0)))
-		if v.has("xf"):
-			# (and by what is really under it: at a shaft's lip, on a heap of brood - every fourth frame, kept between)
-			if (_mate_frame + int(v.get("wid", v.get("id", 0)))) % 4 == 0 or not v.has("fgap"):
-				v.fgap = _gap_under(v.xf)
-			lifted = maxf(lifted, float(v.fgap))
-		if lifted > 0.8:
-			cz += 3.0 * 16384.0
-		elif lifted > 0.3:
-			cz += 2.0 * 16384.0
+	cz += 16384.0 * float(_feet_mode(v))
 	if v.get("fed", false):
 		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
 	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
 
 
-## How far below the body the floor is (along its up; up to 1.5): the soil, or the brood lying on it.
+## Where its feet stand (the shader's z / 16384): 0 on the floor, 1 on a nestmate's back (not reaching for the soil),
+## 2-5 its body lifted off the floor - on the brood, pushed clear of the soil, at a shaft's lip - its feet reaching
+## 0.6-0.9 down (0.5 on the floor). With some hold-off and eased, so the reach never flips from frame to frame (the
+## feet jumped: the keeper saw them shake, 2026-10-22).
+func _feet_mode(v: Dictionary) -> int:
+	var on_back: bool = v.get("fback", false)
+	var ov := float(v.get("over", 0.0))
+	if v.has("over_on") and ov > 0.35:
+		on_back = true
+	elif not v.has("over_on") or ov < 0.2:
+		on_back = false
+	v.fback = on_back
+	var lifted := float(v.get("clr", 0.0)) if on_back else maxf(ov, float(v.get("clr", 0.0)))    # (the back under it is in the foot map)
+	if v.has("xf"):
+		# (and by what is really under it - every fourth frame, kept between)
+		if (_mate_frame + int(v.get("wid", v.get("id", 0)))) % 4 == 0 or not v.has("floor_gap"):
+			v.floor_gap = _gap_under(v.xf)
+		lifted = maxf(lifted, float(v.floor_gap))
+	var want := clampf(0.5 + lifted, 0.5, 1.1)
+	v.freach = move_toward(float(v.get("freach", 0.5)), want, 1.2 * get_process_delta_time())
+	return 1 + roundi((float(v.freach) - 0.5) / 0.1) if float(v.freach) > 0.55 else 0
+
+
+## How far below the body the floor is (along its up, up to 1.5): where the feet's own map of the floor (the soil and the
+## brood on it, nest_scene._foot_rho, read as the shader reads it) turns solid.
 func _gap_under(xf: Transform3D) -> float:
+	# (as the shader's ground_dy: from just above the feet down to the first solid, or up out of it)
 	var up := xf.basis.y.normalized()
-	var o := xf.origin
-	var gap := 0.0
-	while gap < 1.5:
-		var p := o - up * (gap + 0.1)
-		if _density_at(p) >= 0.5:
-			return gap
-		var c := Vector3i(roundi(p.x), roundi(p.y), roundi(p.z))
-		if not _foot_rho.is_empty() and nest.inside(c) and _foot_rho[nest.idx(c)] >= 128:
-			return gap                         # (the brood it stands on: nest_scene._upload_foot_volume)
-		gap += 0.25
-	return gap
+	var fw := xf.origin
+	var prev := 0.5
+	var dprev := _foot_at(fw + up * prev)
+	if dprev >= 0.5:
+		return 0.0                             # (the floor rises here: not lifted)
+	for i in range(1, 9):
+		var s := 0.5 - 0.25 * i
+		var d := _foot_at(fw + up * s)
+		if d >= 0.5:
+			return maxf(0.0, -lerpf(prev, s, clampf((0.5 - dprev) / maxf(d - dprev, 0.001), 0.0, 1.0)))
+		prev = s
+		dprev = d
+	return 1.5
+
+
+## The feet's floor map at p, as the shader samples it (trilinear over the voxels; 0 open, 1 solid).
+func _foot_at(p: Vector3) -> float:
+	var rho: PackedByteArray = _foot_rho if not _foot_rho.is_empty() else nest.rho
+	var nx: int = nest.nx
+	var ny: int = nest.ny
+	var nz: int = nest.nz
+	var x0 := floori(p.x)
+	var y0 := floori(p.y)
+	var z0 := floori(p.z)
+	var fx := p.x - x0
+	var fy := p.y - y0
+	var fz := p.z - z0
+	var v := 0.0
+	for dz in 2:
+		var z := clampi(z0 + dz, 0, nz - 1)
+		var wz := fz if dz == 1 else 1.0 - fz
+		for dy in 2:
+			var y := clampi(y0 + dy, 0, ny - 1)
+			var wy := (fy if dy == 1 else 1.0 - fy) * wz
+			var row := (z * ny + y) * nx
+			v += wy * ((1.0 - fx) * rho[row + clampi(x0, 0, nx - 1)] + fx * rho[row + clampi(x0 + 1, 0, nx - 1)])
+	return v / 255.0
 
 
 const _NEAR := [Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),

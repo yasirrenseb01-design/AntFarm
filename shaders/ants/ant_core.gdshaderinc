@@ -292,8 +292,12 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 				T.z = zk;
 				T.y -= 0.35 * K * clamp(abs(zk) / (0.8 * K), 0.0, 1.0);
 			}
-			// (its body lifted - the brood, the soil clearance: as far as the leg goes, ~0.9; beyond that it steps nearer)
-			float reach = fmode > 2.5 ? 0.88 : (fmode > 1.5 ? 0.75 : 0.5);
+			// (its body lifted - the brood, the soil clearance: 0.6-1.1. A leg spread wide reaches ~0.75 down, one drawn in
+			// under the body ~1.05: beyond what it reaches where it is, the foot steps nearer the body)
+			float reach = fmode > 1.5 ? 0.5 + 0.1 * (fmode - 1.0) : 0.5;
+			// how far down this leg can set its foot at T: its ankle can be at most femur + tibia from the coxa
+			float lmax = 0.97 * (length(N - C) + length(A - N));
+			vec3 dAF = A - F;
 			// set the foot down on the real ground under it (rough nest floors, the slope outside)
 			if (ground_mode != 0 && probe) {                  // (not for shadows)
 				vec3 upw = normalize(M[1].xyz);
@@ -303,15 +307,46 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 				// at an edge (over a drop, or against a wall rising beside it) there is no ground the leg can reach
 				// straight under the foot: the foot is set down nearer the body, where there is (as an ant at the
 				// lip of a shaft steps short) - it hung in the air, or went into the wall
-				if (ground_mode == 1 && (gd < -reach * sc || gd > 0.6 * sc)) {
+				// (as far in as the edge is: between the two samples either side of it, so the foot moves on smoothly as
+				// the body does, not in jumps)
+				float hd0 = length((T + dAF - C).xz);
+				float r0 = min(reach, sqrt(max(lmax * lmax - hd0 * hd0, 0.0)) + dAF.y - C.y);
+				if (ground_mode == 1 && (gd < -r0 * sc || gd > 0.6 * sc)) {
+					float fprev = 0.0;
+					float gprev = gd;
 					for (int k = 1; k <= 3; k++) {
+						float fk = 0.28 * float(k);
 						vec3 Tk = T;
-						Tk.xz = mix(T.xz, H.xz, 0.28 * float(k));
+						Tk.xz = mix(T.xz, H.xz, fk);
+						float hdk = length((Tk + dAF - C).xz);
+						float rk = min(reach, sqrt(max(lmax * lmax - hdk * hdk, 0.0)) + dAF.y - C.y);
 						float gk = ground_dy((M * vec4(Tk, 1.0)).xyz, upw);
-						if (gk >= -reach * sc && gk <= 0.6 * sc) {
-							T = Tk;
-							gd = gk;
+						if (gk >= -rk * sc && gk <= 0.6 * sc) {
+							float bound = gprev < -rk * sc ? -rk * sc : 0.6 * sc;
+							float ff = mix(fprev, fk, clamp((bound - gprev) / (gk - gprev), 0.0, 1.0));
+							T.xz = mix(T.xz, H.xz, ff);
+							gd = ground_dy((M * vec4(T, 1.0)).xyz, upw);
 							break;
+						}
+						fprev = fk;
+						gprev = gk;
+						if (k == 3 && fmode > 1.5) {
+							// up on the brood with nothing in reach under it or nearer the body: a little forward or back
+							// along the body, onto the cocoon there (it hung over the gap between them)
+							for (int j = 0; j < 12; j++) {
+								float sh = (0.45 * float(1 + (j % 6) / 2)) * (j % 2 == 0 ? 1.0 : -1.0);
+								vec3 Tj = T;
+								Tj.xz = mix(T.xz, H.xz, j < 6 ? 0.4 : 0.75);
+								Tj.x += sh * K * 3.0;
+								float hdj = length((Tj + dAF - C).xz);
+								float rj = min(reach, sqrt(max(lmax * lmax - hdj * hdj, 0.0)) + dAF.y - C.y);
+								float gj = ground_dy((M * vec4(Tj, 1.0)).xyz, upw);
+								if (gj >= -rj * sc && gj <= 0.6 * sc) {
+									T = Tj;
+									gd = gj;
+									break;
+								}
+							}
 						}
 					}
 				}

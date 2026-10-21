@@ -102,7 +102,7 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 	var fmode := floorf(cz / 16384.0)
 	cz -= fmode * 16384.0
 	var on_back := 1.0 if fmode == 1.0 else 0.0
-	var reach := 0.88 if fmode == 3.0 else (0.75 if fmode == 2.0 else 0.5)
+	var reach := 0.5 + 0.1 * (fmode - 1.0) if fmode > 1.5 else 0.5
 	var lc := floorf(cz / 600.0)
 	var t := cz - lc * 600.0
 	var cw := cus.a
@@ -156,16 +156,44 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 			T.y -= 0.35 * K * clampf(absf(T.z) / (0.8 * K), 0.0, 1.0)
 		var fw := M * T
 		var gd := _ground_dy(nest, fw, upw) if on_back < 0.5 else 0.0
-		if on_back < 0.5 and (gd < -reach * sc or gd > 0.6 * sc):
+		var lmax := 0.97 * ((N - C).length() + (A - N).length())
+		var dAF := A - F
+		var hd0 := Vector2((T + dAF - C).x, (T + dAF - C).z).length()
+		var r0 := minf(reach, sqrt(maxf(lmax * lmax - hd0 * hd0, 0.0)) + dAF.y - C.y)
+		if on_back < 0.5 and (gd < -r0 * sc or gd > 0.6 * sc):
+			var fprev := 0.0
+			var gprev := gd
 			for k in range(1, 4):              # (the shader: at an edge, set down nearer the body where it reaches)
+				var fk := 0.28 * k
 				var Tk := T
-				Tk.x = lerpf(T.x, H.x, 0.28 * k)
-				Tk.z = lerpf(T.z, H.z, 0.28 * k)
+				Tk.x = lerpf(T.x, H.x, fk)
+				Tk.z = lerpf(T.z, H.z, fk)
+				var hdk := Vector2((Tk + dAF - C).x, (Tk + dAF - C).z).length()
+				var rk := minf(reach, sqrt(maxf(lmax * lmax - hdk * hdk, 0.0)) + dAF.y - C.y)
 				var gk := _ground_dy(nest, M * Tk, upw)
-				if gk >= -reach * sc and gk <= 0.6 * sc:
-					T = Tk
-					gd = gk
+				if gk >= -rk * sc and gk <= 0.6 * sc:
+					var bound := -rk * sc if gprev < -rk * sc else 0.6 * sc
+					var ff := lerpf(fprev, fk, clampf((bound - gprev) / (gk - gprev), 0.0, 1.0))
+					T.x = lerpf(T.x, H.x, ff)
+					T.z = lerpf(T.z, H.z, ff)
+					gd = _ground_dy(nest, M * T, upw)
 					break
+				fprev = fk
+				gprev = gk
+				if k == 3 and fmode > 1.5:
+					for j in 12:
+						var sh := 0.45 * float(1 + (j % 6) / 2) * (1.0 if j % 2 == 0 else -1.0)
+						var fi := 0.4 if j < 6 else 0.75
+						var Tj := T
+						Tj.x = lerpf(T.x, H.x, fi) + sh * K * 3.0
+						Tj.z = lerpf(T.z, H.z, fi)
+						var hdj := Vector2((Tj + dAF - C).x, (Tj + dAF - C).z).length()
+						var rj := minf(reach, sqrt(maxf(lmax * lmax - hdj * hdj, 0.0)) + dAF.y - C.y)
+						var gj := _ground_dy(nest, M * Tj, upw)
+						if gj >= -rj * sc and gj <= 0.6 * sc:
+							T = Tj
+							gd = gj
+							break
 		if on_back < 0.5 and (gd > -1.35 or absf(M.basis.y.y) > 0.5 * sc):
 			T.y += clampf(gd / sc, -reach, 0.6)
 		T.y += up - hlift
@@ -182,7 +210,7 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 		var A2 := N2 + _rot_axis(Ay - Ny, ik[2], ik[1])
 		var tip := A2 + (Fy - Ay)
 		if debug:
-			print("    leg %d%s planted %s gd0 %.2f  T %s  tipErr %.3f  gd_tip %.2f" % [li, "R" if side > 0 else "L", planted, gd,
+			print("    leg %d%s planted %s gd0 %.2f upy %.2f fmode %d reach %.2f  T %s  tipErr %.3f  gd_tip %.2f" % [li, "R" if side > 0 else "L", planted, gd, M.basis.y.y / sc, fmode, reach,
 				M * T, (A2 - TA).length(), _ground_dy(nest, M * tip, upw)])
 		out.append([M * tip, planted, int(li)])
 	return out
@@ -199,6 +227,8 @@ static func measure(nv, tally: Dictionary) -> void:
 			brood.append([BodyCheck._larva_spheres(x) if mm == nv._larva_mm else BodyCheck._cocoon_spheres(x), x.origin])
 	var mm: MultiMesh = nv._ant_mm
 	tally.frames_f = int(tally.get("frames_f", 0)) + 1
+	tally.prev = tally.get("prev_next", {})
+	tally.prev_next = {}
 	var bodies := []
 	for i in mm.instance_count:
 		var X := mm.get_instance_transform(i)
@@ -211,14 +241,73 @@ static func measure(nv, tally: Dictionary) -> void:
 		if dbg:
 			tally.dbg_n = int(tally.get("dbg_n", 0)) + 1
 			print("  ant at %s up %s scale %.2f custom %s" % [M.origin, M.basis.y.normalized(), M.basis.y.length(), mm.get_instance_custom_data(i)])
+		if tally.has("debug") and int(floorf(mm.get_instance_custom_data(i).b / 16384.0)) == 5 and int(tally.get("dbg5", 0)) < 12 and int(tally.get("frames_f", 0)) == 5:
+			tally.dbg5 = int(tally.get("dbg5", 0)) + 1
+			for mt in nv._mates + nv._dig_vis.values():
+				if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+					print("  M5 over %.2f clr %.2f fgap %.2f freach %.2f role %s up %s" % [float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)), float(mt.get("floor_gap", -1.0)),
+						float(mt.get("freach", 0.0)), mt.get("role", "dig"), M.basis.y.normalized()])
 		var fs := feet(nest, M, mm.get_instance_custom_data(i), dbg)
 		var upw := M.basis.y.normalized()
+		# jitter: a planted foot stays where it is in the world while the body walks over it - from one frame to the
+		# next it may slide a little with the stride, not jump (only when measured every frame: --seq-every=1)
+		var key := "%d" % i
+		var prev: Array = (tally.get("prev", {}) as Dictionary).get(key, [])
+		if prev.size() == fs.size() and (prev.is_empty() or (prev[0][3] as Vector3).distance_to(M.origin) < 0.5):    # (the same ant: not one that came on screen in its place)
+			for k in fs.size():
+				if fs[k][1] and prev[k][1]:
+					var jump: float = (fs[k][0] as Vector3).distance_to(prev[k][0])
+					var dvert := absf(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))
+					var vprev: float = prev[k][4] if prev[k].size() > 4 else 0.0
+					tally.vib_n = int(tally.get("vib_n", 0)) + 1
+					if dvert > 0.03:
+						tally.vib = int(tally.get("vib", 0)) + 1
+					var sgn_now := signf(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))
+					if dvert > 0.02 and absf(vprev) > 0.02 and signf(vprev) != sgn_now:
+						tally.flick = int(tally.get("flick", 0)) + 1      # (up then down, or down then up: a flicker)
+					fs[k].append(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))
+					tally.jit_n = int(tally.get("jit_n", 0)) + 1
+					var fm := int(floorf(mm.get_instance_custom_data(i).b / 16384.0))
+					tally["jn:%d" % fm] = int(tally.get("jn:%d" % fm, 0)) + 1
+					if jump > 0.12 and tally.has("debug") and int(tally.get("dbg_j", 0)) < 14:
+						tally.dbg_j = int(tally.get("dbg_j", 0)) + 1
+						print("  JUMP mode %d leg %d by %.2f  body moved %.3f  up %s  old %s new %s" % [fm, fs[k][2], jump, (prev[k][3] as Vector3).distance_to(M.origin),
+							upw, prev[k][0], fs[k][0]])
+					if jump > 0.12:
+						tally.jit = int(tally.get("jit", 0)) + 1
+						tally["j:%d" % fm] = int(tally.get("j:%d" % fm, 0)) + 1
+		var cur := []
+		for f in fs:
+			cur.append([f[0], f[1], f[2], M.origin, f[3] if f.size() > 3 else 0.0])
+		if not tally.has("prev_next"):
+			tally.prev_next = {}
+		tally.prev_next[key] = cur
 		# where it is: up on something (its body well above the soil), on a slope or a wall, or on a floor
 		var body_gap := _ground_dy(nest, M.origin, upw)
 		var near_brood := false
 		for b in brood:
 			if (b[1] as Vector3).distance_squared_to(M.origin) < 9.0:
 				near_brood = true
+		if body_gap < -0.7:
+			var why := "?"
+			for mt in nv._mates + nv._dig_vis.values():
+				if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+					var rear := _ground_dy(nest, M * Vector3(-1.0, 0, 0), upw)
+					why = ("climbing over an ant" if mt.has("over_on") and float(mt.get("over", 0.0)) > 0.3 else
+						("on the brood" if float(mt.get("over", 0.0)) > 0.3 else
+						("lifted clear of the soil" if float(mt.get("clr", 0.0)) > 0.2 else
+						("front over a drop" if rear > -0.4 else
+						("digger" if not mt.has("role") else "in the open: %s rest %d settle %d script %s" % [mt.get("role"), int(mt.get("rest", 0)),
+							(mt.get("settle", []) as Array).size(), mt.has("script")])))))
+			tally["why:" + why] = int(tally.get("why:" + why, 0)) + 1
+			tally._why_now = why.split(":")[0]
+			if tally.has("debug") and why.begins_with("in the open") and int(tally.get("dbg_open", 0)) < 8:
+				tally.dbg_open = int(tally.get("dbg_open", 0)) + 1
+				for mt in nv._mates:
+					if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+						print("  OPEN at %s up %s cell %s walkable %s goal %s path %d over %.2f clr %.2f floor_gap %.2f narrow %s lag %.2f" % [M.origin, upw, mt.cell, nv._walkable(mt.cell),
+							mt.get("goal"), (mt.get("path", []) as Array).size(), float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)), float(mt.get("floor_gap", -1.0)),
+							mt.get("narrow", false), (Vector3(mt.cell) - M.origin).length()])
 		var where := "over the brood" if near_brood and body_gap < -0.7 else ("up on something" if body_gap < -0.7 else (
 			"by the brood" if near_brood else ("floor" if upw.y > 0.9 else ("slope" if upw.y > 0.3 else "wall/ceiling"))))
 		for f in fs:
@@ -279,8 +368,16 @@ static func measure(nv, tally: Dictionary) -> void:
 							who = "role %s over %.2f clr %.2f rest %d mv %.2f walkable %s cell %s" % [mt.get("role", "dig"), float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)),
 								int(mt.get("rest", 0)), float(mt.get("mv", 0.0)), nv._walkable(mt.get("cell", Vector3i.ZERO)), mt.get("cell")]
 					print("  WHO ", who)
+					if gd <= -1.35 and where == "over the brood" and int(tally.get("dbg_l", 0)) < 2:
+						tally.dbg_l = int(tally.get("dbg_l", 0)) + 1
+						feet(nest, M, mm.get_instance_custom_data(i), true)
 					print("  UP %s leg %d fmode %d gd %.2f body_gap %.2f  nearest brood %.2f ant %.2f  tip-origin along up %.2f" % [where, f[2],
 						int(floorf(mm.get_instance_custom_data(i).b / 16384.0)), gd, body_gap, bd_min, an_min, (tip - M.origin).dot(upw)])
+				if not on and where == "over the brood":
+					var hb := "gap %.1f" % snappedf(clampf(-body_gap, 0.0, 1.4), 0.2)
+					tally["hb:" + hb] = int(tally.get("hb:" + hb, 0)) + 1
+				if not on and where == "up on something":
+					tally["upwhy:" + String(tally.get("_why_now", "?"))] = int(tally.get("upwhy:" + String(tally.get("_why_now", "?")), 0)) + 1
 				if not on:
 					tally.foot_air = int(tally.get("foot_air", 0)) + 1
 					tally["air:" + where] = int(tally.get("air:" + where, 0)) + 1
@@ -303,6 +400,27 @@ static func report(tally: Dictionary) -> String:
 	var s := "planted feet %d: in the air %.2f%% (of them far from any soil %.2f%%), in the soil %.2f%%, in the brood %.2f%%" % [
 		int(tally.get("feet", 0)), 100.0 * float(tally.get("foot_air", 0)) / n, 100.0 * float(tally.get("foot_air_far", 0)) / n,
 		100.0 * float(tally.get("foot_soil", 0)) / n, 100.0 * float(tally.get("foot_brood", 0)) / n]
+	s += "
+    planted feet moving up or down more than 0.03 in a frame: %.2f%%, flickering (up then down) %.2f%%" % [100.0 * float(tally.get("vib", 0)) / maxf(1.0, float(tally.get("vib_n", 0))),
+		100.0 * float(tally.get("flick", 0)) / maxf(1.0, float(tally.get("vib_n", 0)))]
+	s += "
+    planted feet jumping more than 0.12 between frames: %.2f%% of %d" % [100.0 * float(tally.get("jit", 0)) / maxf(1.0, float(tally.get("jit_n", 0))), int(tally.get("jit_n", 0))]
+	for k in tally:
+		if String(k).begins_with("upwhy:"):
+			s += "
+      air feet up on something, %s: %d" % [String(k).substr(6), tally[k]]
+	for k in tally:
+		if String(k).begins_with("hb:"):
+			s += "
+      air feet over the brood, body %s above the floor: %d" % [String(k).substr(3), tally[k]]
+	for k in tally:
+		if String(k).begins_with("why:"):
+			s += "
+      high ant-frames: %5d  %s" % [tally[k], String(k).substr(4)]
+	for fm in 6:
+		if tally.has("jn:%d" % fm):
+			s += "
+      feet mode %d (0 floor, 1 on a back, 2-3 lifted): jumping %.2f%% of %d" % [fm, 100.0 * float(tally.get("j:%d" % fm, 0)) / float(tally["jn:%d" % fm]), int(tally["jn:%d" % fm])]
 	for where in ["floor", "slope", "wall/ceiling", "by the brood", "over the brood", "up on something"]:
 		var m := float(tally.get("n:" + where, 0))
 		if m > 0:

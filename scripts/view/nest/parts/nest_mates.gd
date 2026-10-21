@@ -275,6 +275,9 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 		m.act = ACT_WALK
 
 
+const CLR_MAX := 0.3                # how far an ant is lifted clear of the soil (beyond: its legs could not reach)
+
+
 func _update_ants(delta: float) -> void:
 	_bind_workers()                         # one drawn nestmate per real worker inside
 	_end_approaches()                       # (nest_duties: givers and groomers that have walked up to their partner)
@@ -461,12 +464,14 @@ func _update_ants(delta: float) -> void:
 			m.clr_f = tr.basis.x
 			m.clr_gen = _soil_gen
 			var cl := _soil_clearance(tr, float(m.size), m.bend)
-			m.clr_own = cl.x
+			# (lifted at most CLR_MAX: higher, its legs hung in the air under it - the keeper saw them dangle; an ant
+			# resting there turns to where it fits instead, as for a wall)
+			m.clr_own = minf(cl.x, CLR_MAX)
 			# its head or gaster in a wall (rising would not clear it), or its front feet over a drop: standing
 			# still, it turns away from the wall or the drop, stepping round on the spot
 			var still: bool = not m.has("script") and (m.rest > 0 and (m.get("settle", []) as Array).is_empty() or m.act in STILL_ACTS) \
 					and (m.get("face", Vector3.INF) as Vector3) == Vector3.INF
-			if still and clr_budget > 2 and (cl.y > 0 or float(m.get("over", 0.0)) < 0.05 and _feet_over_drop(tr) >= 4):
+			if still and clr_budget > 2 and (cl.y > 0 or cl.x > CLR_MAX or float(m.get("over", 0.0)) < 0.05 and _feet_over_drop(tr) >= 4):
 				clr_budget -= 3
 				m.rest_dir = _free_heading(m, tr, 0.0)
 				# no way round lies clear here (its head or gaster in the soil whichever way it faces):
@@ -509,6 +514,16 @@ func _update_ants(delta: float) -> void:
 		# up on a nestmate's back passing it (see _keep_apart), or on the brood (see nest_contact._climb): last, on the
 		# body as it lies on the ground - what is under it is drawn so (raised before, the ground fit then lowered it
 		# into them)
+		# settled onto the surface under it: drawn a cell or two behind its path, it cut the corners where a floor turns
+		# into a wall or a wall into the ceiling, and hung off the surface, legs reaching for nothing (lifted on purpose -
+		# clear of the soil, up on another or the brood - it is not pulled down)
+		if not m.has("script") and float(m.get("over", 0.0)) < 0.05 and not m.has("over_on"):
+			if (_mate_frame + int(m.get("wid", 0))) % 4 == 0 or not m.has("sink_t"):
+				m.sink_t = clampf(_gap_under(tr) - float(m.get("clr", 0.0)) - 0.05, 0.0, 1.2)
+		else:
+			m.sink_t = 0.0
+		m.sink = move_toward(float(m.get("sink", 0.0)), float(m.sink_t), 2.5 * md)
+		tr.origin -= tr.basis.y.normalized() * float(m.sink)
 		var tcl := Time.get_ticks_usec()
 		tr = _soil_push(m, tr, md)               # (out of the walls of a narrow bend: nest_contact)
 		tr = _climb(m, tr, md, madt)
