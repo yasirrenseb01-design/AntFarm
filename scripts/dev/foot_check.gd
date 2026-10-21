@@ -99,8 +99,10 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 	var bc := floorf(cus.r / 512.0)
 	var gait := cus.r - bc * 512.0
 	var cz := cus.b
-	var on_back := floorf(cz / 16384.0)
-	cz -= on_back * 16384.0
+	var fmode := floorf(cz / 16384.0)
+	cz -= fmode * 16384.0
+	var on_back := 1.0 if fmode == 1.0 else 0.0
+	var reach := 0.88 if fmode == 3.0 else (0.75 if fmode == 2.0 else 0.5)
 	var lc := floorf(cz / 600.0)
 	var t := cz - lc * 600.0
 	var cw := cus.a
@@ -149,20 +151,23 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 			dx += 0.03 * K * sin(t * 0.9 + li * 2.0 + side)
 		var tg := Vector2(F.z, -F.x).normalized() * tdir
 		var T := F + Vector3(dx * (1.0 - tw) + tg.x * dx * tw, 0.0, tg.y * dx * tw)
+		if on_back > 0.5:
+			T.z *= 0.42
+			T.y -= 0.35 * K * clampf(absf(T.z) / (0.8 * K), 0.0, 1.0)
 		var fw := M * T
 		var gd := _ground_dy(nest, fw, upw) if on_back < 0.5 else 0.0
-		if on_back < 0.5 and (gd < -0.5 * sc or gd > 0.6 * sc):
-			for k in range(1, 3):              # (the shader: at an edge, set down nearer the body where it reaches)
+		if on_back < 0.5 and (gd < -reach * sc or gd > 0.6 * sc):
+			for k in range(1, 4):              # (the shader: at an edge, set down nearer the body where it reaches)
 				var Tk := T
-				Tk.x = lerpf(T.x, H.x, 0.3 * k)
-				Tk.z = lerpf(T.z, H.z, 0.3 * k)
+				Tk.x = lerpf(T.x, H.x, 0.28 * k)
+				Tk.z = lerpf(T.z, H.z, 0.28 * k)
 				var gk := _ground_dy(nest, M * Tk, upw)
-				if gk >= -0.5 * sc and gk <= 0.6 * sc:
+				if gk >= -reach * sc and gk <= 0.6 * sc:
 					T = Tk
 					gd = gk
 					break
 		if on_back < 0.5 and (gd > -1.35 or absf(M.basis.y.y) > 0.5 * sc):
-			T.y += clampf(gd / sc, -0.5, 0.6)
+			T.y += clampf(gd / sc, -reach, 0.6)
 		T.y += up - hlift
 		var v0 := Vector2((F - H).x, (F - H).z)
 		var v1 := Vector2((T - H).x, (T - H).z)
@@ -256,6 +261,26 @@ static func measure(nv, tally: Dictionary) -> void:
 					for q in bd[0]:
 						if (q[0] as Vector3).distance_to(tip) < float(q[1]) + AIR_GAP:
 							on = true                       # (on another ant's back)
+				if not on and tally.has("debug") and where in ["over the brood", "up on something"] and int(tally.get("dbg_up", 0)) < 14:
+					tally.dbg_up = int(tally.get("dbg_up", 0)) + 1
+					var bd_min := INF
+					for b in brood:
+						for s2 in b[0]:
+							bd_min = minf(bd_min, (s2[0] as Vector3).distance_to(tip) - float(s2[1]))
+					var an_min := INF
+					for bd in bodies:
+						if (bd[1] as Vector3) == M.origin:
+							continue
+						for q in bd[0]:
+							an_min = minf(an_min, (q[0] as Vector3).distance_to(tip) - float(q[1]))
+					var who := "?"
+					for mt in nv._mates + nv._dig_vis.values():
+						if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+							who = "role %s over %.2f clr %.2f rest %d mv %.2f walkable %s cell %s" % [mt.get("role", "dig"), float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)),
+								int(mt.get("rest", 0)), float(mt.get("mv", 0.0)), nv._walkable(mt.get("cell", Vector3i.ZERO)), mt.get("cell")]
+					print("  WHO ", who)
+					print("  UP %s leg %d fmode %d gd %.2f body_gap %.2f  nearest brood %.2f ant %.2f  tip-origin along up %.2f" % [where, f[2],
+						int(floorf(mm.get_instance_custom_data(i).b / 16384.0)), gd, body_gap, bd_min, an_min, (tip - M.origin).dot(upw)])
 				if not on:
 					tally.foot_air = int(tally.get("foot_air", 0)) + 1
 					tally["air:" + where] = int(tally.get("air:" + where, 0)) + 1

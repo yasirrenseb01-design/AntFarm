@@ -184,7 +184,7 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 
 // The body's pose for one activity code (act + 100 if the crop is full): the vertex V (normal NR) of body
 // part `part` moved for that activity. Called twice while easing from one activity into the next.
-vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec3 bend, out float stretch_out) {
+vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec3 bend, float fmode, out float stretch_out) {
 	float full = code >= 99.5 ? 1.0 : 0.0;
 	float act = code - full * 100.0;
 	stretch_out = 0.0;
@@ -285,6 +285,15 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			// not straight back as in walking
 			vec2 tg = normalize(vec2(F.z, -F.x)) * tdir;
 			vec3 T = F + vec3(dx * (1.0 - tw) + tg.x * dx * tw, 0.0, tg.y * dx * tw);
+			if (fmode > 0.5 && fmode < 1.5) {
+				// up on a nestmate's back: its feet drawn in over the back it walks on (straddling it, they hung in
+				// the air beside it), and down a little to its rounded sides
+				float zk = T.z * 0.42;
+				T.z = zk;
+				T.y -= 0.35 * K * clamp(abs(zk) / (0.8 * K), 0.0, 1.0);
+			}
+			// (its body lifted - the brood, the soil clearance: as far as the leg goes, ~0.9; beyond that it steps nearer)
+			float reach = fmode > 2.5 ? 0.88 : (fmode > 1.5 ? 0.75 : 0.5);
 			// set the foot down on the real ground under it (rough nest floors, the slope outside)
 			if (ground_mode != 0 && probe) {                  // (not for shadows)
 				vec3 upw = normalize(M[1].xyz);
@@ -294,12 +303,12 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 				// at an edge (over a drop, or against a wall rising beside it) there is no ground the leg can reach
 				// straight under the foot: the foot is set down nearer the body, where there is (as an ant at the
 				// lip of a shaft steps short) - it hung in the air, or went into the wall
-				if (ground_mode == 1 && (gd < -0.5 * sc || gd > 0.6 * sc)) {
-					for (int k = 1; k <= 2; k++) {
+				if (ground_mode == 1 && (gd < -reach * sc || gd > 0.6 * sc)) {
+					for (int k = 1; k <= 3; k++) {
 						vec3 Tk = T;
-						Tk.xz = mix(T.xz, H.xz, 0.3 * float(k));
+						Tk.xz = mix(T.xz, H.xz, 0.28 * float(k));
 						float gk = ground_dy((M * vec4(Tk, 1.0)).xyz, upw);
-						if (gk >= -0.5 * sc && gk <= 0.6 * sc) {
+						if (gk >= -reach * sc && gk <= 0.6 * sc) {
 							T = Tk;
 							gd = gk;
 							break;
@@ -309,7 +318,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 				// (on a wall or the ceiling with no soil under the foot - the glass of a glass nest - it stays put;
 				// on a floor it reaches down for the ground as far as the leg goes)
 				if (gd > -1.35 || abs(M[1].y) > 0.5 * sc) {
-					T.y += clamp(gd / sc, -0.5, 0.6);           // (up a steep chamber edge the foot climbs with it)
+					T.y += clamp(gd / sc, -reach, 0.6);         // (up a steep chamber edge the foot climbs with it)
 				}
 			}
 			T.y += up - hlift;                               // (the body is raised by hlift below)
@@ -498,21 +507,23 @@ void vertex() {
 		bc -= 1.0;
 		bend.xy = (vec2(mod(bc, 21.0), floor(bc / 21.0)) - 10.0) * 0.04;
 	}
-	// z: clock + 600 x the sideways bend code (+ 16384: up on a nestmate's back - its feet do not look for the soil)
+	// z: clock + 600 x the sideways bend code + 16384 x where its feet stand: 1 up on a nestmate's back (they do not
+	// look for the soil), 2 / 3 its body lifted off the floor (on the brood, clear of the soil): they reach further down
 	float cz = INSTANCE_CUSTOM.z;
-	float on_back = floor(cz / 16384.0);
-	cz -= on_back * 16384.0;
+	float fmode = floor(cz / 16384.0);
+	cz -= fmode * 16384.0;
+	float on_back = fmode > 0.5 && fmode < 1.5 ? 1.0 : 0.0;
 	float lc = floor(cz / 600.0);
 	float clock = cz - lc * 600.0;
 	if (lc > 0.5) {
 		bend.z = (lc - 11.0) * 0.04;
 	}
-	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS && on_back < 0.5, bend, s1);
+	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS && on_back < 0.5, bend, fmode, s1);
 	stretch = s1;
 	if (left > 0.002 && prev != code && !IN_SHADOW_PASS) {      // (a shadow skips the easing)
 		vec3 n0 = NORMAL;
 		float s0;
-		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, on_back < 0.5, bend, s0);
+		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, on_back < 0.5, bend, fmode, s0);
 		v1 = mix(v1, v0, left);
 		n1 = normalize(mix(n1, n0, left) + vec3(0.0, 1e-4, 0.0));
 		stretch = mix(s1, s0, left);

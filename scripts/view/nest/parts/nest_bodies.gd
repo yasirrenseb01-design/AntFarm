@@ -142,9 +142,38 @@ func _custom(v: Dictionary, act: int) -> Color:
 	var cz := AntModel.clock_z(clock, v.get("lat", 0.0))                              # (and bent sideways round a turn)
 	if v.has("over_on") and float(v.get("over", 0.0)) > 0.3:
 		cz += 16384.0          # (up on a nestmate's back: its feet stand on the back under it, not reaching for the soil below)
+	else:
+		# lifted off the floor - up on the brood, or by the soil pushing it clear (nest_mates clr): its feet reach
+		# further down for the floor (2: as far again, 3: twice as far); they hung in the air under a lifted body
+		var lifted := maxf(float(v.get("over", 0.0)), float(v.get("clr", 0.0)))
+		if v.has("xf"):
+			# (and by what is really under it: at a shaft's lip, on a heap of brood - every fourth frame, kept between)
+			if (_mate_frame + int(v.get("wid", v.get("id", 0)))) % 4 == 0 or not v.has("fgap"):
+				v.fgap = _gap_under(v.xf)
+			lifted = maxf(lifted, float(v.fgap))
+		if lifted > 0.8:
+			cz += 3.0 * 16384.0
+		elif lifted > 0.3:
+			cz += 2.0 * 16384.0
 	if v.get("fed", false):
 		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
 	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
+
+
+## How far below the body the floor is (along its up; up to 1.5): the soil, or the brood lying on it.
+func _gap_under(xf: Transform3D) -> float:
+	var up := xf.basis.y.normalized()
+	var o := xf.origin
+	var gap := 0.0
+	while gap < 1.5:
+		var p := o - up * (gap + 0.1)
+		if _density_at(p) >= 0.5:
+			return gap
+		var c := Vector3i(roundi(p.x), roundi(p.y), roundi(p.z))
+		if not _foot_rho.is_empty() and nest.inside(c) and _foot_rho[nest.idx(c)] >= 128:
+			return gap                         # (the brood it stands on: nest_scene._upload_foot_volume)
+		gap += 0.25
+	return gap
 
 
 const _NEAR := [Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),
