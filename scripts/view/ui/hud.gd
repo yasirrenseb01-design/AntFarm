@@ -4,6 +4,7 @@ extends "res://scripts/view/ui/parts/hud_panel.gd"
 ## Layers: parts/hud_base <- hud_colonies <- hud_enemies <- hud_stars <- hud_controls <- hud_panel <- hud.
 
 const AntTip := preload("res://scripts/view/ui/ant_tip.gd")
+const Guide := preload("res://scripts/view/ui/guide.gd")
 const Sounds := preload("res://scripts/view/ui/sounds.gd")
 const Lofi := preload("res://scripts/view/ui/lofi.gd")
 
@@ -200,3 +201,30 @@ func refresh(delta: float) -> void:
 	_chart.queue_redraw()
 	_refresh_enemies()
 	_refresh_stars()
+
+
+# ---------------------------------------------------------------- the first-colony guide (PART EA-R R4)
+
+var _guide = null
+
+
+## Starts the guide (ui/guide.gd) over the game; done or skipped, it is not shown again (settings "guide_done").
+func start_guide() -> void:
+	if _guide != null and is_instance_valid(_guide):
+		return
+	if not sim.scenario in ["keeper", "wild"]:
+		return
+	_apply_mode("outworld")
+	view_changed.emit("outworld")             # (the food and the tools are out there)
+	_guide = Guide.new()
+	get_child(0).add_child(_guide)
+	_guide.setup(self)
+	_guide.finished.connect(func():
+		settings["guide_done"] = true
+		settings_changed.emit(settings))
+
+
+## Shows the guide if the keeper has not been through it yet.
+func maybe_guide() -> void:
+	if not bool(settings.get("guide_done", false)):
+		start_guide()

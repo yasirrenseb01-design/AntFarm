@@ -56,16 +56,16 @@ log_cause_starvation,ขาดอาหาร,starvation
 log_cause_thirst,ขาดน้ำ,thirst
 log_ant_named,"ตั้งชื่อมดงาน #%d ว่า ""%s""","Named worker #%d ""%s"""
 log_ant_unnamed,"เอาชื่อ ""%s"" ออกจากมดงาน #%d","Took the name ""%s"" from worker #%d"
-log_named_died,%s ตายแล้ว — %s (อายุ %d วัน),%s has died — %s (aged %d days)
+log_named_died,%s ตายแล้ว — %s (อายุ %d วัน),%s has died (%s) · aged %d days
 log_queen_named,"ตั้งชื่อราชินีว่า ""%s""","Named the queen ""%s"""
 log_queen_unnamed,"เอาชื่อ ""%s"" ออกจากราชินี","Took the name ""%s"" from the queen"
-log_named_queen_died,ราชินี %s ตายแล้ว — %s,Queen %s has died — %s
-cause_starve,อดอาหาร,starved
-cause_thirst,ขาดน้ำ,of thirst
-cause_old,แก่ตาย,of old age
+log_named_queen_died,ราชินี %s ตายแล้ว — %s,Queen %s has died (%s)
+cause_starve,อดอาหาร,starvation
+cause_thirst,ขาดน้ำ,thirst
+cause_old,แก่ตาย,old age
 cause_out,หายไปตอนออกหากิน,lost while foraging
-cause_enemy,ถูกศัตรูกัด,bitten by an enemy
-cause_other,ไม่ทราบสาเหตุ,cause unknown
+cause_enemy,ถูกศัตรูกัด,killed by a predator
+cause_other,ไม่ทราบสาเหตุ,unknown cause
 log_stamp,ว.%d %s,Day %d %s
 # calendar,,
 month_jan,ม.ค.,Jan
@@ -230,7 +230,7 @@ tip_carry_prey,คาบชิ้นเหยื่อ,Carrying a piece of prey
 tip_carry_corpse,แบกศพเพื่อนร่วมรัง,Carrying a dead nestmate
 tip_hurt,บาดเจ็บ (ขาหรือหนวดขาด) เดินช้าลง,Injured (lost a leg or an antenna): walks slower
 tip_hungry,หิว / อ่อนแรง,Hungry / weak
-tip_leanings,นิสัย: ,Leanings: 
+tip_leanings,นิสัย: ,Tendencies: 
 job_dig,ขุดรัง,Digging the nest
 job_attend,ดูแลราชินี,Attending the queen
 job_search,ออกหาอาหาร,Foraging
@@ -309,8 +309,8 @@ col_empty,ว่าง,Empty
 col_desc,%s · วันที่ %d · มดงาน %d · %s%s · บันทึก %s,%s · day %d · %d workers · %s%s · saved %s
 col_wild,สวน,Garden
 col_keeper,ชุดเลี้ยง,Formicarium
-nest_glass,ตู้แอนท์ฟาร์ม,Ant farm (glass)
-nest_soil,ก้อนดิน,Block of soil
+nest_glass,ตู้แอนท์ฟาร์ม,Glass ant farm
+nest_soil,ก้อนดิน,Soil block
 col_play,เล่นรังนี้,Play this colony
 col_restart,เริ่มใหม่…,Start anew…
 col_note,"เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · ตอนปิดเกม เพลง และอื่นๆ อยู่ใน ""ตั้งค่า"" ที่หน้าแรก","Saved automatically every minute and when the game closes · time while closed, music and the rest are in ""Settings"" on the title page"
@@ -353,21 +353,21 @@ view_outworld,พื้นดิน 3 มิติ,Outworld 3D
 view_nest,ในรัง 3 มิติ,Nest 3D
 enemies,ศัตรู,Enemies
 enemies_tip,ปล่อยแมงมุมหมาป่า ตะขาบหิน หรือด้วงดิน มาดูมดสู้,"Let in a wolf spider, a stone centipede or a ground beetle and watch the ants fight"
-stars,มดเด่น,Star ants
+stars,มดเด่น,Top ants
 stars_tip,มดที่ทำงานแต่ละอย่างมากที่สุด และมดที่ตั้งชื่อไว้,"The ants that did most of each job, and the ants you named"
 wallpaper_tip,ให้รังมดเป็นภาพพื้นหลังเดสก์ท็อป อยู่หลังไอคอน\nกลับเข้าเกม: คลิกไอคอนมดที่ถาดระบบ (มุมขวาล่าง),"Make the nest your desktop wallpaper, behind the icons\nBack to the game: click the ant icon in the system tray (bottom right)"
 menu,เมนู,Menu
 menu_tip,กลับหน้าแรก (Esc),Back to the title page (Esc)
 place_plot,วางในแปลง,Put in the plot
 place_box,วางในกล่อง,Put in the box
-cut_plane,ระนาบตัด,Cut
+cut_plane,ระนาบตัด,Slice
 xray,มองทะลุดิน,See through the soil
 add_water,เติมน้ำในรัง,Add water
 show_scent,แสดงกลิ่น,Show scent
 heater,แผ่นความร้อน,Heat mat
 fridge,จำศีลในตู้เย็น,Hibernate in fridge
 cam_top,มุมบน,Top
-cam_fit,เต็มจอ,Whole
+cam_fit,เต็มจอ,Fit
 cam_go,ไปที่,Go to
 cam_entrance,ปากรัง,Entrance
 pupae,ดักแด้,Pupae
@@ -377,7 +377,7 @@ hint_outworld,ลากซ้าย (มือ) หมุน · ลากขว�
 log_heater_on,เปิดแผ่นความร้อนใต้รัง อุณหภูมิในรังจะค่อยๆ สูงขึ้น,Switched on the heat mat under the nest: the nest will slowly warm up
 log_heater_off,ปิดแผ่นความร้อน,Switched off the heat mat
 # star ants,,
-stars_title,มดเด่นในรัง,Star ants
+stars_title,มดเด่นในรัง,Top ants
 stars_named,มดที่ตั้งชื่อไว้,Ants you named
 stars_how,ตั้งชื่อ: คลิกมดในฉาก แล้วพิมพ์ในกล่องข้อมูลของมัน,To name one: click an ant in the scene and type in its info box
 stars_firsts,อันดับ 1 ของแต่ละด้าน,First in each line of work
@@ -445,11 +445,11 @@ weather_line,อากาศ %.1f°C · %s · มดออกหากิน %d%
 fps_line,%d FPS · จริง %.1f×,%d FPS · real %.1f×
 queen_fat,ไขมัน %d%%,Fat %d%%
 queen_not_laying,หยุดวางไข่,Not laying
-death_starve,อดอาหาร,starved
+death_starve,อดอาหาร,starvation
 death_thirst,ขาดน้ำ,thirst
 death_old,แก่ตาย,old age
-death_out,หายตอนออกหากิน,lost foraging
-death_enemy,ศัตรูกัด,enemies
+death_out,หายตอนออกหากิน,lost while foraging
+death_enemy,ศัตรูกัด,predators
 death_other,ไม่ทราบ (เซฟเก่า),unknown (older save)
 death_causes,สาเหตุ: ,Causes: 
 brood_dead_tip,ไข่/ตัวอ่อน/ดักแด้ที่ตายเพราะแห้ง ราขึ้น หรือร้อนเกิน %d · ตัวอ่อนที่มดงานกินตอนขาดโปรตีน %d,"Eggs, larvae and pupae lost to drought, mould or heat %d · larvae eaten by the workers when short of protein %d"
@@ -484,3 +484,19 @@ sp_choose,เลือกชนิดนี้ ›,Choose this one ›
 set_language,ภาษา / Language,Language / ภาษา
 # ant info box,,
 tip_elsewhere,\n(%s — สลับมุมมองเพื่อดูตัว),\n(%s — switch the view to see it)
+# first-colony guide (ui/guide.gd),,
+guide_step,คำแนะนำ %d / %d,Getting started %d / %d
+guide_next,ต่อไป ›,Next ›
+guide_done,เริ่มเลี้ยงมด,Start keeping
+guide_skip,ข้าม,Skip
+guide_welcome,นี่คือรังของคุณ ถ้าเริ่มจากราชินีตัวเดียว เธอจะขังตัวเองในห้องเล็กใต้ดินแล้วเลี้ยงลูกรุ่นแรกเอง หลายสัปดาห์แรกจึงดูเหมือนไม่มีอะไรเกิดขึ้น — เร่งเวลาได้ที่ปุ่มความเร็วตรงนี้,"This is your colony. A lone queen seals herself into a small chamber underground and raises her first brood on her own, so for the first weeks little seems to happen - speed time up with these buttons."
+guide_water,"มดต้องการน้ำ ดูหลอด ""น้ำ"" ในแผงสถานะรัง แล้วกด ""เติมน้ำในรัง"" ก่อนน้ำหมด (มีเสียงเตือนเมื่อใกล้หมด)","Ants need water. Watch the ""Water"" gauge in the colony panel and press ""Add water"" before it runs dry (a chime warns you when it is low)."
+guide_water_wild,ในสวน ฝนให้น้ำรังเอง ไม่ต้องเติมน้ำ — แต่หน้าแล้งรังอาจลำบาก ดูความชื้นในแผงสถานะรังได้,"In the garden the rain waters the nest, so there is nothing to add - but a dry summer is hard on a colony. The colony panel shows the humidity."
+guide_food,พอมีมดงานออกหากิน วางอาหารในกล่องได้: หยดน้ำผึ้ง (น้ำตาลให้มดทั้งรัง) หรือจิ้งหรีดตาย (โปรตีนให้ตัวอ่อนโต) — เลือกที่แถบนี้แล้วคลิกบนพื้น,"Once workers come out to forage, put food in the box: a drop of honey (sugar for the whole colony) or a dead cricket (protein the larvae need to grow) - pick it here, then click on the ground."
+guide_food_wild,ในสวนมดหาอาหารเอง (น้ำหวานจากเพลี้ย แมลงเล็กๆ) จะวางน้ำผึ้งหรือจิ้งหรีดช่วยก็ได้ — เลือกที่แถบนี้แล้วคลิกบนพื้น,"In the garden the ants find their own food (honeydew from aphids, small insects), but you can help with honey or a cricket - pick it here, then click on the ground."
+guide_views,สลับดูบนดินกับในรัง — ในรังจะเห็นราชินี ลูกมด และอุโมงค์ที่มดขุดเอง (ลากเพื่อหมุน ล้อเมาส์เพื่อซูม),"Switch between the outworld and the nest - inside you see the queen, the brood and the tunnels the ants dig themselves (drag to turn, wheel to zoom)."
+guide_ants,"คลิกมดตัวไหนก็ได้เพื่อดูว่ามันกำลังทำอะไร และตั้งชื่อให้มัน · ""มดเด่น"" รวมมดที่ทำงานแต่ละอย่างมากที่สุดและมดที่คุณตั้งชื่อไว้","Click any ant to see what it is doing, and give it a name. ""Top ants"" lists the busiest ant in each line of work and every ant you have named."
+guide_away,ปิดเกมแล้วรังยังมีชีวิตต่อ (ตั้งได้ในหน้าตั้งค่าว่าเวลาเดินเร็วแค่ไหนตอนปิด) และเกมเซฟให้อัตโนมัติทุกนาที,"The colony lives on while the game is closed (how fast time runs then is up to you, in Settings), and the game saves itself every minute."
+guide_keys,เมนูหรือ Esc = กลับหน้าแรก · F9 ซ่อนหน้าจอ · F8 กล้องเดินชมรังให้เอง (ไว้ถ่ายคลิป) · ขอให้สนุกกับการเลี้ยงมด!,Menu or Esc takes you back to the title screen · F9 hides everything on screen · F8 lets the camera tour the colony by itself (for filming). Enjoy your ants!
+settings_guide,แสดงคำแนะนำผู้เล่นใหม่อีกครั้ง,Show the getting-started guide again
+settings_guide_note,จะขึ้นตอนกลับเข้าเกม,It shows when you go back to the game

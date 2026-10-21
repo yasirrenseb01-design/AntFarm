@@ -141,7 +141,7 @@ func open_settings() -> void:
 	away.add_child(opt)
 	col.add_child(away)
 	# (two clocks: the colony's, cut short, and the ants' own pace - said here once, the time away being the one that differs)
-	var clocks := _label(tr("set_time_1") +
+	var clocks := _label(tr("set_time_1") + " " +
 		tr("set_time_2"), 12, Paper.PENCIL)
 	clocks.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	clocks.custom_minimum_size.x = 500
@@ -183,6 +183,17 @@ func open_settings() -> void:
 			_fps_label.visible = on
 		settings_changed.emit(settings))
 	col.add_child(fps)
+	var again_row := HBoxContainer.new()
+	again_row.add_theme_constant_override("separation", 10)
+	var again := _button(tr("settings_guide"), false)
+	var again_note := _label("", 12, Paper.PENCIL)
+	again.pressed.connect(func():
+		settings["guide_done"] = false              # (main / title.close start it once the game is on screen)
+		settings_changed.emit(settings)
+		again_note.text = tr("settings_guide_note"))
+	again_row.add_child(again)
+	again_row.add_child(again_note)
+	col.add_child(again_row)
 	col.add_child(_label(tr("set_note") % int(Store.MAX_AWAY_DAYS), 12, Paper.PENCIL))
 	var foot := HBoxContainer.new()
 	foot.alignment = BoxContainer.ALIGNMENT_END

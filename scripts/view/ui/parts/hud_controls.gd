@@ -30,6 +30,7 @@ func _build_top(root: Control) -> void:
 	row.add_child(clock)
 
 	var speeds := HBoxContainer.new()
+	guide_targets["speeds"] = speeds
 	speeds.add_theme_constant_override("separation", 4)
 	speeds.alignment = BoxContainer.ALIGNMENT_CENTER
 	var g := ButtonGroup.new()
@@ -54,6 +55,7 @@ func _build_top(root: Control) -> void:
 	row.add_child(wrap)
 
 	var views := HBoxContainer.new()
+	guide_targets["views"] = views
 	views.add_theme_constant_override("separation", 4)
 	var vg := ButtonGroup.new()
 	for pair in [[tr("view_outworld"), "outworld"], [tr("view_nest"), "nest"]]:
@@ -77,6 +79,7 @@ func _build_top(root: Control) -> void:
 	row.add_child(ewrap)
 
 	var stars := _button(tr("stars"), false)
+	guide_targets["stars"] = stars
 	stars.tooltip_text = tr("stars_tip")
 	stars.pressed.connect(toggle_stars)
 	var swrap := CenterContainer.new()
@@ -98,6 +101,7 @@ func _build_top(root: Control) -> void:
 	row.add_child(dwrap)
 
 	var menu := _button(tr("menu"), false)
+	guide_targets["menu"] = menu
 	menu.tooltip_text = tr("menu_tip")
 	menu.pressed.connect(func(): menu_requested.emit())
 	var mwrap := CenterContainer.new()
@@ -151,8 +155,11 @@ func _build_tools(root: Control) -> void:
 		b.pressed.connect(func(): ground.tool = t)
 		row.add_child(b)
 		_outside_tools.append(b)
+		if pair[1] != "pan" and not guide_targets.has("food"):
+			guide_targets["food"] = b
 	row.add_child(VSeparator.new())
 	var water := _button(tr("add_water"), false)
+	guide_targets["water"] = water
 	water.pressed.connect(func(): sim.add_water())
 	water.visible = sim.scenario == "keeper"     # outdoors the rain waters the nest
 	row.add_child(water)

@@ -19,7 +19,7 @@ var desktop                    # desktop mode: the nest as the wallpaper (PART 1
 ##       --at-ant=<i>|walker|act2|act9|act10 (outworld: look at a forager, or one busy at that kind of food)   --at-food=<kind> (drop one and look at it)
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)   --newcolony   --fridge
 ##       --enemy=wolf_spider [--enemy-at=x,y] [--fight=<ticks>] (stage a fight next to the nest)
-##       --clip (clip mode, as F8)   --title [--title-hover=<i>] (the title screen, as the game opens on it; with --shot too; the pointer on word i)   --species   --settings (those windows open)   --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
+##       --guide[=<step>] (the first-colony guide)   --clip (clip mode, as F8)   --title [--title-hover=<i>] (the title screen, as the game opens on it; with --shot too; the pointer on word i)   --species   --settings (those windows open)   --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
 ##   --scenario=keeper|wild (indoor formicarium, or a plot of ground with seasons and predators)
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
@@ -169,6 +169,13 @@ func _ready() -> void:
 	elif _opts.has("title") or (_persist and not skip_title and not _opts.has("testsave") and not _opts.has("desktop")
 			and not _opts.has("desktop-after")):
 		title.open.call_deferred(not _demo)          # (what the game opens on; deferred: the views place their cameras first)
+	if skip_title and _persist and not _demo and not _opts.has("testsave"):
+		get_tree().create_timer(1.0).timeout.connect(hud.maybe_guide)
+	if _opts.has("guide"):
+		# (dev: --guide[=<step>]: the guide on screen, at that step)
+		get_tree().create_timer(0.5).timeout.connect(func():
+			hud.start_guide()
+			hud._guide._show(int(_opts["guide"]) if String(_opts["guide"]).is_valid_int() else 0))
 	skip_title = false
 	if _opts.has("shot"):
 		_take_shot()

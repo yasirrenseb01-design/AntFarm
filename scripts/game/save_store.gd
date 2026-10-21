@@ -102,8 +102,13 @@ static func delete(slot: int) -> void:
 static func settings() -> Dictionary:
 	var cf := ConfigFile.new()
 	cf.load(_settings_path())
-	return {"slot": cf.get_value("game", "slot", 1), "away": cf.get_value("game", "away", 3),
-		"care": cf.get_value("game", "care", true), "lang": cf.get_value("game", "lang", "")}     # (lang "": the machine's)
+	var s := {"slot": 1, "away": 3, "care": true, "lang": ""}      # (lang "": the machine's)
+	# everything saved comes back - music, the frame rate, the side panel, the view, the guide and wallpaper notes (only
+	# these four did until v0.11.13: the rest were saved and forgotten at the next start)
+	if cf.has_section("game"):
+		for k in cf.get_section_keys("game"):
+			s[k] = cf.get_value("game", k)
+	return s
 
 
 static func save_settings(s: Dictionary) -> void:

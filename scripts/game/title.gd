@@ -227,6 +227,7 @@ func close() -> void:
 	if not is_open:
 		return
 	is_open = false
+	var was_clip := clip
 	clip = false
 	visible = false
 	_follow = null
@@ -236,6 +237,8 @@ func close() -> void:
 	main.hud.visible = true
 	main.hud.set_side_open(main.hud._side.visible, false)     # (the outworld's centre as the side panel has it)
 	_set_view(_view_before)
+	if not main._demo and not was_clip:
+		main.hud.maybe_guide()
 	if not pending_report.is_empty():
 		main.hud.show_report(pending_report[0], pending_report[1])
 		pending_report = []

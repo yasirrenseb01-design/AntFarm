@@ -47,7 +47,7 @@ func _init():
 	a.L.use("en")
 	var said: String = a.L.entry_text(e)
 	print("death notice: [%s] %s" % [e.kind, said])
-	ok = ok and e.kind == "named" and said.contains(w.name) and said.contains("enemy") and e.key == a.T.named_died
+	ok = ok and e.kind == "named" and said.contains(w.name) and said.contains("predator") and e.key == a.T.named_died
 	var u = null
 	for x in a.workers:
 		if x.name == "" and not x.dead:

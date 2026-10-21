@@ -77,6 +77,7 @@ var _cam_3d: Array = []          # rotate buttons: both 3D views
 var _cam_out: Array = []
 var _top: PanelContainer         # the top bar
 var _top_row: HBoxContainer      # ... its row (tighter on a narrow window)
+var guide_targets := {}          # what the first-colony guide points at (ui/guide.gd): name -> Control
 var _tools_bar: PanelContainer   # the tool bar at the bottom
 var _top_title: Control          # ... the species and the box, left out on a window too narrow for it all
 var _side: PanelContainer        # the side panel (folds away: set_side_open)
