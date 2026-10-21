@@ -7,6 +7,12 @@ const Ant := preload("res://scripts/sim/ant.gd")
 func _init() -> void:
 	var sim := Sim.new()
 	sim.setup(7)
+	# (the plot's own stones and nest are drawn from its seed since v0.11.18: cleared, the test sets its own)
+	sim.rocks.clear()
+	sim.rock.fill(0)
+	sim._restamp_rocks()
+	sim.nest_pos = Vector2(300, 550)
+	sim.foods = sim.foods.filter(func(f): return f.pos.distance_to(Vector2(700, 300)) > 120.0)
 	var h := Vector2(700, 300)
 	sim.place_food("honey", h)
 	for p in [Vector2(680, 280), Vector2(700, 270), Vector2(722, 284), Vector2(675, 305)]:

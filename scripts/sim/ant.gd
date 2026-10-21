@@ -105,6 +105,8 @@ var vxf = null          # 3D outworld: where it was drawn last (for picking it w
 var voff := Vector2.ZERO  # 3D outworld: drawn this far from vpos, clear of its neighbours (view/outworld/parts/outworld_crowd.gd)
 var vdoff := 0.0          # 3D outworld: how far voff moved this frame (the legs walk it)
 var vfood := Vector2(INF, INF)   # 3D outworld: the centre of the food it is drawn at (INF: none)
+var vring := 0            # 3D outworld: which ring round the drop (0 at its edge, 1 behind those ...)
+var vrim_goal := INF      # 3D outworld: the gap round the food it walks round the edge to
 var vrim := INF           # 3D outworld: the angle round the food it stands at (INF: not at food)
 var vaphid := -1          # 3D outworld: which of the plant's low aphids it climbs to
 

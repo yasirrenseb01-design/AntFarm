@@ -13,6 +13,8 @@ func _dig_signal(c: Vector3i) -> float:
 func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 	if not inside(s) or rho[idx(s)] < AIR:
 		return 0.0
+	if not hard.is_empty() and hard[idx(s)] == 1:
+		return 0.0                                       # a stone or a root: dug round, never through
 	if slab and s.z < nz - 3:
 		return 0.0
 	# never break through the surface except around the entrance shaft
@@ -20,7 +22,7 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 		return 0.0
 	# loam near the surface is soft, the clay band below is stiff, sand deeper is loose
 	var depth := ny - s.y
-	var soft := 1.0 if depth < 14 else (0.45 if depth < 40 else 0.75)
+	var soft := 1.0 if depth < clay_top() else (0.45 if depth < sand_top() else 0.75)
 	soft *= clampf(0.35 + humidity * 0.9, 0.3, 1.1)   # dry soil crumbles badly, damp soil holds shape
 	var open_n := 0
 	for d in DIRS:

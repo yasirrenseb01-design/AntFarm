@@ -30,13 +30,14 @@ var midden_bits: Array = []
 func setup(s) -> void:
 	sim = s
 	var size: Vector2 = sim.WORLD
-	soil_tex = _noise(int(size.x), int(size.y), 0.006, 4, 11,
+	var ps: int = sim.plot_seed % 100000         # (0: the patches every colony had before v0.11.18)
+	soil_tex = _noise(int(size.x), int(size.y), 0.006, 4, 11 + ps,
 		[0.0, 0.3, 0.55, 0.8, 1.0],
 		[Color("2f2117"), Color("47331f"), Color("5d4630"), Color("6f573d"), Color("85704f")])
-	damp_tex = _noise(int(size.x / 2), int(size.y / 2), 0.008, 3, 23,
+	damp_tex = _noise(int(size.x / 2), int(size.y / 2), 0.008, 3, 23 + ps,
 		[0.0, 0.45, 0.7, 1.0],
 		[Color(0.1, 0.06, 0.04, 0.0), Color(0.1, 0.06, 0.04, 0.0), Color(0.12, 0.07, 0.04, 0.35), Color(0.08, 0.05, 0.03, 0.55)])
-	grain_tex = _noise(int(size.x), int(size.y), 0.45, 1, 37,
+	grain_tex = _noise(int(size.x), int(size.y), 0.45, 1, 37 + ps,
 		[0.0, 0.12, 0.3, 0.75, 0.9, 1.0],
 		[Color(0.07, 0.04, 0.02, 0.55), Color(0.07, 0.04, 0.02, 0.0), Color(0, 0, 0, 0), Color(0, 0, 0, 0),
 			Color(0.85, 0.75, 0.58, 0.0), Color(0.88, 0.78, 0.6, 0.4)], FastNoiseLite.TYPE_CELLULAR)
@@ -68,10 +69,11 @@ func _noise(w: int, h: int, freq: float, octaves: int, seed_value: int, offsets:
 	return t
 
 
-## The scattered scenery, the same every time (its own seed: not sim.rng, it is only looks).
+## The scattered scenery: its own generator (not sim.rng, it is only looks), from the plot's seed - the same every time
+## the colony is opened (colonies from before v0.11.18 all had the one, 4242).
 func _build_scenery() -> void:
 	var r := RandomNumberGenerator.new()
-	r.seed = 4242
+	r.seed = 4242 if sim.plot_seed == 0 else sim.plot_seed
 	var size: Vector2 = sim.WORLD
 	for i in 900:
 		var p := Vector2(r.randf() * size.x, r.randf() * size.y)

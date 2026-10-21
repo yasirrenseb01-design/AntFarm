@@ -78,7 +78,7 @@ func _update_ants(delta: float) -> void:
 		elif a.busy > 0:
 			a.vang = lerp_angle(a.vang, a.ang, ka)
 		var turned := absf(wrapf(a.vang - was_ang, -PI, PI))    # turning on the spot takes steps too
-		if turned > 0.004:
+		if turned > 0.004 or a.vdoff > 0.02:
 			moving = true
 		a.vmv = lerpf(a.vmv, 1.0 if moving else 0.0, minf(1.0, 10.0 * delta))
 		a.anim += adt
@@ -91,7 +91,7 @@ func _update_ants(delta: float) -> void:
 		# the distance actually walked over the stride, so planted feet do not slide
 		var pace: float = (0.35 + 0.65 * sim.activity) * (1.0 - 0.35 * a.hurt) * (1.3 if a.state == Ant.DEFEND else 1.0)
 		var stride := AntModel.stride_scale(pace, a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE)
-		var walked: float = (step * kp).length() * U + turned * 0.9 * s + a.vdoff * U * 0.5   # feet round the body as it turns; stepping aside
+		var walked: float = (step * kp).length() * U + turned * 0.9 * s + a.vdoff * U   # feet round the body as it turns; stepping aside
 		if hauling:
 			# pulling: the legs step backward when the item goes the way the ant's back is turned
 			walked = (step * kp).dot(Vector2(cos(a.vang), sin(a.vang))) * U
@@ -138,6 +138,7 @@ func _update_ants(delta: float) -> void:
 		elif a.vfeed <= 0.0:
 			a.vfood = Vector2(INF, INF)
 			a.vrim = INF
+			a.vrim_goal = INF
 			a.vaphid = -1
 		if a.vfeed > 0.0 and a.vpose is Dictionary and not (a.vpose as Dictionary).is_empty():
 			tr = _blend_pose(tr, a.vpose, a.vfeed, s)
@@ -200,6 +201,7 @@ func _burying(p: Vector2) -> bool:
 
 ## Where an ant handling food really stands: the simulation only knows it is within reach of the
 ## food's centre, so the view places it on the food itself. {} if no food is close.
+const RING_STEP := 2.7                 # model units between one ring of drinkers round a drop and the next (a body length)
 const CLIMB_PACE := 0.6                # up a stem: this much of its pace on the ground [inference: no measurement found]
 const BEYOND_SHOW := 2.5               # seconds an ant leaving the plot is seen walking off
 const BEYOND_WALK := 18.0              # px it walks out past the edge (and back in from)
@@ -230,14 +232,27 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 		return {}
 	var f: Dictionary = best
 	var c := _on_ground(f.pos)
-	if a.vrim == INF:
-		var at: Vector2 = a.pos + a.voff - f.pos          # where round the food: from where it came up to it ...
-		a.vrim = at.angle() if at.length_squared() > 0.01 else float(a.id)
-	var away := Vector3(cos(a.vrim), 0, sin(a.vrim))     # ... then moved along the edge, clear of the others (outworld_crowd.gd)
-	var left: float = clampf(f.amt / f.cap, 0.0, 1.0)
+	var left: float = _left(f)
 	var k := FoodKinds.info(f.kind)
 	if k.is_empty() or act != int(k.handling[2]):
 		return {}
+	var rim_r := (3.0 + 7.0 * sqrt(left)) * U * 1.1 + 0.85 * s     # (a drop of honey: where its body stands round it)
+	if a.vrim == INF:
+		var at: Vector2 = a.pos + a.voff - f.pos          # where round the food: from where it came up to it ...
+		a.vrim = at.angle() if at.length_squared() > 0.01 else float(a.id)
+		# ... and at a drop, on round the edge to the nearest gap between the others drinking there
+		a.vring = 0
+		a.vrim_goal = a.vrim
+		if k.get("feed_pose", "") == "rim":
+			# the edge full: in behind the ones drinking, between two of them
+			for ring in 2:
+				var g := _rim_gap(a, f, a.vrim, s, rim_r + ring * RING_STEP * s, ring)
+				if g != INF:
+					a.vrim_goal = g
+					a.vring = ring
+					break
+	rim_r += a.vring * RING_STEP * s
+	var away := Vector3(cos(a.vrim), 0, sin(a.vrim))     # (moved along the edge, clear of the others: outworld_crowd.gd)
 	match k.get("feed_pose", ""):
 		"climb":
 			# climb the stem to one of the low aphids and stroke its abdomen for the drop
@@ -256,9 +271,14 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 			return {"climb": true, "base": base, "pos": on, "fwd": Vector3.UP, "up": out_dir,
 				"dew": ax * Vector3(-0.95, 0.4, 0)}
 		"rim":
-			var r := (3.0 + 7.0 * sqrt(left)) * U * 1.1
-			var p := c + away * (r + 0.85 * s)
-			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -away, "up": Vector3.UP, "fc": f.pos}
+			# not in a neat ring: each a little nearer or further, turned a little (from its id, so it keeps it)
+			var h := fposmod(sin(float(a.id) * 12.9898) * 43758.5453, 1.0)
+			var p := c + away * (rim_r + (h - 0.5) * 0.6 * s)
+			var fwd := -away.rotated(Vector3.UP, (fposmod(h * 7.31, 1.0) - 0.5) * 0.7)
+			var to := angle_difference(a.vrim, a.vrim_goal)
+			if absf(to) > 0.08:
+				fwd = Vector3(-away.z, 0, away.x) * signf(to)       # still walking round the edge: facing the way it goes
+			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": fwd, "up": Vector3.UP, "fc": f.pos}
 		"carcass":
 			# around the carcass outline (an ellipse along its body), head in, cutting
 			var ang: float = f.ang
@@ -271,6 +291,20 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 			var p := c + rot * Vector3(ea * cos(th), 0, eb * sin(th)) * 0.88 + n * 0.55 * s   # head against the body
 			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -n, "up": Vector3.UP, "fc": f.pos}
 	return {}
+
+
+## The angle round a drop nearest `from` with room for one more body between the others in that ring (INF if none).
+func _rim_gap(a, f: Dictionary, from: float, s: float, rim_r: float, ring: int) -> float:
+	var room := (1.05 + 0.35 * fposmod(float(a.id) * 0.618, 1.0)) * s / rim_r     # (radians a body takes, side by side, some room)
+	var taken := []
+	for b in sim.outside:
+		if b != a and b.vrim_goal != INF and b.vfood == f.pos and b.vring == ring:
+			taken.append(b.vrim_goal)
+	for i in int(TAU / (room * 0.5)):
+		var th := from + float((i + 1) / 2) * room * 0.5 * (1.0 if i % 2 == 0 else -1.0)
+		if taken.all(func(t): return absf(angle_difference(th, t)) >= room):
+			return wrapf(th, -PI, PI)
+	return INF
 
 
 ## One ant to an aphid: the one it has, else the first nobody has had for a frame (-1: all taken).

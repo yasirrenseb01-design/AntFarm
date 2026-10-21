@@ -87,6 +87,7 @@ func to_dict() -> Dictionary:
 	return {
 		"version": SAVE_VERSION, "species": sp["id"], "scenario": scenario, "start_doy": start_doy, "cold_days": cold_days, "fridge_on": fridge_on, "rng_seed": rng.seed, "rng_state": rng.state, "tick": tick,
 		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(), "alarm": alarm.to_dict(), "next_cid": _next_cid,
+		"plot_seed": plot_seed, "nest_pos": nest_pos, "midden_pos": midden_pos, "traits": traits,
 		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
 		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "water": water, "mold": mold, "heater": heater, "enemies": enemies, "enemy_rate": enemy_rate,
@@ -122,6 +123,18 @@ func from_dict(d: Dictionary) -> void:
 	if d.alarm != null:
 		alarm.from_dict(d.alarm)
 	_next_cid = d.next_cid
+	# (saves before v0.11.18: the one plot every colony had)
+	plot_seed = int(d.get("plot_seed", 0))
+	traits = {}
+	var tt = d.get("traits", {})
+	if tt is Dictionary:
+		for k in tt:
+			if (tt[k] is float or tt[k] is int) and k is String:
+				traits[k] = clampf(float(tt[k]), 0.5, 1.5)
+	nest.depth_k = colony_trait("depth")
+	nest.spread_k = colony_trait("spread")
+	nest_pos = d.get("nest_pos", Vector2(480, 400))
+	midden_pos = d.get("midden_pos", Vector2(575, 480))
 	rock = d.rock
 	rocks = d.rocks
 	_restamp_rocks()                    # which stones are climbed over is worked out from the stones themselves
@@ -209,7 +222,7 @@ func auto_care(day_index: int) -> void:
 		return
 	if day_index % 3 == 0:
 		for k in 1 + workers.size() / 40:
-			place_food("cricket", Vector2(rng.randf_range(600, 1100), rng.randf_range(380, 700)))
+			place_food("cricket", food_spot(300.0, 560.0))
 	if sugar < sugar_cap() * 0.3:
 		for k in 1 + workers.size() / 50:
-			place_food("honey", Vector2(rng.randf_range(600, 1100), rng.randf_range(80, 300)))
+			place_food("honey", food_spot(300.0, 560.0))

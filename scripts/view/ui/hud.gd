@@ -194,6 +194,12 @@ func refresh(delta: float) -> void:
 	_show(_vals["vol"], tr("cm3") % sim.nest.volume_cm3(), DANGER if sim.nest.air < sim.target_air() * 0.7 and not fnd else INK)
 	_show(_vals["depth"], tr("depth_short") % sim.nest.depth_cm())        # (the chambers: in the cross-section's heading)
 	_show(_vals["size"], tr("mm") % sim.mean_worker_mm() if not sim.workers.is_empty() else tr("not_yet"))
+	var words := {"queen_hi": tr("trait_queen_hi"), "queen_lo": tr("trait_queen_lo"), "forage_hi": tr("trait_forage_hi"),
+		"forage_lo": tr("trait_forage_lo"), "life_hi": tr("trait_life_hi"), "life_lo": tr("trait_life_lo"),
+		"size_hi": tr("trait_size_hi"), "size_lo": tr("trait_size_lo"), "depth_hi": tr("trait_depth_hi"),
+		"depth_lo": tr("trait_depth_lo"), "spread_hi": tr("trait_spread_hi"), "spread_lo": tr("trait_spread_lo")}
+	var said: Array = sim.trait_words().map(func(w): return words.get(w, w))
+	_vals["character"].text = tr("trait_title") + "  " + (" · ".join(said) if not said.is_empty() else tr("trait_plain"))
 	var hum: float = sim.humidity
 	_hum_bar.value = hum * 100.0
 	var ok: bool = hum >= sim.sp["humidity_ok_min"] and hum <= sim.sp["humidity_ok_max"]

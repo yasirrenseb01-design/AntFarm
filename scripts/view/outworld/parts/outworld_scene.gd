@@ -341,7 +341,7 @@ func _build_scenery() -> void:
 	var grass := _multimesh(Props.blade(), _grass_mat, true)
 	var blades := []
 	var gr := RandomNumberGenerator.new()
-	gr.seed = 777
+	gr.seed = 777 + sim.plot_seed
 	for t in ground.tufts:
 		var n := gr.randi_range(9, 16)
 		for k in n:

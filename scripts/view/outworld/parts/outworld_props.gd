@@ -32,12 +32,21 @@ func _sync_rocks() -> void:
 		_rock_root.add_child(mi)
 
 
+var _drinking := {}                    # food position -> ants still drinking there (filled by outworld_crowd each frame)
+
+
+## How much of a food is left as it looks: the simulation takes each ant's share as it starts, the drop shrinks as
+## they drink it.
+func _left(f: Dictionary) -> float:
+	return clampf((f.amt + float(_drinking.get(f.pos, 0))) / f.cap, 0.0, 1.0)
+
+
 func _sync_foods() -> void:
 	var seen := {}
 	for f in sim.foods:
 		var key: int = f.seed
 		seen[key] = true
-		var left: float = clampf(f.amt / f.cap, 0.0, 1.0)
+		var left: float = _left(f)
 		var sig := "%s:%d:%s:%d" % [f.kind, int(left * 10.0), f.rotten, int(_cover(f) * 20.0)]
 		var e: Dictionary = _foods.get(key, {})
 		if not e.is_empty() and e.sig == sig:

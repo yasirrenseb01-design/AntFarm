@@ -891,10 +891,10 @@ func _keeper(d: int) -> void:
 		sim.add_water()
 	if d % 3 == 0:
 		for k in 1 + sim.workers.size() / 40:
-			sim.place_food("cricket", Vector2(randf_range(600, 1100), randf_range(380, 700)))
+			sim.place_food("cricket", sim.food_spot(300.0, 560.0))
 	if sim.sugar < sim.sugar_cap() * 0.3:
 		for k in 1 + sim.workers.size() / 50:
-			sim.place_food("honey", Vector2(randf_range(600, 1100), randf_range(80, 300)))
+			sim.place_food("honey", sim.food_spot(300.0, 560.0))
 
 
 func _save_nest_png(path: String) -> void:

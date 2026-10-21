@@ -161,7 +161,7 @@ func _colony(dt: float) -> void:
 	for a in idle:
 		if out_count >= max_out:
 			break
-		if rng.randf() < p_exit / a.threshold(Ant.TH_FORAGE):     # the eager go out more often
+		if rng.randf() < p_exit * colony_trait("forage") / a.threshold(Ant.TH_FORAGE):     # the eager go out more often (and some colonies)
 			_send_out(a, Ant.SEARCH)
 			out_count += 1
 
@@ -320,7 +320,7 @@ func _queen(dt: float) -> void:
 		return
 	if starving:
 		return
-	var cap: float = minf(sp["queen_eggs_max"], sp["queen_eggs_base"] + workers.size() * sp["queen_eggs_per_worker"])
+	var cap: float = minf(sp["queen_eggs_max"], sp["queen_eggs_base"] + workers.size() * sp["queen_eggs_per_worker"]) * colony_trait("queen")
 	# Workers regulate brood: the queen is fed less when there is more brood than the colony can rear.
 	var brood := eggs.size() + larvae.size()
 	var room := clampf(1.0 - float(brood) / (12.0 + workers.size() * 2.5), 0.0, 1.0)
@@ -455,7 +455,8 @@ func _outworld(dt: float) -> void:
 			f.rotten = true
 			_food_dirty = true
 	var before := foods.size()
-	foods = foods.filter(func(f): return f.regen > 0.0 or (f.amt >= 1.0 and f.age < 9.0))
+	# (a spent drop stays while ants are still drinking from it: each took its share as it began)
+	foods = foods.filter(func(f): return f.regen > 0.0 or (f.amt >= 1.0 and f.age < 9.0) or tick < int(f.get("held_until", 0)))
 	if foods.size() != before:
 		_food_dirty = true
 

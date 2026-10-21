@@ -28,10 +28,10 @@ func _init():
 		if scen == "keeper": s.fridge_on = s.doy_f() > 320.0 or s.doy_f() < 20.0
 		if not alone and d % 3 == 0 and s.climate.season_mean() > 8.0:
 			for k in 1 + s.workers.size() / 40:
-				s.place_food("cricket", Vector2(r.randf_range(600, 1100), r.randf_range(380, 700)))
+				s.place_food("cricket", s.food_spot(300.0, 560.0, r))
 		if not alone and s.sugar < s.sugar_cap() * 0.7 and s.climate.season_mean() > 8.0:
 			for k in 1 + s.workers.size() / 50:
-				s.place_food("honey", Vector2(r.randf_range(600, 1100), r.randf_range(80, 300)))
+				s.place_food("honey", s.food_spot(300.0, 560.0, r))
 		if d % 10 == 0:
 			print("%-8s y%d %-9s workers %3d eggs %3d larvae %3d pupae %3d  nest %5.1f air %5.1f  reserve %5.1f sugar %5.1f fat %5.1f prot %5.1f hum %.2f rested %.2f cold %d dead %d" % [
 				s.date_text(), s.year(), s.season_name(), s.workers.size(), s.eggs.size(), s.larvae.size(), s.pupae.size(),

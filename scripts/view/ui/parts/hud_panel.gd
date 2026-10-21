@@ -81,6 +81,13 @@ func _build_panel(root: Control) -> void:
 	_vals["hum"] = hv
 	hum_row.add_child(hv)
 	st.add_child(hum_row)
+	# what sets this colony apart (sim.trait_words: its queen, how keen it forages, how it digs ...)
+	var ch := _label("-", 12, MUTED)
+	ch.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ch.mouse_filter = Control.MOUSE_FILTER_PASS
+	ch.tooltip_text = tr("trait_tip")
+	_vals["character"] = ch
+	st.add_child(ch)
 
 	var ns := _section(col, tr("panel_section"))
 	_nest = Control.new()

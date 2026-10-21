@@ -2,6 +2,10 @@ extends "res://scripts/sim/parts/nest_voxels.gd"
 ## Nest volume, layer 2 of 3 (split from scripts/sim/nest_volume.gd in v0.8.5): the chamber plan
 ## (shapes, sizes, where new chambers go).
 
+# the colony's digging habit (sim_state.traits depth / spread; set by the simulation, not saved with the nest)
+var depth_k := 1.0
+var spread_k := 1.0
+
 
 ## Which part of the nest plan a voxel belongs to: 2 = inside a chamber, 1 = on a shaft toward a
 ## planned chamber, 0 = unplanned soil.
@@ -68,7 +72,7 @@ func _work_in_chamber(ch: Dictionary, best: Array) -> int:
 		for z in range(maxi(0, floori(c.z - m)), mini(nz, ceili(c.z + m) + 1)):
 			for x in range(maxi(0, floori(c.x - m)), mini(nx, ceili(c.x + m) + 1)):
 				var v := Vector3i(x, y, z)
-				if rho[idx(v)] >= AIR and (not slab or z >= nz - 3) and chamber_q(Vector3(v), ch) <= 1.0:
+				if rho[idx(v)] >= AIR and not is_hard(v) and (not slab or z >= nz - 3) and chamber_q(Vector3(v), ch) <= 1.0:
 					n += 1
 					_face_at(v, 100000, best)
 	return n
@@ -84,7 +88,7 @@ func _work_on_line(a: Vector3, b: Vector3, r: float, first: bool, best: Array) -
 		for z in range(maxi(0, lo.z), mini(nz, hi.z + 1)):
 			for x in range(maxi(0, lo.x), mini(nx, hi.x + 1)):
 				var v := Vector3i(x, y, z)
-				if rho[idx(v)] < AIR or (slab and z < nz - 3):
+				if rho[idx(v)] < AIR or (slab and z < nz - 3) or is_hard(v):
 					continue
 				var p := Vector3(v)
 				var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
@@ -178,7 +182,7 @@ func _lowest_chamber() -> float:
 ## Lasius nests mostly lie in the top ~30 cm with a few deep shafts). The curve is an estimate fitted to this
 ## 10.8 cm block: ~1.7 cm founding, ~5 cm at 100 workers, ~6.6 cm at 300, ~8 cm at 1000.
 func target_depth(workers: int) -> float:
-	return minf(11.0 + 22.0 * log(1.0 + workers / 10.0) / log(10.0), ny - 8.0)
+	return minf((11.0 + 22.0 * log(1.0 + workers / 10.0) / log(10.0)) * depth_k, ny - 8.0)
 
 
 ## Called by the colony once a day. Chambers grow while brood is crowded; a growing colony also
@@ -244,7 +248,7 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	for attempt in 60:
 		var src: Dictionary = deepest if deeper else chambers[rng.randi() % chambers.size()]
 		var depth: float = ny - float(src.c.y)
-		var sideways := false if deeper else rng.randf() < (0.65 if depth < 30.0 else 0.35)
+		var sideways := false if deeper else rng.randf() < minf(0.92, (0.65 if depth < 30.0 else 0.35) * spread_k)
 		var ang := rng.randf() * TAU
 		var reach := rng.randf_range(src.goal + 8.0, src.goal + 14.0) if sideways else rng.randf_range(4.0, 12.0)
 		var off := Vector3(cos(ang) * reach, rng.randf_range(-2.0, 1.0) if sideways else -rng.randf_range(8.0, 13.0), sin(ang) * reach)
@@ -254,7 +258,11 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 		var site := Vector3(src.c) + off
 		if site.x < 8 or site.x > nx - 9 or site.y < 6 or site.y > ny - 9 or site.z < (1 if slab else 8) or site.z > nz - (2 if slab else 9):
 			continue
-		var ok := true
+		var ok := not hard_near(site, 6.0)            # not on a stone or a root ...
+		var src_rim: Vector3 = _rim_toward(src, (site - Vector3(src.c)) * Vector3(1, 0, 1))
+		for k in 7:
+			if ok and hard_near(src_rim.lerp(site, k / 6.0), 2.0):
+				ok = false                            # ... nor with one in the way of the gallery to it
 		for ch in chambers:
 			# chambers are flat (~2 voxels high): one 7+ voxels below another clears it whatever its width, so
 			# only chambers on about the same level must keep their width apart (a straight distance against

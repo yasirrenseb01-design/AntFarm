@@ -34,9 +34,12 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 	climate.doy = doy_f()
 	climate.settle(time_of_day(), heater)
 
-	for r in [[160, 150, 34], [820, 330, 26], [858, 372, 18], [660, 650, 28], [300, 540, 15],
-			[1070, 630, 42], [520, 170, 13], [1010, 110, 22], [90, 420, 20]]:
-		add_rock(Vector2(r[0], r[1]), r[2])
+	plot_seed = (rng.seed ^ PLOT_SEED) & 0x7fffffff | 1
+	traits = _draw_traits()
+	nest.depth_k = colony_trait("depth")
+	nest.spread_k = colony_trait("spread")
+	nest.lay_out_soil((plot_seed ^ 0x2D1B7A35) & 0x7fffffff | 1)       # stones, roots, the clay (nest_voxels)
+	var pr := _lay_out_plot()
 
 	for i in start_workers:
 		var w := _new_worker(rng.randf_range(5.0, 90.0))
@@ -58,17 +61,24 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 	if start_workers == 0:
 		# Claustral founding: a newly mated queen seals herself in a small chamber and raises the first
 		# workers alone, living on her fat body and the muscles of the wings she has shed.
-		queen.reserve = sp["queen_reserve"]
+		queen.reserve = sp["queen_reserve"] * colony_trait("queen")
 		for i in int(sp["founding_eggs"]):
 			eggs.append({"p": rng.randf() * 0.3})
 
-	place_food("aphids", Vector2(985, 230))
-	place_food("aphids", Vector2(210, 640))
-	place_food("cricket", Vector2(760, 560))
+	# two plants with aphids on them somewhere in the plot, a dead cricket a little way from the nest
+	for i in 2:
+		# (as far off as the two every plot had before v0.11.18: ~340 and ~530 px, the colony's sugar depends on it)
+		for attempt in 40:
+			if place_food("aphids", food_spot(330.0, 560.0, pr)):
+				break
+	for attempt in 40:
+		if place_food("cricket", _in_plot(nest_pos + Vector2.from_angle(pr.randf() * TAU) * pr.randf_range(200.0, 320.0), 50.0)):
+			break
 	if scen == "wild":
 		# a queen founds her nest near a plant with aphids on it: the colony's first sugar is close by
+		var turn := pr.randf() * TAU
 		for off in [Vector2(115, -55), Vector2(-110, -70), Vector2(100, 80), Vector2(-120, 60)]:
-			if place_food("aphids", nest_pos + off):
+			if place_food("aphids", nest_pos + off.rotated(turn)):
 				break
 
 	history.append(_snapshot())
@@ -86,7 +96,7 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 ## Lasius niger workers range ~3–5 mm; 1.0 = a typical 4.2 mm worker.
 func _adult_size(fed: float) -> float:
 	var colony := clampf(workers.size() / 150.0, 0.0, 1.0)
-	return clampf(0.76 + 0.16 * fed + 0.1 * colony + rng.randfn(0.0, 0.035), 0.7, 1.15)
+	return clampf((0.76 + 0.16 * fed + 0.1 * colony) * colony_trait("size") + rng.randfn(0.0, 0.035), 0.7, 1.15)
 
 
 ## True while a lone queen is still raising her first workers on her own reserves.
@@ -108,7 +118,7 @@ func _new_worker(age_days: float) -> Ant:
 	a.id = _next_id
 	_next_id += 1
 	a.age = age_days
-	a.life = rng.randf_range(sp["worker_life_min"], sp["worker_life_max"])
+	a.life = rng.randf_range(sp["worker_life_min"], sp["worker_life_max"]) * colony_trait("life")
 	a.hardiness = clampf(rng.randfn(1.0, 0.25), 0.5, 1.6)
 	a.slide = 1.0 if rng.randf() < 0.5 else -1.0
 	return a
@@ -209,6 +219,67 @@ func cycle_days() -> float:
 func can_place(p: Vector2) -> bool:
 	var i: int = home.index(p.x, p.y)
 	return i >= 0 and rock[i] == 0 and p.distance_to(nest_pos) > 22.0
+
+
+## Where the nest, its refuse pile and the stones are in this colony's plot (each colony its own, from its seed:
+## a queen founds her nest wherever she landed). A generator of its own, so the colony's main one is not drawn on.
+func _lay_out_plot() -> RandomNumberGenerator:
+	var pr := RandomNumberGenerator.new()
+	pr.seed = plot_seed
+	nest_pos = Vector2(pr.randf_range(330.0, WORLD.x - 330.0), pr.randf_range(230.0, WORLD.y - 230.0))
+	midden_pos = _in_plot(nest_pos + Vector2.from_angle(pr.randf() * TAU) * pr.randf_range(110.0, 140.0), 40.0)
+	# stones: a few big ones and more small ones (13-42 px, 6.5-21 mm across... the radius), never on the nest
+	var n := pr.randi_range(6, 11)
+	var placed := 0
+	for attempt in 200:
+		if placed >= n:
+			break
+		var r := pr.randf_range(13.0, 24.0) if pr.randf() < 0.6 else pr.randf_range(24.0, 42.0)
+		if add_rock(_in_plot(Vector2(pr.randf() * WORLD.x, pr.randf() * WORLD.y), r + 8.0), r):
+			placed += 1
+	return pr
+
+
+## This colony's character (sim_state.traits): a draw of its own, so the colony's main generator is not drawn on.
+func _draw_traits() -> Dictionary:
+	var g := RandomNumberGenerator.new()
+	g.seed = (rng.seed ^ TRAIT_SEED) & 0x7fffffff | 1
+	return {"queen": clampf(g.randfn(1.0, 0.12), 0.78, 1.25), "forage": clampf(g.randfn(1.0, 0.15), 0.72, 1.3),
+		"life": clampf(g.randfn(1.0, 0.1), 0.82, 1.2), "size": clampf(g.randfn(1.0, 0.04), 0.93, 1.07),
+		"depth": clampf(g.randfn(1.0, 0.12), 0.8, 1.2), "spread": clampf(g.randfn(1.0, 0.25), 0.6, 1.4)}
+
+
+func colony_trait(k: String) -> float:
+	return float(traits.get(k, 1.0))
+
+
+## The words for this colony's character (lang keys trait_<name>_<hi|lo>): only what is clearly out of the ordinary.
+func trait_words() -> Array:
+	var out := []
+	for k in ["queen", "forage", "life", "size", "depth", "spread"]:
+		var v := colony_trait(k)
+		var edge := 0.04 if k == "size" else 0.08
+		if v > 1.0 + edge:
+			out.append("%s_hi" % k)
+		elif v < 1.0 - edge:
+			out.append("%s_lo" % k)
+	return out
+
+
+## A spot lo..hi px from the nest, inside the plot (where the keeper or a test puts food; `r`: whose draw).
+func food_spot(lo: float, hi: float, r: RandomNumberGenerator = null) -> Vector2:
+	var g: RandomNumberGenerator = r if r != null else rng
+	var p := nest_pos
+	for attempt in 12:
+		p = _in_plot(nest_pos + Vector2.from_angle(g.randf() * TAU) * g.randf_range(lo, hi), 40.0)
+		if p.distance_to(nest_pos) >= lo * 0.7 and can_place(p):
+			return p
+	return p
+
+
+## p kept `margin` px inside the plot.
+func _in_plot(p: Vector2, margin: float) -> Vector2:
+	return p.clamp(Vector2(margin, margin), WORLD - Vector2(margin, margin))
 
 
 func place_food(kind: String, p: Vector2) -> bool:

@@ -217,6 +217,7 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 	a.act = h[2]
 	a.ang = (f.pos - a.pos).angle()
 	f.amt -= 1.0
+	f["held_until"] = maxi(int(f.get("held_until", 0)), tick + a.busy)
 	if f.amt < 1.0:
 		_food_dirty = true
 	a.carry = f.type

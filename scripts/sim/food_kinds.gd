@@ -20,7 +20,9 @@ const T := preload("res://scripts/sim/text_th.gd")
 const KINDS := {
 	"aphids": {"type": Ant.SUGAR, "amt": 10.0, "cap": 16.0, "regen": 9.0, "r": 16.0, "handling": [60, 140, 9],
 		"found": T.found_aphids, "feed_pose": "climb"},
-	"honey": {"type": Ant.SUGAR, "amt": 25.0, "cap": 25.0, "regen": 0.0, "r": 8.0, "handling": [40, 80, 10],
+	# (drinking: 23-51 s at a drop - L. niger at 0.6 M sucrose, 51 +- 12 s at the first source, 23 +- 11 s at a second one
+	# on the way home: Mailleux et al. 2009, C R Biol 332; until v0.11.18 it was 40-80 ticks, about a second)
+	"honey": {"type": Ant.SUGAR, "amt": 25.0, "cap": 25.0, "regen": 0.0, "r": 8.0, "handling": [1380, 3060, 10],
 		"found": T.found_honey, "dries": 0.78, "tool": "tool_honey", "feed_pose": "rim"},
 	"cricket": {"type": Ant.PROTEIN, "amt": 30.0, "cap": 30.0, "regen": 0.0, "r": 12.0, "handling": [90, 200, 2],
 		"found": T.found_cricket, "rots_after": 6.0, "tool": "tool_cricket", "feed_pose": "carcass",

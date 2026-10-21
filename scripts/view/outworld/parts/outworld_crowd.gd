@@ -27,7 +27,10 @@ func _separate(delta: float) -> void:
 		return
 	var grid := {}
 	var list := []
+	_drinking.clear()
 	for a in sim.outside:
+		if a.busy > 0 and a.act == 10 and a.vfood.x != INF:
+			_drinking[a.vfood] = int(_drinking.get(a.vfood, 0)) + 1
 		if a.state == Ant.IN_NEST or a.dead or a.vpos.x == INF or not (a.vxf is Transform3D):
 			continue
 		if a.act == 22 and a.busy > 0:
@@ -72,7 +75,7 @@ func _separate(delta: float) -> void:
 		var k := FoodKinds.info(f.kind)
 		if k.get("feed_pose", "") != "rim":
 			continue
-		var fr: float = (3.0 + 7.0 * sqrt(clampf(f.amt / f.cap, 0.0, 1.0))) * 1.1
+		var fr: float = (3.0 + 7.0 * sqrt(_left(f))) * 1.1
 		var c := Vector2i(floori(f.pos.x / CROWD_CELL), floori(f.pos.y / CROWD_CELL))
 		for dx in range(-2, 3):
 			for dy in range(-2, 3):
@@ -89,14 +92,23 @@ func _separate(delta: float) -> void:
 		var a = e.a
 		var before: Vector2 = a.voff
 		var at_food: bool = a.vfood.x != INF and a.vfeed > 0.05
+		var round_by := 0.0
 		if at_food and a.vrim != INF:
-			# round the food's edge: the push along it turns the ant about the food's centre
+			# round the food's edge: the push along it turns the ant about the food's centre, and it walks on round to
+			# the gap it is making for (at its pace on the ground, as fast as the clock runs)
 			var rad: Vector2 = e.o - a.vfood
 			var R := maxf(rad.length(), 1.0)
-			a.vrim = wrapf(a.vrim + (e.push as Vector2).dot(Vector2(-rad.y, rad.x) / R) * 0.6 / R, -PI, PI)
+			var th := (e.push as Vector2).dot(Vector2(-rad.y, rad.x) / R) * 0.6 / R
+			var was: float = a.vrim
+			a.vrim = wrapf(a.vrim + th, -PI, PI)
+			if a.vrim_goal != INF:
+				a.vrim_goal = wrapf(a.vrim_goal + th, -PI, PI)
+				var walk: float = sim.sp["walk_speed"] * (0.35 + 0.65 * sim.activity) * 60.0      # px a second at 1x
+				a.vrim = rotate_toward(a.vrim, a.vrim_goal, walk * speed * delta / R)
+			round_by = absf(angle_difference(was, a.vrim)) * R
 		a.voff = (a.voff + (e.push as Vector2) * CROWD_K) * (1.0 if at_food else ease)
 		a.voff = a.voff.limit_length(CROWD_MAX)
-		a.vdoff = (a.voff - before).length()
+		a.vdoff = 0.5 * (a.voff - before).length() + round_by
 
 
 ## The point of segment p-q closest to c.

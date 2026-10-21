@@ -42,6 +42,8 @@ var rock := PackedByteArray()
 var rocks: Array = []
 var nest_pos := Vector2(480, 400)
 var midden_pos := Vector2(575, 480)
+var plot_seed := 0                    # how this colony's plot is laid out (sim_base._lay_out_plot; 0: the one plot every
+                                      # colony had before v0.11.18 - its stones, plants and looks never change)
 var foods: Array = []
 var corpses: Array = []
 var workers: Array = []
@@ -115,6 +117,19 @@ var _log_alarm := log(ALARM_EVAP)
 ## same colony 137-219 workers at day 420 against 159-259 with v0.11.7; on its own generator seed 1 grew exactly as before)
 var duty_rng := RandomNumberGenerator.new()
 const DUTY_SEED := 0x2B992DDF                  # (mixed into the colony's seed for the duties' generator)
+const PLOT_SEED := 0x51A7C0DE                  # (mixed into it for the plot's layout)
+const TRAIT_SEED := 0x7EA51DE5                 # (and for the colony's character)
+# What sets this colony apart from others of its kind, drawn once when it is founded (sim_base._draw_traits; {} in
+# colonies from before v0.11.18: every one 1.0). Each a multiplier round 1:
+#   queen   her weight at founding: how many eggs she can lay and her founding reserve [L. niger: heavier queens raise
+#           more brood by the first workers and more by winter - Fjerdingstad & Keller 2004, Evolution 58:1056]
+#   forage  how readily its workers go out [colonies of one species differ lastingly in how actively they forage -
+#           "colony personality", other ants; e.g. Bengston & Jandt 2014, Front Ecol Evol 2:81 - not shown for L. niger]
+#   life    how long its workers live [inference: worker lifespan varies, by colony as well is assumed]
+#   size    its workers' size [inference: worker size differs among colonies with food and age (sim_base._adult_size)]
+#   depth, spread   how deep it digs, and how much its new chambers go sideways rather than down [inference: nests of
+#           one species differ in shape (Tschinkel 2004 for other ants); here a habit of the colony, not of the soil]
+var traits := {}
 const UNTENDED_LAYING := 0.9             # a queen nobody attended lays this much (the keeper's choice: no evidence either way)
 var queen_tended := true                 # someone attended the queen this half hour (none: she lays UNTENDED_LAYING)
 var _carry_due := 0                      # brood to carry since the last duty round (eggs laid, larvae pupating, workers out)

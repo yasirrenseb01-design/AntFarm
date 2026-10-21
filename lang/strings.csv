@@ -510,3 +510,18 @@ fps_30,30 fps,30 fps
 fps_60,60 fps,60 fps
 fps_free,ไม่จำกัด,No cap
 set_quality_note,ครั้งแรกเกมเลือกให้ตามการ์ดจอ · ตอนสลับไปใช้หน้าต่างอื่นเกมวาดน้อยลงเอง (รังยังเดินต่อ),Chosen from your graphics card the first time · while you use another window the game draws less (the colony lives on)
+trait_title,นิสัยรัง,Character
+trait_plain,รังธรรมดา ไม่มีอะไรโดดเด่น,an ordinary colony
+trait_queen_hi,ราชินีตัวใหญ่ วางไข่ดก,a big fertile queen
+trait_queen_lo,ราชินีตัวเล็ก วางไข่น้อย,a small queen
+trait_forage_hi,ขยันออกหากิน,keen foragers
+trait_forage_lo,ไม่ค่อยออกหากิน,stay-at-home foragers
+trait_life_hi,มดงานอายุยืน,long-lived workers
+trait_life_lo,มดงานอายุสั้น,short-lived workers
+trait_size_hi,มดงานตัวโต,large workers
+trait_size_lo,มดงานตัวเล็ก,small workers
+trait_depth_hi,ชอบขุดลึก,digs deep
+trait_depth_lo,ขุดตื้น,keeps its nest shallow
+trait_spread_hi,ขุดห้องแผ่ออกข้าง,spreads its chambers out
+trait_spread_lo,ขุดห้องซ้อนลงล่าง,stacks its chambers down
+trait_tip,"แต่ละรังมีนิสัยของตัวเอง สุ่มตอนตั้งรัง: ราชินีที่ตัวหนักกว่าเลี้ยงลูกรุ่นแรกได้มากกว่า (งานวิจัยของมดดำสวนเอง) · ความขยันหากิน อายุ ขนาดมดงาน และวิธีขุด ต่างกันในแต่ละรัง (พบในมดหลายชนิด บางข้อเป็นการอนุมาน)","Every colony has its own character, drawn when it is founded: a heavier queen raises more of the first brood (measured in this species) · how keen its workers are to forage, how long they live, their size and how the colony digs differ from colony to colony (seen in many ants; some of it is inferred)"
