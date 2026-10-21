@@ -75,6 +75,8 @@ func _beside(p: Vector3, m: Dictionary, dist := 1.6) -> Vector3:
 
 
 func _start_egg() -> void:
+	if not _queen_path.is_empty():
+		return                         # (on her way to another chamber: she lays once she is there)
 	if not sim.queen.alive or _spots.queen == Vector3.ZERO:
 		return
 	var pile: Vector3 = _egg_xf(_next_egg_slot()).origin if not _spots.eggs.is_empty() else _spots.queen
@@ -91,6 +93,8 @@ func _start_egg() -> void:
 ## cocoons). Now and then she turns to one of them, steps up, works over it with her mouthparts for a while
 ## and goes back to her place. Nothing in the pile moves. (How often, and for how long: chosen, not measured.)
 func _start_care(want := "") -> void:
+	if not _queen_path.is_empty():
+		return
 	var kinds := []
 	if _egg_mm.instance_count > 0:
 		kinds.append([_egg_mm, "eggs"])
@@ -443,7 +447,7 @@ func _eclose_parts(a: Dictionary, u: float) -> Dictionary:
 
 func _step_anims(adt: float) -> void:
 	_queen_act = -1
-	_queen_turn_t = 0.0
+	_queen_turn_t = _queen_rest_turn
 	_queen_step_t = Vector3.ZERO
 	var walk := 3.5 / _anim_k()                   # voxels per second for hired helpers
 	var fresh := []
@@ -707,6 +711,7 @@ func _step_anims(adt: float) -> void:
 						h.item = ""
 	_anims = _anims.filter(func(a): return not a.get("done", false))
 	_anims.append_array(fresh)
+	_queen_walk(adt)
 	# she turns as a heavy queen does, stepping round at most ~1 rad/s and easing out at the end
 	# her turning speeds up and slows down gradually (a heavy body: no snapping into or out of a turn), at
 	# most ~0.75 rad/s, braking in time to stop facing where she means to
@@ -727,6 +732,34 @@ func _step_anims(adt: float) -> void:
 		ds = to_step
 		_queen_step_v = Vector3.ZERO
 	_queen_step += ds
+
+
+## The queen on her way to another chamber (nest_brood._path_to): slowly, heavy, turning to face her way before she
+## steps on (QUEEN_WALK: ~4 mm a second at 1x, a fifth of a worker's pace) [inference: no measurement found]. Not while a lifecycle moment
+## has her (laying, tending the first brood), and none starts while she walks (see _start_egg / _start_care).
+const QUEEN_WALK := 2.5          # voxels a second
+
+
+func _queen_walk(adt: float) -> void:
+	if _queen_path.is_empty() or adt <= 0.0 or _queen_busy():
+		return
+	var to: Vector3 = _queen_path[0]
+	var d: Vector3 = to - (_spots.queen as Vector3)
+	if d.length() < 0.15:
+		_spots.queen = to
+		_queen_path.pop_front()
+		if _queen_path.is_empty():
+			_refresh_egg_spots()
+		return
+	# (her body is turned along her way in nest_brood._queen_pose)
+	_spots.queen = (_spots.queen as Vector3) + d.normalized() * minf(d.length(), QUEEN_WALK * adt)
+
+
+func _queen_busy() -> bool:
+	for a in _anims:
+		if a.k in ["egg", "care"] or (a.k == "eclose" and a.get("queen", false)):
+			return true
+	return false
 
 
 ## Ants still being born are drawn here: pulled head first out of the cocoon still wrapped in the

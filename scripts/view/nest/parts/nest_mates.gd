@@ -61,18 +61,29 @@ func _arrive(m: Dictionary) -> void:
 			else:
 				m.goal = -1
 		"carry":
-			if _moved >= sim.larvae.size():
-				m.role = "nurse"
-				m.carry = false
-				m.goal = _brood_room(_larva_group)
-			elif not m.carry:
-				m.carry = true                          # picks up a larva from the old pile
-				m.goal = _brood_room(_larva_group)
-				m.rest = 3
-			else:
+			# larvae first, then cocoons (each from the old pile to the new one)
+			var larva: bool = _moved < sim.larvae.size()
+			var cocoon: bool = not larva and _moved_p < sim.pupae.size()
+			if m.carry:
 				m.carry = false                         # sets it down in the new chamber
-				_moved += maxi(1, sim.larvae.size() / 10)
-				m.goal = _brood_room(_larva_prev)
+				if m.get("item", "") == "cocoon":
+					_moved_p += maxi(1, sim.pupae.size() / 10)
+				else:
+					_moved += maxi(1, sim.larvae.size() / 10)
+				m.item = ""
+				larva = _moved < sim.larvae.size()
+				cocoon = not larva and _moved_p < sim.pupae.size()
+				m.goal = _brood_room(_larva_prev if larva else (_pupa_prev if cocoon else _larva_group))
+				m.rest = 3
+				if not larva and not cocoon:
+					m.role = "nurse"
+			elif not larva and not cocoon:
+				m.role = "nurse"
+				m.goal = _brood_room(_larva_group)
+			else:
+				m.carry = true                          # picks one up from the old pile
+				m.item = "cocoon" if cocoon else ""
+				m.goal = _brood_room(_larva_group if larva else _pupa_group)
 				m.rest = 3
 
 
@@ -268,8 +279,8 @@ func _update_ants(delta: float) -> void:
 	_bind_workers()                         # one drawn nestmate per real worker inside
 	_end_approaches()                       # (nest_duties: givers and groomers that have walked up to their partner)
 	_duty_pairs()
-	# while larvae are being moved between chambers, a few nurses do the carrying
-	if _moved < sim.larvae.size():
+	# while larvae or cocoons are being moved between chambers, a few nurses do the carrying
+	if _moved < sim.larvae.size() or _moved_p < sim.pupae.size():
 		var carriers := 0
 		for m in _mates:
 			if m.role == "carry":
@@ -284,13 +295,14 @@ func _update_ants(delta: float) -> void:
 				continue
 			if int(m.get("vd", -1)) == Ant.D_CARRY or m.role == "nurse" or (m.role == "idle" and carriers == 0):
 				m.role = "carry"
-				m.goal = _brood_room(_larva_prev)
+				m.goal = _brood_room(_larva_prev if _moved < sim.larvae.size() else _pupa_prev)
 				m.rest = 0
 				m.wander = 0
 				m.act_left = 0.0
 				carriers += 1
 		if carriers == 0:
 			_moved = 1 << 20
+			_moved_p = 1 << 20
 
 	var running := speed > 0
 	var cells_per_sec := clampf(60.0 * speed / nest.STEP_EVERY, 0.0, 25.0) if running else 0.0
@@ -535,16 +547,17 @@ func _update_ants(delta: float) -> void:
 	for d in nest.diggers:
 		var id: int = d.id
 		seen[id] = true
-		var c := Vector3(d.cell)
+		var cell: Vector3i = _on_soil(d.cell)
+		var c := Vector3(cell)
 		var v: Dictionary = _dig_vis.get(id, {})
 		if v.is_empty():
-			v = {"from": c, "to": c, "t": 1.0, "up": _up_at(d.cell), "still": 0.0, "anim": randf() * 100.0}
+			v = {"from": c, "to": c, "t": 1.0, "up": _up_at(cell), "still": 0.0, "anim": randf() * 100.0}
 			_dig_vis[id] = v
 		if v.to != c:
 			v.from = v.from.lerp(v.to, clampf(v.t, 0.0, 1.0))
 			v.to = c
 			v.t = 0.0
-			v.up = _up_at(d.cell)
+			v.up = _up_at(cell)
 			v.still = 0.0
 		else:
 			v.still += adt
@@ -552,12 +565,12 @@ func _update_ants(delta: float) -> void:
 		v.anim += adt
 		if not v.has("size"):
 			v.size = _sample_size()
-		v.cell = d.cell
+		v.cell = cell
 		# biting at the dig face: it faces the soil it digs (where it last stepped, else the nearest soil beside it)
 		if v.still > 0.25:
-			if not v.has("face_at") or v.face_cell != d.cell:
-				v.face_cell = d.cell
-				v.face_at = _dig_face(d.cell, d.dir)
+			if not v.has("face_at") or v.face_cell != cell:
+				v.face_cell = cell
+				v.face_at = _dig_face(cell, d.dir)
 			v.face = v.face_at
 		else:
 			v.face = Vector3.INF
@@ -643,8 +656,9 @@ func _update_ants(delta: float) -> void:
 		var dturn := wrapf(_queen_turn - _queen_prev_turn, -PI, PI)
 		var turned := absf(dturn)
 		_queen_prev_turn = _queen_turn
-		var walked := (_queen_step - _queen_step_prev).length() / QUEEN_SCALE
+		var walked: float = ((_queen_step - _queen_step_prev).length() + ((_spots.queen as Vector3) - _queen_home_prev).length()) / QUEEN_SCALE
 		_queen_step_prev = _queen_step
+		_queen_home_prev = _spots.queen
 		var qs := 0.6                       # short, heavy steps
 		# a foot ~1.1 model units out sweeps that far per radian turned: the steps keep pace with the turn
 		var sweep := turned * 1.1
@@ -662,3 +676,29 @@ func _update_ants(delta: float) -> void:
 		_sel_queen_mm.set_instance_transform(0, _queen_xf)
 		_sel_queen_mm.set_instance_custom_data(0, _queen_mm.get_instance_custom_data(0))
 		_sel_queen_mm.set_instance_color(0, Color.WHITE)
+
+
+## Where a digger is drawn for the cell the simulation has it in: on the way to planned work it may cut across the
+## middle of a tunnel or a chamber (sim nest_volume._step_digger), and drawn there it hung in the air - a swarm of
+## them looked like flying ants round the work. It is drawn on the nearest floor or wall instead: straight below
+## first (a few voxels), else the nearest cell beside soil.
+func _on_soil(c: Vector3i) -> Vector3i:
+	if _walkable(c):
+		return c
+	for k in range(1, 5):
+		var b := c - Vector3i(0, k, 0)
+		if not nest.is_open(b):
+			break
+		if _walkable(b):
+			return b
+	var best := c
+	var bd := INF
+	for dz in range(-2, 3):
+		for dy in range(-2, 3):
+			for dx in range(-2, 3):
+				var n := c + Vector3i(dx, dy, dz)
+				var dd := float(dx * dx + dy * dy * 1.5 + dz * dz)      # (a little rather on the floor than overhead)
+				if dd < bd and _walkable(n):
+					bd = dd
+					best = n
+	return best

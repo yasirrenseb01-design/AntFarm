@@ -15,7 +15,8 @@ const MAX_VOXELS := 8000000
 
 ## read with a default by the loader (saves older than these keys)
 const OPTIONAL := ["sim.water", "sim.nest.entrance_r", "sim.nest.work_left", "sim.nest.work_at", "sim.nest.work_dist",
-	"sim.nest.entrance_done", "sim.plot_seed", "sim.nest_pos", "sim.midden_pos", "sim.traits", "sim.nest.soil"]
+	"sim.nest.entrance_done", "sim.plot_seed", "sim.nest_pos", "sim.midden_pos", "sim.traits", "sim.nest.soil",
+	"sim.brood_at", "sim.queen_at", "sim.queen_stay", "sim.ch_mean"]
 
 static var _ref := {}              # a colony as the game sets one up, made once
 

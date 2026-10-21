@@ -150,6 +150,14 @@ func _take_shot() -> void:
 			sim.place_food(String(_opts["at-food"]), fp)
 			outworld.target_t = Vector3(fp.x, 0, fp.y) * outworld.U
 		outworld.snap_camera()
+	if _opts.has("heater"):
+		sim.heater = true                 # (dev: the heat mat on - the brood is carried down toward it)
+	if _opts.has("queen-to"):
+		# (dev: the colony sends the queen to that chamber - she walks there through the tunnels)
+		get_tree().create_timer(2.0).timeout.connect(func():
+			sim.queen_at = clampi(int(_opts["queen-to"]), 0, sim.nest.chambers.size() - 1)
+			sim._queen_stay = 0.0
+			nest_view._refresh_spots())
 	if _opts.get("view", "outworld") == "nest":
 		hud._apply_mode("nest")
 		_set_mode("nest")
@@ -470,6 +478,9 @@ func _take_shot() -> void:
 						if i == 0:
 							print("  fitted ant: %s act %d over %.2f tip %.2f on %s lat %.2f" % [fm.get("gfit"), fm.act, float(fm.get("over", 0.0)),
 								float(fm.get("over_tip", 0.0)), fm.has("over_on"), float(fm.get("lat", 0.0))])
+				if _opts.has("follow-queen") and mode == "nest" and nest_view._queen_mm.instance_count > 0:
+					nest_view.target_t = nest_view._queen_xf.origin        # (dev: watch her walk, --queen-to)
+					nest_view.target = nest_view.target_t
 				if _opts.has("follow-digger") and mode == "nest":
 					# watch a digger (the same one), seen from its side (--side) or above
 					var dv = _pushed if _pushed != null and nest_view._dig_vis.values().has(_pushed) else null

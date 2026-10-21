@@ -59,7 +59,16 @@ var _pupa_mm: MultiMesh
 var _pellet_mm: MultiMesh
 var _mates: Array = []
 var _dig_vis := {}
-var _spots := {"eggs": [], "larvae": [], "larvae_old": [], "pupae": [], "all": [], "queen": Vector3.ZERO}
+var _spots := {"eggs": [], "larvae": [], "larvae_old": [], "pupae": [], "pupae_old": [], "all": [], "queen": Vector3.ZERO}
+var _room_of := {}                 # chamber index -> index in _rooms (chambers with a floor)
+var _pupa_group := ""              # "c<chamber>" the cocoons are kept in (sim_warmth), and the one before
+var _pupa_prev := ""
+var _moved_p := 1 << 20            # cocoons already carried to it
+var _queen_room_ch := -1           # the chamber she is in (or walking to)
+var _queen_path: Array = []        # floor positions still to walk on her way there
+var _queen_rest_turn := 0.0        # which way she faces when nothing else turns her
+var _queen_home_prev := Vector3.ZERO
+var _queen_walk_fwd := Vector3.RIGHT   # the way she faces on her way (eased)
 var _rooms: Array = []             # chambers with a floor: {"y", "spots", "cell", "queen"}
 var _upper: Array = []             # brood rooms in the upper half of the nest
 var _lower: Array = []

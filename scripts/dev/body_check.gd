@@ -131,6 +131,14 @@ static func measure(nv, tally: Dictionary) -> void:
 			ants.append(m)
 	tally.frames = int(tally.get("frames", 0)) + 1
 	tally.ant_frames = int(tally.get("ant_frames", 0)) + ants.size()
+	# diggers drawn in the air: no soil next to the cell their body is in (the simulation lets them cut across a
+	# tunnel's middle on the way to planned work)
+	for v in nv._dig_vis.values():
+		if v.has("xf"):
+			var o: Vector3 = (v.xf as Transform3D).origin
+			tally.dig_frames = int(tally.get("dig_frames", 0)) + 1
+			if not nv._walkable(Vector3i(roundi(o.x), roundi(o.y), roundi(o.z))):
+				tally.dig_air = int(tally.get("dig_air", 0)) + 1
 	var sph := []
 	for m in ants:
 		sph.append(_ant_spheres(m.xf, m.get("bend", Vector2.ZERO), _lat(m)))
@@ -304,7 +312,8 @@ static func report(tally: Dictionary) -> String:
 		"  ant in ant %.2f pairs per 100 ant-frames (mean depth %.2f; deep %.2f)" % [100.0 * float(tally.get("in_ant", 0)) / n, float(tally.get("in_ant_depth", 0.0)) / maxf(1.0, float(tally.get("in_ant", 0))),
 			100.0 * float(tally.get("in_ant_deep", 0)) / n],
 		"  feet in the air %.2f%% of ant-frames" % [100.0 * float(tally.get("feet_air", 0)) / n],
-		"  body in the soil %.2f%% of ant-frames" % [100.0 * float(tally.get("in_soil", 0)) / n]]
+		"  body in the soil %.2f%% of ant-frames" % [100.0 * float(tally.get("in_soil", 0)) / n],
+		"  diggers in the air %.2f%% of %d digger-frames" % [100.0 * float(tally.get("dig_air", 0)) / maxf(1.0, float(tally.get("dig_frames", 0))), int(tally.get("dig_frames", 0))]]
 	var keys := tally.keys().filter(func(k): return String(k).contains(":"))
 	keys.sort_custom(func(a, b): return int(tally[a]) > int(tally[b]))
 	for k in keys:

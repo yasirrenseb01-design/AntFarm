@@ -78,8 +78,10 @@ func _field_from(start: Vector3i) -> Dictionary:
 
 func _refresh_spots() -> void:
 	_rooms.clear()
+	_room_of.clear()
 	var all := []
 	var queen_room := -1
+	var queen_ch := int(sim.queen_at)               # the chamber the queen stays in (sim_warmth; -1: her founding one)
 	for i in nest.chambers.size():
 		var ch: Dictionary = nest.chambers[i]
 		var cells := _floor_cells(ch)
@@ -87,34 +89,35 @@ func _refresh_spots() -> void:
 			continue
 		all.append_array(cells)
 		var mid: Vector3 = cells[cells.size() / 2]
+		var hers: bool = i == queen_ch if queen_ch >= 0 else ch.kind == "queen"
 		_rooms.append({"y": ch.c.y, "spots": cells, "cell": Vector3i(roundi(mid.x), roundi(mid.y + 0.45), roundi(mid.z)),
-			"queen": ch.kind == "queen"})
-		if ch.kind == "queen":
+			"queen": hers, "ch": i})
+		_room_of[i] = _rooms.size() - 1
+		if hers:
 			queen_room = _rooms.size() - 1
 	_spots.all = all
-	_spots.queen = Vector3.ZERO
 	_spots.eggs = all
 	if queen_room >= 0:
 		_spots.eggs = _rooms[queen_room].spots
-		# the queen sits in the middle of her chamber floor
-		var qc: Vector3 = nest.chambers.filter(func(ch): return ch.kind == "queen")[0].c
+		# the queen sits in the middle of her chamber floor - and walks there through the tunnels when the colony
+		# has her in another chamber (sim_warmth: the warmest good one, now and then)
+		var qc: Vector3 = nest.chambers[_rooms[queen_room].ch].c
+		var goal := Vector3.ZERO
 		var best_d := INF
 		for sp in _rooms[queen_room].spots:
 			var d := Vector2(sp.x - qc.x, sp.z - qc.z).length_squared()
 			if d < best_d:
 				best_d = d
-				_spots.queen = sp
-	# egg packets lie a little way from the queen, nearest-first so the first packet is beside her
-	_egg_spots = []
-	if _spots.queen != Vector3.ZERO:
-		var cands := []
-		for sp in _spots.eggs:
-			var d := Vector2(sp.x - _spots.queen.x, sp.z - _spots.queen.z).length()
-			if d > 2.6:
-				cands.append([absf(d - 3.4), sp])
-		cands.sort_custom(func(a, b): return a[0] < b[0])
-		for c in cands:
-			_egg_spots.append(c[1])
+				goal = sp
+		if _spots.queen == Vector3.ZERO or _queen_room_ch < 0:
+			_spots.queen = goal
+			_queen_home_prev = goal
+			_queen_path = []
+		elif _queen_room_ch != _rooms[queen_room].ch:
+			_queen_path = _path_to(_spots.queen, goal)
+		_queen_room_ch = _rooms[queen_room].ch
+	if _queen_path.is_empty():
+		_refresh_egg_spots()
 	# brood chambers from the top down; Lasius keep pupae in the upper, drier chambers
 	var brood := []
 	for i in _rooms.size():
@@ -123,10 +126,12 @@ func _refresh_spots() -> void:
 	brood.sort_custom(func(a, b): return _rooms[a].y > _rooms[b].y)
 	if brood.is_empty() and queen_room >= 0:
 		brood = [queen_room]
+	_pupa_spots_now()
 	var half := maxi(1, brood.size() / 2)
 	_upper = brood.slice(0, half)
 	_lower = brood.slice(brood.size() - half) if brood.size() > 1 else brood.duplicate()
-	_spots.pupae = _room_spots(_upper, all)
+	if int(sim.brood_at.get("pupae", -1)) < 0:
+		_spots.pupae = _room_spots(_upper, all)
 
 	# a fresh distance field per room only when the tunnels have changed noticeably
 	if absi(nest.air - _fields_air) > 25 or _fields.size() != _rooms.size() + 1:
@@ -138,6 +143,20 @@ func _refresh_spots() -> void:
 	_update_larva_group()
 
 
+## Egg packets lie a little way from the queen, nearest-first so the first packet is beside her.
+func _refresh_egg_spots() -> void:
+	_egg_spots = []
+	if _spots.queen != Vector3.ZERO:
+		var cands := []
+		for sp in _spots.eggs:
+			var d := Vector2(sp.x - _spots.queen.x, sp.z - _spots.queen.z).length()
+			if d > 2.6:
+				cands.append([absf(d - 3.4), sp])
+		cands.sort_custom(func(a, b): return a[0] < b[0])
+		for c in cands:
+			_egg_spots.append(c[1])
+
+
 func _room_spots(rooms: Array, fallback: Array) -> Array:
 	var out := []
 	for r in rooms:
@@ -145,10 +164,13 @@ func _room_spots(rooms: Array, fallback: Array) -> Array:
 	return out if not out.is_empty() else fallback
 
 
-## Nurses move larvae up toward the warm surface layer by day and back down at night.
+## Nurses carry the larvae to the chamber the colony keeps them in (sim_warmth: where they grow fastest - up toward
+## the sun-warmed top by day, down at night outdoors); in a colony from before that, up by day and down by night.
 func _update_larva_group() -> void:
 	var warm_above: bool = sim.climate.air > sim.climate.nest + 0.5
 	var group := "up" if warm_above else "down"
+	if int(sim.brood_at.get("larvae", -1)) >= 0 and _room_of.has(int(sim.brood_at.larvae)):
+		group = "c%d" % int(sim.brood_at.larvae)
 	if _larva_group == "":
 		_larva_group = group
 		_larva_prev = group
@@ -158,9 +180,62 @@ func _update_larva_group() -> void:
 		_larva_group = group
 		# carried only if the day pile and the night pile are in different chambers (a founding nest has one
 		# chamber for both: nobody carries larvae round and round inside it)
-		_moved = 0 if _upper != _lower else 1 << 20
-	_spots.larvae = _room_spots(_upper if _larva_group == "up" else _lower, _spots.all)
-	_spots.larvae_old = _room_spots(_upper if _larva_prev == "up" else _lower, _spots.all)
+		_moved = 0 if _group_rooms(_larva_group) != _group_rooms(_larva_prev) else 1 << 20
+	_spots.larvae = _room_spots(_group_rooms(_larva_group), _spots.all)
+	_spots.larvae_old = _room_spots(_group_rooms(_larva_prev), _spots.all)
+
+
+## The cocoons likewise (sim_warmth: the chamber they grow fastest in, rather a high one): carried over a few at a time.
+func _pupa_spots_now() -> void:
+	var ch := int(sim.brood_at.get("pupae", -1))
+	if ch < 0 or not _room_of.has(ch):
+		return
+	var group := "c%d" % ch
+	if _pupa_group == "":
+		_pupa_group = group
+		_pupa_prev = group
+		_moved_p = 1 << 20
+	elif group != _pupa_group and _moved_p >= sim.pupae.size():
+		_pupa_prev = _pupa_group
+		_pupa_group = group
+		_moved_p = 0
+	_spots.pupae = _room_spots(_group_rooms(_pupa_group), _spots.all)
+	_spots.pupae_old = _room_spots(_group_rooms(_pupa_prev), _spots.all)
+
+
+## The rooms (indices into _rooms) of a brood group: "up" / "down" (the upper and lower half), or "c<chamber>".
+func _group_rooms(group: String) -> Array:
+	if group.begins_with("c"):
+		var r = _room_of.get(int(group.substr(1)))
+		return [r] if r != null else _upper
+	return _upper if group == "up" else _lower
+
+
+## The way through the tunnels from p to goal (floor positions, a cell apart), along the walking field.
+func _path_to(p: Vector3, goal: Vector3) -> Array:
+	var gc := Vector3i(roundi(goal.x), roundi(goal.y + 0.45), roundi(goal.z))
+	var f := _field_from(gc)
+	var c := Vector3i(roundi(p.x), roundi(p.y + 0.45), roundi(p.z))
+	var out := []
+	for k in 400:
+		var here := int(f.get(c, 1 << 30))
+		if here <= 0:
+			break
+		var best := c
+		var bd := here
+		for d in DIRS:
+			var n: Vector3i = c + d
+			var v := int(f.get(n, 1 << 30))
+			if v < bd:
+				bd = v
+				best = n
+		if best == c:
+			break
+		c = best
+		# on the floor where there is one under the cell, else on the wall beside it (down a shaft)
+		out.append(Vector3(c.x, c.y - 0.45, c.z) if not nest.is_open(c + Vector3i(0, -1, 0)) else Vector3(c))
+	out.append(goal)
+	return out
 
 
 func _pile_xf(spots: Array, i: int, scale: float) -> Transform3D:
@@ -198,7 +273,26 @@ func _queen_pose() -> void:
 	var qp: Vector3 = _spots.queen
 	var show: bool = sim.queen.alive and qp != Vector3.ZERO and _visible(qp)
 	_queen_mm.instance_count = 1 if show else 0
-	if show:
+	if show and not _queen_path.is_empty():
+		# on her way: along the floor and up or down the shaft walls, body along her way, feet to the soil
+		var cell := Vector3i(roundi(qp.x), roundi(qp.y + 0.45), roundi(qp.z))
+		var up := _up_at(cell)
+		var to: Vector3 = _queen_path[0]
+		var fwd := to - qp
+		fwd -= up * fwd.dot(up)
+		if fwd.length_squared() < 0.0004:
+			fwd = _queen_walk_fwd
+		fwd = fwd.normalized()
+		_queen_walk_fwd = _queen_walk_fwd.slerp(fwd, minf(1.0, 5.0 * get_process_delta_time())).normalized()
+		var f := (_queen_walk_fwd - up * _queen_walk_fwd.dot(up)).normalized()
+		_queen_xf = Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * QUEEN_SCALE), qp + up * (QUEEN_LIFT + 0.45))
+		if absf(f.y) < 0.7:
+			_queen_turn = atan2(-f.z, f.x)          # (so she stands facing her way once she is there)
+			_queen_rest_turn = _queen_turn
+		_queen_mm.set_instance_transform(0, _queen_xf)
+		_queen_mm.set_instance_color(0, AntModel.body_linear(Color(0.07, 0.055, 0.047)))
+		_queen_cells.clear()
+	elif show:
 		# her heavy gaster hangs below her feet: stand her up on her legs so it rests on the floor, not in it;
 		# and stand on the floor where she is - off her spot (stepping to the brood) a chamber floor curves up
 		# to the walls, so she rises with it and her front tips up or down with its slope (else her face
@@ -256,7 +350,7 @@ func _random_room() -> int:
 
 
 func _brood_room(group: String) -> int:
-	var list: Array = _upper if group == "up" else _lower
+	var list: Array = _group_rooms(group)
 	return list[randi() % list.size()] if not list.is_empty() else _random_room()
 
 

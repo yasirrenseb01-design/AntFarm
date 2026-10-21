@@ -77,6 +77,15 @@ func _bite(s: Vector3i) -> void:
 		dist[i] = best + 1 if best >= 0 else -1
 
 
+## An open cell a few voxels from the face of the planned work (work_at), for a digger to make for.
+func _near_work() -> Vector3i:
+	for attempt in 6:
+		var c := work_at + Vector3i(rng.randi_range(-3, 3), rng.randi_range(-2, 2), 0 if slab else rng.randi_range(-3, 3))
+		if is_open(c) and dist[idx(c)] >= 0:
+			return c
+	return work_at
+
+
 func _spawn_digger() -> void:
 	var start: Vector3i = Vector3i(chambers[rng.randi() % chambers.size()].c)
 	if not is_open(start):
@@ -117,7 +126,7 @@ func _step_digger(d: Dictionary, target_air: int, humidity: float) -> void:
 			d.carry = false
 			d.back = true          # head back down to the dig front it came from
 			if work_left > 0 and work_at.x >= 0:
-				d.site = work_at   # (or to the planned work, if any is waiting)
+				d.site = _near_work()   # (or to the planned work, if any is waiting - somewhere along its face, not all at one spot)
 			d.tries = 0
 			excavated += 1
 			d.dir = Vector3i(0, -1, 0)

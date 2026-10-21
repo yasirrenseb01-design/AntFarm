@@ -178,6 +178,21 @@ func refresh(delta: float) -> void:
 	_show(_vals["fat"], "%.1f" % sim.fat)
 	_show(_vals["protein"], "%.1f" % sim.protein, DANGER if sim.protein < 1.0 and not fnd else INK)
 	_show(_vals["nest_t"], "%.1f°C" % sim.climate.nest, DANGER if sim.climate.nest > 34.0 else INK)
+	# each chamber's warmth by its depth, and who is kept where (sim_warmth)
+	var rows := PackedStringArray([tr("nest_temp_tip")])
+	for i in sim.nest.chambers.size():
+		if not sim.nest.chambers[i].get("open", true):
+			continue
+		var who := PackedStringArray()
+		if i == sim.queen_at and sim.queen.alive:
+			who.append(tr("queen"))
+		if i == int(sim.brood_at.get("larvae", -1)) and not sim.larvae.is_empty():
+			who.append(tr("larvae"))
+		if i == int(sim.brood_at.get("pupae", -1)) and not sim.pupae.is_empty():
+			who.append(tr("pupae"))
+		rows.append(tr("chamber_temp_row") % [sim.chamber_depth_cm(i), sim.chamber_temp(i), (" · ".join(who)) if not who.is_empty() else ""])
+	_vals["nest_t"].tooltip_text = "
+".join(rows)
 	_show(_vals["dev"], "%d%%" % int(sim.dev * 100))
 	_show(_vals["dead"], str(sim.stats.dead))
 	_show(_vals["brood_dead"], str(sim.stats.brood_dead + sim.stats.cannibalized))

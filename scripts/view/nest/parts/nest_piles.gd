@@ -382,7 +382,9 @@ func _take_freed_pupa() -> Array:
 func _pile_key(kind: String, new_pile: bool) -> String:
 	if kind == "larvae":
 		# by the chambers the pile is in (a founding cell has one chamber for both: nothing is carried)
-		return kind + str(_upper if (_larva_group if new_pile else _larva_prev) == "up" else _lower)
+		return kind + str(_group_rooms(_larva_group if new_pile else _larva_prev))
+	if kind == "pupae" and _pupa_group != "":
+		return kind + str(_group_rooms(_pupa_group if new_pile else _pupa_prev))
 	return kind
 
 
@@ -594,7 +596,7 @@ func _update_brood() -> void:
 				bits.append(xf)
 	_fill(_bits_mm, bits)
 	_pile(_pupa_mm, _spots.pupae, sim.pupae.slice(0, maxi(0, sim.pupae.size() - _pending("pupate"))), 300, func(p): return p.get("s", 1.0),
-		[], 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
+		_spots.pupae_old if _pupa_group != _pupa_prev else [], _moved_p if _pupa_group != _pupa_prev else 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
 	_mark_brood_cells()
 	_brood_gen += 1
 	# the crater mound of excavated pellets around the entrance on top of the block

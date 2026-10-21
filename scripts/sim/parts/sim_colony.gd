@@ -1,5 +1,5 @@
-extends "res://scripts/sim/parts/sim_enemies.gd"
-## Simulation, layer 5 of 7: colony physiology (days, roles, feeding, moisture, the queen, brood, the outworld's food and weather).
+extends "res://scripts/sim/parts/sim_warmth.gd"
+## Simulation, layer 6 of 8: colony physiology (days, roles, feeding, moisture, the queen, brood, the outworld's food and weather).
 
 
 const QUEEN_KEEP := 20.0     # body reserve a founding queen will not spend on brood
@@ -43,16 +43,6 @@ func _new_day() -> void:
 
 # ---------------------------------------------------------------- colony physiology
 
-func _dev_rate(t: float) -> float:
-	if t < sp["dev_min_c"]:
-		return 0.0
-	if t < sp["dev_opt_c"]:
-		return (t - sp["dev_min_c"]) / (sp["dev_opt_c"] - sp["dev_min_c"])
-	if t <= sp["dev_hot_c"]:
-		return 1.0
-	return maxf(0.0, 1.0 - (t - sp["dev_hot_c"]) / (sp["dev_lethal_c"] - sp["dev_hot_c"]))
-
-
 func _activity(t: float) -> float:
 	if t < sp["forage_min_c"]:
 		return 0.0
@@ -75,7 +65,8 @@ func _eagerest(pool: Array, kind: int) -> int:
 
 
 func _colony(dt: float) -> void:
-	dev = _dev_rate(climate.nest)
+	_place_brood(dt)
+	dev = dev_in(queen_at)                # (in her chamber: how fast she lays, and the larvae are fed)
 	activity = _activity(climate.surface()) * (0.1 if climate.raining() else 1.0)
 	hungry = sugar < workers.size() * 0.4 + 2.0 or protein < larvae.size() * 0.5 + 1.0
 	var forager_age: float = sp["nurse_until_hungry"] if hungry else sp["nurse_until_days"]
@@ -175,7 +166,9 @@ func _colony(dt: float) -> void:
 		diggers_wanted = clampi(int(idle.size() * 0.25) + 2, 2, 6) if workers.size() - out_count > 0 else 0
 	else:
 		var keen := 1.4 if humidity > 0.6 else 1.0
-		diggers_wanted = clampi(int((idle.size() * 0.35 + 1.0) * keen), 1, 40) if workers.size() - out_count > 0 else 0
+		# (at most 20: more than that only crowded round the one face of the work in the view, a swarm - the cap is
+		# chosen, not measured; until v0.11.19 it was 40)
+		diggers_wanted = clampi(int((idle.size() * 0.35 + 1.0) * keen), 1, 20) if workers.size() - out_count > 0 else 0
 	# who digs: the reserve ants still inside most ready to dig (the view shows them at the dig face)
 	var still_in := idle.filter(func(x): return x.state == Ant.IN_NEST)
 	still_in.sort_custom(func(x, y):
@@ -349,17 +342,18 @@ func _queen(dt: float) -> void:
 	egg_acc += rate * dt
 	while egg_acc >= 1.0:
 		egg_acc -= 1.0
-		eggs.append({"p": 0.0})
+		eggs.append({"p": 0.0, "c": queen_at})
 		protein = maxf(0.0, protein - sp["protein_egg"])
 		_event("egg")
 
 
 func _brood(dt: float) -> void:
 	for i in range(eggs.size() - 1, -1, -1):
-		eggs[i].p += dt / sp["egg_days"] * dev
+		eggs[i].p += dt / sp["egg_days"] * dev_in(int(eggs[i].get("c", -1)))      # (each at its own chamber's warmth)
 		if eggs[i].p >= 1.0:
+			var at := int(eggs[i].get("c", -1))
 			eggs.remove_at(i)
-			larvae.append({"p": 0.0, "h": 0.0, "q": 0.6})
+			larvae.append({"p": 0.0, "h": 0.0, "q": 0.6, "c": at})
 
 	var n := larvae.size()
 	if n > 0:
@@ -388,14 +382,14 @@ func _brood(dt: float) -> void:
 		for i in range(n - 1, -1, -1):
 			var l = larvae[i]
 			r = r_all * float(l.get("f", 1.0))      # (a larva nobody fed this half hour: no growth, hungrier)
-			l.p += dt / sp["larva_days"] * dev * r
+			l.p += dt / sp["larva_days"] * dev_in(int(l.get("c", -1))) * r
 			if diapause:
 				l.p = minf(l.p, 0.95)
 			l.h = maxf(0.0, l.h + dt * (1.0 - r) * cold - dt * r * 0.5)
 			l.q = lerpf(l.get("q", 0.6), r, minf(1.0, dt * 0.6))   # running average of how well it was fed
 			if l.p >= 1.0:
 				larvae.remove_at(i)
-				pupae.append({"p": 0.0, "s": _adult_size(l.q)})
+				pupae.append({"p": 0.0, "s": _adult_size(l.q), "c": int(l.get("c", -1))})
 				_event("pupate", pupae[-1].s)
 				if hungriest > i:
 					hungriest -= 1
@@ -414,7 +408,7 @@ func _brood(dt: float) -> void:
 				_log(T.cannibalism, "bad", [stats.cannibalized])
 
 	for i in range(pupae.size() - 1, -1, -1):
-		pupae[i].p += dt / sp["pupa_days"] * dev
+		pupae[i].p += dt / sp["pupa_days"] * dev_in(int(pupae[i].get("c", -1)))
 		if pupae[i].p >= 1.0:
 			var pupa: Dictionary = pupae[i]
 			pupae.remove_at(i)
@@ -428,11 +422,15 @@ func _brood(dt: float) -> void:
 			if stats.born <= 3 or stats.born % 25 == 0:
 				_log(T.new_worker, "ok", [stats.born])
 
-	if climate.nest > sp["dev_lethal_c"] - 2.0:
+	# too hot where they lie (outdoors, a sun-baked top chamber the nurses have not cleared yet)
+	var hot: float = sp["dev_lethal_c"] - 2.0
+	if climate.nest > hot:
 		var p := 0.4 * dt
-		_cull(eggs, p)
-		_cull(larvae, p)
-		_cull(pupae, p)
+		for list in [eggs, larvae, pupae]:
+			for i in range(list.size() - 1, -1, -1):
+				if chamber_temp(int(list[i].get("c", -1))) > hot and rng.randf() < p:
+					list.remove_at(i)
+					stats.brood_dead += 1
 		_warn("heat", true, T.warn_heat)
 	else:
 		_warn("heat", false, "")
