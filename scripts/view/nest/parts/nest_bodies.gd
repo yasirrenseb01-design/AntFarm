@@ -140,6 +140,8 @@ func _custom(v: Dictionary, act: int) -> Color:
 	v.vact = AntModel.act_step(v.get("vact", Vector3(-1, 0, 0)), act, clock)    # poses ease into one another
 	var gx := AntModel.gait_x(v.get("gait", 0.0), v.get("bend", Vector2.ZERO))       # (and the waist and neck bent to the ground)
 	var cz := AntModel.clock_z(clock, v.get("lat", 0.0))                              # (and bent sideways round a turn)
+	if v.has("over_on") and float(v.get("over", 0.0)) > 0.3:
+		cz += 16384.0          # (up on a nestmate's back: its feet stand on the back under it, not reaching for the soil below)
 	if v.get("fed", false):
 		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
 	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))

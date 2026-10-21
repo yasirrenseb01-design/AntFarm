@@ -148,7 +148,7 @@ func setup(s) -> void:
 	ant_mat.set_shader_parameter("limb_gain", AntModel.WORKER_LIMBS)
 	# feet find the real floor in the soil volume (updated in place as the ants dig)
 	ant_mat.set_shader_parameter("ground_mode", 1)
-	ant_mat.set_shader_parameter("vol", _vol)
+	ant_mat.set_shader_parameter("vol", _foot_vol)          # (the soil and the brood on it: nest_scene._upload_foot_volume)
 	ant_mat.set_shader_parameter("vol_size", Vector3(nest.nx, nest.ny, nest.nz))
 	var queen_mat: ShaderMaterial = ant_mat.duplicate()
 	queen_mat.set_shader_parameter("limb_gain", AntModel.QUEEN_LIMBS)
@@ -281,6 +281,10 @@ func refresh(delta: float) -> void:
 	_vol_timer -= delta
 	if _vol_dirty and _vol_timer <= 0.0:
 		_upload_volume()
+	else:
+		_foot_timer -= delta
+		if _foot_timer <= 0.0 and not _brood_occ.is_empty():
+			_upload_foot_volume()                  # (the brood laid out anew)
 	_pump_chunks(_queue)
 	t0 = _nprof("soil mesh", t0)
 	_ease_camera(delta)

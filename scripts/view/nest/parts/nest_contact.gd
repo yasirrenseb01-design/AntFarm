@@ -65,7 +65,8 @@ func _climb(m: Dictionary, tr: Transform3D, md: float, at: float) -> Transform3D
 				m.bc_gen = _brood_gen
 				m.bc_at = tr.origin
 				m.bc_f = tr.basis.x
-				m.bc = _headroom(tr, up, _need_lift(_climb_need(tr, _brood_spheres(tr.origin), up, _tends_brood(m)), float(m.size)))
+				# (over the brood up to two cocoons high: a heap of them is ~2 units - capped at 1.3 the body stayed in it)
+				m.bc = _headroom(tr, up, _need_lift(_climb_need(tr, _brood_spheres(tr.origin), up, _tends_brood(m)), float(m.size), 2.4))
 			want = (m.bc as Vector2).x
 			tip = (m.bc as Vector2).y
 		else:
@@ -461,14 +462,14 @@ func _headroom(tr: Transform3D, up: Vector3, lt: Vector2) -> Vector2:
 	return Vector2(maxf(want, 0.0), lt.y if want > 0.0 else 0.0)
 
 
-static func _need_lift(need: Array, size: float) -> Vector2:
+static func _need_lift(need: Array, size: float, cap := 1.3) -> Vector2:
 	var a: Vector2 = need[0]
 	var b: Vector2 = need[need.size() - 1]
 	var tip := clampf(atan2(a.y - b.y, a.x - b.x), -0.45, 0.45)
 	var want := 0.0
 	for n in need:
 		want = maxf(want, n.y - n.x * sin(tip))
-	return Vector2(minf(want, 1.3 * size), tip)
+	return Vector2(minf(want, cap * size), tip)
 
 
 ## The eggs, larvae and cocoons near p as spheres [centre, radius]: a larva (lying on the floor) and a cocoon

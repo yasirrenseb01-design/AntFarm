@@ -17,6 +17,7 @@ static var _window_set := false       # the window was maximized at this start (
 ##       --follow-pushed   --follow-soil (nest: follow an ant on a slope / climbing over / bending round a turn / pushed /
 ##       with its body in the soil)   --select[=eggs|larvae|pupae] (nest: click one ant / one item of brood)   --pick-check (nest: do clicks pick the ant clicked)
 ##       --heater (the heat mat on)   --queen-to=<chamber> [--follow-queen] (nest: the queen walks to that chamber, the camera with her)
+##       --feet (with --seq, nest: planted feet in the air, in the soil, in the brood - dev/foot_check.gd)
 ##       --bodies (with --seq: bodies inside one another, feet in the air - dev/body_check.gd; outworld: foragers in one another, --trace-crowd prints the deep ones, --no-crowd draws them without keeping them apart)
 ##       --trace (with --seq, nest: print who is by the queen each frame: role, activity, rest, position)   --trace-mates (every nestmate each frame)   --pops (with --seq: print ants that jump between frames)
 ##       --at-ant=<i>|walker|act2|act9|act10 (outworld: look at a forager, or one busy at that kind of food)   --at-food=<kind> (drop one and look at it)

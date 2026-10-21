@@ -92,6 +92,9 @@ var _brood_sig: Array = []
 var _mound_n := -1
 var _vol: ImageTexture3D
 var _vol_timer := 0.0
+var _foot_vol: ImageTexture3D       # the soil with the brood in it, for the ants' feet (they stand on eggs, larvae, cocoons)
+var _foot_rho := PackedByteArray()
+var _foot_timer := 0.0
 var _vol_dirty := true
 var _feed                          # EventFeed: life-cycle moments from the simulation (set up in setup())
 var _anims: Array = []             # life-cycle moments being acted out
@@ -332,6 +335,38 @@ func _upload_volume() -> void:
 		_mat.set_shader_parameter("vol", _vol)
 	else:
 		_vol.update(layers)
+	_upload_foot_volume()
+
+
+## What the ants' feet stand on (the ant shaders' `vol`): the soil, and the brood lying on it - an ant crossing the
+## pile had its feet set down on the soil under the cocoons, through them (or, out of reach, hanging in the air).
+## The brood's bodies (nest_piles: as drawn) are stamped in as solid voxels. Again at most twice a second.
+func _upload_foot_volume() -> void:
+	_foot_timer = 0.5
+	_foot_rho = nest.rho.duplicate()
+	var nx: int = nest.nx
+	var ny: int = nest.ny
+	var nz: int = nest.nz
+	for bin in _brood_occ.values():
+		for o in bin:
+			var sph: Array = o[5] if o.size() >= 6 else ([[o[0], 0.25]] if o.size() == 2 else [])
+			for q in sph:
+				var c: Vector3 = q[0]
+				var r: float = float(q[1]) + 0.2
+				for z in range(maxi(0, floori(c.z - r)), mini(nz, ceili(c.z + r) + 1)):
+					for y in range(maxi(0, floori(c.y - r)), mini(ny, ceili(c.y + r) + 1)):
+						for x in range(maxi(0, floori(c.x - r)), mini(nx, ceili(c.x + r) + 1)):
+							if Vector3(x, y, z).distance_to(c) <= r:
+								_foot_rho[(z * ny + y) * nx + x] = 255
+	var layers: Array[Image] = []
+	var slice: int = nx * ny
+	for z in nz:
+		layers.append(Image.create_from_data(nx, ny, false, Image.FORMAT_R8, _foot_rho.slice(z * slice, (z + 1) * slice)))
+	if _foot_vol == null:
+		_foot_vol = ImageTexture3D.new()
+		_foot_vol.create(Image.FORMAT_R8, nx, ny, nz, false, layers)
+	else:
+		_foot_vol.update(layers)
 
 
 func _build_chunk(k: Vector3i) -> void:

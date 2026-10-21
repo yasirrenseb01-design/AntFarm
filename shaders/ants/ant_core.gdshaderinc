@@ -291,6 +291,21 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 				float sc = length(M[1].xyz);
 				vec3 fw = (M * vec4(T, 1.0)).xyz;
 				float gd = ground_dy(fw, upw);
+				// at an edge (over a drop, or against a wall rising beside it) there is no ground the leg can reach
+				// straight under the foot: the foot is set down nearer the body, where there is (as an ant at the
+				// lip of a shaft steps short) - it hung in the air, or went into the wall
+				if (ground_mode == 1 && (gd < -0.5 * sc || gd > 0.6 * sc)) {
+					for (int k = 1; k <= 2; k++) {
+						vec3 Tk = T;
+						Tk.xz = mix(T.xz, H.xz, 0.3 * float(k));
+						float gk = ground_dy((M * vec4(Tk, 1.0)).xyz, upw);
+						if (gk >= -0.5 * sc && gk <= 0.6 * sc) {
+							T = Tk;
+							gd = gk;
+							break;
+						}
+					}
+				}
 				// (on a wall or the ceiling with no soil under the foot - the glass of a glass nest - it stays put;
 				// on a floor it reaches down for the ground as far as the leg goes)
 				if (gd > -1.35 || abs(M[1].y) > 0.5 * sc) {
@@ -483,18 +498,21 @@ void vertex() {
 		bc -= 1.0;
 		bend.xy = (vec2(mod(bc, 21.0), floor(bc / 21.0)) - 10.0) * 0.04;
 	}
-	// z: clock + 600 x the sideways bend code
-	float lc = floor(INSTANCE_CUSTOM.z / 600.0);
-	float clock = INSTANCE_CUSTOM.z - lc * 600.0;
+	// z: clock + 600 x the sideways bend code (+ 16384: up on a nestmate's back - its feet do not look for the soil)
+	float cz = INSTANCE_CUSTOM.z;
+	float on_back = floor(cz / 16384.0);
+	cz -= on_back * 16384.0;
+	float lc = floor(cz / 600.0);
+	float clock = cz - lc * 600.0;
 	if (lc > 0.5) {
 		bend.z = (lc - 11.0) * 0.04;
 	}
-	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS, bend, s1);
+	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS && on_back < 0.5, bend, s1);
 	stretch = s1;
 	if (left > 0.002 && prev != code && !IN_SHADOW_PASS) {      // (a shadow skips the easing)
 		vec3 n0 = NORMAL;
 		float s0;
-		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, true, bend, s0);
+		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, on_back < 0.5, bend, s0);
 		v1 = mix(v1, v0, left);
 		n1 = normalize(mix(n1, n0, left) + vec3(0.0, 1e-4, 0.0));
 		stretch = mix(s1, s0, left);
