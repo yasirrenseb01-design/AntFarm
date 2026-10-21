@@ -2,6 +2,7 @@ extends "res://scripts/dev/dev_tools.gd"
 const DesktopMode := preload("res://scripts/game/desktop_mode.gd")
 const SaveCheck := preload("res://scripts/sim/save_check.gd")
 var desktop                    # desktop mode: the nest as the wallpaper (PART 11)
+static var _window_set := false       # the window was maximized at this start (main._ready)
 ## Entry point. Owns the simulation, the views, the camera and the HUD. Top of the chain:
 ## parts/main_base <- parts/main_camera <- dev/dev_tools <- main.
 ##
@@ -50,6 +51,11 @@ func _ready() -> void:
 		one = SingleInstance.new()
 		add_child(one)
 		one.listen(one_port)
+	# the game opens filling the screen (maximized, the taskbar still there); once per start - a reload for another colony
+	# or language keeps the window as the keeper left it
+	if _persist and not _window_set and not _opts.has("desktop") and not _opts.has("windowed"):
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_MAXIMIZED)
+	_window_set = true
 	if _opts.has("testsave"):
 		# a colony grown by tests/year_run.gd: opened read-only, no time-away catch-up
 		Store.base = "user://growtest/%s/" % String(_opts["testsave"]).validate_filename()     # (a name, never a path out of user://)
