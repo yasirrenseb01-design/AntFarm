@@ -12,6 +12,7 @@ const CSV := "res://lang/strings.csv"
 const LANGS := [["th", "\u0e44\u0e17\u0e22"], ["en", "English"]]     # (the settings window lists these, each in its own words: "Thai" in Thai)
 
 static var _loaded := false
+static var _ph: RegEx = null
 
 
 ## Reads the CSV into the TranslationServer (once).
@@ -48,6 +49,8 @@ static func default_lang() -> String:
 ## Shows the game in this language ("th" or "en").
 static func use(lang: String) -> void:
 	load_all()
+	if not LANGS.any(func(l): return l[0] == lang):
+		lang = default_lang()                # (settings.cfg or --lang= naming a language the game has no words for)
 	TranslationServer.set_locale(lang)
 
 
@@ -67,7 +70,26 @@ static func f(key: String, args = []) -> String:
 	var a: Array = args if args is Array else [args]
 	if a.is_empty():
 		return text
-	return text % a.map(_word)
+	a = a.map(_word)
+	return text % a if _fits(text, a) else text
+
+
+## Whether the values fit the %-placeholders (a journal line comes from the save, which anything can change, and a
+## line whose values do not fit would stop the game with a script error - PART EA-R R8).
+static func _fits(text: String, a: Array) -> bool:
+	if _ph == null:
+		_ph = RegEx.create_from_string("%[-+ 0#]*[0-9]*(?:\\.[0-9]+)?([sdfoxXcv%])")
+	var i := 0
+	for m in _ph.search_all(text):
+		var c := m.get_string(1)
+		if c == "%":
+			continue
+		if i >= a.size():
+			return false
+		if c != "s" and c != "v" and not (a[i] is int or a[i] is float or (c == "c" and a[i] is String)):
+			return false
+		i += 1
+	return i == a.size()
 
 
 ## An argument to be put in words when shown (a journal line kept as key + args).
@@ -89,5 +111,5 @@ static func entry_text(e: Dictionary) -> String:
 ## When a journal line was written ("Day 12 06:30").
 static func stamp(e: Dictionary) -> String:
 	if e.has("day"):
-		return f("log_stamp", [int(e.day), String(e.get("clock", ""))])
+		return f("log_stamp", [e.day, String(e.get("clock", ""))])
 	return String(e.get("stamp", ""))

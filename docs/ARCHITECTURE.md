@@ -112,6 +112,9 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 - **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
   และ**ไม่บันทึกทับ**; อ่านไม่ได้ → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (บอกผู้เล่นทุกกรณี)
+- ความปลอดภัย (v0.11.14, `docs/release/SECURITY_REVIEW.md`): ไฟล์ใน `user://` ถือว่าใครก็แก้ได้ — เซฟอ่านด้วย `bytes_to_var` (ไม่สร้าง object)
+  จำกัดขนาด แล้วผ่าน `scripts/sim/save_check.gd` (หลังแปลง: ค่าครบ ชนิดตรงกับรังที่เกมสร้างเอง ขนาด voxel/กริด/แถวมดลงตัว) ก่อน `from_dict`;
+  `settings.cfg` อ่านเป็นข้อความก่อน (`Store._settings_file`); เพิ่มค่าใหม่ในเซฟ → ถ้าตัวโหลดอ่านด้วย `d.get(...)` ให้ใส่ใน `SaveCheck.OPTIONAL`
 - รูปแบบ v1→v2 (v0.5.8): มดมี `caste`, แมงมุมตัวเดียว (`spider`) → รายการ `creatures`
 - รูปแบบ v2→v3 (v0.6.0): มดมี `foe`, `hurt`; ศัตรูมี `id`, `hp`, `held`; เพิ่มสนาม `alarm` และ `next_cid`
 - รูปแบบ v3→v4 (v0.7.0): `scenario` ("keeper"/"wild"), `start_doy`, `cold_days`, `fridge_on`, `fat`; climate มี `scenario`, `fridge`;

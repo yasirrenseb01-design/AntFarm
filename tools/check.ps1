@@ -61,6 +61,8 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/lang_test
 Report "words: every key in both languages, same placeholders, no Thai left in the code" ($r -match "LANG TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/duty_test.gd") 300
 Report "duties in the nest: repeatable, counted, run while closed" ($r -match "DUTY TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/save_fuzz_test.gd") 300
+Report "broken or changed saves, settings and port messages: no code run, no hang, no script error" ($r -match "SAVE FUZZ TEST PASSED")
 $sandbox = Join-Path $env:APPDATA "Godot\app_userdata\AntFarm\sandbox\saves\slot1.antfarm"
 if (Test-Path $sandbox) {
     $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/real_save_test.gd") 300

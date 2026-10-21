@@ -15,6 +15,15 @@ const AWAY_RATES := [
 	["away_15m", 4.0],
 ]
 const MAX_AWAY_DAYS := 120.0   # longest absence simulated on return
+# (PART EA-R R8) a save is ~0.1 MB on disk and ~5 MB unpacked: anything far bigger is not one of ours, and is not read
+# (a file can claim any length, and the reader would set that much memory aside first)
+const MAX_FILE := 32 * 1024 * 1024
+const MAX_RAW := 64 * 1024 * 1024
+const MAX_TEXT := 1024 * 1024    # settings.cfg, slotN.json
+# what each setting is, and the value it has when the file has none or something else there
+const SETTINGS := {"slot": 1, "away": 3, "care": true, "lang": "", "view": "outworld", "desk_told": false, "show_fps": false,
+	"side_open": true, "music": 0.6, "guide_done": false}
+const META := {"day": 0, "workers": 0, "saved_unix": 0, "glass": false, "queen": true, "scenario": "keeper"}
 
 
 static func _dir() -> String:
@@ -64,21 +73,44 @@ static func save(slot: int, sim, extra: Dictionary = {}) -> bool:
 
 ## {"meta": {...}, "sim": {...}} or {} if the slot is empty or unreadable.
 static func load_slot(slot: int) -> Dictionary:
-	if not exists(slot):
+	if not exists(slot) or _size(_path(slot)) > MAX_FILE:
 		return {}
 	var f := FileAccess.open_compressed(_path(slot), FileAccess.READ, FileAccess.COMPRESSION_ZSTD)
 	if f == null:
 		return {}
-	var d = f.get_var()
+	# (as get_var() reads it, with the length checked first; objects are never decoded - bytes_to_var, not _with_objects)
+	var n := f.get_32()
+	if n == 0 or n > MAX_RAW:
+		return {}
+	var bytes := f.get_buffer(n)
 	f.close()
-	return d if d is Dictionary else {}
+	if bytes.size() != n:
+		return {}
+	var d = bytes_to_var(bytes)
+	if not d is Dictionary or not d.get("sim") is Dictionary or not d.get("meta") is Dictionary:
+		return {}
+	return d
+
+
+static func _size(path: String) -> int:
+	var f := FileAccess.open(path, FileAccess.READ)
+	return f.get_length() if f != null else 0
 
 
 static func meta(slot: int) -> Dictionary:
-	if not FileAccess.file_exists(_meta_path(slot)):
+	if not FileAccess.file_exists(_meta_path(slot)) or _size(_meta_path(slot)) > MAX_TEXT:
 		return {}
 	var d = JSON.parse_string(FileAccess.get_file_as_string(_meta_path(slot)))
-	return d if d is Dictionary else {}
+	if not d is Dictionary:
+		return {}
+	# the menu puts these in words with %d and %s: a value of the wrong kind is left out (JSON has no objects)
+	var out := {}
+	for k in d:
+		var v = d[k]
+		var want = META.get(k, v)
+		if (v is float and (want is float or want is int)) or (v is String and want is String) or (v is bool and want is bool):
+			out[k] = v
+	return out
 
 
 ## Keep a copy of the slot as slotN.<tag>.antfarm (+ .json) before it is migrated or given up on.
@@ -100,21 +132,57 @@ static func delete(slot: int) -> void:
 # ---------------------------------------------------------------- settings
 
 static func settings() -> Dictionary:
-	var cf := ConfigFile.new()
-	cf.load(_settings_path())
+	var cf := _settings_file()
 	var s := {"slot": 1, "away": 3, "care": true, "lang": ""}      # (lang "": the machine's)
 	# everything saved comes back - music, the frame rate, the side panel, the view, the guide and wallpaper notes (only
 	# these four did until v0.11.13: the rest were saved and forgotten at the next start)
 	if cf.has_section("game"):
 		for k in cf.get_section_keys("game"):
-			s[k] = cf.get_value("game", k)
+			var v = cf.get_value("game", k)
+			if SETTINGS.has(k):
+				var want = SETTINGS[k]
+				if want is bool:
+					s[k] = v if v is bool else want
+				elif want is int:
+					s[k] = int(v) if v is int or v is float else want
+					if k == "slot":
+						s[k] = clampi(s[k], 1, SLOTS)
+					elif k == "away":
+						s[k] = clampi(s[k], 0, AWAY_RATES.size() - 1)
+				elif want is float:
+					s[k] = clampf(float(v), 0.0, 1.0) if v is int or v is float else want      # (music: a volume)
+				else:
+					s[k] = String(v).left(64) if v is String else want
+			elif v is bool or v is int or v is float or v is String:
+				s[k] = v
 	return s
+
+
+## The settings file, read as text first: a ConfigFile turns Object(...) and Resource("...") into the real thing - a
+## script named there would be loaded and could run (PART EA-R R8). The game only ever writes plain values, so a file
+## with any of those is not read at all (the settings start over).
+static func _settings_file() -> ConfigFile:
+	var cf := ConfigFile.new()
+	var path := _settings_path()
+	if not FileAccess.file_exists(path) or _size(path) > MAX_TEXT:
+		return cf
+	var text := FileAccess.get_file_as_string(path)
+	var objects := RegEx.create_from_string("(Object|Resource|ExtResource|SubResource|Callable|Signal|RID)\\s*\\(")
+	# (and a value of lists in lists some thousand deep made the engine call itself until it ran out of stack and crashed:
+	# the game writes no lists here, so a file with more than a few brackets of any kind - counted in text and notes too,
+	# which cannot hide one - is not read either)
+	var brackets := text.count("[") + text.count("{") + text.count("(")
+	if objects.search(text) != null or brackets > 32:
+		push_warning("settings.cfg holds more than plain values: not read")
+		return cf
+	if cf.parse(text) != OK:
+		return ConfigFile.new()
+	return cf
 
 
 static func save_settings(s: Dictionary) -> void:
 	DirAccess.make_dir_recursive_absolute(base)
-	var cf := ConfigFile.new()
-	cf.load(_settings_path())
+	var cf := _settings_file()
 	for k in s:
 		cf.set_value("game", k, s[k])
 	cf.save(_settings_path())

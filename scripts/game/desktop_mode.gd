@@ -14,6 +14,7 @@ extends Node
 signal failed(message: String)       # it could not become the wallpaper: why (main.gd tells the keeper)
 
 const FPS := 30                      # frames a second as the wallpaper (a calm scene; the game window runs at the screen's rate)
+const LOG_MAX := 256 * 1024          # bytes of user://desktop_mode.log kept
 const COVER_CHECK := 2.0             # seconds between looks at whether an app covers the desktop
 
 var on := false                      # the window is the wallpaper
@@ -52,7 +53,12 @@ func setup(m: Node) -> void:
 
 ## The helper next to the game (exported) or in the project's build folder (running from the editor).
 func _helper() -> String:
-	for dir in [OS.get_executable_path().get_base_dir(), ProjectSettings.globalize_path("res://build")]:
+	# (the full path, never just "AntDesk.exe" - Windows would look for that name in other folders too; the project's
+	# build folder only when running from the editor)
+	var dirs := [OS.get_executable_path().get_base_dir()]
+	if not OS.has_feature("template"):
+		dirs.append(ProjectSettings.globalize_path("res://build"))
+	for dir in dirs:
 		var p: String = dir.path_join("AntDesk.exe")
 		if FileAccess.file_exists(p):
 			return p
@@ -202,7 +208,13 @@ func _done(kind: String, code: int, out: String) -> void:
 ## console to print to).
 func _log(line: String) -> void:
 	print("desktop mode: " + line)
-	var f := FileAccess.open("user://desktop_mode.log", FileAccess.READ_WRITE if FileAccess.file_exists("user://desktop_mode.log") else FileAccess.WRITE)
+	var path := "user://desktop_mode.log"
+	var f := FileAccess.open(path, FileAccess.READ_WRITE if FileAccess.file_exists(path) else FileAccess.WRITE)
+	if f != null and f.get_length() > LOG_MAX:
+		f.close()
+		DirAccess.remove_absolute(path + ".old")
+		DirAccess.rename_absolute(path, path + ".old")          # (never more than ~2 x LOG_MAX on disk: the older half goes)
+		f = FileAccess.open(path, FileAccess.WRITE)
 	if f != null:
 		f.seek_end()
 		f.store_line("%s %s" % [Time.get_datetime_string_from_system(), line])

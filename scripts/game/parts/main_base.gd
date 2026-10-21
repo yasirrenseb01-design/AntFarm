@@ -80,7 +80,8 @@ func _plan_catchup(meta: Dictionary) -> void:
 	if _opts.has("testsave"):
 		return
 	var rate := Store.away_rate(int(_settings.get("away", 3)))
-	var real_s: float = maxf(0.0, Time.get_unix_time_from_system() - float(meta.get("saved_unix", 0.0)))
+	var saved = meta.get("saved_unix", 0.0)
+	var real_s: float = maxf(0.0, Time.get_unix_time_from_system() - (float(saved) if saved is int or saved is float else 0.0))
 	real_s += float(_opts.get("pretend-away", "0")) * 3600.0
 	var days := real_s / 3600.0 * rate
 	_away_hours = real_s / 3600.0

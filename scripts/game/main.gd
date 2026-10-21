@@ -1,5 +1,6 @@
 extends "res://scripts/dev/dev_tools.gd"
 const DesktopMode := preload("res://scripts/game/desktop_mode.gd")
+const SaveCheck := preload("res://scripts/sim/save_check.gd")
 var desktop                    # desktop mode: the nest as the wallpaper (PART 11)
 ## Entry point. Owns the simulation, the views, the camera and the HUD. Top of the chain:
 ## parts/main_base <- parts/main_camera <- dev/dev_tools <- main.
@@ -51,7 +52,7 @@ func _ready() -> void:
 		one.listen(one_port)
 	if _opts.has("testsave"):
 		# a colony grown by tests/year_run.gd: opened read-only, no time-away catch-up
-		Store.base = "user://growtest/%s/" % _opts["testsave"]
+		Store.base = "user://growtest/%s/" % String(_opts["testsave"]).validate_filename()     # (a name, never a path out of user://)
 		_persist = true
 		next_slot = int(_opts.get("slot", "1"))
 	# the language: the keeper's choice, else the machine's - Thai on a Thai machine, English elsewhere (--lang=th|en: dev)
@@ -67,7 +68,8 @@ func _ready() -> void:
 		next_slot = 0
 		if next_nest == "":
 			var data := Store.load_slot(slot)
-			var v: int = int(data.sim.get("version", -1)) if data.has("sim") else -1
+			var ver = data.sim.get("version", -1) if data.has("sim") else -1
+			var v: int = int(ver) if ver is int or ver is float else -1
 			if v > Sim.SAVE_VERSION:
 				# saved by a newer game: play a scratch colony and never write over that save
 				_persist = false
@@ -76,10 +78,16 @@ func _ready() -> void:
 				if v < Sim.SAVE_VERSION:
 					Store.backup(slot, "before-v%d" % Sim.SAVE_VERSION)
 					data.sim = Migrations.migrate(data.sim, Sim.SAVE_VERSION)
-				sim.from_dict(data.sim)
-				loaded = true
-				_plan_catchup(data.meta)
-			elif Store.exists(slot):
+				# (PART EA-R R8: a save changed by hand or by another program is given up on as unreadable, never half loaded)
+				var why := SaveCheck.problem(data.sim)
+				if why == "":
+					sim.from_dict(data.sim)
+					loaded = true
+					_plan_catchup(data.meta)
+				else:
+					push_warning("slot %d cannot be loaded: %s" % [slot, why])
+					v = 0
+			if v < 1 and Store.exists(slot):
 				Store.backup(slot, "unreadable-%d" % int(Time.get_unix_time_from_system()))
 				_load_note = tr("save_unreadable") % [slot, slot]
 		_settings["slot"] = slot

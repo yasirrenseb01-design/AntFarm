@@ -7,11 +7,18 @@ extends Node
 signal wake                          # a second copy was started: come forward
 
 const PORT := 47815                  # (+1 with --sandbox: tests run beside the keeper's game)
+# (PART EA-R R8) any program on this computer can connect here: only a few bytes are read, a connection that says
+# nothing is dropped, only a few are held at once, and the game comes forward at most once a second
+const MAX_SAID := 64
+const PEER_TIMEOUT_MS := 2000
+const MAX_PEERS := 8
+const WAKE_GAP_MS := 1000
 
 var _server: TCPServer
 var _peers: Array = []
 var _port := 0
 var _retry_t := 0.0
+var _woke_at := -WAKE_GAP_MS
 
 
 ## Whether a game is running already (then it has been told to come forward).
@@ -58,16 +65,22 @@ func _process(delta: float) -> void:
 			listen(_port)
 		return
 	while _server.is_connection_available():
-		_peers.append(_server.take_connection())
-	for p in _peers.duplicate():
+		var c := _server.take_connection()
+		if _peers.size() >= MAX_PEERS:
+			c.disconnect_from_host()
+		else:
+			_peers.append([c, Time.get_ticks_msec()])
+	var now := Time.get_ticks_msec()
+	for e in _peers.duplicate():
+		var p: StreamPeerTCP = e[0]
 		p.poll()
-		if p.get_status() != StreamPeerTCP.STATUS_CONNECTED:
-			_peers.erase(p)
-		elif p.get_available_bytes() > 0:
-			var said: String = p.get_utf8_string(p.get_available_bytes())
-			_peers.erase(p)
+		var n := p.get_available_bytes()
+		if p.get_status() != StreamPeerTCP.STATUS_CONNECTED or n > 0 or now - e[1] > PEER_TIMEOUT_MS:
+			var said: String = p.get_utf8_string(mini(n, MAX_SAID)) if n > 0 else ""
+			_peers.erase(e)
 			p.disconnect_from_host()
-			if said.begins_with("show"):
+			if said.begins_with("show") and now - _woke_at >= WAKE_GAP_MS:
+				_woke_at = now
 				wake.emit()
 
 
