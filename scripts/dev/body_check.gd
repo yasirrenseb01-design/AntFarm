@@ -129,6 +129,33 @@ static func measure(nv, tally: Dictionary) -> void:
 	for m in nv._mates:
 		if m.has("xf") and nv._shown(m.xf):
 			ants.append(m)
+	# brood in brood (two cocoons, a cocoon in a larva ...), and brood in the queen's body
+	tally.brood_items = int(tally.get("brood_items", 0)) + brood.size()
+	for i in brood.size():
+		for j in range(i + 1, brood.size()):
+			if (brood[i][1] as Vector3).distance_squared_to(brood[j][1]) > 9.0:
+				continue
+			var d := _depth(brood[i][0], brood[j][0])
+			if d > BITE:
+				var key := "brood in brood: %s" % "+".join([brood[i][2], brood[j][2]] if brood[i][2] < brood[j][2] else [brood[j][2], brood[i][2]])
+				tally[key] = int(tally.get(key, 0)) + 1
+				tally.brood_brood = int(tally.get("brood_brood", 0)) + 1
+				_worst(tally, "brood2", d, brood[i][1], key)
+				if tally.has("trace") and int(tally.get("frames", 0)) % 10 == 5:
+					var pi = nv._placed_at(brood[i][1])
+					var pj = nv._placed_at(brood[j][1])
+					print("  overlap %.2f %s at %s / %s  | %s | %s" % [d, key, brood[i][1], brood[j][1], pi, pj])
+	if nv._queen_mm.instance_count > 0:
+		var qx: Transform3D = nv._queen_xf
+		var qs := []
+		for k in 7:
+			var t := float(k) / 6.0
+			qs.append([qx * nv.QUEEN_HEAD.lerp(nv.QUEEN_TAIL, t), nv.QUEEN_R * 0.75])
+		for b in brood:
+			if qx.origin.distance_squared_to(b[1]) < 36.0 and _depth(qs, b[0]) > BITE:
+				var key := "brood in the queen: %s" % b[2]
+				tally[key] = int(tally.get(key, 0)) + 1
+				tally.brood_queen = int(tally.get("brood_queen", 0)) + 1
 	tally.frames = int(tally.get("frames", 0)) + 1
 	tally.ant_frames = int(tally.get("ant_frames", 0)) + ants.size()
 	# diggers drawn in the air: no soil next to the cell their body is in (the simulation lets them cut across a
@@ -137,7 +164,11 @@ static func measure(nv, tally: Dictionary) -> void:
 		if v.has("xf"):
 			var o: Vector3 = (v.xf as Transform3D).origin
 			tally.dig_frames = int(tally.get("dig_frames", 0)) + 1
-			if not nv._walkable(Vector3i(roundi(o.x), roundi(o.y), roundi(o.z))):
+			if float(v.get("still", 0.0)) > 0.25:
+				tally.dig_at_face = int(tally.get("dig_at_face", 0)) + 1      # (drawn biting at the face: ACT_DIG)
+			var u: Vector3 = (v.xf as Transform3D).basis.y.normalized()
+			var lo: Vector3 = o - u * 0.7             # (its feet: the body is drawn ~0.4 above the surface)
+			if not nv._walkable(Vector3i(roundi(o.x), roundi(o.y), roundi(o.z))) and not nv._walkable(Vector3i(roundi(lo.x), roundi(lo.y), roundi(lo.z))):
 				tally.dig_air = int(tally.get("dig_air", 0)) + 1
 	var sph := []
 	for m in ants:
@@ -313,7 +344,9 @@ static func report(tally: Dictionary) -> String:
 			100.0 * float(tally.get("in_ant_deep", 0)) / n],
 		"  feet in the air %.2f%% of ant-frames" % [100.0 * float(tally.get("feet_air", 0)) / n],
 		"  body in the soil %.2f%% of ant-frames" % [100.0 * float(tally.get("in_soil", 0)) / n],
-		"  diggers in the air %.2f%% of %d digger-frames" % [100.0 * float(tally.get("dig_air", 0)) / maxf(1.0, float(tally.get("dig_frames", 0))), int(tally.get("dig_frames", 0))]]
+		"  brood in brood %.2f pairs per 100 brood-frames, brood in the queen %.2f per 100" % [100.0 * float(tally.get("brood_brood", 0)) / maxf(1.0, float(tally.get("brood_items", 0))), 100.0 * float(tally.get("brood_queen", 0)) / maxf(1.0, float(tally.get("brood_items", 0)))],
+		"  diggers in the air %.2f%% of %d digger-frames, at the face digging %.1f%%" % [100.0 * float(tally.get("dig_air", 0)) / maxf(1.0, float(tally.get("dig_frames", 0))), int(tally.get("dig_frames", 0)),
+			100.0 * float(tally.get("dig_at_face", 0)) / maxf(1.0, float(tally.get("dig_frames", 0)))]]
 	var keys := tally.keys().filter(func(k): return String(k).contains(":"))
 	keys.sort_custom(func(a, b): return int(tally[a]) > int(tally[b]))
 	for k in keys:

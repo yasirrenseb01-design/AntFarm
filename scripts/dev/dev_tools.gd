@@ -406,6 +406,8 @@ func _take_shot() -> void:
 					_count_pops()
 				if _opts.has("bodies") and mode == "nest":
 					_bodies.worst = {}
+					if _opts.has("trace-crowd"):
+						_bodies.trace = true
 					BodyCheck.measure(nest_view, _bodies)
 				elif _opts.has("bodies") and mode == "outworld":
 					_bodies.worst = {}
@@ -486,7 +488,7 @@ func _take_shot() -> void:
 					var dv = _pushed if _pushed != null and nest_view._dig_vis.values().has(_pushed) else null
 					if dv == null:
 						for v in nest_view._dig_vis.values():
-							if v.has("xf") and float(v.get("still", 0.0)) < 0.1:
+							if v.has("xf") and (float(v.get("still", 0.0)) > 0.3 if _opts.get("follow-digger") == "face" else float(v.get("still", 0.0)) < 0.1):
 								dv = v
 								break
 					if dv != null:

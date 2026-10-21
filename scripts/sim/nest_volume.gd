@@ -5,6 +5,9 @@ extends "res://scripts/sim/parts/nest_chambers.gd"
 
 # ---------------------------------------------------------------- digging
 
+const BITES_PER_PELLET := 3     # bites at the face before the pellet is carried out
+const BITE_STEPS := 40          # digger steps (STEP_EVERY ticks each) one bite takes: ~2.7 s at 1x
+
 func _dig_signal(c: Vector3i) -> float:
 	var t := dug_at[idx(c)]
 	return exp(-(tick - t) / DIG_TAU)
@@ -77,6 +80,17 @@ func _bite(s: Vector3i) -> void:
 		dist[i] = best + 1 if best >= 0 else -1
 
 
+## Whether the work face (work_at) still has planned soil beside it to dig.
+func _face_left() -> bool:
+	if work_at.x < 0:
+		return false
+	for dd in DIRS:
+		var n: Vector3i = work_at + dd
+		if inside(n) and rho[idx(n)] >= AIR and not is_hard(n) and _plan_at(n) > 0:
+			return true
+	return false
+
+
 ## An open cell a few voxels from the face of the planned work (work_at), for a digger to make for.
 func _near_work() -> Vector3i:
 	for attempt in 6:
@@ -105,6 +119,10 @@ func step(now: int, wanted: int, target_air: int, humidity: float) -> void:
 	if _dist_age > 120:
 		_dist_age = 0
 		_bfs()
+	# the face the diggers make for, dug out: the next one now, not at the next daily count (until then they all walked
+	# round a finished face with nothing on it to dig)
+	if work_left > 0 and tick % (STEP_EVERY * 30) == 0 and not _face_left():
+		work_left = count_work_left()
 	while diggers.size() < wanted:
 		_spawn_digger()
 	if diggers.size() > wanted:
@@ -167,6 +185,9 @@ func _step_digger(d: Dictionary, target_air: int, humidity: float) -> void:
 			return
 
 	if air < target_air or work_left > 0:
+		if int(d.get("biting", 0)) > 0:
+			d.biting = int(d.biting) - 1         # still at the face, biting and working the soil into a pellet
+			return
 		var best := Vector3i.ZERO
 		var best_p := 0.0
 		for dd in DIRS:
@@ -176,10 +197,22 @@ func _step_digger(d: Dictionary, target_air: int, humidity: float) -> void:
 			if p > best_p:
 				best_p = p
 				best = c + dd
-		if best_p > 0.0 and rng.randf() < best_p:
+		if best_p > 0.0 and (int(d.get("bites", 0)) > 0 and best_p > 0.02 or rng.randf() < best_p):
+			# a pellet takes a few bites at the same face, each a moment of work (BITE_STEPS), then it is carried out
+			# [inference: Lasius workers bite soil loose and shape it into a pellet in their mandibles before carrying
+			# it; how long that takes was not found - chosen ~8 s a pellet at 1x]
 			_bite(best)
-			d.carry = true
+			d.bites = int(d.get("bites", 0)) + 1
 			d.site = c
+			if int(d.bites) >= BITES_PER_PELLET:
+				d.bites = 0
+				d.carry = true
+			else:
+				d.biting = BITE_STEPS
+			return
+		if int(d.get("bites", 0)) > 0:
+			d.bites = 0
+			d.carry = true                       # nothing more to bite right here: off with what it has
 			return
 
 	# wander along the walls, drawn toward fresh digging and slightly downward

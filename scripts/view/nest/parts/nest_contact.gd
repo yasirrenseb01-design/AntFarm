@@ -481,9 +481,9 @@ func _brood_spheres(p: Vector3) -> Array:
 		_bsph.clear()
 	var out := []
 	var key := Vector3i(floori(p.x / 1.5), floori(p.y / 1.5), floori(p.z / 1.5))
-	for dx in [-1, 0, 1]:
+	for dx in [-2, -1, 0, 1, 2]:                     # (two bins each way: a cocoon is 2.7 long, a bin 1.5)
 		for dy in [-1, 0, 1, 2]:
-			for dz in [-1, 0, 1]:
+			for dz in [-2, -1, 0, 1, 2]:
 				var k: Vector3i = key + Vector3i(dx, dy, dz)
 				var bs = _bsph.get(k)
 				if bs == null:
@@ -492,6 +492,9 @@ func _brood_spheres(p: Vector3) -> Array:
 						var c: Vector3 = o[0]
 						if o.size() < 4:
 							bs.append([c, 0.25])             # an egg
+							continue
+						if o.size() > 5:
+							bs.append_array(o[5])            # its body as drawn, tilted with the floor (nest_piles._pile_spheres)
 							continue
 						var half: float = o[3]
 						if o.size() > 4 and o[4]:

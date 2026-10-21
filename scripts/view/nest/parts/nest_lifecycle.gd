@@ -376,8 +376,18 @@ func _start_pupate(s: float) -> void:
 	_collect_freed_larvae()
 	var p: Vector3 = _pile_xf(_spots.larvae, sim.larvae.size() + _pending("pupate"), 1.0).origin
 	if not _freed.larvae.is_empty():
-		p = _freed.larvae[-1]                # where that larva lay: it spins its cocoon there
-	var a := {"k": "pupate", "t": 0.0, "d": 7.0 * _anim_k(), "p": p, "s": s, "helper": null, "carried": false}
+		p = _freed.larvae[-1]                # where that larva lay: it spins its cocoon there ...
+	# ... or as near as there is room for a cocoon (it is much bigger than the larva: it lay in its neighbours)
+	var yaw := randf() * TAU
+	for off in _BORN_OFFS:
+		var q: Vector3 = p + off
+		q.y = _floor_cached(q)
+		if _density_at(q + Vector3(0, 0.3, 0)) < 0.5 and _shape_lift(q, Basis(Vector3.UP, yaw), s, "pupae") <= 0.02 				and (_queen_mm.instance_count == 0 or _queen_keep(q) > 0.95 * s + 0.5):
+			p = q
+			break
+	if not _freed.larvae.is_empty():
+		_freed.larvae[-1] = p                # (the cocoon is then laid where it was spun)
+	var a := {"k": "pupate", "t": 0.0, "d": 7.0 * _anim_k(), "p": p, "s": s, "helper": null, "carried": false, "yaw": yaw}
 	var hs := _helpers(p, 1)
 	if not hs.is_empty():
 		a.helper = hs[0]
@@ -820,7 +830,7 @@ func _draw_anims() -> void:
 					continue                       # drawn in the nurse's mandibles
 				var s: float = a.s
 				if _visible(a.p):
-					var lb := Basis(Vector3.UP, a.t * 0.3).scaled(Vector3.ONE * s)
+					var lb := Basis(Vector3.UP, float(a.get("yaw", 0.0)) + a.t * 0.05).scaled(Vector3.ONE * s)
 					if u < 0.62:
 						# Lasius larvae need a covering of soil particles to spin against
 						var shown := int(clampf(u / 0.25, 0.0, 1.0) * 8.0)

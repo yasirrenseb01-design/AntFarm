@@ -192,7 +192,9 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	var event := ""
 	# busier traffic: the entrance shaft is widened from one ant's width toward ~two (L. niger nest entrances are
 	# a few mm across; the rate is chosen)
-	entrance_r = clampf(1.0 + workers * 0.012, 1.0, 1.7)
+	# (never narrower again: a shaft dug wider does not close up when a worker dies - the plan shrinking under the
+	# work counted in the morning left the diggers walking round a face with nothing on it to dig, all day)
+	entrance_r = maxf(entrance_r, clampf(1.0 + workers * 0.012, 1.0, 1.7))
 	for ch in chambers:
 		if not ch.get("open", true) and is_open(Vector3i(ch.c)):
 			ch.open = true

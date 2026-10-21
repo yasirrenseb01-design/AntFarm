@@ -58,12 +58,12 @@ func _next_egg_slot() -> int:
 func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Callable, old_spots := [], moved := 1 << 20,
 		col_fn := Callable(), kind := "larvae") -> void:
 	var n := mini(items.size(), max_n)
-	if _queen_mm.instance_count > 0:
+	if _queen_here():
 		# not under the queen (a larva is ~2 units long); in a tiny founding chamber keep the spots farthest from her
-		var clear := spots.filter(func(s): return _queen_gap(s) > 1.3)
+		var clear := spots.filter(func(s): return _queen_keep(s) > 1.3)
 		if clear.is_empty() and not spots.is_empty():
 			clear = spots.duplicate()
-			clear.sort_custom(func(a, b): return _queen_gap(a) > _queen_gap(b))
+			clear.sort_custom(func(a, b): return _queen_keep(a) > _queen_keep(b))
 			clear = clear.slice(0, maxi(1, clear.size() / 3))
 		spots = clear
 	if spots.is_empty():
@@ -79,6 +79,7 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 	# elsewhere or the spot is no longer good (see _still_lies); the rest are laid down
 	var todo := []
 	var tops := []
+	var born := []
 	for i in n:
 		var src_key := _pile_key(kind, i < moved or old_spots.is_empty())
 		var v := _vtag(items[i])
@@ -89,8 +90,14 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 				tops.append(i)                   # (after everything it could be resting on)
 				continue
 			_keep_at(pl, s, kind, items[i], col_fn, xs, cs)
-		elif pl.is_empty() and _born_at(kind, spots, v, s):
-			_keep_at(_placed[v], s, kind, items[i], col_fn, xs, cs)    # where the egg / larva it came from lay
+		elif pl.is_empty():
+			born.append(i)                       # (after all that already lies: so it is laid clear of them all)
+		else:
+			todo.append(i)
+	for i in born:
+		var v := _vtag(items[i])
+		if _born_at(kind, spots, v, scale_fn.call(items[i])):
+			_keep_at(_placed[v], scale_fn.call(items[i]), kind, items[i], col_fn, xs, cs)    # where the egg / larva it came from lay
 		else:
 			todo.append(i)
 	for i in tops:
@@ -183,7 +190,7 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	if not c.get("full", false):
 		for k in range(c.next, places.size()):
 			var p: Vector3 = places[k]
-			if _queen_mm.instance_count > 0 and _queen_gap(p) < r + 0.5:
+			if _queen_here() and _queen_keep(p) < r + 0.5:
 				continue
 			if p.distance_to(c.centre) > c.reach:
 				break                          # the heap is as wide as it gets: go on top instead
@@ -191,6 +198,9 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 				var turn := _fit_turn(p, s, c, i)
 				if turn < 0.0:
 					continue                       # it would stick into the chamber wall here
+				var pf := Vector3(p.x, _floor_cached(p), p.z)          # (where it will lie: on the real floor under the spot)
+				if _shape_lift(pf, Basis(Vector3.UP, _hash(i, 3) * TAU + turn), s, c.get("kind", "larvae"), true, 0.02) > 0.02:
+					continue                       # its ends would lie in a neighbour's (it is long, the room a circle)
 				fit = turn
 				best = p
 				c.next = maxi(c.next, k - 8)      # the places before this are (nearly all) taken
@@ -202,24 +212,27 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	if best == Vector3.INF and not places.is_empty():
 		# the heap's floor is full: lie on top, resting on whatever is highest there
 		on_top = true
-		var inner := places.filter(func(p): return p.distance_to(c.centre) <= c.reach and (_queen_mm.instance_count == 0 or _queen_gap(p) >= r + 0.5))
+		var inner := places.filter(func(p): return p.distance_to(c.centre) <= c.reach and (not _queen_here() or _queen_keep(p) >= r + 0.5))
 		if inner.is_empty():
 			inner = places
 		# the lowest place on the heap where it lies clear of the walls and roof (from a different place
 		# for each item, so they spread over the heap instead of stacking into a tower)
 		var kind: String = c.get("kind", "larvae")
 		# (the heap first; if nowhere on it is clear of the roof, anywhere on the chamber floor out of her way)
-		var wide := places.filter(func(p): return _queen_mm.instance_count == 0 or _queen_gap(p) >= r + 0.2)
+		var wide := places.filter(func(p): return not _queen_here() or _queen_keep(p) >= r + 0.2)
 		var nin := mini(inner.size(), 60)
-		for k in nin + mini(wide.size(), 60):
+		for k in nin + mini(wide.size(), 36):
 			var p: Vector3 = inner[(i + k * 7) % inner.size()] if k < nin else wide[(i + k * 5) % wide.size()]
 			p.y = _floor_cached(p)
-			var l := 0.0
-			for o in _brood_near(p):
-				if Vector2(o[0].x - p.x, o[0].z - p.z).length() < r + o[1]:
-					# resting on the top of what is under it (top ~ its centre + half its thickness)
-					l = maxf(l, float(o[0].y) + float(o[3] if o.size() > 3 else o[1]) - p.y)
 			for turn in [0.0, PI * 0.5]:
+				# resting on what is under it: raised just so far that its body is clear of theirs (by their shapes)
+				var bt := Basis(Vector3.UP, _hash(i, 3) * TAU + turn)
+				var l := 0.0
+				for it in 3:                        # (raised clear of one, it may meet another higher up)
+					var more := _shape_lift(p + Vector3(0, l, 0), bt, s, kind, false)
+					if more <= 0.02:
+						break
+					l += more + 0.01
 				var score := l + 100.0 * _soil_pts(_brood_xf(p + Vector3(0, l, 0), Basis(Vector3.UP, _hash(i, 3) * TAU + turn), _grown(kind, s), kind, false), kind)
 				if score < low:
 					low = score
@@ -314,22 +327,30 @@ func _born_at(kind: String, spots: Array, v: int, s: float) -> bool:
 	var p: Vector3 = _freed[from][0]
 	if kind == "pupae" and (_nearest_spot(p, spots) == Vector3.INF or _nearest_spot(p, spots).distance_to(p) > 2.0):
 		return false
-	_freed[from].pop_front()
 	var sf := _grown(kind, s)
 	var yaw0 := randf() * TAU
-	var best := [99, p, Basis(Vector3.UP, yaw0)]
+	var best := [99, Vector3.INF, Basis(Vector3.UP, yaw0)]
 	for off in _BORN_OFFS:
 		var q: Vector3 = p + off
 		q.y = _floor_cached(q)
 		if _density_at(q + Vector3(0, 0.3, 0)) >= 0.5:
 			continue
+		if kind == "pupae" and (not _brood_free(q, 0.95 * sf) or (_queen_here() and _queen_keep(q) < 0.95 * sf + 0.5)):
+			continue                    # (a cocoon is much bigger than the larva that spun it: not into its neighbours or the queen)
 		for k in 8:
 			var b := Basis(Vector3.UP, yaw0 + k * TAU / 8.0)
+			if kind == "pupae" and _shape_lift(q, b, s, kind) > 0.02:
+				continue                # (clear of its neighbours by their shapes too)
 			var n := _soil_pts(_brood_xf(q, b, sf, kind, true), kind)
 			if n < int(best[0]):
 				best = [n, q, b]
 		if int(best[0]) == 0:
 			break
+	if best[1] == Vector3.INF:
+		if kind == "pupae":
+			return false                # no room right there: laid with the rest of the pile (the nurse carries it there)
+		best[1] = p
+	_freed[from].pop_front()
 	_placed[v] = {"base": best[1], "b": best[2], "top": false, "forced": int(best[0]) > 0,
 		"src": _pile_key(kind, true)}
 	return true
@@ -338,7 +359,9 @@ func _born_at(kind: String, spots: Array, v: int, s: float) -> bool:
 const _BORN_OFFS := [Vector3.ZERO, Vector3(0.4, 0, 0), Vector3(-0.4, 0, 0), Vector3(0, 0, 0.4), Vector3(0, 0, -0.4),
 	Vector3(0.3, 0, 0.3), Vector3(-0.3, 0, 0.3), Vector3(0.3, 0, -0.3), Vector3(-0.3, 0, -0.3),
 	Vector3(0.8, 0, 0), Vector3(-0.8, 0, 0), Vector3(0, 0, 0.8), Vector3(0, 0, -0.8),
-	Vector3(0.6, 0, 0.6), Vector3(-0.6, 0, 0.6), Vector3(0.6, 0, -0.6), Vector3(-0.6, 0, -0.6)]
+	Vector3(0.6, 0, 0.6), Vector3(-0.6, 0, 0.6), Vector3(0.6, 0, -0.6), Vector3(-0.6, 0, -0.6),
+	Vector3(1.3, 0, 0), Vector3(-1.3, 0, 0), Vector3(0, 0, 1.3), Vector3(0, 0, -1.3),
+	Vector3(0.95, 0, 0.95), Vector3(-0.95, 0, 0.95), Vector3(0.95, 0, -0.95), Vector3(-0.95, 0, -0.95)]
 
 
 ## The size an item will reach where it lies: a larva grows from ~0.3 to ~1.1 before it pupates (it is laid
@@ -407,7 +430,7 @@ func _register_brood(base: Vector3, b: Basis, s: float, kind: String, on_floor :
 	if not _brood_occ.has(key):
 		_brood_occ[key] = []
 	# [centre (a larva: on the floor under it), packing radius, half its long axis, half its thickness, larva?]
-	_brood_occ[key].append([pos, 0.95 * s, bb.x * (shape.x - shape.y) * s, shape.y * s, kind == "larvae"])
+	_brood_occ[key].append([pos, 0.95 * s, bb.x * (shape.x - shape.y) * s, shape.y * s, kind == "larvae", _pile_spheres(xf, kind)])
 	return xf
 
 
@@ -544,6 +567,41 @@ func _mark_brood_cells() -> void:
 								_brood_cells[cell] = true
 
 
+## How far an item laid at `base` with heading `b` must be raised to lie clear of the brood already there - by the
+## bodies as they are drawn (tilted with the floor under them): a cocoon three spheres along its length, a larva two.
+## 0 = it lies there clear of them all.
+func _shape_lift(base: Vector3, b: Basis, s: float, kind: String, on_floor := true, enough := INF) -> float:
+	var mine := _pile_spheres(_brood_xf(base, b, _grown(kind, s), kind, on_floor), kind)
+	var need := 0.0
+	# (two bins round it each way: a cocoon is 2.7 long, a bin 1.5 - _brood_near's one bin missed a neighbour 1.5 away)
+	var key := Vector3i(floori(base.x / 1.5), floori(base.y / 1.5), floori(base.z / 1.5))
+	for dx in range(-2, 3):
+		for dy in range(-1, 2):
+			for dz in range(-2, 3):
+				for o in _brood_occ.get(key + Vector3i(dx, dy, dz), []):
+					if (o[0] as Vector3).distance_squared_to(base) > 12.0:
+						continue                  # (too far to touch it)
+					var sph: Array = o[5] if o.size() >= 6 else ([[o[0], 0.25]] if o.size() == 2 else [])     # (an egg: a small ball)
+					for q in sph:
+						for m in mine:
+							var reach: float = (float(m[1]) + float(q[1])) * 1.06
+							var d: Vector3 = (m[0] as Vector3) - (q[0] as Vector3)
+							var dxz := Vector2(d.x, d.z).length()
+							if dxz < reach and d.length() < reach:
+								need = maxf(need, sqrt(reach * reach - dxz * dxz) - d.y)
+								if need > enough:
+									return need       # (it is already too much: no need to know how much)
+	return need
+
+
+## A drawn item of brood as spheres (as dev/body_check.gd measures them): [[centre, radius], ...].
+static func _pile_spheres(xf: Transform3D, kind: String) -> Array:
+	var sc := xf.basis.get_scale().x
+	if kind == "larvae":
+		return [[xf * Vector3(0.45, 0.32, 0.0), 0.34 * sc], [xf * Vector3(-0.35, 0.32, 0.0), 0.36 * sc]]
+	return [[xf * Vector3(0.75, 0, 0), 0.55 * sc], [xf.origin, 0.6 * sc], [xf * Vector3(-0.75, 0, 0), 0.55 * sc]]
+
+
 func _brood_free(p: Vector3, r: float) -> bool:
 	var q := p + Vector3(0, 0.25, 0)
 	var key := Vector3i(floori(p.x / 1.5), floori(p.y / 1.5), floori(p.z / 1.5))
@@ -611,3 +669,12 @@ func _update_brood() -> void:
 		var r := 2.0 + sqrt(_hash(i, 6)) * (3.0 + sqrt(float(n)) * 0.35)
 		var h := maxf(0.0, 1.0 - r / (4.0 + sqrt(float(n)) * 0.4)) * 2.0
 		_pellet_mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, a), e + Vector3(cos(a) * r, h * _hash(i, 7), sin(a) * r)))
+
+
+## (dev, body_check --trace-crowd) how the item drawn at p was laid: on top, forced, where from.
+func _placed_at(p: Vector3) -> String:
+	for v in _placed:
+		var pl: Dictionary = _placed[v]
+		if (pl.base as Vector3).distance_to(p) < 1.2:
+			return "top %s forced %s src %s" % [pl.top, pl.get("forced", false), pl.src]
+	return "?"

@@ -326,6 +326,22 @@ func _queen_pose() -> void:
 						_queen_cells[Vector3i(x, y, z)] = true
 
 
+## Room kept for the queen where brood is laid: from her body as it is, and from her place (whichever way she
+## turns there, her body sweeps a circle about half her length round it) - brood laid beside her when she faced one
+## way lay under her once she turned.
+const QUEEN_REACH := 2.5
+func _queen_keep(p: Vector3) -> float:
+	var g := _queen_gap(p) if _queen_mm.instance_count > 0 else INF      # (before she is first drawn: her place only)
+	var h: Vector3 = _spots.queen
+	if h == Vector3.ZERO or not _queen_path.is_empty():
+		return g
+	return minf(g, Vector2(p.x - h.x, p.z - h.z).length() - QUEEN_REACH)
+
+
+func _queen_here() -> bool:
+	return sim.queen.alive and _spots.queen != Vector3.ZERO
+
+
 ## How far a point is from the surface of the queen's body (negative: inside it).
 func _queen_gap(p: Vector3) -> float:
 	var qa: Vector3 = _queen_xf * QUEEN_HEAD
