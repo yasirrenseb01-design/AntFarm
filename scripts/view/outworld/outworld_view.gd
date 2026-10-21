@@ -2,7 +2,7 @@ extends "res://scripts/view/outworld/parts/outworld_camera.gd"
 ## The outworld box in 3D: the same simulation and scenery layout as the top-down view, seen
 ## through an orbit camera. 1 unit = 1.5 mm (a nest voxel) = 3 px of the simulation's outworld.
 ## This file is the top of the chain: building the scene, the per-frame update and input.
-## Layers: parts/outworld_scene <- outworld_props <- outworld_creatures <- outworld_camera <- outworld_view.
+## Layers: parts/outworld_scene <- outworld_props <- outworld_crowd <- outworld_creatures <- outworld_camera <- outworld_view.
 
 
 func setup(s) -> void:

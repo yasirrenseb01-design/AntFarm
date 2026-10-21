@@ -102,6 +102,11 @@ var vfly_from := Vector2.ZERO
 var vbeyond := 0.0      # 3D: seconds since it walked off past the plot (outdoors), -1 = walking back in
 var vact := Vector3(-1, 0, 0)   # 3D: easing from one activity's pose to the next (AntModel.act_step)
 var vxf = null          # 3D outworld: where it was drawn last (for picking it with a click)
+var voff := Vector2.ZERO  # 3D outworld: drawn this far from vpos, clear of its neighbours (view/outworld/parts/outworld_crowd.gd)
+var vdoff := 0.0          # 3D outworld: how far voff moved this frame (the legs walk it)
+var vfood := Vector2(INF, INF)   # 3D outworld: the centre of the food it is drawn at (INF: none)
+var vrim := INF           # 3D outworld: the angle round the food it stands at (INF: not at food)
+var vaphid := -1          # 3D outworld: which of the plant's low aphids it climbs to
 
 
 ## This worker's threshold for a kind of need (TH_*), 0.6 (eager) .. 1.4 (reluctant): fixed for life,

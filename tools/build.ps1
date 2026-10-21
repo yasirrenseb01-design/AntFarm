@@ -14,7 +14,14 @@ $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 & $csc /nologo /target:winexe /platform:x64 /r:System.Drawing.dll /r:System.Windows.Forms.dll /win32icon:"$root\assets\ui\icon.ico" /out:"$root\build\AntDesk.exe" "$root\tools\desktop\antdesk.cs"
 if ($LASTEXITCODE -ne 0) { throw "AntDesk.exe failed to build" }
 try { Copy-Item "$root\build\AntDesk.exe" "$root\build\versions\AntDesk.exe" -Force } catch {}
+# the game's files are encrypted inside the exe (PART EA-R): the export template was compiled from the Godot 4.7.2 source
+# with this key built in (E:\GodotBuild\build_template.sh, see docs/release/ENCRYPTION.md); the key never goes in the repo
+$keyFile = "E:\GodotBuild\antfarm_pck.key"
+$template = "E:\GodotBuild\templates\antfarm_release_x86_64.exe"
+if (-not (Test-Path $keyFile) -or -not (Test-Path $template)) { throw "encryption key or template missing ($keyFile, $template): see docs/release/ENCRYPTION.md" }
+$env:GODOT_SCRIPT_ENCRYPTION_KEY = (Get-Content $keyFile -Raw).Trim()
 & $godot --headless --path $root --export-release "Windows Desktop" $archived
+Remove-Item Env:\GODOT_SCRIPT_ENCRYPTION_KEY
 if (-not (Test-Path $archived)) { throw "export failed" }
 try {
     Copy-Item $archived $target -Force

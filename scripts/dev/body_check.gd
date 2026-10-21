@@ -310,3 +310,51 @@ static func report(tally: Dictionary) -> String:
 	for k in keys:
 		lines.append("    %5d  %s" % [int(tally[k]), k])
 	return "\n".join(lines)
+
+
+## (--bodies, outworld) foragers drawn inside one another on the ground, the food and the plants: every ant out in the
+## plot this frame (not only those on screen), by what the two are doing. Ants clinging to an enemy are left out.
+static func measure_out(ow, sim, tally: Dictionary) -> void:
+	var ants := []
+	for a in sim.outside:
+		if a.state == 0 or a.dead or a.vpos.x == INF or not (a.vxf is Transform3D) or (a.act == 22 and a.busy > 0):
+			continue
+		if a.state == 5 and a.busy > 0:
+			continue
+		ants.append(a)
+	tally.frames = int(tally.get("frames", 0)) + 1
+	tally.ant_frames = int(tally.get("ant_frames", 0)) + ants.size()
+	var sph := []
+	for a in ants:
+		sph.append(_ant_spheres(a.vxf))
+	for i in ants.size():
+		var oi: Vector3 = (ants[i].vxf as Transform3D).origin
+		for j in range(i + 1, ants.size()):
+			if oi.distance_squared_to((ants[j].vxf as Transform3D).origin) > 12.0:
+				continue
+			var d := _depth(sph[i], sph[j])
+			if d > DEEP:
+				tally.in_ant_deep = int(tally.get("in_ant_deep", 0)) + 1
+			if d > BITE:
+				var ka := _out_kind(ants[i])
+				var kb := _out_kind(ants[j])
+				_worst(tally, "ant", d, oi.lerp((ants[j].vxf as Transform3D).origin, 0.5), "%s + %s" % [ka, kb])
+				if tally.has("trace") and d > DEEP:
+					for x in [ants[i], ants[j]]:
+						print("  deep %.2f  id %d st %d act %d busy %d vfeed %.2f vrim %s voff %.1f food %s d-pos %.1f" % [d, x.id, x.state, x.act, x.busy,
+							x.vfeed, str(snappedf(x.vrim, 0.01)) if x.vrim != INF else "-", x.voff.length(), x.vfood != Vector2(INF, INF),
+							(Vector2(x.vxf.origin.x, x.vxf.origin.z) * 3.0).distance_to(x.pos)])
+				var key := "in ant: %s + %s" % ([ka, kb] if ka < kb else [kb, ka])
+				tally[key] = int(tally.get(key, 0)) + 1
+				tally.in_ant = int(tally.get("in_ant", 0)) + 1
+				tally.in_ant_depth = float(tally.get("in_ant_depth", 0.0)) + d
+
+
+static func _out_kind(a) -> String:
+	if a.busy > 0 and a.act in [2, 9, 10]:
+		return ["", "", "cutting", "", "", "", "", "", "", "milking", "drinking"][a.act]
+	if a.busy > 0:
+		return "busy %d" % a.act
+	if a.state == 6:
+		return "hauling"
+	return "walking"

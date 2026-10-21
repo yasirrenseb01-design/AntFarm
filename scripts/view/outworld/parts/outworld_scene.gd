@@ -4,7 +4,7 @@ extends Node3D
 ## as the nest view. 1 unit = 1.5 mm (a nest voxel) = 3 px of the simulation's outworld.
 ## Outworld view, layer 1 of 5: state, the ground shape (matches shaders/terrain/outworld_ground),
 ## the box, scenery and shared materials.
-## Layers: outworld_scene <- outworld_props <- outworld_creatures <- outworld_camera <- outworld_view.
+## Layers: outworld_scene <- outworld_props <- outworld_crowd <- outworld_creatures <- outworld_camera <- outworld_view.
 const Ant := preload("res://scripts/sim/ant.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")

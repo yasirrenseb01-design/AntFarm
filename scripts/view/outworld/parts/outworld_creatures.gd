@@ -1,5 +1,5 @@
-extends "res://scripts/view/outworld/parts/outworld_props.gd"
-## Outworld view, layer 3 of 5: foragers (and how they stand on the food they handle), corpses,
+extends "res://scripts/view/outworld/parts/outworld_crowd.gd"
+## Outworld view, layer 4 of 6: foragers (and how they stand on the food they handle), corpses,
 ## the spider, rain, the day/night light and the tool ring.
 
 
@@ -28,6 +28,8 @@ func _update_ants(delta: float) -> void:
 	var soil := []
 	var spray := []
 	var sel_at := []                  # the selected ant's transform and pose, for its outline
+	_separate(delta)
+	_frame_n += 1
 	for a in sim.outside:
 		if a.state == Ant.IN_NEST or a.dead:
 			continue
@@ -44,6 +46,7 @@ func _update_ants(delta: float) -> void:
 		var out_step := _out_dir(a.pos) * BEYOND_WALK * minf(1.0, a.vbeyond / BEYOND_SHOW) if beyond else Vector2.ZERO
 		if a.vpos.x == INF or a.vpos.distance_squared_to(a.pos) > 400.0:
 			a.vpos = a.pos
+			a.voff = Vector2.ZERO
 			a.vang = a.ang
 			a.anim = randf() * 50.0
 			a.vgait = randf() * TAU
@@ -56,6 +59,9 @@ func _update_ants(delta: float) -> void:
 			a.vright = maxf(0.0, a.vright - adt)
 			flung = 1.0 - a.vright / THROWN_S
 		var step: Vector2 = a.pos + out_step - a.vpos
+		var down_stem: bool = a.vfeed > 0.0 and a.vpose is Dictionary and (a.vpose as Dictionary).get("climb", false) 			and not (a.busy > 0 and a.act == 9)
+		if down_stem:
+			step = Vector2.ZERO               # coming down the stem: it walks on from the foot of it once down
 		if flung > 0.0 and flung < 0.25:
 			step = Vector2.ZERO
 			a.vpos = a.vfly_from.lerp(a.pos, smoothstep(0.0, 1.0, flung / 0.25))    # through the air
@@ -76,7 +82,7 @@ func _update_ants(delta: float) -> void:
 			moving = true
 		a.vmv = lerpf(a.vmv, 1.0 if moving else 0.0, minf(1.0, 10.0 * delta))
 		a.anim += adt
-		var p: Vector2 = a.vpos * U
+		var p: Vector2 = (a.vpos + a.voff) * U
 		var up := ground_top_n(p.x, p.y)                # over pebbles, twigs and leaves as well as the ground
 		var f := Vector3(cos(a.vang), 0, sin(a.vang))
 		f = (f - up * f.dot(up)).normalized()
@@ -85,7 +91,7 @@ func _update_ants(delta: float) -> void:
 		# the distance actually walked over the stride, so planted feet do not slide
 		var pace: float = (0.35 + 0.65 * sim.activity) * (1.0 - 0.35 * a.hurt) * (1.3 if a.state == Ant.DEFEND else 1.0)
 		var stride := AntModel.stride_scale(pace, a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE)
-		var walked: float = (step * kp).length() * U + turned * 0.9 * s      # feet round the body as it turns
+		var walked: float = (step * kp).length() * U + turned * 0.9 * s + a.vdoff * U * 0.5   # feet round the body as it turns; stepping aside
 		if hauling:
 			# pulling: the legs step backward when the item goes the way the ant's back is turned
 			walked = (step * kp).dot(Vector2(cos(a.vang), sin(a.vang))) * U
@@ -118,9 +124,21 @@ func _update_ants(delta: float) -> void:
 			if flung > 0.08 and flung < 0.8:
 				act = 18
 		var pose := _feeding_pose(a, act, s) if act in [2, 9, 10] else {}
-		a.vfeed = move_toward(a.vfeed, 1.0 if not pose.is_empty() else 0.0, delta * 0.9)    # (~1 s: walking up the stem is seen)
+		var rate := delta * 0.9                       # (~1 s onto the food)
+		var climb_pose: Dictionary = pose if pose.get("climb", false) else (a.vpose if a.vpose is Dictionary and a.vfeed > 0.0 and (a.vpose as Dictionary).get("climb", false) else {})
+		if not climb_pose.is_empty():
+			# up and down the stem at the pace it walks the ground (slower up a stem), as fast as the clock runs
+			var path: float = (climb_pose.base - tr.origin).length() + (climb_pose.pos - climb_pose.base).length()
+			var walk: float = sim.sp["walk_speed"] * (0.35 + 0.65 * sim.activity) * 60.0 * U    # units a second at 1x
+			rate = delta * speed * walk * CLIMB_PACE / maxf(path, 0.3)
+		a.vfeed = move_toward(a.vfeed, 1.0 if not pose.is_empty() else 0.0, rate)
 		if not pose.is_empty():
 			a.vpose = pose
+			a.vfood = pose.get("fc", Vector2(INF, INF))
+		elif a.vfeed <= 0.0:
+			a.vfood = Vector2(INF, INF)
+			a.vrim = INF
+			a.vaphid = -1
 		if a.vfeed > 0.0 and a.vpose is Dictionary and not (a.vpose as Dictionary).is_empty():
 			tr = _blend_pose(tr, a.vpose, a.vfeed, s)
 			if a.vfeed > 0.95 and act == 9:
@@ -182,6 +200,7 @@ func _burying(p: Vector2) -> bool:
 
 ## Where an ant handling food really stands: the simulation only knows it is within reach of the
 ## food's centre, so the view places it on the food itself. {} if no food is close.
+const CLIMB_PACE := 0.6                # up a stem: this much of its pace on the ground [inference: no measurement found]
 const BEYOND_SHOW := 2.5               # seconds an ant leaving the plot is seen walking off
 const BEYOND_WALK := 18.0              # px it walks out past the edge (and back in from)
 
@@ -211,10 +230,10 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 		return {}
 	var f: Dictionary = best
 	var c := _on_ground(f.pos)
-	var away := Vector3(a.pos.x - f.pos.x, 0, a.pos.y - f.pos.y)
-	if away.length_squared() < 0.01:
-		away = Vector3(1, 0, 0)
-	away = away.normalized()
+	if a.vrim == INF:
+		var at: Vector2 = a.pos + a.voff - f.pos          # where round the food: from where it came up to it ...
+		a.vrim = at.angle() if at.length_squared() > 0.01 else float(a.id)
+	var away := Vector3(cos(a.vrim), 0, sin(a.vrim))     # ... then moved along the edge, clear of the others (outworld_crowd.gd)
 	var left: float = clampf(f.amt / f.cap, 0.0, 1.0)
 	var k := FoodKinds.info(f.kind)
 	if k.is_empty() or act != int(k.handling[2]):
@@ -226,7 +245,10 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 			if e.is_empty() or e.low.is_empty():
 				return {}
 			var root: Transform3D = e.node.transform
-			var ax: Transform3D = root * (e.low[a.id % e.low.size()] as Transform3D)
+			var spot := _aphid_for(a, f.seed, e.low.size())
+			if spot < 0:
+				return {}                # every low aphid has an ant on it: this one waits below
+			var ax: Transform3D = root * (e.low[spot] as Transform3D)
 			var out_dir: Vector3 = ax.basis.y.normalized()
 			var stem: Vector3 = ax.origin - out_dir * (Props.STEM_R + 0.35)
 			var on := stem + out_dir * (Props.STEM_R + 0.1) - Vector3(0, 1.9 * s, 0)
@@ -236,7 +258,7 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 		"rim":
 			var r := (3.0 + 7.0 * sqrt(left)) * U * 1.1
 			var p := c + away * (r + 0.85 * s)
-			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -away, "up": Vector3.UP}
+			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -away, "up": Vector3.UP, "fc": f.pos}
 		"carcass":
 			# around the carcass outline (an ellipse along its body), head in, cutting
 			var ang: float = f.ang
@@ -247,8 +269,22 @@ func _feeding_pose(a, act: int, s: float) -> Dictionary:
 			var th := atan2(dl.z / eb, dl.x / ea)
 			var n := rot * Vector3(cos(th) / ea, 0, sin(th) / eb).normalized()
 			var p := c + rot * Vector3(ea * cos(th), 0, eb * sin(th)) * 0.88 + n * 0.55 * s   # head against the body
-			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -n, "up": Vector3.UP}
+			return {"pos": Vector3(p.x, ground_h(p.x, p.z), p.z), "fwd": -n, "up": Vector3.UP, "fc": f.pos}
 	return {}
+
+
+## One ant to an aphid: the one it has, else the first nobody has had for a frame (-1: all taken).
+func _aphid_for(a, seed: int, n: int) -> int:
+	if a.vaphid >= 0 and a.vaphid < n and int(_aphids.get(Vector2i(seed, a.vaphid), [0, -9])[0]) == a.id:
+		_aphids[Vector2i(seed, a.vaphid)] = [a.id, _frame_n]
+		return a.vaphid
+	for i in n:
+		var o: Array = _aphids.get(Vector2i(seed, i), [0, -9])
+		if int(o[0]) == a.id or int(o[1]) < _frame_n - 1:
+			_aphids[Vector2i(seed, i)] = [a.id, _frame_n]
+			a.vaphid = i
+			return i
+	return -1
 
 
 func _pose_xf(fwd: Vector3, up: Vector3, pos: Vector3, s: float) -> Transform3D:

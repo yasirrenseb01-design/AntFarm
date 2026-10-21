@@ -143,6 +143,7 @@ func _take_shot() -> void:
 		elif _opts.has("at-ant") and not sim.outside.is_empty():
 			var a = sim.outside[int(_opts["at-ant"]) % sim.outside.size()]
 			outworld.target_t = Vector3(a.pos.x, 0, a.pos.y) * outworld.U
+		outworld.crowd = not _opts.has("no-crowd")
 		if _opts.has("at-food"):
 			# drop one of that food beside the nest and look at it (models: --at-food=fly)
 			var fp: Vector2 = sim.nest_pos + Vector2(70, 30)
@@ -398,6 +399,11 @@ func _take_shot() -> void:
 				if _opts.has("bodies") and mode == "nest":
 					_bodies.worst = {}
 					BodyCheck.measure(nest_view, _bodies)
+				elif _opts.has("bodies") and mode == "outworld":
+					_bodies.worst = {}
+					if _opts.has("trace-crowd"):
+						_bodies.trace = true
+					BodyCheck.measure_out(outworld, sim, _bodies)
 					# (--follow-bodies=ant|brood|feet: the camera on the worst case of that kind, held a while)
 					var fw: Array = (_bodies.worst as Dictionary).get(_opts.get("follow-bodies", ""), [])
 					if not fw.is_empty() and (_bodies_at == Vector3.INF or float(fw[0]) > _bodies_d * 1.5 or k % 4 == 0 and i == 0):
@@ -635,7 +641,7 @@ func _take_shot() -> void:
 					await get_tree().process_frame
 				await RenderingServer.frame_post_draw
 				get_viewport().get_texture().get_image().save_png(path.get_basename() + "_o%d.png" % j)
-		if _opts.has("bodies") and mode == "nest":
+		if _opts.has("bodies"):
 			print(BodyCheck.report(_bodies))
 		if _opts.has("pops") and mode == "nest" and _jit_frames > 0:
 			var secs := _jit_frames / 60.0
