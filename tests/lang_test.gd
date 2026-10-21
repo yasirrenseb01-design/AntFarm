@@ -54,7 +54,7 @@ func _init():
 	L.use("th")
 	var th_line := L.entry_text({"key": "log_young_colony", "args": [14]})
 	var old_line := L.entry_text({"stamp": "ว.4 06:57", "text": "x", "kind": ""})
-	print("journal: en \"%s\" | th \"%s\" | saved before v0.11.11: \"%s\"" % [en_line, th_line, old_line])
+	print("journal: en \"%s\" | th \"%s\" | saved before v0.11.12: \"%s\"" % [en_line, th_line, old_line])
 	ok = ok and en_line.contains("14") and th_line.contains("14") and en_line != th_line and old_line == "x"
 	print("LANG TEST PASSED" if ok else "LANG TEST FAILED")
 	quit()

@@ -1,11 +1,11 @@
 extends RefCounted
-## Two languages (PART EA-R R1, v0.11.11). Every word the game shows lives in res://lang/strings.csv - columns
+## Two languages (PART EA-R R1, v0.11.12). Every word the game shows lives in res://lang/strings.csv - columns
 ## keys,th,en; a key is a short English name (tip_age_days), never the Thai itself - read once at start into the
 ## TranslationServer. Nodes use tr(key); everything else (the simulation, static functions, constants) L.t(key).
 ## The CSV is kept as it is (lang/strings.csv.import: "keep"), not turned into .translation files, so a corrected
 ## translation shows the next time the game starts. "\n" in a cell is a line break.
 ## The keeper's journal (sim.log_entries) keeps {key, args} and is put in words when shown (entry_text), so a
-## colony's journal reads in whichever language the game is in; lines saved before v0.11.11 are Thai text and stay so.
+## colony's journal reads in whichever language the game is in; lines saved before v0.11.12 are Thai text and stay so.
 ## An argument that is itself words is {"t": key} (L.k(key)), translated when shown.
 
 const CSV := "res://lang/strings.csv"
@@ -79,7 +79,7 @@ static func _word(v):
 	return t(String(v.t)) if v is Dictionary and v.has("t") else v
 
 
-## One journal line in words: {key, args} (v0.11.11 on) or the Thai text it was saved with.
+## One journal line in words: {key, args} (v0.11.12 on) or the Thai text it was saved with.
 static func entry_text(e: Dictionary) -> String:
 	if e.has("key"):
 		return f(String(e.key), e.get("args", []))

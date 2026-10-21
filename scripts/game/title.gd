@@ -15,6 +15,7 @@ const Paper := preload("res://scripts/view/ui/paper.gd")
 
 var main
 var is_open := false
+var clip := false                     # the tour alone, no menu, nothing on screen (F8: the keeper films it, PART EA-R)
 var _root: Control
 var _go_on: Button                    # tr("title_go_on") (not for the colony shown before the first one is started)
 var _go_on_note: Label
@@ -213,11 +214,20 @@ func open(can_go_on := true) -> void:
 		_page.hover(_items[int(main._opts["title-hover"])])         # (dev: as if the pointer were on that word)
 
 
+## Clip mode (F8): the camera tour with nothing on screen - no menu, no captions, no HUD - for the keeper to film.
+func open_clip() -> void:
+	open(true)
+	clip = true
+	visible = false
+	main.outworld.side_px = 0.0                        # (the whole window is the picture)
+
+
 ## Back to the game, in the view the keeper had.
 func close() -> void:
 	if not is_open:
 		return
 	is_open = false
+	clip = false
 	visible = false
 	_follow = null
 	main.outworld.follow_cid = 0
@@ -238,14 +248,47 @@ func _set_view(m: String) -> void:
 
 
 func _unhandled_key_input(e: InputEvent) -> void:
-	if not (e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE):
+	if not (e is InputEventKey and e.pressed and not e.echo):
 		return
-	if is_open and _go_on.visible:
+	if e.keycode == KEY_F8 and not main.desktop.on and (clip or not is_open):
+		# clip mode: the tour with nothing on screen, F8 (or Esc) again to stop
+		if clip:
+			close()
+		elif main.hud.visible or _ui_hidden:
+			_show_ui(true)
+			open_clip()
+		get_viewport().set_input_as_handled()
+		return
+	if e.keycode == KEY_F9 and not is_open and not main.desktop.on:
+		_show_ui(_ui_hidden)                          # nothing on screen but the colony, the camera the keeper's own
+		get_viewport().set_input_as_handled()
+		return
+	if e.keycode != KEY_ESCAPE:
+		return
+	if clip:
+		close()
+		get_viewport().set_input_as_handled()
+	elif _ui_hidden:
+		_show_ui(true)
+		get_viewport().set_input_as_handled()
+	elif is_open and _go_on.visible:
 		close()
 		get_viewport().set_input_as_handled()
 	elif not is_open and main.hud.visible and main.hud.ant_tip.sel.is_empty() and not main.desktop.on:
 		open()
 		get_viewport().set_input_as_handled()
+
+
+## F9: the HUD (and the ant's info box with it) hidden or back; hidden, the outworld centres on the whole window.
+var _ui_hidden := false
+
+func _show_ui(on: bool) -> void:
+	_ui_hidden = not on
+	main.hud.visible = on
+	if on:
+		main.hud.set_side_open(main.hud._side.visible, false)
+	else:
+		main.outworld.side_px = 0.0
 
 
 # ---------------------------------------------------------------- the camera tour
@@ -263,7 +306,7 @@ func _process(delta: float) -> void:
 		nv.yaw_t += TURN * delta
 		# what the camera looks at, right of the menu (the outworld does it with side_px)
 		var vp: Vector2 = nv.get_viewport().get_visible_rect().size
-		nv._cam.h_offset = -MENU_PX * 0.5 * 2.0 * nv.cam_dist * tan(deg_to_rad(nv._cam.fov * 0.5)) / vp.y
+		nv._cam.h_offset = 0.0 if clip else -MENU_PX * 0.5 * 2.0 * nv.cam_dist * tan(deg_to_rad(nv._cam.fov * 0.5)) / vp.y
 	if _follow != null:
 		_follow_t += delta
 		if not _keep_following(_follow):
