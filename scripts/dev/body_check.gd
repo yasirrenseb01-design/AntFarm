@@ -90,6 +90,24 @@ static func _lat(m: Dictionary) -> float:
 
 
 ## What a nestmate is doing, for the tallies.
+static func _group(nv, m: Dictionary) -> String:
+	var kd := _kind(nv, m)
+	if kd.begins_with("tending"):
+		var c: Vector3i = m.get("cell", Vector3i.ZERO)
+		var tight := 0                          # (open cells round it: few in a small or low chamber)
+		for dx in range(-2, 3):
+			for dz in range(-2, 3):
+				for dy in range(0, 3):
+					if nv.nest.is_open(c + Vector3i(dx, dy, dz)):
+						tight += 1
+		return "nurse, narrow" if tight < 40 or m.get("narrow", false) else "nurse, roomy"
+	if kd in ["resting", "waiting", "meeting"]:
+		return "resting"
+	if kd in ["walking", "carrying"]:
+		return "walking"
+	return "climbing/other"
+
+
 static func _kind(nv, m: Dictionary) -> String:
 	if m.has("script"):
 		return "scripted"
@@ -242,6 +260,27 @@ static func measure(nv, tally: Dictionary) -> void:
 	# bodies in the soil: the middle of its head, thorax or gaster in the soil (plainly buried, not a leg tip)
 	for i in ants.size():
 		var m: Dictionary = ants[i]
+		# by the three the keeper watches (2026-10-22): nurses at the brood (in a narrow chamber or not), resting, walking
+		var grp := _group(nv, m)
+		tally["g_n:" + grp] = int(tally.get("g_n:" + grp, 0)) + 1
+		var skin := false                         # (its body's surface through the soil: a point 0.6 of the way out)
+		for k in [0, 1, 3, 4]:
+			var c: Vector3 = sph[i][k][0]
+			var r: float = float(sph[i][k][1]) * 0.6
+			for d in [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.FORWARD, Vector3.BACK]:
+				if nv._density_at(c + d * r) >= 0.5:
+					skin = true
+					break
+			if skin:
+				break
+		if skin:
+			tally["g_skin:" + grp] = int(tally.get("g_skin:" + grp, 0)) + 1
+		var deep := false
+		for k in [0, 1, 3]:
+			if nv._density_at(sph[i][k][0]) >= 0.5:
+				deep = true
+		if deep:
+			tally["g_deep:" + grp] = int(tally.get("g_deep:" + grp, 0)) + 1
 		var buried := ""
 		for k in [0, 1, 3]:
 			if nv._density_at(sph[i][k][0]) >= 0.5:
@@ -335,6 +374,16 @@ static func _on_body(nv, f: Vector3, up: Vector3, m: Dictionary) -> bool:
 	return false
 
 
+static func _groups(tally: Dictionary) -> String:
+	var out := "  in the soil by what it does (skin = its body's surface through the soil, deep = the middle of head/thorax/gaster in it):"
+	for g in ["nurse, narrow", "nurse, roomy", "resting", "walking", "climbing/other"]:
+		var n := float(tally.get("g_n:" + g, 0))
+		if n > 0:
+			out += "
+    %-15s %6d ant-frames: skin %5.1f%%  deep %5.1f%%" % [g, int(n), 100.0 * float(tally.get("g_skin:" + g, 0)) / n, 100.0 * float(tally.get("g_deep:" + g, 0)) / n]
+	return out
+
+
 static func report(tally: Dictionary) -> String:
 	var n := maxf(1.0, float(tally.get("ant_frames", 0)))
 	var lines := ["bodies over %d frames, %d ant-frames on screen:" % [int(tally.get("frames", 0)), int(n)],
@@ -344,6 +393,7 @@ static func report(tally: Dictionary) -> String:
 			100.0 * float(tally.get("in_ant_deep", 0)) / n],
 		"  feet in the air %.2f%% of ant-frames" % [100.0 * float(tally.get("feet_air", 0)) / n],
 		"  body in the soil %.2f%% of ant-frames" % [100.0 * float(tally.get("in_soil", 0)) / n],
+		_groups(tally),
 		"  brood in brood %.2f pairs per 100 brood-frames, brood in the queen %.2f per 100" % [100.0 * float(tally.get("brood_brood", 0)) / maxf(1.0, float(tally.get("brood_items", 0))), 100.0 * float(tally.get("brood_queen", 0)) / maxf(1.0, float(tally.get("brood_items", 0)))],
 		"  diggers in the air %.2f%% of %d digger-frames, at the face digging %.1f%%" % [100.0 * float(tally.get("dig_air", 0)) / maxf(1.0, float(tally.get("dig_frames", 0))), int(tally.get("dig_frames", 0)),
 			100.0 * float(tally.get("dig_at_face", 0)) / maxf(1.0, float(tally.get("dig_frames", 0)))]]

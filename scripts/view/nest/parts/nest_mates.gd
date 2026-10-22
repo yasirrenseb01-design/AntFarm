@@ -529,6 +529,18 @@ func _update_ants(delta: float) -> void:
 		tr = _climb(m, tr, md, madt)
 		us_climb += Time.get_ticks_usec() - tcl
 		us_apart += Time.get_ticks_usec() - tc
+		# last, its height smoothed once more along its up (the lifts and pushes above - clear of the soil, onto the
+		# surface, over another, out of a bend - each eased on its own, together they still bobbed it up and down a
+		# little from frame to frame, its planted feet with it: the keeper saw the legs twitch, 2026-10-22). Not
+		# when it was moved on a long way (off screen) or turned over onto another surface.
+		var up2 := tr.basis.y.normalized()
+		var prev_o = m.get("zo")
+		if prev_o != null and (prev_o as Vector3).distance_to(tr.origin) < 0.6 and (m.get("zo_up", up2) as Vector3).dot(up2) > 0.95:
+			var dz: float = (tr.origin - (prev_o as Vector3)).dot(up2)
+			var k2 := 1.0 - exp(-14.0 * md) if md > 0.0 else 1.0
+			tr.origin -= up2 * dz * (1.0 - k2)
+		m.zo = tr.origin
+		m.zo_up = up2
 		m.xf = tr
 		if m.act == ACT_FEED and not m.has("script") and _visible(tr.origin) and m.get("larva_at", Vector3.INF) != Vector3.INF:
 			# the droplet between its mandibles and the larva's head end

@@ -227,6 +227,40 @@ static func measure(nv, tally: Dictionary) -> void:
 			brood.append([BodyCheck._larva_spheres(x) if mm == nv._larva_mm else BodyCheck._cocoon_spheres(x), x.origin])
 	var mm: MultiMesh = nv._ant_mm
 	tally.frames_f = int(tally.get("frames_f", 0)) + 1
+	# how fast the legs step: the gait phase turned per second (one turn = one step of each leg), walking ants only,
+	# and how fast they walk (body lengths a second)
+	var dt: float = nv.get_process_delta_time()
+	var gprev: Dictionary = tally.get("gait_prev", {})
+	var gnow := {}
+	for i in mm.instance_count:
+		var cu := mm.get_instance_custom_data(i)
+		var g := cu.r - floorf(cu.r / 512.0) * 512.0
+		var w := cu.a - floorf(cu.a / 1000.0) * 1000.0
+		var mvv := w - floorf(w) if floorf(w) >= 1.0 else w
+		var X := mm.get_instance_transform(i)
+		gnow[i] = [g, X.origin]
+		if gprev.has(i) and mvv > 0.8 and dt > 0.0:
+			var dg: float = fposmod(g - float(gprev[i][0]), TAU * 64.0)
+			var dp: float = X.origin.distance_to(gprev[i][1])
+			if dg < 3.0 and dp < 0.6:
+				tally.g_sum = float(tally.get("g_sum", 0.0)) + dg / TAU / dt
+				tally.v_sum = float(tally.get("v_sum", 0.0)) + dp / dt / (2.6 * X.basis.x.length())
+				tally.g_n = int(tally.get("g_n", 0)) + 1
+	tally.gait_prev = gnow
+	# the body bobbing: up and down along its up by more than 0.01, then the other way next frame
+	var bprev: Dictionary = tally.get("bob_prev", {})
+	var bnow := {}
+	for i in mm.instance_count:
+		var X := mm.get_instance_transform(i)
+		var u := X.basis.y.normalized()
+		var dv := 0.0
+		if bprev.has(i) and (bprev[i][0] as Vector3).distance_to(X.origin) < 0.5:
+			dv = (X.origin - (bprev[i][0] as Vector3)).dot(u)
+			tally.bob_n = int(tally.get("bob_n", 0)) + 1
+			if absf(dv) > 0.01 and absf(float(bprev[i][1])) > 0.01 and signf(dv) != signf(float(bprev[i][1])):
+				tally.bob = int(tally.get("bob", 0)) + 1
+		bnow[i] = [X.origin, dv]
+	tally.bob_prev = bnow
 	tally.prev = tally.get("prev_next", {})
 	tally.prev_next = {}
 	var bodies := []
@@ -260,8 +294,12 @@ static func measure(nv, tally: Dictionary) -> void:
 					var dvert := absf(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))
 					var vprev: float = prev[k][4] if prev[k].size() > 4 else 0.0
 					tally.vib_n = int(tally.get("vib_n", 0)) + 1
+					var bodyv := absf(((M.origin - (prev[k][3] as Vector3))).dot(upw))
+					var bk := "body still" if bodyv < 0.01 else ("body bobbing" if bodyv < 0.05 else "body moving up/down")
+					tally["vn:" + bk] = int(tally.get("vn:" + bk, 0)) + 1
 					if dvert > 0.03:
 						tally.vib = int(tally.get("vib", 0)) + 1
+						tally["vb:" + bk] = int(tally.get("vb:" + bk, 0)) + 1
 					var sgn_now := signf(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))
 					if dvert > 0.02 and absf(vprev) > 0.02 and signf(vprev) != sgn_now:
 						tally.flick = int(tally.get("flick", 0)) + 1      # (up then down, or down then up: a flicker)
@@ -400,6 +438,15 @@ static func report(tally: Dictionary) -> String:
 	var s := "planted feet %d: in the air %.2f%% (of them far from any soil %.2f%%), in the soil %.2f%%, in the brood %.2f%%" % [
 		int(tally.get("feet", 0)), 100.0 * float(tally.get("foot_air", 0)) / n, 100.0 * float(tally.get("foot_air_far", 0)) / n,
 		100.0 * float(tally.get("foot_soil", 0)) / n, 100.0 * float(tally.get("foot_brood", 0)) / n]
+	for bk in ["body still", "body bobbing", "body moving up/down"]:
+		if tally.has("vn:" + bk):
+			s += "
+      planted feet moving up/down >0.03 while its %s: %.1f%% of %d" % [bk, 100.0 * float(tally.get("vb:" + bk, 0)) / float(tally["vn:" + bk]), int(tally["vn:" + bk])]
+	s += "
+    bodies bobbing (up then down, >0.01 each frame): %.2f%% of ant-frames" % [100.0 * float(tally.get("bob", 0)) / maxf(1.0, float(tally.get("bob_n", 0)))]
+	if int(tally.get("g_n", 0)) > 0:
+		s += "
+    walking ants: %.1f steps a second per leg, %.1f body lengths a second" % [float(tally.g_sum) / float(tally.g_n), float(tally.v_sum) / float(tally.g_n)]
 	s += "
     planted feet moving up or down more than 0.03 in a frame: %.2f%%, flickering (up then down) %.2f%%" % [100.0 * float(tally.get("vib", 0)) / maxf(1.0, float(tally.get("vib_n", 0))),
 		100.0 * float(tally.get("flick", 0)) / maxf(1.0, float(tally.get("vib_n", 0)))]
