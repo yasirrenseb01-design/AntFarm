@@ -149,6 +149,9 @@ static func measure(nv, tally: Dictionary) -> void:
 			ants.append(m)
 	# brood in brood (two cocoons, a cocoon in a larva ...), and brood in the queen's body
 	tally.brood_items = int(tally.get("brood_items", 0)) + brood.size()
+	for b in brood:
+		if nv._brood_in_way(b[1]):
+			tally.brood_way = int(tally.get("brood_way", 0)) + 1
 	for i in brood.size():
 		for j in range(i + 1, brood.size()):
 			if (brood[i][1] as Vector3).distance_squared_to(brood[j][1]) > 9.0:
@@ -414,6 +417,7 @@ static func report(tally: Dictionary) -> String:
 		"  body in the soil %.2f%% of ant-frames" % [100.0 * float(tally.get("in_soil", 0)) / n],
 		_groups(tally),
 		"  brood in brood %.2f pairs per 100 brood-frames, brood in the queen %.2f per 100" % [100.0 * float(tally.get("brood_brood", 0)) / maxf(1.0, float(tally.get("brood_items", 0))), 100.0 * float(tally.get("brood_queen", 0)) / maxf(1.0, float(tally.get("brood_items", 0)))],
+		"  brood in the way (in a gallery or shaft, or where one leaves a chamber) %.2f%% of brood-frames" % [100.0 * float(tally.get("brood_way", 0)) / maxf(1.0, float(tally.get("brood_items", 0)))],
 		"  diggers in the air %.2f%% of %d digger-frames, at the face digging %.1f%%" % [100.0 * float(tally.get("dig_air", 0)) / maxf(1.0, float(tally.get("dig_frames", 0))), int(tally.get("dig_frames", 0)),
 			100.0 * float(tally.get("dig_at_face", 0)) / maxf(1.0, float(tally.get("dig_frames", 0)))]]
 	var keys := tally.keys().filter(func(k): return String(k).contains(":"))

@@ -9,6 +9,7 @@ extends RefCounted
 ##   brood: the tip is more than SUNK inside an egg, larva or cocoon
 
 const BodyCheck := preload("res://scripts/dev/body_check.gd")
+const SwayCheck := preload("res://scripts/dev/sway_check.gd")
 const K := 0.34              # model design units -> mesh units (the shader's K)
 const STRIDE_A := 1.3
 const AIR_GAP := 0.15        # world units (~0.2 mm)
@@ -227,40 +228,7 @@ static func measure(nv, tally: Dictionary) -> void:
 			brood.append([BodyCheck._larva_spheres(x) if mm == nv._larva_mm else BodyCheck._cocoon_spheres(x), x.origin])
 	var mm: MultiMesh = nv._ant_mm
 	tally.frames_f = int(tally.get("frames_f", 0)) + 1
-	# how fast the legs step: the gait phase turned per second (one turn = one step of each leg), walking ants only,
-	# and how fast they walk (body lengths a second)
-	var dt: float = nv.get_process_delta_time()
-	var gprev: Dictionary = tally.get("gait_prev", {})
-	var gnow := {}
-	for i in mm.instance_count:
-		var cu := mm.get_instance_custom_data(i)
-		var g := cu.r - floorf(cu.r / 512.0) * 512.0
-		var w := cu.a - floorf(cu.a / 1000.0) * 1000.0
-		var mvv := w - floorf(w) if floorf(w) >= 1.0 else w
-		var X := mm.get_instance_transform(i)
-		gnow[i] = [g, X.origin]
-		if gprev.has(i) and mvv > 0.8 and dt > 0.0:
-			var dg: float = fposmod(g - float(gprev[i][0]), TAU * 64.0)
-			var dp: float = X.origin.distance_to(gprev[i][1])
-			if dg < 3.0 and dp < 0.6:
-				tally.g_sum = float(tally.get("g_sum", 0.0)) + dg / TAU / dt
-				tally.v_sum = float(tally.get("v_sum", 0.0)) + dp / dt / (2.6 * X.basis.x.length())
-				tally.g_n = int(tally.get("g_n", 0)) + 1
-	tally.gait_prev = gnow
-	# the body bobbing: up and down along its up by more than 0.01, then the other way next frame
-	var bprev: Dictionary = tally.get("bob_prev", {})
-	var bnow := {}
-	for i in mm.instance_count:
-		var X := mm.get_instance_transform(i)
-		var u := X.basis.y.normalized()
-		var dv := 0.0
-		if bprev.has(i) and (bprev[i][0] as Vector3).distance_to(X.origin) < 0.5:
-			dv = (X.origin - (bprev[i][0] as Vector3)).dot(u)
-			tally.bob_n = int(tally.get("bob_n", 0)) + 1
-			if absf(dv) > 0.01 and absf(float(bprev[i][1])) > 0.01 and signf(dv) != signf(float(bprev[i][1])):
-				tally.bob = int(tally.get("bob", 0)) + 1
-		bnow[i] = [X.origin, dv]
-	tally.bob_prev = bnow
+	SwayCheck.measure(nv, tally)          # (steps, bobbing, swaying: dev/sway_check.gd)
 	tally.prev = tally.get("prev_next", {})
 	tally.prev_next = {}
 	var bodies := []
@@ -403,8 +371,9 @@ static func measure(nv, tally: Dictionary) -> void:
 					var who := "?"
 					for mt in nv._mates + nv._dig_vis.values():
 						if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
-							who = "role %s over %.2f clr %.2f rest %d mv %.2f walkable %s cell %s" % [mt.get("role", "dig"), float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)),
-								int(mt.get("rest", 0)), float(mt.get("mv", 0.0)), nv._walkable(mt.get("cell", Vector3i.ZERO)), mt.get("cell")]
+							who = "role %s over %.2f clr %.2f rest %d mv %.2f walkable %s cell %s goal %s wander %s settle %d" % [mt.get("role", "dig"), float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)),
+								int(mt.get("rest", 0)), float(mt.get("mv", 0.0)), nv._walkable(mt.get("cell", Vector3i.ZERO)), mt.get("cell"),
+								nv._rooms[int(mt.goal)].cell if int(mt.get("goal", -1)) >= 0 and int(mt.goal) < nv._rooms.size() else mt.get("goal", -1), mt.get("wander", 0), (mt.get("settle", []) as Array).size()]
 					print("  WHO ", who)
 					if gd <= -1.35 and where == "over the brood" and int(tally.get("dbg_l", 0)) < 2:
 						tally.dbg_l = int(tally.get("dbg_l", 0)) + 1
@@ -442,6 +411,17 @@ static func report(tally: Dictionary) -> String:
 		if tally.has("vn:" + bk):
 			s += "
       planted feet moving up/down >0.03 while its %s: %.1f%% of %d" % [bk, 100.0 * float(tally.get("vb:" + bk, 0)) / float(tally["vn:" + bk]), int(tally["vn:" + bk])]
+	for key in ["wall", "open"]:
+		var nst := float(tally.get("st_n:" + key, 0))
+		if nst > 0:
+			s += "
+    ants staying put for a second, %s: %d - heading swinging to and fro %.1f%%, head/gaster nodding %.1f%%, bending sideways to and fro %.1f%%" % [
+				"beside a wall" if key == "wall" else "in the open", int(nst), 100.0 * float(tally.get("st_turn:" + key, 0)) / nst,
+				100.0 * float(tally.get("st_bend:" + key, 0)) / nst, 100.0 * float(tally.get("st_lat:" + key, 0)) / nst]
+	s += "
+    ants standing (nearly) still swaying - turned one way then back the next frame: %.2f%% of %d" % [100.0 * float(tally.get("sway", 0)) / maxf(1.0, float(tally.get("sway_n", 0))), int(tally.get("sway_n", 0))]
+	s += "
+    ants standing still whose head or gaster moves (neck/waist bend changes) from frame to frame: %.2f%% of %d" % [100.0 * float(tally.get("wob", 0)) / maxf(1.0, float(tally.get("wob_n", 0))), int(tally.get("wob_n", 0))]
 	s += "
     bodies bobbing (up then down, >0.01 each frame): %.2f%% of ant-frames" % [100.0 * float(tally.get("bob", 0)) / maxf(1.0, float(tally.get("bob_n", 0)))]
 	if int(tally.get("g_n", 0)) > 0:
@@ -456,6 +436,10 @@ static func report(tally: Dictionary) -> String:
 		if String(k).begins_with("upwhy:"):
 			s += "
       air feet up on something, %s: %d" % [String(k).substr(6), tally[k]]
+	for k in tally:
+		if String(k).begins_with("st_src:"):
+			s += "
+      heading swinging, %s: %d" % [String(k).substr(7), tally[k]]
 	for k in tally:
 		if String(k).begins_with("hb:"):
 			s += "

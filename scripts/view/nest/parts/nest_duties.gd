@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_contact.gd"
-## Nest view, layer 9 of 11 (PART EA3a round 2): the nestmates act out the duties the simulation gave their workers
+## Nest view, layer 10 of 12 (PART EA3a round 2): the nestmates act out the duties the simulation gave their workers
 ## (sim/parts/sim_duties.gd) - feeding the larvae, attending the queen, giving honeydew to the nestmate it was paired with,
 ## cleaning itself or licking a nestmate, standing still, walking about. A duty round is half an hour of colony time,
 ## only a second or two here (the colony's clock runs ~1,400 times faster than an ant walks): so a drawn ant takes the

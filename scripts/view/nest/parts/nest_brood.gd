@@ -1,12 +1,20 @@
 extends "res://scripts/view/nest/parts/nest_camera.gd"
-## Nest view, layer 3 of 10: chambers and their floors, walking fields, where the brood piles go (eggs, larvae,
+## Nest view, layer 3 of 12: chambers and their floors, walking fields, where the brood piles go (eggs, larvae,
 ## cocoons) and the queen's pose.
 
 
 # ---------------------------------------------------------------- brood and queen
 
 func _floor_cells(ch: Dictionary) -> Array:
+	# (cached until the soil changes or the chamber grows: worked out every 1.5 s, the ways out cost ~1 ms a time)
+	var key := "%s %s %s" % [ch.c, ch.goal, ch.get("yaw", 0.0)]
+	if int(_fcells_cache.get("gen", -1)) != _soil_gen:
+		_fcells_cache.clear()
+		_fcells_cache["gen"] = _soil_gen
+	if _fcells_cache.has(key):
+		return (_fcells_cache[key] as Array).duplicate()
 	var out := []
+	var clear := []
 	var c: Vector3 = ch.c
 	var g: float = ch.goal
 	for y in range(int(c.y - g * 0.5) - 1, int(c.y + g * 0.5) + 2):
@@ -14,9 +22,56 @@ func _floor_cells(ch: Dictionary) -> Array:
 			for x in range(int(c.x - g) - 1, int(c.x + g) + 2):
 				var v := Vector3i(x, y, z)
 				if nest.is_open(v) and not nest.is_open(v + Vector3i(0, -1, 0)) and nest.inside(v + Vector3i(0, -1, 0)):
-					if Vector3(v).distance_to(c) < g + 1.5:
+					# (the chamber's own floor - not the floor of a gallery running on out of it)
+					if Vector3(v).distance_to(c) < g + 1.5 and _plan_h(Vector3(v), ch) <= 1.1:
 						out.append(Vector3(x, y - 0.45, z))
-	return out
+						if not _by_exit(v, ch):
+							clear.append(out[-1])
+	# (clear of the ways out - unless that leaves too little floor: in a small crowded chamber the brood heaped up
+	# high on what was left, and every ant in it climbed over the heap)
+	_fcells_cache[key] = clear if clear.size() * 10 >= out.size() * 6 else out
+	return (_fcells_cache[key] as Array).duplicate()
+
+
+var _fcells_cache := {}            # (_floor_cells by chamber, for _soil_gen)
+
+
+## Whether floor cell v is where a gallery leaves the chamber (open space beyond the chamber's outline within 2
+## cells): nurses keep the way clear - brood laid there lay across the passage (the keeper saw cocoons blocking
+## it, 2026-10-22). Shaft mouths down through the floor: _near_drop.
+func _by_exit(v: Vector3i, ch: Dictionary) -> bool:
+	for dz in range(-2, 3):
+		for dy in range(0, 3):
+			for dx in range(-2, 3):
+				var n := v + Vector3i(dx, dy, dz)
+				if nest.is_open(n) and _plan_h(Vector3(n), ch) > 1.3:
+					return true
+	return false
+
+
+## (dev/body_check) Whether brood lying at p is in the way: out of every chamber (in a gallery or shaft) or
+## where a gallery leaves one.
+func _brood_in_way(p: Vector3) -> bool:
+	var v := Vector3i(roundi(p.x), roundi(p.y), roundi(p.z))
+	while v.y > 0 and nest.is_open(v - Vector3i(0, 1, 0)):
+		v.y -= 1                              # (the floor cell under it)
+	for ch in nest.chambers:
+		if _plan_h(p, ch) <= 1.1 and absf(p.y - float(ch.c.y)) <= nest.chamber_axes(ch).y + 1.0:
+			return _by_exit(v, ch)
+	return true
+
+
+## How far out p lies in the chamber's floor plan (its outline is 1; height left out - the dug rooms are a little
+## higher or lower than their shape here and there).
+func _plan_h(p: Vector3, ch: Dictionary) -> float:
+	var d: Vector3 = p - ch.c
+	var ax: Vector3 = nest.chamber_axes(ch)
+	if nest.slab:
+		return pow(d.x / ax.x, 2.0)
+	var yaw: float = ch.get("yaw", 0.0)
+	var u := d.x * cos(yaw) + d.z * sin(yaw)
+	var w := -d.x * sin(yaw) + d.z * cos(yaw)
+	return pow(u / ax.x, 2.0) + pow(w / ax.z, 2.0)
 
 
 ## Whether floor cell v is within two cells of a drop - the mouth of a shaft or gallery going down from the
