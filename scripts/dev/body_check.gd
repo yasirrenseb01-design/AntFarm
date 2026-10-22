@@ -275,6 +275,25 @@ static func measure(nv, tally: Dictionary) -> void:
 				break
 		if skin:
 			tally["g_skin:" + grp] = int(tally.get("g_skin:" + grp, 0)) + 1
+			if grp == "walking":
+				# where: which part, which side (in its own frame), and how the soil push had it
+				var X: Transform3D = m.xf
+				var bx := X.basis.x.normalized()
+				var by := X.basis.y.normalized()
+				var bz := X.basis.z.normalized()
+				var where := ""
+				for k in [0, 1, 3, 4]:
+					var c: Vector3 = sph[i][k][0]
+					var r: float = float(sph[i][k][1]) * 0.6
+					for dd in [["front", bx], ["back", -bx], ["top", by], ["bottom", -by], ["side", bz], ["side", -bz]]:
+						if nv._density_at(c + (dd[1] as Vector3) * r) >= 0.5:
+							where = "%s %s" % [["head", "thorax", "", "gaster", "tip"][k], dd[0]]
+							break
+					if where != "":
+						break
+				var key2 := "walk skin: %s | narrow %s | pushed %s | up.y %s" % [where, m.get("narrow", false), (m.get("soil_off", Vector3.ZERO) as Vector3).length() > 0.05,
+					"floor" if by.y > 0.7 else ("wall" if by.y > -0.3 else "ceiling")]
+				tally[key2] = int(tally.get(key2, 0)) + 1
 		var deep := false
 		for k in [0, 1, 3]:
 			if nv._density_at(sph[i][k][0]) >= 0.5:

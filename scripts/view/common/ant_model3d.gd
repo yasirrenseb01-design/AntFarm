@@ -251,8 +251,8 @@ static func duty(s: float) -> float:
 static func gait_x(gait: float, bend: Vector2) -> float:
 	if bend == Vector2.ZERO:
 		return gait
-	var g := clampi(roundi(bend.x / 0.04) + 10, 0, 20)
-	var h := clampi(roundi(bend.y / 0.04) + 10, 0, 20)
+	var g := clampi(roundi(bend.x / 0.06) + 10, 0, 20)   # (steps of 0.06 rad: -0.6 .. 0.6)
+	var h := clampi(roundi(bend.y / 0.06) + 10, 0, 20)
 	return gait + 512.0 * float(1 + g + 21 * h)
 
 

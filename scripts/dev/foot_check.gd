@@ -181,9 +181,9 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 				fprev = fk
 				gprev = gk
 				if k == 3 and fmode > 1.5:
-					for j in 12:
+					for j in 18:
 						var sh := 0.45 * float(1 + (j % 6) / 2) * (1.0 if j % 2 == 0 else -1.0)
-						var fi := 0.4 if j < 6 else 0.75
+						var fi := 0.4 if j < 6 else (0.75 if j < 12 else 1.0)
 						var Tj := T
 						Tj.x = lerpf(T.x, H.x, fi) + sh * K * 3.0
 						Tj.z = lerpf(T.z, H.z, fi)

@@ -160,10 +160,18 @@ static func _spring(x: float, v: float, target: float, w: float, dt: float) -> V
 ## slope at each part that is in it says which way is out, and how far. Kept and eased like the shift that keeps
 ## nestmates apart (what still is in the soil is added on, and it relaxes once clear), so it does not tremble.
 ## Walking ants were in the soil ~2,000 times per 4 test runs, waiting and meeting ones ~300 (user, 2026-10-16).
-const _SOIL_PTS := [Vector3(0.85, 0.4, 0.0), Vector3(0.2, 0.38, 0.0), Vector3(-0.85, 0.35, 0.0), Vector3(-1.2, 0.33, 0.0)]
+const _SOIL_PTS := [Vector3(0.85, 0.4, 0.0), Vector3(0.2, 0.38, 0.0), Vector3(-0.85, 0.35, 0.0), Vector3(-1.2, 0.33, 0.0),
+	# (and its body's surface - the sides and the top of head, thorax and gaster, the ends: checked by the middle only,
+	# a resting ant's gaster lay in the wall beside it, a nurse's in a low chamber's roof; v0.11.25, the keeper 2026-10-22)
+	Vector3(1.01, 0.4, 0.0), Vector3(0.85, 0.4, 0.16), Vector3(0.85, 0.4, -0.16), Vector3(0.85, 0.56, 0.0),
+	Vector3(0.2, 0.38, 0.13), Vector3(0.2, 0.38, -0.13), Vector3(0.2, 0.51, 0.0),
+	Vector3(-0.6, 0.36, 0.24), Vector3(-0.6, 0.36, -0.24), Vector3(-0.6, 0.6, 0.0),
+	Vector3(-1.05, 0.37, 0.24), Vector3(-1.05, 0.37, -0.24), Vector3(-1.05, 0.61, 0.0),
+	Vector3(-1.5, 0.36, 0.0), Vector3(-1.35, 0.36, 0.15), Vector3(-1.35, 0.36, -0.15)]
 func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 	if m.has("script") or md <= 0.0:
 		return tr
+	_soil_bend(m, tr, md)
 	var up := tr.basis.y.normalized()
 	var off: Vector3 = m.get("soil_off", Vector3.ZERO)
 	var yaw := float(m.get("soil_yaw", 0.0))
@@ -172,7 +180,7 @@ func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 	var moving := float(m.get("mv", 0.0)) > 0.3
 	m.soil_t = float(m.get("soil_t", 0.0)) + md
 	var touching := off != Vector3.ZERO or yaw != 0.0
-	if float(m.soil_t) < (0.0 if moving and touching else (0.03 if moving else 0.05)):      # (walking against a wall: every frame; walking: every other)
+	if float(m.soil_t) < (0.0 if moving else 0.05):      # (walking: every frame - every other, it was in the wall of a bend a frame before it was pushed)
 		if off == Vector3.ZERO and yaw == 0.0:
 			return tr
 		var tk := tr                             # (as it was shifted and turned last time)
@@ -240,7 +248,13 @@ func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 		var want := (off + push).limit_length(1.0)
 		if _density_at(tr.origin + want + up * 0.4) >= 0.5:
 			want *= 0.5                          # (never its middle into the soil instead)
-		off = off.lerp(want, 1.0 - exp(-25.0 * sdt))
+		# (nor off the edge of the floor it stands on, out over a shaft or a drop: pushed clear of a wall beside the lip,
+		# it was drawn hanging in the open, legs reaching for nothing)
+		for k in 3:
+			if want.length_squared() < 0.0004 or _gap_under(Transform3D(tr.basis, tr.origin + want)) < 0.8:
+				break
+			want *= 0.5
+		off = off.lerp(want, 1.0 - exp(-(45.0 if moving else 25.0) * sdt))
 		yaw = clampf(lerpf(yaw, yaw - torque * 0.6, 1.0 - exp(-16.0 * sdt)), -0.8, 0.8)
 	else:
 		off *= pow(0.5, sdt / 0.35)                # (clear: it drifts back onto its path)
@@ -276,6 +290,42 @@ static func _bent(q: Vector3, bend: Vector2, lat: float) -> Vector3:
 		var g := (Vector2(q.x, q.y) - WAIST).rotated(GASTER_CURL - bend.x) + WAIST
 		return _yaw_at(Vector3(g.x, g.y, q.z), WAIST.x, -0.8 * lat)
 	return q
+
+
+## Its head tipped up at the neck where it pokes into the surface ahead (a floor curving up into a wall), its gaster
+## lifted at the waist where it dips into the floor - as an ant does, not pushed back or up as a whole (that left its
+## head in the wall and its gaster in the floor: walking ants' bodies were through the soil ~17% of the time). Added on
+## to the bend the ground fit gives it (m.bend: x gaster, y head; + = up), eased, at most 0.6 in all.
+const _HEAD_PTS := [Vector3(1.01, 0.4, 0.0), Vector3(0.95, 0.26, 0.0), Vector3(0.85, 0.24, 0.0)]
+const _GASTER_PTS := [Vector3(-1.05, 0.13, 0.0), Vector3(-1.5, 0.36, 0.0), Vector3(-1.35, 0.21, 0.0), Vector3(-0.6, 0.12, 0.0)]
+func _soil_bend(m: Dictionary, tr: Transform3D, md: float) -> void:
+	var sb: Vector2 = m.get("sbend", Vector2.ZERO)
+	if float(m.get("over", 0.0)) > 0.05:
+		sb = sb.move_toward(Vector2.ZERO, 0.6 * md)      # (up on the brood or a nestmate: not bent for the soil)
+		m.sbend = sb
+		return
+	var base: Vector2 = m.get("bend", Vector2.ZERO)
+	m.sb_t = float(m.get("sb_t", 0.0)) + md
+	if float(m.sb_t) >= 0.05 or float(m.get("mv", 0.0)) > 0.3:
+		var dt := float(m.sb_t)
+		m.sb_t = 0.0
+		var b := (base + sb).clamp(Vector2(-0.6, -0.6), Vector2(0.6, 0.6))
+		var head_in := false
+		for q in _HEAD_PTS:
+			if _density_at(tr * _bent(q, b, 0.0)) >= 0.5:
+				head_in = true
+				break
+		var gaster_in := false
+		for q in _GASTER_PTS:
+			if _density_at(tr * _bent(q, b, 0.0)) >= 0.5:
+				gaster_in = true
+				break
+		# (up quickly while in the soil, back down slowly once clear: checked again as it bends, it would flicker)
+		sb.y = minf(sb.y + 5.0 * dt, 0.6) if head_in else maxf(sb.y - 0.6 * dt, 0.0)
+		sb.x = minf(sb.x + 5.0 * dt, 0.6) if gaster_in else maxf(sb.x - 0.6 * dt, 0.0)
+		m.sbend = sb
+	if sb != Vector2.ZERO:
+		m.bend = (base + sb).clamp(Vector2(-0.6, -0.6), Vector2(0.6, 0.6))
 
 
 ## q turned about the vertical through x = px by the shader's rot_y(a).

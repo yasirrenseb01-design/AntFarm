@@ -6,7 +6,7 @@ uniform float outline_w = 0.022;
 // Ant body animation on the GPU. Each vertex carries a body-part id in COLOR.a (see ant_model3d.gd);
 // each instance carries in INSTANCE_CUSTOM:
 //   x = gait phase (radians, advanced by distance walked, below 512) + 512 x how the body is bent at the waist
-//       and the neck to lie on the ground under it (0 none; else 1 + gaster + 21 x head, 21 steps of 0.04 rad
+//       and the neck to lie on the ground under it (0 none; else 1 + gaster + 21 x head, 21 steps of 0.06 rad
 //       from -0.4 each: ant_model3d.gd gait_x)
 //   y = activity code (id + 100 if full) + 128 x the code being left; fraction = how much of the old pose
 //       still shows (ant_model3d.gd act_y: poses ease into one another instead of snapping)
@@ -333,10 +333,10 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 						if (k == 3 && fmode > 1.5) {
 							// up on the brood with nothing in reach under it or nearer the body: a little forward or back
 							// along the body, onto the cocoon there (it hung over the gap between them)
-							for (int j = 0; j < 12; j++) {
+							for (int j = 0; j < 18; j++) {
 								float sh = (0.45 * float(1 + (j % 6) / 2)) * (j % 2 == 0 ? 1.0 : -1.0);
 								vec3 Tj = T;
-								Tj.xz = mix(T.xz, H.xz, j < 6 ? 0.4 : 0.75);
+								Tj.xz = mix(T.xz, H.xz, j < 6 ? 0.4 : (j < 12 ? 0.75 : 1.0));    // (last: right under the body, on what holds it up)
 								Tj.x += sh * K * 3.0;
 								float hdj = length((Tj + dAF - C).xz);
 								float rj = min(reach, sqrt(max(lmax * lmax - hdj * hdj, 0.0)) + dAF.y - C.y);
@@ -540,7 +540,7 @@ void vertex() {
 	vec3 bend = vec3(0.0);
 	if (bc > 0.5) {
 		bc -= 1.0;
-		bend.xy = (vec2(mod(bc, 21.0), floor(bc / 21.0)) - 10.0) * 0.04;
+		bend.xy = (vec2(mod(bc, 21.0), floor(bc / 21.0)) - 10.0) * 0.06;
 	}
 	// z: clock + 600 x the sideways bend code + 16384 x where its feet stand: 1 up on a nestmate's back (they do not
 	// look for the soil), 2 / 3 its body lifted off the floor (on the brood, clear of the soil): they reach further down
