@@ -150,7 +150,9 @@ func chamber_axes(ch: Dictionary) -> Vector3:
 	var g: float = ch.goal
 	if slab:     # seen edge-on against the glass: a room one ant-layer deep, so a little higher and shorter
 		return Vector3(minf(g, 10.0), clampf(2.2 + g * 0.08, 2.2, 3.0), 1.0)
-	return Vector3(g, clampf(1.7 + g * 0.06, 1.7, 2.4), maxf(2.6, g * 0.6))
+	# (wide across as a share of its length: the swellings along an X-rayed L. niger tunnel are rounder than the
+	# chambers planned before v0.11.30 - those keep their 0.6)
+	return Vector3(g, clampf(1.7 + g * 0.06, 1.7, 2.4), maxf(2.6, g * float(ch.get("round", 0.6))))
 
 
 ## Where a point lies relative to a chamber's planned shape (<= 1 inside), turned to its heading.
@@ -283,7 +285,7 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 		var low_c := float(ny)
 		for ch in chambers:
 			low_c = minf(low_c, float(ch.c.y))
-		deeper = low_c - 9.0 >= maxf(float(ny) - target_depth(workers), float(y_floor) + 8.0)
+		deeper = low_c - 14.0 >= maxf(float(ny) - target_depth(workers), float(y_floor) + 8.0)
 	var crowded := load > floor_cap * 0.7
 	if pending > 0 or chambers.size() >= 32 or (chambers.size() >= wanted and not short and not crowded and not deeper):
 		return event
@@ -303,14 +305,16 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 		if ch.c.y < deepest.c.y:
 			deepest = ch
 	var floor_y := maxf(float(ny) - target_depth(workers), float(y_floor) + 8.0)     # how far down it means to go (voxel y)
-	var at_bottom := float(deepest.c.y) - 9.0 < floor_y              # no room for another bead below
+	var at_bottom := float(deepest.c.y) - 14.0 < floor_y             # no room for another bead below
 	var low := chambers.filter(func(ch): return float(ch.c.y) < float(deepest.c.y) + 12.0)
 	for attempt in 60:
 		var bead := deeper and not at_bottom and attempt < 40
 		var src: Dictionary = deepest
 		if not bead:
 			# a branch: off the lower part of the nest mostly (bushier with bush_k), else off the tunnel higher up
-			var pick: Array = low if rng.randf() < clampf(0.6 * bush_k, 0.25, 0.92) else chambers
+			# (the X-rayed nests grew bushy at the bottom; the tunnel above kept its few chambers - branching off it all
+			# the way up, the nest looked like a ladder: the keeper, 2026-10-24)
+			var pick: Array = low if rng.randf() < clampf(0.85 * bush_k, 0.6, 0.97) else chambers
 			src = pick[rng.randi() % pick.size()]
 		if not src.has("hd"):
 			src.hd = rng.randf() * TAU                    # (the way its tunnel heads on, level)
@@ -319,13 +323,15 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 		if bead:
 			# the next bead down: the tunnel bends a little its own way (wind) and slants off (lean)
 			hd += rng.randfn(0.0, 1.1 * wind_k)
-			var drop := rng.randf_range(7.0, 11.0)
+			# (the beads lie some 2-4 cm apart down the tunnel in the X-rayed nests - 1-1.6 cm, they stacked like a ladder)
+			var drop := rng.randf_range(14.0, 26.0)
 			var run := drop * clampf(rng.randfn(0.7, 0.3) * lean_k, 0.05, 2.4)
 			site = Vector3(src.c) + Vector3(cos(hd) * run, -drop, sin(hd) * run)
 		else:
 			# a branch: off to the side, level or a little down (along the bottom where there is no more room)
 			hd = rng.randf() * TAU
-			var reach := rng.randf_range(float(src.goal) + 5.0, float(src.goal) + 11.0) * spread_k
+			# (a branch is a gallery out to a chamber, often long - the level runs at the bottom of the L- and T-shaped nests)
+			var reach := rng.randf_range(float(src.goal) + 8.0, float(src.goal) + 26.0) * spread_k
 			var dy := rng.randf_range(-1.0, 1.5) if float(src.c.y) - 5.0 < floor_y else -rng.randf_range(0.0, 4.0)
 			site = Vector3(src.c) + Vector3(cos(hd) * reach, dy, sin(hd) * reach)
 		if slab:
@@ -356,7 +362,7 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 				break
 		if ok:
 			chambers.append({"c": site, "r": 3.5, "goal": 3.5, "kind": "brood", "from": from, "via": via, "open": false,
-				"hd": hd, "yaw": hd + rng.randf_range(-0.6, 0.6),
+				"hd": hd, "yaw": hd + rng.randf_range(-0.6, 0.6), "round": rng.randf_range(0.65, 0.9),
 				"lobe": [rng.randf_range(0.1, 0.28), float(rng.randi_range(2, 3)), rng.randf() * TAU,
 					rng.randf_range(0.05, 0.16), float(rng.randi_range(4, 5)), rng.randf() * TAU]})
 			return "planned"
