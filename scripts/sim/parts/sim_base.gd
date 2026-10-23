@@ -38,6 +38,9 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 	traits = _draw_traits()
 	nest.depth_k = colony_trait("depth")
 	nest.spread_k = colony_trait("spread")
+	nest.wind_k = colony_trait("wind")
+	nest.lean_k = colony_trait("lean")
+	nest.bush_k = colony_trait("bush")
 	nest.lay_out_soil((plot_seed ^ 0x2D1B7A35) & 0x7fffffff | 1)       # stones, roots, the clay (nest_voxels)
 	var pr := _lay_out_plot()
 
@@ -246,7 +249,12 @@ func _draw_traits() -> Dictionary:
 	g.seed = (rng.seed ^ TRAIT_SEED) & 0x7fffffff | 1
 	return {"queen": clampf(g.randfn(1.0, 0.12), 0.78, 1.25), "forage": clampf(g.randfn(1.0, 0.15), 0.72, 1.3),
 		"life": clampf(g.randfn(1.0, 0.1), 0.82, 1.2), "size": clampf(g.randfn(1.0, 0.04), 0.93, 1.07),
-		"depth": clampf(g.randfn(1.0, 0.12), 0.8, 1.2), "spread": clampf(g.randfn(1.0, 0.25), 0.6, 1.4)}
+		"depth": clampf(g.randfn(1.0, 0.12), 0.8, 1.2), "spread": clampf(g.randfn(1.0, 0.25), 0.6, 1.4),
+		# how its nest takes shape (nest_chambers._plan_new; never told the keeper - found out by watching): how much
+		# the tunnel winds, how far it slants off going down, how bushy the bottom gets [inference: the 17 nests of
+		# García Ibarra et al. 2024 differ in these ways - straight, S-bent or L-shaped, bushy at the bottom or not]
+		"wind": clampf(g.randfn(1.0, 0.3), 0.4, 1.7), "lean": clampf(g.randfn(1.0, 0.35), 0.35, 1.9),
+		"bush": clampf(g.randfn(1.0, 0.3), 0.45, 1.6)}
 
 
 func colony_trait(k: String) -> float:

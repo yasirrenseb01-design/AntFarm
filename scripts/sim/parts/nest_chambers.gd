@@ -5,6 +5,10 @@ extends "res://scripts/sim/parts/nest_voxels.gd"
 # the colony's digging habit (sim_state.traits depth / spread; set by the simulation, not saved with the nest)
 var depth_k := 1.0
 var spread_k := 1.0
+# (and how its nest takes shape - hidden traits wind / lean / bush, never told the keeper: _plan_new)
+var wind_k := 1.0
+var lean_k := 1.0
+var bush_k := 1.0
 
 
 ## Which part of the nest plan a voxel belongs to: 2 = inside a chamber, 1 = on a shaft toward a
@@ -24,12 +28,12 @@ func _plan_at(c: Vector3i) -> int:
 		if ch.get("open", true) and chamber_q(p, ch) <= 1.0:
 			return 2
 		if ch.has("from"):
-			var a: Vector3 = ch.from
-			var b: Vector3 = ch.c
-			var ab := b - a
-			var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
-			if p.distance_to(a + ab * t) <= 1.3:
-				on_shaft = true
+			for seg in _gallery(ch):
+				var a: Vector3 = seg[0]
+				var ab: Vector3 = seg[1] - a
+				var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+				if p.distance_to(a + ab * t) <= 1.3:
+					on_shaft = true
 	return 1 if on_shaft else 0
 
 
@@ -57,16 +61,25 @@ func count_work_left() -> int:
 	return n
 
 
+## The gallery dug to a chamber, as straight pieces [[a, b], ...]: from the old chamber's wall to it - bent once on
+## the way where the plan says (its "via"; older plans go straight).
+static func _gallery(ch: Dictionary) -> Array:
+	if ch.has("via"):
+		return [[ch.from, ch.via], [ch.via, ch.c]]
+	return [[ch.from, ch.c]]
+
+
 ## Planned soil still solid in one chamber (and, while it is not reached yet, the shaft to it). Updates the
 ## work face in best[0] (dist to the entrance; a new chamber's shaft first).
 func _work_in_chamber(ch: Dictionary, best: Array) -> int:
 	var n := 0
 	if ch.has("from") and not ch.get("open", true):
-		n += _work_on_line(ch.from, ch.c, 1.3, true, best)
+		for seg in _gallery(ch):
+			n += _work_on_line(seg[0], seg[1], 1.3, true, best)
 	if not ch.get("open", true):
 		return n
 	var ax := chamber_axes(ch)
-	var m := maxf(ax.x, ax.z) + 1.0
+	var m := maxf(ax.x, ax.z) * _lobe_max(ch) + 1.0
 	var c: Vector3 = ch.c
 	for y in range(maxi(0, floori(c.y - ax.y - 1.0)), mini(ny, ceili(c.y + ax.y + 1.0) + 1)):
 		for z in range(maxi(0, floori(c.z - m)), mini(nz, ceili(c.z + m) + 1)):
@@ -145,10 +158,27 @@ func chamber_q(p: Vector3, ch: Dictionary) -> float:
 	var yaw: float = ch.get("yaw", 0.0)
 	var ax := chamber_axes(ch)
 	if slab:
-		return room_q(Vector3(d.x, d.y, 0.0), ax)     # one layer deep: no heading
+		return room_q(Vector3(d.x / _lobe(ch, 0.0 if d.x >= 0.0 else PI), d.y, 0.0), ax)     # one layer deep: no heading
 	var u := d.x * cos(yaw) + d.z * sin(yaw)
 	var v := -d.x * sin(yaw) + d.z * cos(yaw)
-	return room_q(Vector3(u, d.y, v), ax)
+	var f := _lobe(ch, atan2(v / ax.z, u / ax.x))
+	return room_q(Vector3(u / f, d.y, v / f), ax)
+
+
+## How far out a chamber's wall bulges toward angle a (round its middle, level), as a share of its plain oval: its
+## "lobe" [amp, waves, phase, amp, waves, phase] - chambers swell unevenly, lobed as they are enlarged (Tschinkel
+## 2015; the X-rayed L. niger chambers are lumps, not smooth ovals: García Ibarra et al. 2024). 1 = the oval.
+static func _lobe(ch: Dictionary, a: float) -> float:
+	var l: Array = ch.get("lobe", [])
+	if l.size() < 6:
+		return 1.0
+	return 1.0 + float(l[0]) * cos(float(l[1]) * a + float(l[2])) + float(l[3]) * cos(float(l[4]) * a + float(l[5]))
+
+
+## The farthest out a chamber's wall goes, as a share of its oval (bounds for looking over its cells).
+static func _lobe_max(ch: Dictionary) -> float:
+	var l: Array = ch.get("lobe", [])
+	return 1.0 + (absf(float(l[0])) + absf(float(l[3])) if l.size() >= 6 else 0.0)
 
 
 ## Where a gallery leaves a chamber toward `dir` (level): at its wall, just inside it. Shafts down to lower
@@ -181,12 +211,13 @@ func _lowest_chamber() -> float:
 
 # ---------------------------------------------------------------- chambers
 
-## How deep (voxels below the surface) the nest's lowest chamber reaches for a colony of this size: the nest
-## sinks as the colony grows (nest depth rises with colony size in the ants studied, e.g. Tschinkel 2004;
-## Lasius nests mostly lie in the top ~30 cm with a few deep shafts). The curve is an estimate fitted to this
-## 10.8 cm block: ~1.7 cm founding, ~5 cm at 100 workers, ~6.6 cm at 300, ~8 cm at 1000.
+## How deep (voxels below the surface) the nest's lowest chamber reaches for a colony of this size, at most the
+## block's depth. Young L. niger colonies of ~100 workers dug 13.7-19.3 cm down in soil columns, within the first
+## week (García Ibarra et al. 2024: deeper with a warmer surface); nests sink as colonies grow (Tschinkel 2015).
+## The curve through ~15 cm at 100 workers is ours [inference]: ~5 cm at 10, ~20 cm at 300, ~25 cm at 1000.
 func target_depth(workers: int) -> float:
-	return minf((11.0 + 22.0 * log(1.0 + workers / 10.0) / log(10.0)) * depth_k, ny - 8.0)
+	var cm := 15.0 + 10.0 * log(maxf(float(workers), 1.0) / 100.0) / log(10.0)
+	return clampf(cm * depth_k / (VOXEL_MM / 10.0), 0.0, ny - 6.0)
 
 
 ## Called by the colony once a day. Chambers grow while brood is crowded; a growing colony also
@@ -200,12 +231,16 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	# work counted in the morning left the diggers walking round a face with nothing on it to dig, all day)
 	entrance_r = maxf(entrance_r, clampf(1.0 + workers * 0.012, 1.0, 1.7))
 	for ch in chambers:
-		if not ch.get("open", true) and is_open(Vector3i(ch.c)):
+		# (its centre's nearest cell: the gallery ends at the centre, and cut down to the cell below and behind it
+		# that cell lay outside the gallery - the chamber never opened, the colony stuck with two chambers all year)
+		if not ch.get("open", true) and is_open(Vector3i((ch.c as Vector3).round())):
 			ch.open = true
 			event = "opened"
-	# how big a chamber gets grows with the colony: ~1.5 cm long for a founding queen, up to ~3.3 cm (Lasius
-	# chambers are 1-2 cm wide, 3-5 cm long); a growing colony then adds chambers rather than ever-bigger ones
-	var cap := clampf(7.0 + workers / 12.0, 7.0, 11.0)        # the first workers soon need more than the founding cell
+	# how big a chamber gets grows a little with the colony, ~1.8 cm long up to ~2.4 cm; a growing colony then adds
+	# chambers rather than ever-bigger ones. (L. neoniger chambers are 1-2 cm wide, 3-5 cm long - Wang et al. 1995 - but
+	# the X-rayed young L. niger nests show smaller swellings along the tunnel, a few mm high: García Ibarra et al. 2024;
+	# up to ~3.3 cm they were wide flat discs that hid the tunnel between them [inference: between the two])
+	var cap := clampf(6.0 + workers / 50.0, 6.0, 8.0)
 	# the first workers open up and widen the founding cell they share with the queen and her brood (~0.25 voxel
 	# a worker) - only while it is the nest's one chamber; after that new chambers take the growth
 	for ch in chambers:
@@ -242,49 +277,84 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 			pending += 1
 	# a growing colony sinks its nest deeper (new chambers below the deepest, down a shaft)
 	var deeper := workers >= 20 and ny - _lowest_chamber() < target_depth(workers)
+	if deeper:
+		# (and room below the deepest chamber for another: at the bottom of the box the nest spreads out instead)
+		var low_c := float(ny)
+		for ch in chambers:
+			low_c = minf(low_c, float(ch.c.y))
+		deeper = low_c - 9.0 >= maxf(float(ny) - target_depth(workers), 8.0)
 	var crowded := load > floor_cap * 0.7
-	if pending > 0 or chambers.size() >= 24 or (chambers.size() >= wanted and not short and not crowded and not deeper):
+	if pending > 0 or chambers.size() >= 32 or (chambers.size() >= wanted and not short and not crowded and not deeper):
 		return event
-	# a new chamber: beside an existing one on the same level (nests are top-heavy) or a level deeper,
-	# reached by a gallery from the side of the old chamber
+	return _plan_new(deeper, workers, event)
+
+
+## Where a new chamber goes: the shape of L. niger nests X-rayed in soil (García Ibarra et al. 2024, all 17 nests,
+## Fig S2-S4) - one tunnel winding down from the entrance, chambers swelling along it like beads; it goes down
+## fast, then the nest grows by side branches and chambers round its lower part (bushy at the bottom, in some a
+## long level gallery there: an L or a T). A nest that reaches the bottom of its box spreads out along it the same
+## way. How much the tunnel winds and slants and the nest branches is the colony's own habit (wind/lean/bush,
+## hidden traits) - colonies alike in habit dig alike, never the same. (It used to place chambers round the old
+## ones at a set distance, a stack under the entrance: every nest a column with petals; the keeper, 2026-10-23.)
+func _plan_new(deeper: bool, workers: int, event: String) -> String:
 	var deepest: Dictionary = chambers[0]
 	for ch in chambers:
 		if ch.c.y < deepest.c.y:
 			deepest = ch
-	# (sinking deeper: down from any chamber of the lowest tier, not always the deepest one - always from that one,
-	# every grown nest was one column of chambers stacked under its entrance; the keeper saw them all alike, 2026-10-23)
-	var low_tier := chambers.filter(func(ch): return float(ch.c.y) < float(deepest.c.y) + 9.0)
+	var floor_y := maxf(float(ny) - target_depth(workers), 8.0)     # how far down it means to go (voxel y)
+	var at_bottom := float(deepest.c.y) - 9.0 < floor_y              # no room for another bead below
+	var low := chambers.filter(func(ch): return float(ch.c.y) < float(deepest.c.y) + 12.0)
 	for attempt in 60:
-		var src: Dictionary = low_tier[rng.randi() % low_tier.size()] if deeper else chambers[rng.randi() % chambers.size()]
-		var depth: float = ny - float(src.c.y)
-		var sideways := false if deeper else rng.randf() < minf(0.92, (0.65 if depth < 30.0 else 0.35) * spread_k)
-		var ang := rng.randf() * TAU
-		# (a shaft down slants off to one side, up to about a chamber's length - it used to drop 4-12 cells across)
-		var reach := rng.randf_range(src.goal + 8.0, src.goal + 14.0) if sideways else rng.randf_range(5.0, 17.0)
-		var off := Vector3(cos(ang) * reach, rng.randf_range(-2.0, 1.0) if sideways else -rng.randf_range(8.0, 13.0), sin(ang) * reach)
+		var bead := deeper and not at_bottom and attempt < 40
+		var src: Dictionary = deepest
+		if not bead:
+			# a branch: off the lower part of the nest mostly (bushier with bush_k), else off the tunnel higher up
+			var pick: Array = low if rng.randf() < clampf(0.6 * bush_k, 0.25, 0.92) else chambers
+			src = pick[rng.randi() % pick.size()]
+		if not src.has("hd"):
+			src.hd = rng.randf() * TAU                    # (the way its tunnel heads on, level)
+		var hd: float = src.hd
+		var site: Vector3
+		if bead:
+			# the next bead down: the tunnel bends a little its own way (wind) and slants off (lean)
+			hd += rng.randfn(0.0, 1.1 * wind_k)
+			var drop := rng.randf_range(7.0, 11.0)
+			var run := drop * clampf(rng.randfn(0.7, 0.3) * lean_k, 0.05, 2.4)
+			site = Vector3(src.c) + Vector3(cos(hd) * run, -drop, sin(hd) * run)
+		else:
+			# a branch: off to the side, level or a little down (along the bottom where there is no more room)
+			hd = rng.randf() * TAU
+			var reach := rng.randf_range(float(src.goal) + 5.0, float(src.goal) + 11.0) * spread_k
+			var dy := rng.randf_range(-1.0, 1.5) if float(src.c.y) - 5.0 < floor_y else -rng.randf_range(0.0, 4.0)
+			site = Vector3(src.c) + Vector3(cos(hd) * reach, dy, sin(hd) * reach)
 		if slab:
-			off.x = (reach if cos(ang) >= 0.0 else -reach) * (1.0 if sideways else 0.6)
-			off.z = 0.0
-		var site := Vector3(src.c) + off
+			site = Vector3(src.c.x + (1.0 if cos(hd) >= 0.0 else -1.0) * Vector2(site.x - src.c.x, site.z - src.c.z).length(),
+				site.y, src.c.z)
 		if site.x < 8 or site.x > nx - 9 or site.y < 6 or site.y > ny - 9 or site.z < (1 if slab else 8) or site.z > nz - (2 if slab else 9):
 			continue
-		var ok := not hard_near(site, 6.0)            # not on a stone or a root ...
-		var src_rim: Vector3 = _rim_toward(src, (site - Vector3(src.c)) * Vector3(1, 0, 1))
+		if hard_near(site, 6.0):
+			continue                                      # not on a stone or a root ...
+		var from: Vector3 = _rim_toward(src, (site - Vector3(src.c)) * Vector3(1, 0, 1))
+		# ... nor with one in the way of the gallery to it, which bends once on the way (wind)
+		var side := (site - from).cross(Vector3.UP)
+		side = side.normalized() if side.length() > 0.1 else Vector3.RIGHT
+		if slab:
+			side = Vector3(side.x, 0.0, 0.0).normalized() if absf(side.x) > 0.1 else Vector3.ZERO
+		var via := from.lerp(site, rng.randf_range(0.35, 0.65)) + side * rng.randfn(0.0, 2.6 * wind_k)
+		var ok := true
 		for k in 7:
-			if ok and hard_near(src_rim.lerp(site, k / 6.0), 2.0):
-				ok = false                            # ... nor with one in the way of the gallery to it
+			if hard_near(from.lerp(via, k / 6.0), 2.0) or hard_near(via.lerp(site, k / 6.0), 2.0):
+				ok = false
 		for ch in chambers:
-			# chambers are flat (~2 voxels high): one 7+ voxels below another clears it whatever its width, so
-			# only chambers on about the same level must keep their width apart (a straight distance against
-			# the old chamber's width ruled out every chamber below a grown one: nests never got deeper)
+			# (clear of the other chambers: those about level with it by their length, those above or below by height)
 			var dd: Vector3 = site - Vector3(ch.c)
-			if absf(dd.y) < 7.0 and Vector2(dd.x, dd.z).length() < ch.goal + 9.0:
+			if absf(dd.y) < 6.0 and Vector2(dd.x, dd.z).length() < float(ch.goal) + 6.0:
 				ok = false
 				break
 		if ok:
-			var dir := (site - Vector3(src.c)) * Vector3(1, 0, 1)
-			var from: Vector3 = _rim_toward(src, dir)
-			chambers.append({"c": site, "r": 3.5, "goal": 3.5, "kind": "brood", "from": from, "open": false,
-				"yaw": ang + rng.randf_range(-0.6, 0.6)})
+			chambers.append({"c": site, "r": 3.5, "goal": 3.5, "kind": "brood", "from": from, "via": via, "open": false,
+				"hd": hd, "yaw": hd + rng.randf_range(-0.6, 0.6),
+				"lobe": [rng.randf_range(0.1, 0.28), float(rng.randi_range(2, 3)), rng.randf() * TAU,
+					rng.randf_range(0.05, 0.16), float(rng.randi_range(4, 5)), rng.randf() * TAU]})
 			return "planned"
 	return event

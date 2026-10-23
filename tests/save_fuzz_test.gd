@@ -125,6 +125,22 @@ func _saves() -> void:
 	var good := {"meta": s.summary(), "sim": s.to_dict()}
 	_write_var(good)
 	_counted("a good save", _load, ["loaded"])
+	# a save from before a colony trait was added (v0.11.18-v0.11.27 had no wind/lean/bush): it loads, the trait read
+	# as 1.0 - required, every keeper's save made since v0.11.18 was given up on as unreadable
+	var older: Dictionary = good.duplicate(true)
+	for k in ["wind", "lean", "bush"]:
+		older.sim.traits.erase(k)
+	_write_var(older)
+	_counted("a save from before the newer traits", _load, ["loaded"])
+	# a nest from before v0.11.18 saved again since: the plain soil, {} (it was given up on as unreadable)
+	var plain: Dictionary = good.duplicate(true)
+	plain.sim.nest.soil = {}
+	_write_var(plain)
+	_counted("a nest of the plain soil (from before v0.11.18)", _load, ["loaded"])
+	var no_traits: Dictionary = good.duplicate(true)
+	no_traits.sim.traits = {}
+	_write_var(no_traits)
+	_counted("a colony with no traits (from before v0.11.18)", _load, ["loaded"])
 	var bytes := var_to_bytes(good)
 	# the file itself
 	_write_raw(PackedByteArray(), false)

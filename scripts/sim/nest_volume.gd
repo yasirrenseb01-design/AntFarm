@@ -46,7 +46,9 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 		k = 0.05                                       # would widen a tunnel beyond ant width
 	elif open_n == 1 and s.y < from.y:
 		# an exploratory tunnel tip going down, but not far below the deepest chamber
-		k = 0.25 if s.y > _lowest_chamber() - 7.0 else 0.003
+		# (not often: dug at 0.25 every chamber had blind tunnels hanging from it like a fringe, the keeper saw the
+		# nests cluttered with them, 2026-10-23; real nests have a few - García Ibarra et al. 2024)
+		k = 0.06 if s.y > _lowest_chamber() - 7.0 else 0.003
 	var dirk := 1.0
 	if s.y < from.y:
 		dirk = 1.6

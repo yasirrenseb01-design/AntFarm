@@ -144,6 +144,9 @@ func from_dict(d: Dictionary) -> void:
 				traits[k] = clampf(float(tt[k]), 0.5, 1.5)
 	nest.depth_k = colony_trait("depth")
 	nest.spread_k = colony_trait("spread")
+	nest.wind_k = colony_trait("wind")
+	nest.lean_k = colony_trait("lean")
+	nest.bush_k = colony_trait("bush")
 	nest_pos = d.get("nest_pos", Vector2(480, 400))
 	midden_pos = d.get("midden_pos", Vector2(575, 480))
 	rock = d.rock

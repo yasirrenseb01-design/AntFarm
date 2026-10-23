@@ -63,6 +63,9 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/duty_test
 Report "duties in the nest: repeatable, counted, run while closed" ($r -match "DUTY TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/save_fuzz_test.gd") 300
 Report "broken or changed saves, settings and port messages: no code run, no hang, no script error" ($r -match "SAVE FUZZ TEST PASSED")
+# the keeper's own saves (read only): each still passes the loading checks - else the game would give it up as unreadable
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/real_saves_check.gd") 300
+Report "the keeper's own saves would all load (read only)" ($r -match "REAL SAVES CHECK PASSED")
 $sandbox = Join-Path $env:APPDATA "Godot\app_userdata\AntFarm\sandbox\saves\slot1.antfarm"
 if (Test-Path $sandbox) {
     $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/real_save_test.gd") 300

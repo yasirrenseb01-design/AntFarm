@@ -17,6 +17,11 @@ const MAX_VOXELS := 8000000
 const OPTIONAL := ["sim.water", "sim.nest.entrance_r", "sim.nest.work_left", "sim.nest.work_at", "sim.nest.work_dist",
 	"sim.nest.entrance_done", "sim.plot_seed", "sim.nest_pos", "sim.midden_pos", "sim.traits", "sim.nest.soil",
 	"sim.brood_at", "sim.queen_at", "sim.queen_stay", "sim.ch_mean"]
+## read key by key with defaults by the loader (colony_trait(), soil.get()): what they hold is checked, nothing in them
+## is required. (A save from before them holds {} there, and is saved again so; requiring their keys, the keeper's
+## colonies from before v0.11.18 - and with the traits added since, every one - were given up on as unreadable:
+## caught testing v0.11.28)
+const OPEN := ["sim.traits", "sim.nest.soil"]
 
 static var _ref := {}              # a colony as the game sets one up, made once
 
@@ -42,6 +47,8 @@ static func _like(v, r, path: String, strict: bool) -> String:
 	if r is Dictionary:
 		if not v is Dictionary:
 			return "%s: not a dictionary" % path
+		if path in OPEN:
+			strict = false
 		for k in r:
 			if v.has(k):
 				var why := _like(v[k], r[k], "%s.%s" % [path, k], strict)
