@@ -90,6 +90,10 @@ func _work_on_line(a: Vector3, b: Vector3, r: float, first: bool, best: Array) -
 				var v := Vector3i(x, y, z)
 				if rho[idx(v)] < AIR or (slab and z < nz - 3) or is_hard(v):
 					continue
+				# (the surface crust is never broken but at the entrance - _dig_chance; planned all the same, the top of
+				# a slanting entrance shaft kept its diggers standing there a whole year, the nest never dug)
+				if y >= ny - 2 and Vector2(x - entrance.x, z - entrance.z).length() > 1.5:
+					continue
 				var p := Vector3(v)
 				var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
 				if p.distance_to(a + ab * t) <= r:
@@ -247,12 +251,16 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	for ch in chambers:
 		if ch.c.y < deepest.c.y:
 			deepest = ch
+	# (sinking deeper: down from any chamber of the lowest tier, not always the deepest one - always from that one,
+	# every grown nest was one column of chambers stacked under its entrance; the keeper saw them all alike, 2026-10-23)
+	var low_tier := chambers.filter(func(ch): return float(ch.c.y) < float(deepest.c.y) + 9.0)
 	for attempt in 60:
-		var src: Dictionary = deepest if deeper else chambers[rng.randi() % chambers.size()]
+		var src: Dictionary = low_tier[rng.randi() % low_tier.size()] if deeper else chambers[rng.randi() % chambers.size()]
 		var depth: float = ny - float(src.c.y)
 		var sideways := false if deeper else rng.randf() < minf(0.92, (0.65 if depth < 30.0 else 0.35) * spread_k)
 		var ang := rng.randf() * TAU
-		var reach := rng.randf_range(src.goal + 8.0, src.goal + 14.0) if sideways else rng.randf_range(4.0, 12.0)
+		# (a shaft down slants off to one side, up to about a chamber's length - it used to drop 4-12 cells across)
+		var reach := rng.randf_range(src.goal + 8.0, src.goal + 14.0) if sideways else rng.randf_range(5.0, 17.0)
 		var off := Vector3(cos(ang) * reach, rng.randf_range(-2.0, 1.0) if sideways else -rng.randf_range(8.0, 13.0), sin(ang) * reach)
 		if slab:
 			off.x = (reach if cos(ang) >= 0.0 else -reach) * (1.0 if sideways else 0.6)

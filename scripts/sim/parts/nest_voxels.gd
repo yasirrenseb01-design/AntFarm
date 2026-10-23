@@ -67,26 +67,46 @@ func setup(r: RandomNumberGenerator, glass_slab := false, founding := false) -> 
 	dug_at.fill(-1000000)
 	dist.resize(n)
 	dist.fill(-1)
-	entrance = Vector3i(nx / 2, ny - 1, nz - 2 if slab else nz / 2)
+	# where the queen came down and began to dig: anywhere on the block, not only its middle - with room left round
+	# it for the nest to grow (every nest used to start dead centre, its shaft straight down: the keeper saw all the
+	# nests alike, 2026-10-23). A generator of its own from the colony's seed: the simulation's draws stay as they were.
+	# [inference: a mated queen digs in where she lands; the start is otherwise not studied]
+	var g := RandomNumberGenerator.new()
+	g.seed = (r.seed * 2654435761 + 0x51E77A3B) & 0x7fffffff      # (mixed: seeds one apart start far apart)
+	var ex := nx / 2 + roundi(g.randf_range(-0.3, 0.3) * nx if slab else g.randf_range(-0.2, 0.2) * nx)
+	var ez := nz - 2 if slab else nz / 2 + roundi(g.randf_range(-0.2, 0.2) * nz)
+	entrance = Vector3i(ex, ny - 1, ez)
 	# in a glass farm the ants work against the front pane; the back layers stay soil
-	var mid := Vector3(nx / 2.0, 0, nz - 2.0 if slab else nz / 2.0)
+	var mid := Vector3(ex, 0, ez)
 	var flat := 2.9 if slab else 0.0
+	# the queen's shaft slants a little, its own way, and bends once (Lasius founding tunnels are short and seldom
+	# plumb [inference]); her chamber opens off its foot to one side
+	var ang := g.randf() * TAU
+	var lean := Vector3(cos(ang), 0.0, 0.0 if slab else sin(ang))
+	var side := lean.rotated(Vector3.UP, g.randf_range(-1.2, 1.2))
+	if slab:
+		side = Vector3(1.0 if side.x >= 0.0 else -1.0, 0.0, 0.0)      # (along the pane)
 	if founding:
 		# what a lone queen digs after her mating flight: a short shaft and one small chamber
-		carve_line(Vector3(entrance), Vector3(mid.x, ny - 9, mid.z), 1.0)
-		var fc := Vector3(mid.x + 1, ny - 11, mid.z)
+		var bend := Vector3(mid.x, ny - 5, mid.z) + lean * g.randf_range(0.5, 2.0)
+		var foot := Vector3(mid.x, ny - 9, mid.z) + lean * g.randf_range(1.5, 3.5)
+		carve_line(Vector3(entrance), bend, 1.0)
+		carve_line(bend, foot, 1.0)
+		var fc := foot + side * 1.5 + Vector3(0, -2, 0)
 		carve_room(fc, Vector3(6.0, 2.2, 6.0 - (2.6 if slab else 0.0)))   # ~1.8 cm across
 		chambers.append({"c": fc, "r": 6.0, "goal": 6.0, "kind": "queen"})
 		_recount()
 		_bfs()
 		return
 	# A three-month-old nest: the queen's shaft, her chamber, and a first brood chamber.
-	carve_line(Vector3(entrance), Vector3(mid.x, ny - 18, mid.z), 1.2)
-	var qc := Vector3(mid.x + 3, ny - 20, mid.z)
+	var foot2 := Vector3(mid.x, ny - 18, mid.z) + lean * g.randf_range(2.0, 4.0)
+	carve_line(Vector3(entrance), foot2, 1.2)
+	var qc := foot2 + side * 3.0 + Vector3(0, -2, 0)
 	carve_room(qc, Vector3(4.5, 2.0, 4.5 - flat))
 	chambers.append({"c": qc, "r": 4.5, "goal": 5.0, "kind": "queen"})
-	var bc := Vector3(mid.x - 6, ny - 11, mid.z + (0.0 if slab else 2.0))
-	carve_line(Vector3(mid.x, ny - 10, mid.z), bc, 1.1)
+	var top := Vector3(entrance).lerp(foot2, 8.0 / 17.0)
+	var bc := top - side * 6.0 + Vector3(0, -1, 0)
+	carve_line(top, bc, 1.1)
 	carve_room(bc, Vector3(4.0, 1.8, 4.0 - flat))
 	chambers.append({"c": bc, "r": 4.0, "goal": 4.5, "kind": "brood"})
 	_recount()
