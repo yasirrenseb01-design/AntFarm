@@ -53,7 +53,6 @@ func setup(s) -> void:
 	_mat.shader = load("res://shaders/terrain/soil.gdshader")
 	_mat.set_shader_parameter("grain", grain)
 	_mat.set_shader_parameter("top_y", nest.ny - 0.5)
-	_mat.set_shader_parameter("vol_size", Vector3(nest.nx, nest.ny, nest.nz))
 	# what is in this colony's soil (nest_voxels.soil): the stones and roots show where a wall or the cut meets them
 	var st := PackedVector4Array()
 	for sto in nest.soil.get("stones", []).slice(0, 24):
@@ -149,7 +148,6 @@ func setup(s) -> void:
 	# feet find the real floor in the soil volume (updated in place as the ants dig)
 	ant_mat.set_shader_parameter("ground_mode", 1)
 	ant_mat.set_shader_parameter("vol", _foot_vol)          # (the soil and the brood on it: nest_scene._upload_foot_volume)
-	ant_mat.set_shader_parameter("vol_size", Vector3(nest.nx, nest.ny, nest.nz))
 	var queen_mat: ShaderMaterial = ant_mat.duplicate()
 	queen_mat.set_shader_parameter("limb_gain", AntModel.QUEEN_LIMBS)
 	var queen_mesh := AntModel.make(0.0, true, true)
@@ -173,6 +171,8 @@ func setup(s) -> void:
 	selb.grow_amount = 0.05
 	_sel_brood_mm = _multimesh(_egg_mm.mesh, selb, false, false)
 	_sel_queen_mm.use_custom_data = true
+	_vol_mats = [ant_mat, queen_mat, sel_mat, selq_mat]      # (reading the feet's volume: nest_scene._set_vol_shape)
+	_set_vol_shape()
 	_cut_mats = [ant_mat, sel_mat]          # (cut at the cut plane as the soil is; not the queen - she cannot step away from
 	                                        # it, and cut open she showed a hollow shell)
 
@@ -189,7 +189,7 @@ func setup(s) -> void:
 	target = target_t
 	# chunk -1 owns the block faces on the low sides (edges from outside into voxel 0)
 	for kz in range(-1, (nest.nz + CH - 1) / CH + 1):
-		for ky in range(-1, (nest.ny + CH - 1) / CH + 1):
+		for ky in range(floori(nest.y_lo / float(CH)) - 1, (nest.ny + CH - 1) / CH + 1):
 			for kx in range(-1, (nest.nx + CH - 1) / CH + 1):
 				_queue.append(Vector3i(kx, ky, kz))
 	nest.dirty.clear()
@@ -265,6 +265,12 @@ func refresh(delta: float) -> void:
 	_t += delta
 	_follow_ant(delta)
 	var t0 := Time.get_ticks_usec()
+	if nest.resized != _resized_seen:
+		# the soil taken in deeper (nest_voxels.extend_down): its volumes laid out again at once, at the new size
+		_resized_seen = nest.resized
+		_vol_dirty = true
+		_vol_timer = 0.0
+		_soft = PackedFloat32Array()
 	if not nest.dirty.is_empty():
 		_vol_dirty = true
 		_floor_cache.clear()            # the floor moved: brood is set down on it afresh

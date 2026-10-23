@@ -165,16 +165,16 @@ var _egg_spots: Array = []         # floor beside the queen (not under her) wher
 ## The soil density at a point (trilinear between voxels, as the soil mesh is built from it).
 func _density_at(p: Vector3) -> float:
 	if _soft.is_empty():
-		_soft_build(Vector3i(-1, -1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
+		_soft_build(Vector3i(-1, nest.y_lo - 1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
 	var x := floori(p.x)
 	var y := floori(p.y)
 	var z := floori(p.z)
-	if x < -1 or y < -1 or z < -1 or x >= nest.nx or y >= nest.ny or z >= nest.nz:
+	if x < -1 or y < nest.y_lo - 1 or z < -1 or x >= nest.nx or y >= nest.ny or z >= nest.nz:
 		return 0.0                                 # (beyond the block and its first ring of air)
 	var fx := p.x - x
 	var fy := p.y - y
 	var fz := p.z - z
-	var i := ((z + 1) * _sy + (y + 1)) * _sx + (x + 1)
+	var i := ((z + 1) * _sy + (y - _sy0 + 1)) * _sx + (x + 1)
 	var d00 := lerpf(_soft[i], _soft[i + 1], fx)
 	var d10 := lerpf(_soft[i + _sx], _soft[i + _sx + 1], fx)
 	var j := i + _sx * _sy
@@ -190,16 +190,21 @@ func _density_at(p: Vector3) -> float:
 var _soft := PackedFloat32Array()
 var _sx := 0
 var _sy := 0
+var _sy0 := 0                       # (the layer _soft starts at: nest.y_lo when it was laid out)
 func _soft_build(a: Vector3i, b: Vector3i) -> void:
-	if _soft.is_empty():
+	if _soft.is_empty() or _sy0 != nest.y_lo:
 		_sx = nest.nx + 2
-		_sy = nest.ny + 2
+		_sy = nest.hy() + 2
+		_sy0 = nest.y_lo
+		_soft = PackedFloat32Array()
 		_soft.resize(_sx * _sy * (nest.nz + 2))
-	a = a.clamp(Vector3i(-1, -1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
-	b = b.clamp(Vector3i(-1, -1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
+		a = Vector3i(-1, nest.y_lo - 1, -1)        # (laid out again whole: the soil was taken in deeper)
+		b = Vector3i(nest.nx, nest.ny, nest.nz)
+	a = a.clamp(Vector3i(-1, nest.y_lo - 1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
+	b = b.clamp(Vector3i(-1, nest.y_lo - 1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
 	for z in range(a.z, b.z + 1):
 		for y in range(a.y, b.y + 1):
-			var row := ((z + 1) * _sy + (y + 1)) * _sx + 1
+			var row := ((z + 1) * _sy + (y - _sy0 + 1)) * _sx + 1
 			for x in range(a.x, b.x + 1):
 				_soft[row + x] = nest.density(x, y, z)
 
@@ -327,16 +332,37 @@ func _upload_volume() -> void:
 	_vol_dirty = false
 	_vol_timer = 0.5
 	var layers: Array[Image] = []
-	var slice: int = nest.nx * nest.ny
+	var h: int = nest.hy()
+	var slice: int = nest.nx * h
 	for z in nest.nz:
-		layers.append(Image.create_from_data(nest.nx, nest.ny, false, Image.FORMAT_R8, nest.rho.slice(z * slice, (z + 1) * slice)))
-	if _vol == null:
-		_vol = ImageTexture3D.new()
-		_vol.create(Image.FORMAT_R8, nest.nx, nest.ny, nest.nz, false, layers)
+		layers.append(Image.create_from_data(nest.nx, h, false, Image.FORMAT_R8, nest.rho.slice(z * slice, (z + 1) * slice)))
+	if _vol == null or _vol.get_height() != h:
+		_vol = ImageTexture3D.new()           # (new, or the soil taken in deeper: a volume of the new size)
+		_vol.create(Image.FORMAT_R8, nest.nx, h, nest.nz, false, layers)
 		_mat.set_shader_parameter("vol", _vol)
 	else:
 		_vol.update(layers)
+	_set_vol_shape()
 	_upload_foot_volume()
+
+
+## Where the soil volumes sit (the layers held: nest.y_lo up), for every shader that reads them.
+func _set_vol_shape() -> void:
+	var size := Vector3(nest.nx, nest.hy(), nest.nz)
+	var org := Vector3(0.0, nest.y_lo, 0.0)
+	for m in [_mat] + _vol_mats:
+		if m != null:
+			m.set_shader_parameter("vol_size", size)
+			m.set_shader_parameter("vol_org", org)
+	if _xray_mat != null:
+		_xray_mat.set_shader_parameter("box_min_y", float(nest.y_lo))
+	if _ghost != null:
+		(_ghost.mesh as BoxMesh).size = size
+		_ghost.position = Vector3(nest.nx / 2.0 - 0.5, nest.y_lo + nest.hy() / 2.0 - 0.5, nest.nz / 2.0 - 0.5)
+
+
+var _resized_seen := 0             # nest.resized when the volumes were last laid out
+var _vol_mats: Array = []          # the ants' materials reading the feet's volume (nest_view setup)
 
 
 ## What the ants' feet stand on (the ant shaders' `vol`): the soil, and the brood lying on it - an ant crossing the
@@ -348,6 +374,8 @@ func _upload_foot_volume() -> void:
 	var nx: int = nest.nx
 	var ny: int = nest.ny
 	var nz: int = nest.nz
+	var y_lo: int = nest.y_lo
+	var h: int = ny - y_lo
 	var all_sph := []
 	for bin in _brood_occ.values():
 		for o in bin:
@@ -368,19 +396,21 @@ func _upload_foot_volume() -> void:
 				var r: float = float(q[1])
 				var e := r + 0.8
 				for z in range(maxi(0, floori(c.z - e)), mini(nz, ceili(c.z + e) + 1)):
-					for y in range(maxi(0, floori(c.y - e)), mini(ny, ceili(c.y + e) + 1)):
+					for y in range(maxi(y_lo, floori(c.y - e)), mini(ny, ceili(c.y + e) + 1)):
 						for x in range(maxi(0, floori(c.x - e)), mini(nx, ceili(c.x + e) + 1)):
 							var v := int(clampf(0.6 + (r - Vector3(x, y, z).distance_to(c)), 0.0, 1.0) * 255.0)     # (0.6: its surface a touch outside the body - the feet on it, not in it)
-							var ix := (z * ny + y) * nx + x
+							var ix := (z * h + y - y_lo) * nx + x
 							if v > _foot_rho[ix]:
 								_foot_rho[ix] = v
 	var layers: Array[Image] = []
-	var slice: int = nx * ny
+	var slice: int = nx * h
 	for z in nz:
-		layers.append(Image.create_from_data(nx, ny, false, Image.FORMAT_R8, _foot_rho.slice(z * slice, (z + 1) * slice)))
-	if _foot_vol == null:
+		layers.append(Image.create_from_data(nx, h, false, Image.FORMAT_R8, _foot_rho.slice(z * slice, (z + 1) * slice)))
+	if _foot_vol == null or _foot_vol.get_height() != h:
 		_foot_vol = ImageTexture3D.new()
-		_foot_vol.create(Image.FORMAT_R8, nx, ny, nz, false, layers)
+		_foot_vol.create(Image.FORMAT_R8, nx, h, nz, false, layers)
+		for m in _vol_mats:
+			m.set_shader_parameter("vol", _foot_vol)
 	else:
 		_foot_vol.update(layers)
 
@@ -443,13 +473,14 @@ func _walkable(c: Vector3i) -> bool:
 	var nx: int = nest.nx
 	var ny: int = nest.ny
 	var nz: int = nest.nz
+	var y_lo: int = nest.y_lo
 	for d in DIRS:
 		var n: Vector3i = c + d
 		if n.y >= ny:
 			continue                     # (the sky)
-		if n.x < 0 or n.y < 0 or n.z < 0 or n.x >= nx or n.z >= nz:
+		if n.x < 0 or n.y < y_lo or n.z < 0 or n.x >= nx or n.z >= nz:
 			return true                  # (the block's sides and bottom)
-		if rho[(n.z * ny + n.y) * nx + n.x] >= nest.AIR:
+		if rho[(n.z * (ny - y_lo) + n.y - y_lo) * nx + n.x] >= nest.AIR:
 			return true
 	return false
 

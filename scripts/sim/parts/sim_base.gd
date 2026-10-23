@@ -41,6 +41,10 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 	nest.wind_k = colony_trait("wind")
 	nest.lean_k = colony_trait("lean")
 	nest.bush_k = colony_trait("bush")
+	# a garden nest's soil goes down 30 cm (held as the ants dig down: nest_voxels.extend_down); a formicarium's ends
+	# at its box (the keeper, 2026-10-23: Lasius nests of ~100 workers reach 14-19 cm - García Ibarra et al. 2024)
+	if scen == "wild" and not glass_nest:
+		nest.y_floor = nest.ny - nest.DEEP_LAYERS
 	nest.lay_out_soil((plot_seed ^ 0x2D1B7A35) & 0x7fffffff | 1)       # stones, roots, the clay (nest_voxels)
 	var pr := _lay_out_plot()
 

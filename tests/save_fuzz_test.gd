@@ -137,6 +137,17 @@ func _saves() -> void:
 	plain.sim.nest.soil = {}
 	_write_var(plain)
 	_counted("a nest of the plain soil (from before v0.11.18)", _load, ["loaded"])
+	# a garden nest whose soil was taken in deeper (y_lo below 0): saved and loaded again whole
+	var gs := Sim.new()
+	gs.setup(4, 14, false, "wild")
+	gs.nest.extend_down(gs.nest.y_lo - 20)
+	gs.nest.carve_line(Vector3(30, 2, 30), Vector3(30, -20, 30), 1.2)
+	_write_var({"meta": gs.summary(), "sim": gs.to_dict()})
+	_counted("a garden nest held below its first 72 layers", _load, ["loaded"])
+	var back := Sim.new()
+	back.from_dict(Store.load_slot(1).sim)
+	_case("  ... its soil and the tunnel down there kept", back.nest.y_lo == gs.nest.y_lo and back.nest.is_open(Vector3i(30, -10, 30))
+		and not back.nest.is_open(Vector3i(40, -10, 30)), [true])
 	var no_traits: Dictionary = good.duplicate(true)
 	no_traits.sim.traits = {}
 	_write_var(no_traits)

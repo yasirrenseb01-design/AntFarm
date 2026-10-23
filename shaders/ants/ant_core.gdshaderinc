@@ -42,6 +42,7 @@ varying vec3 wpos;
 uniform int ground_mode = 0;
 uniform sampler3D vol : filter_linear;      // nest: soil density per voxel (as shaders/terrain/soil.gdshader)
 uniform vec3 vol_size = vec3(64.0, 72.0, 64.0);
+uniform vec3 vol_org = vec3(0.0);           // the voxel the volume starts at (a deep garden nest: below y = 0)
 // Shadows cost a pass (or several) per light: true = shadows follow the animated pose (close up), false = they
 // keep the rest pose (zoomed out, where a shadow is a few pixels) - the views set it with the level of detail.
 uniform bool shadow_pose = true;
@@ -100,11 +101,11 @@ float ground_dy(vec3 fw, vec3 upw) {
 		// the soil - up to where it opens. (It used to look down from well above the foot: in a low tunnel that
 		// point was in the ceiling, and the foot was lifted up to it for a moment.)
 		float prev = 0.5;
-		float dprev = texture(vol, (fw + upw * prev + 0.5) / vol_size).r;
+		float dprev = texture(vol, (fw + upw * prev - vol_org + 0.5) / vol_size).r;
 		if (dprev >= 0.5) {
 			for (int i = 1; i < 4; i++) {
 				float s = 0.5 + 0.25 * float(i);
-				float d = texture(vol, (fw + upw * s + 0.5) / vol_size).r;
+				float d = texture(vol, (fw + upw * s - vol_org + 0.5) / vol_size).r;
 				if (d < 0.5) {
 					return mix(prev, s, clamp((dprev - 0.5) / max(dprev - d, 0.001), 0.0, 1.0));
 				}
@@ -115,7 +116,7 @@ float ground_dy(vec3 fw, vec3 upw) {
 		}
 		for (int i = 1; i < 8; i++) {
 			float s = 0.5 - 0.25 * float(i);
-			float d = texture(vol, (fw + upw * s + 0.5) / vol_size).r;
+			float d = texture(vol, (fw + upw * s - vol_org + 0.5) / vol_size).r;
 			if (d >= 0.5) {
 				// where the density crosses 0.5 between the two samples: the same surface the soil mesh shows
 				return mix(prev, s, clamp((0.5 - dprev) / max(d - dprev, 0.001), 0.0, 1.0));

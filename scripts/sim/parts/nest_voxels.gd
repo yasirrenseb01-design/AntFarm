@@ -25,6 +25,13 @@ const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0
 var nx := 64
 var ny := 72
 var nz := 64
+# the soil below y = 0 is there but not yet held (a garden nest, up to 30 cm deep): the layers from y_lo up are, and
+# more are taken in below as the ants dig near the bottom of them (extend_down), down to y_floor. Coordinates stay
+# as they are (the surface at ny - 1); a formicarium's soil ends at y = 0 (y_lo = y_floor = 0), as every nest's did.
+var y_lo := 0
+var y_floor := 0
+const DEEP_LAYERS := 200                # how deep a garden nest's soil goes (voxels: 30 cm)
+const EXTEND_BY := 16                   # layers taken in at a time (one mesh chunk)
 var slab := false                       # true = thin glass ant-farm instead of a soil block
 var rho := PackedByteArray()            # soil density 0..255 per voxel
 # What the soil holds besides earth, from the plot's seed (lay_out_soil; saved): stones and roots the ants dig round
@@ -60,6 +67,8 @@ func setup(r: RandomNumberGenerator, glass_slab := false, founding := false) -> 
 		nx = 110
 		ny = 72
 		nz = 5
+	y_lo = 0
+	y_floor = 0
 	var n := nx * ny * nz
 	rho.resize(n)
 	rho.fill(255)
@@ -129,7 +138,7 @@ func lay_out_soil(seed_v: int) -> void:
 		if stones.size() >= want:
 			break
 		var r := g.randf_range(1.6, 2.6) if g.randf() < 0.65 else g.randf_range(2.6, 4.8)       # 5-14 mm across
-		var c := Vector3(g.randf_range(r + 1.0, nx - 2.0 - r), g.randf_range(r + 2.0, ny - 4.0 - r),
+		var c := Vector3(g.randf_range(r + 1.0, nx - 2.0 - r), g.randf_range(float(y_floor) + r + 2.0, ny - 4.0 - r),
 			(nz - 2.5) if slab else g.randf_range(r + 1.0, nz - 2.0 - r))
 		if g.randf() < 0.6:
 			# most where the nest is dug: within ~3 cm of the entrance shaft, in the top 8 cm
@@ -167,14 +176,14 @@ func lay_out_soil(seed_v: int) -> void:
 	_stamp_hard()
 
 
-## Marks the stones' and roots' voxels hard (and solid).
+## Marks the stones' and roots' voxels hard (and solid) - in the layers held (y_lo up).
 func _stamp_hard() -> void:
-	hard.resize(nx * ny * nz)
+	hard.resize(nx * hy() * nz)
 	hard.fill(0)
 	for s in soil.get("stones", []):
 		var c := Vector3(s[0], s[1], s[2])
 		var r: float = s[3]
-		for y in range(maxi(0, floori(c.y - r)), mini(ny, ceili(c.y + r) + 1)):
+		for y in range(maxi(y_lo, floori(c.y - r)), mini(ny, ceili(c.y + r) + 1)):
 			for z in range(maxi(0, floori(c.z - r)), mini(nz, ceili(c.z + r) + 1)):
 				for x in range(maxi(0, floori(c.x - r)), mini(nx, ceili(c.x + r) + 1)):
 					if Vector3(x, y, z).distance_to(c) <= r:
@@ -186,7 +195,7 @@ func _stamp_hard() -> void:
 		var ab := b - a
 		var lo := Vector3i(floori(minf(a.x, b.x) - r), floori(minf(a.y, b.y) - r), floori(minf(a.z, b.z) - r))
 		var hi := Vector3i(ceili(maxf(a.x, b.x) + r), ceili(maxf(a.y, b.y) + r), ceili(maxf(a.z, b.z) + r))
-		for y in range(maxi(0, lo.y), mini(ny, hi.y + 1)):
+		for y in range(maxi(y_lo, lo.y), mini(ny, hi.y + 1)):
 			for z in range(maxi(0, lo.z), mini(nz, hi.z + 1)):
 				for x in range(maxi(0, lo.x), mini(nx, hi.x + 1)):
 					var p := Vector3(x, y, z)
@@ -209,16 +218,16 @@ func is_hard(v: Vector3i) -> bool:
 func hard_near(p: Vector3, r: float) -> bool:
 	if hard.is_empty():
 		return false
-	for y in range(maxi(0, floori(p.y - r)), mini(ny, ceili(p.y + r) + 1)):
+	for y in range(maxi(y_lo, floori(p.y - r)), mini(ny, ceili(p.y + r) + 1)):
 		for z in range(maxi(0, floori(p.z - r)), mini(nz, ceili(p.z + r) + 1)):
 			for x in range(maxi(0, floori(p.x - r)), mini(nx, ceili(p.x + r) + 1)):
-				if hard[(z * ny + y) * nx + x] == 1 and Vector3(x, y, z).distance_to(p) <= r:
+				if hard[idx(Vector3i(x, y, z))] == 1 and Vector3(x, y, z).distance_to(p) <= r:
 					return true
 	return false
 
 
 func _open_near(p: Vector3, r: float) -> bool:
-	for y in range(maxi(0, floori(p.y - r)), mini(ny, ceili(p.y + r) + 1)):
+	for y in range(maxi(y_lo, floori(p.y - r)), mini(ny, ceili(p.y + r) + 1)):
 		for z in range(maxi(0, floori(p.z - r)), mini(nz, ceili(p.z + r) + 1)):
 			for x in range(maxi(0, floori(p.x - r)), mini(nx, ceili(p.x + r) + 1)):
 				if is_open(Vector3i(x, y, z)) and Vector3(x, y, z).distance_to(p) <= r:
@@ -237,12 +246,17 @@ func sand_top() -> float:
 
 # ---------------------------------------------------------------- voxel access
 
+## The layers held: y_lo .. ny - 1.
+func hy() -> int:
+	return ny - y_lo
+
+
 func idx(c: Vector3i) -> int:
-	return (c.z * ny + c.y) * nx + c.x   # z-major: each z slice is contiguous (uploaded as a 3D texture layer)
+	return (c.z * (ny - y_lo) + c.y - y_lo) * nx + c.x   # z-major: each z slice is contiguous (a 3D texture layer)
 
 
 func inside(c: Vector3i) -> bool:
-	return c.x >= 0 and c.y >= 0 and c.z >= 0 and c.x < nx and c.y < ny and c.z < nz
+	return c.x >= 0 and c.y >= y_lo and c.z >= 0 and c.x < nx and c.y < ny and c.z < nz
 
 
 func is_open(c: Vector3i) -> bool:
@@ -260,9 +274,9 @@ func density(x: int, y: int, z: int) -> float:
 
 
 func _solid(x: int, y: int, z: int) -> float:
-	if x < 0 or y < 0 or z < 0 or x >= nx or y >= ny or z >= nz:
+	if x < 0 or y < y_lo or z < 0 or x >= nx or y >= ny or z >= nz:
 		return 0.0
-	return 1.0 if rho[(z * ny + y) * nx + x] >= AIR else 0.0
+	return 1.0 if rho[(z * (ny - y_lo) + y - y_lo) * nx + x] >= AIR else 0.0
 
 
 func walkable(c: Vector3i) -> bool:
@@ -285,21 +299,21 @@ static func room_q(d: Vector3, ax: Vector3) -> float:
 
 ## Carve a whole chamber at once (setting up a nest).
 func carve_room(center: Vector3, r: Vector3) -> void:
-	for y in range(maxi(0, int(center.y - r.y)), mini(ny, int(center.y + r.y) + 2)):
+	for y in range(maxi(y_lo, int(center.y - r.y)), mini(ny, int(center.y + r.y) + 2)):
 		for z in range(maxi(0, int(center.z - r.z)), mini(nz, int(center.z + r.z) + 2)):
 			for x in range(maxi(0, int(center.x - r.x)), mini(nx, int(center.x + r.x) + 2)):
 				if room_q(Vector3(x, y, z) - center, r) <= 1.0:
-					rho[(z * ny + y) * nx + x] = 0
+					rho[idx(Vector3i(x, y, z))] = 0
 					_mark(Vector3i(x, y, z))
 
 
 func carve_ellipsoid(center: Vector3, r: Vector3) -> void:
-	for y in range(maxi(0, int(center.y - r.y)), mini(ny, int(center.y + r.y) + 2)):
+	for y in range(maxi(y_lo, int(center.y - r.y)), mini(ny, int(center.y + r.y) + 2)):
 		for z in range(maxi(0, int(center.z - r.z)), mini(nz, int(center.z + r.z) + 2)):
 			for x in range(maxi(0, int(center.x - r.x)), mini(nx, int(center.x + r.x) + 2)):
 				var q := (Vector3(x, y, z) - center) / r
 				if q.length_squared() <= 1.0:
-					rho[(z * ny + y) * nx + x] = 0
+					rho[idx(Vector3i(x, y, z))] = 0
 					_mark(Vector3i(x, y, z))
 
 
@@ -320,14 +334,56 @@ func _mark(c: Vector3i) -> void:
 
 func _recount() -> void:
 	air = 0
-	proj.resize(nx * ny)
+	var h := hy()
+	proj.resize(nx * h)                 # (row y - y_lo)
 	proj.fill(0)
 	for z in nz:
-		for y in ny:
+		for y in h:
 			for x in nx:
-				if rho[(z * ny + y) * nx + x] < AIR:
+				if rho[(z * h + y) * nx + x] < AIR:
 					air += 1
 					proj[y * nx + x] += 1
+
+
+## Takes in the soil down to layer y (whole chunks of EXTEND_BY, never below y_floor): the ants dig near the bottom
+## of what is held. Every per-voxel array is laid out again with the new layers (solid, never dug) under the old.
+## Returns whether anything was added.
+func extend_down(y: int) -> bool:
+	var to := maxi(y_floor, y_lo - EXTEND_BY * maxi(1, ceili(float(y_lo - y) / EXTEND_BY)))
+	if to >= y_lo:
+		return false
+	var add := y_lo - to
+	var h0 := hy()
+	var h1 := h0 + add
+	var grow := func(a, fill_v):
+		var b = a.duplicate()
+		b.resize(nx * h1 * nz)
+		b.fill(fill_v)
+		if a.size() == nx * h0 * nz:
+			for z in nz:
+				for yy in h0:
+					var s0: int = (z * h0 + yy) * nx
+					var d0: int = (z * h1 + yy + add) * nx
+					for x in nx:
+						b[d0 + x] = a[s0 + x]
+		return b
+	rho = grow.call(rho, 255)
+	dug_at = grow.call(dug_at, -1000000)
+	dist = grow.call(dist, -1)
+	if not work_dist.is_empty():
+		work_dist = grow.call(work_dist, -1)
+	y_lo = to
+	_recount()
+	_stamp_hard()
+	for cz in range(0, ceili(nz / float(CHUNK)) + 1):
+		for cy in range(floori(to / float(CHUNK)) - 1, floori((to + add) / float(CHUNK)) + 1):
+			for cx in range(0, ceili(nx / float(CHUNK)) + 1):
+				dirty[Vector3i(cx, cy, cz)] = true
+	resized += 1
+	return true
+
+
+var resized := 0                        # counts extend_down (the view lays out its volumes again)
 
 
 func _bfs() -> void:
@@ -363,7 +419,7 @@ func depth_cm() -> float:
 
 ## Everything that affects how digging continues, so a loaded nest carries on exactly where it was.
 func to_dict() -> Dictionary:
-	return {"nx": nx, "ny": ny, "nz": nz, "slab": slab, "rho": rho, "dug_at": dug_at, "dist": dist,
+	return {"nx": nx, "ny": ny, "nz": nz, "y_lo": y_lo, "y_floor": y_floor, "slab": slab, "rho": rho, "dug_at": dug_at, "dist": dist,
 		"excavated": excavated, "chambers": chambers, "diggers": diggers, "entrance": entrance, "tick": tick,
 		"dist_age": _dist_age, "next_id": _next_id, "entrance_r": entrance_r, "work_left": work_left, "work_at": work_at, "work_dist": work_dist, "entrance_done": entrance_done,
 		"soil": soil}
@@ -374,6 +430,9 @@ func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
 	nx = d.nx
 	ny = d.ny
 	nz = d.nz
+	# (saves before v0.11.29: the soil ended at y = 0)
+	y_lo = int(d.get("y_lo", 0))                      # (checked: save_check._sizes)
+	y_floor = int(d.get("y_floor", y_lo))
 	slab = d.slab
 	rho = d.rho
 	dug_at = d.dug_at

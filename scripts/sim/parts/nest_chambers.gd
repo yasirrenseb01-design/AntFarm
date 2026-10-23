@@ -9,6 +9,7 @@ var spread_k := 1.0
 var wind_k := 1.0
 var lean_k := 1.0
 var bush_k := 1.0
+var heat_k := 1.0                 # (deeper under a hotter ground: set daily by the colony, sim_colony)
 
 
 ## Which part of the nest plan a voxel belongs to: 2 = inside a chamber, 1 = on a shaft toward a
@@ -81,7 +82,7 @@ func _work_in_chamber(ch: Dictionary, best: Array) -> int:
 	var ax := chamber_axes(ch)
 	var m := maxf(ax.x, ax.z) * _lobe_max(ch) + 1.0
 	var c: Vector3 = ch.c
-	for y in range(maxi(0, floori(c.y - ax.y - 1.0)), mini(ny, ceili(c.y + ax.y + 1.0) + 1)):
+	for y in range(maxi(y_lo, floori(c.y - ax.y - 1.0)), mini(ny, ceili(c.y + ax.y + 1.0) + 1)):
 		for z in range(maxi(0, floori(c.z - m)), mini(nz, ceili(c.z + m) + 1)):
 			for x in range(maxi(0, floori(c.x - m)), mini(nx, ceili(c.x + m) + 1)):
 				var v := Vector3i(x, y, z)
@@ -97,7 +98,7 @@ func _work_on_line(a: Vector3, b: Vector3, r: float, first: bool, best: Array) -
 	var ab := b - a
 	var lo := Vector3i(floori(minf(a.x, b.x) - r - 1.0), floori(minf(a.y, b.y) - r - 1.0), floori(minf(a.z, b.z) - r - 1.0))
 	var hi := Vector3i(ceili(maxf(a.x, b.x) + r + 1.0), ceili(maxf(a.y, b.y) + r + 1.0), ceili(maxf(a.z, b.z) + r + 1.0))
-	for y in range(maxi(0, lo.y), mini(ny - 1, hi.y + 1)):
+	for y in range(maxi(y_lo, lo.y), mini(ny - 1, hi.y + 1)):
 		for z in range(maxi(0, lo.z), mini(nz, hi.z + 1)):
 			for x in range(maxi(0, lo.x), mini(nx, hi.x + 1)):
 				var v := Vector3i(x, y, z)
@@ -126,7 +127,7 @@ func _face_at(v: Vector3i, pri: int, best: Array) -> void:
 
 ## Steps from every voxel an ant can walk to (along the walls) to work_at, so diggers walk the tunnels to it.
 func _work_paths() -> void:
-	work_dist.resize(nx * ny * nz)
+	work_dist.resize(nx * hy() * nz)
 	work_dist.fill(-1)
 	if work_at.x < 0 or not inside(work_at) or not is_open(work_at):
 		return
@@ -217,7 +218,7 @@ func _lowest_chamber() -> float:
 ## The curve through ~15 cm at 100 workers is ours [inference]: ~5 cm at 10, ~20 cm at 300, ~25 cm at 1000.
 func target_depth(workers: int) -> float:
 	var cm := 15.0 + 10.0 * log(maxf(float(workers), 1.0) / 100.0) / log(10.0)
-	return clampf(cm * depth_k / (VOXEL_MM / 10.0), 0.0, ny - 6.0)
+	return clampf(cm * depth_k * heat_k / (VOXEL_MM / 10.0), 0.0, float(ny - y_floor) - 6.0)
 
 
 ## Called by the colony once a day. Chambers grow while brood is crowded; a growing colony also
@@ -282,7 +283,7 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 		var low_c := float(ny)
 		for ch in chambers:
 			low_c = minf(low_c, float(ch.c.y))
-		deeper = low_c - 9.0 >= maxf(float(ny) - target_depth(workers), 8.0)
+		deeper = low_c - 9.0 >= maxf(float(ny) - target_depth(workers), float(y_floor) + 8.0)
 	var crowded := load > floor_cap * 0.7
 	if pending > 0 or chambers.size() >= 32 or (chambers.size() >= wanted and not short and not crowded and not deeper):
 		return event
@@ -301,7 +302,7 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 	for ch in chambers:
 		if ch.c.y < deepest.c.y:
 			deepest = ch
-	var floor_y := maxf(float(ny) - target_depth(workers), 8.0)     # how far down it means to go (voxel y)
+	var floor_y := maxf(float(ny) - target_depth(workers), float(y_floor) + 8.0)     # how far down it means to go (voxel y)
 	var at_bottom := float(deepest.c.y) - 9.0 < floor_y              # no room for another bead below
 	var low := chambers.filter(func(ch): return float(ch.c.y) < float(deepest.c.y) + 12.0)
 	for attempt in 60:
@@ -330,8 +331,10 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 		if slab:
 			site = Vector3(src.c.x + (1.0 if cos(hd) >= 0.0 else -1.0) * Vector2(site.x - src.c.x, site.z - src.c.z).length(),
 				site.y, src.c.z)
-		if site.x < 8 or site.x > nx - 9 or site.y < 6 or site.y > ny - 9 or site.z < (1 if slab else 8) or site.z > nz - (2 if slab else 9):
+		if site.x < 8 or site.x > nx - 9 or site.y < y_floor + 6 or site.y > ny - 9 or site.z < (1 if slab else 8) or site.z > nz - (2 if slab else 9):
 			continue
+		if site.y - 10.0 < float(y_lo):
+			extend_down(int(site.y) - 12)         # (the soil down there, taken in before it is planned in)
 		if hard_near(site, 6.0):
 			continue                                      # not on a stone or a root ...
 		var from: Vector3 = _rim_toward(src, (site - Vector3(src.c)) * Vector3(1, 0, 1))

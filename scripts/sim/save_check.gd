@@ -8,6 +8,7 @@ extends RefCounted
 
 const Sim := preload("res://scripts/sim/simulation.gd")
 const Ant := preload("res://scripts/sim/ant.gd")
+const NestVoxels := preload("res://scripts/sim/parts/nest_voxels.gd")
 
 const MAX_ITEMS := 200000          # longest list (ants, eggs, journal lines ...) a save may hold
 const MAX_SIDE := 1024             # voxels along one side of the nest
@@ -16,7 +17,8 @@ const MAX_VOXELS := 8000000
 ## read with a default by the loader (saves older than these keys)
 const OPTIONAL := ["sim.water", "sim.nest.entrance_r", "sim.nest.work_left", "sim.nest.work_at", "sim.nest.work_dist",
 	"sim.nest.entrance_done", "sim.plot_seed", "sim.nest_pos", "sim.midden_pos", "sim.traits", "sim.nest.soil",
-	"sim.brood_at", "sim.queen_at", "sim.queen_stay", "sim.ch_mean"]
+	"sim.brood_at", "sim.queen_at", "sim.queen_stay", "sim.ch_mean", "sim.nest.y_lo", "sim.nest.y_floor",
+	"sim.surf_mean"]
 ## read key by key with defaults by the loader (colony_trait(), soil.get()): what they hold is checked, nothing in them
 ## is required. (A save from before them holds {} there, and is saved again so; requiring their keys, the keeper's
 ## colonies from before v0.11.18 - and with the traits added since, every one - were given up on as unreadable:
@@ -87,7 +89,13 @@ static func _sizes(d: Dictionary) -> String:
 	for k in ["nx", "ny", "nz"]:
 		if not n[k] is int or n[k] < 1 or n[k] > MAX_SIDE:
 			return "nest.%s: %s" % [k, n[k]]
-	var cells: int = n.nx * n.ny * n.nz
+	var y_lo = n.get("y_lo", 0)
+	var y_floor = n.get("y_floor", y_lo)
+	if not y_lo is int or y_lo > 0 or y_lo < -NestVoxels.DEEP_LAYERS:
+		return "nest.y_lo: %s" % y_lo
+	if not y_floor is int or y_floor > y_lo or y_floor < -NestVoxels.DEEP_LAYERS:
+		return "nest.y_floor: %s" % y_floor
+	var cells: int = n.nx * (n.ny - y_lo) * n.nz       # (the layers held: y_lo up)
 	if cells > MAX_VOXELS:
 		return "nest: %d voxels" % cells
 	for k in ["rho", "dug_at", "dist"]:

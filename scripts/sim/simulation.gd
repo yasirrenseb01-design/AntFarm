@@ -88,7 +88,7 @@ func to_dict() -> Dictionary:
 		"version": SAVE_VERSION, "species": sp["id"], "scenario": scenario, "start_doy": start_doy, "cold_days": cold_days, "fridge_on": fridge_on, "rng_seed": rng.seed, "rng_state": rng.state, "tick": tick,
 		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(), "alarm": alarm.to_dict(), "next_cid": _next_cid,
 		"plot_seed": plot_seed, "nest_pos": nest_pos, "midden_pos": midden_pos, "traits": traits,
-		"brood_at": brood_at, "queen_at": queen_at, "queen_stay": _queen_stay, "ch_mean": ch_mean,
+		"brood_at": brood_at, "queen_at": queen_at, "queen_stay": _queen_stay, "ch_mean": ch_mean, "surf_mean": surf_mean,
 		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
 		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "water": water, "mold": mold, "heater": heater, "enemies": enemies, "enemy_rate": enemy_rate,
@@ -135,6 +135,7 @@ func from_dict(d: Dictionary) -> void:
 				brood_at[k] = int(ba[k])
 	queen_at = int(d.get("queen_at", -1)) if (d.get("queen_at") is int or d.get("queen_at") is float) else -1
 	_queen_stay = float(d.get("queen_stay", 0.0)) if (d.get("queen_stay") is int or d.get("queen_stay") is float) else 0.0
+	surf_mean = clampf(float(d.get("surf_mean", -1000.0)), -1000.0, 80.0) if (d.get("surf_mean", -1000.0) is float or d.get("surf_mean", -1000.0) is int) else -1000.0
 	ch_mean = d.get("ch_mean") if d.get("ch_mean") is PackedFloat32Array and (d.get("ch_mean") as PackedFloat32Array).size() <= 64 else PackedFloat32Array()
 	traits = {}
 	var tt = d.get("traits", {})

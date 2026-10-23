@@ -64,7 +64,7 @@ static func _vol(nest, p: Vector3) -> float:
 		for dy in 2:
 			for dx in 2:
 				var w := (fx if dx == 1 else 1.0 - fx) * (fy if dy == 1 else 1.0 - fy) * (fz if dz == 1 else 1.0 - fz)
-				var c := Vector3i(clampi(x0 + dx, 0, nest.nx - 1), clampi(y0 + dy, 0, nest.ny - 1), clampi(z0 + dz, 0, nest.nz - 1))
+				var c := Vector3i(clampi(x0 + dx, 0, nest.nx - 1), clampi(y0 + dy, nest.y_lo, nest.ny - 1), clampi(z0 + dz, 0, nest.nz - 1))
 				v += w * float(rho[nest.idx(c)]) / 255.0
 	return v
 

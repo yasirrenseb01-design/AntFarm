@@ -49,7 +49,7 @@ func _ease_camera(delta: float) -> void:
 		zoom_by(1.0 - 1.6 * delta)
 	if _key(KEY_MINUS) or _key(KEY_KP_SUBTRACT):
 		zoom_by(1.0 + 1.6 * delta)
-	var lo := Vector3(-30, -20, -30)
+	var lo := Vector3(-30, nest.y_lo - 20, -30)
 	var hi := Vector3(nest.nx + 30, nest.ny + 30, nest.nz + 30)
 	target_t = target_t.clamp(lo, hi)
 	var k := 1.0 - exp(-10.0 * delta)

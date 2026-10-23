@@ -5,6 +5,7 @@ render_mode cull_back, diffuse_burley;
 // walls and the block's outer skin are left out, so you look straight into every room at once.
 
 uniform vec3 box_max = vec3(63.0, 71.0, 63.0);   // voxel centre of the far corner
+uniform float box_min_y = 0.0;                   // the lowest layer of the soil held (a deep garden nest: below 0)
 uniform float top_y = 71.0;
 uniform float humidity = 0.6;
 uniform sampler2D grain : filter_linear_mipmap, repeat_enable;
@@ -41,7 +42,7 @@ vec3 soil(vec3 p, vec3 n) {
 
 void fragment() {
 	// the block's outer skin sits half a voxel outside the outermost voxel centres
-	if (w.x < -0.05 || w.z < -0.05 || w.y < -0.05 || w.x > box_max.x + 0.05 || w.z > box_max.z + 0.05
+	if (w.x < -0.05 || w.z < -0.05 || w.y < box_min_y - 0.05 || w.x > box_max.x + 0.05 || w.z > box_max.z + 0.05
 			|| w.y > box_max.y + 0.05) {
 		discard;
 	}

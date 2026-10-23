@@ -191,10 +191,12 @@ func _gap_under(xf: Transform3D) -> float:
 
 ## The feet's floor map at p, as the shader samples it (trilinear over the voxels; 0 open, 1 solid).
 func _foot_at(p: Vector3) -> float:
-	var rho: PackedByteArray = _foot_rho if not _foot_rho.is_empty() else nest.rho
+	# (the feet's map, unless the soil was just taken in deeper and it is not laid out again yet)
+	var rho: PackedByteArray = _foot_rho if _foot_rho.size() == nest.rho.size() else nest.rho
 	var nx: int = nest.nx
 	var ny: int = nest.ny
 	var nz: int = nest.nz
+	var y_lo: int = nest.y_lo
 	var x0 := floori(p.x)
 	var y0 := floori(p.y)
 	var z0 := floori(p.z)
@@ -206,9 +208,9 @@ func _foot_at(p: Vector3) -> float:
 		var z := clampi(z0 + dz, 0, nz - 1)
 		var wz := fz if dz == 1 else 1.0 - fz
 		for dy in 2:
-			var y := clampi(y0 + dy, 0, ny - 1)
+			var y := clampi(y0 + dy, y_lo, ny - 1)
 			var wy := (fy if dy == 1 else 1.0 - fy) * wz
-			var row := (z * ny + y) * nx
+			var row := (z * (ny - y_lo) + y - y_lo) * nx
 			v += wy * ((1.0 - fx) * rho[row + clampi(x0, 0, nx - 1)] + fx * rho[row + clampi(x0 + 1, 0, nx - 1)])
 	return v / 255.0
 

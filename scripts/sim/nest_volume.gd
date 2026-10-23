@@ -71,7 +71,9 @@ func _bite(s: Vector3i) -> void:
 	_mark(s)
 	if rho[i] < AIR:
 		air += 1
-		proj[s.y * nx + s.x] += 1
+		proj[(s.y - y_lo) * nx + s.x] += 1
+		if s.y < y_lo + 4 and y_lo > y_floor:
+			_extend_to = s.y - EXTEND_BY         # (near the bottom of the soil held: more of it, before the next step)
 		var best := -1
 		for d in DIRS:
 			var n := s + d
@@ -80,6 +82,9 @@ func _bite(s: Vector3i) -> void:
 				if dn >= 0 and (best < 0 or dn < best):
 					best = dn
 		dist[i] = best + 1 if best >= 0 else -1
+
+
+var _extend_to := 100000                # a layer to take the soil in down to, at the next step (_bite)
 
 
 ## Whether the work face (work_at) still has planned soil beside it to dig.
@@ -117,6 +122,9 @@ func _spawn_digger() -> void:
 ## One digging step for every active digger. `wanted` = how many diggers the colony assigns.
 func step(now: int, wanted: int, target_air: int, humidity: float) -> void:
 	tick = now
+	if _extend_to < 100000:
+		extend_down(_extend_to)
+		_extend_to = 100000
 	_dist_age += 1
 	if _dist_age > 120:
 		_dist_age = 0

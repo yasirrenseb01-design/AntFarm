@@ -9,6 +9,7 @@ uniform float humidity = 0.6;
 uniform sampler2D grain : filter_linear_mipmap, repeat_enable;
 uniform sampler3D vol : filter_linear;      // soil voxels (1 = solid)
 uniform vec3 vol_size = vec3(64.0, 72.0, 64.0);
+uniform vec3 vol_org = vec3(0.0);           // the voxel the volume starts at (a deep garden nest: below y = 0)
 // what is in the soil (nest_voxels.gd soil): stones (xyz, radius) and roots (a.xyz, radius; b.xyz), voxel units, and
 // where the clay and the sand start (voxels below the top)
 uniform int n_stones = 0;
@@ -22,10 +23,11 @@ uniform float sand_top = 41.0;
 // The soil as the mesher sees it (nest_voxels.gd density()): each voxel solid or open, softened with its six
 // neighbours - from the interpolated voxels (7 samples; close to interpolating the softened ones).
 float raw(vec3 p) {
-	if (any(lessThan(p, vec3(-0.5))) || any(greaterThan(p, vol_size - 0.5))) {
+	vec3 q = p - vol_org;
+	if (any(lessThan(q, vec3(-0.5))) || any(greaterThan(q, vol_size - 0.5))) {
 		return 0.0;                     // outside the block counts as open
 	}
-	return texture(vol, (p + 0.5) / vol_size).r;
+	return texture(vol, (q + 0.5) / vol_size).r;
 }
 float soft(vec3 p) {
 	float r = raw(p);

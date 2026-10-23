@@ -27,11 +27,16 @@ func _init() -> void:
 		var nx: int = nest.nx
 		var ny: int = nest.ny
 		var nz: int = nest.nz
-		var img := Image.create((nx * 2 + 3) * S, maxi(ny, nz) * S, false, Image.FORMAT_RGB8)
+		# (a garden nest's soil goes down to y_floor - below 0 - held from y_lo up; the soil not held yet drawn darker)
+		var yf: int = nest.y_floor
+		var hh: int = ny - yf
+		var img := Image.create((nx * 2 + 3) * S, maxi(hh, nz) * S, false, Image.FORMAT_RGB8)
 		img.fill(Color(0.36, 0.25, 0.16))
+		if nest.y_lo > yf:
+			img.fill_rect(Rect2i(0, (ny - nest.y_lo) * S, nx * S, (nest.y_lo - yf) * S), Color(0.24, 0.17, 0.11))
 		# front: x across, y down (top of the block at the top); the nearest open cell along z, darker further back
 		for x in nx:
-			for y in ny:
+			for y in range(nest.y_lo, ny):
 				var hit := -1
 				for z in nz:
 					if nest.is_open(Vector3i(x, y, z)):
@@ -45,18 +50,18 @@ func _init() -> void:
 		for x in nx:
 			for z in nz:
 				var hit := -1
-				for y in range(ny - 1, -1, -1):
+				for y in range(ny - 1, nest.y_lo - 1, -1):
 					if nest.is_open(Vector3i(x, y, z)):
 						hit = y
 						break
 				if hit >= 0:
-					var k := 0.35 + 0.65 * float(hit) / float(ny)
+					var k := 0.5 + 0.5 * float(hit - nest.y_lo) / float(ny - nest.y_lo)
 					img.fill_rect(Rect2i(ox + x * S, z * S, S, S), Color(0.98, 0.88, 0.66) * k)
 		# open cells outside today's plan (no chamber, shaft or widened entrance shaft there - the founding cell and
 		# the first narrow shaft count too): only counted
 		var unplanned := 0
 		for x in nx:
-			for y in ny:
+			for y in range(nest.y_lo, ny):
 				for z in nz:
 					var v := Vector3i(x, y, z)
 					if nest.is_open(v) and y < ny - 1 and nest._plan_at(v) == 0:
@@ -70,6 +75,6 @@ func _init() -> void:
 			img.fill_rect(Rect2i(ox + int(c.x) * S - 3, int(c.z) * S - 3, 7, 7), col)
 		var path := "res://shots/layout/%s_y%d.png" % [name, slot]
 		img.save_png(path)
-		print("%s: day %s workers %d chambers %d traits depth %s spread %s entrance %s -> %s" % [name, str(sim.summary().day), sim.workers.size(),
-			nest.chambers.size(), str(nest.depth_k), str(nest.spread_k), nest.entrance, path])
+		print("%s: day %s workers %d chambers %d y_lo %d traits depth %s spread %s entrance %s -> %s" % [name, str(sim.summary().day), sim.workers.size(),
+			nest.chambers.size(), nest.y_lo, str(nest.depth_k), str(nest.spread_k), nest.entrance, path])
 	quit()

@@ -71,6 +71,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 ถ้าฟังก์ชันใหม่ต้องเรียกฟังก์ชันชั้นสูงกว่า ให้ย้ายฟังก์ชันใหม่ขึ้นไปอยู่ชั้นนั้น (Godot จะ error "Function not found in base self")
 แยกไฟล์เพิ่มได้ด้วย `python tools/dev/split_gd.py plan.json` (ดูหัวไฟล์)
 
+- ดินที่โหลด: `nest_voxels` ชั้น `y_lo`..`ny-1` (สวน: ลงไปได้ถึง `y_floor` = ny−200, ใต้ y = 0; `extend_down`), `idx()` นับจาก `y_lo`, `hy()` = ความสูงที่โหลด; ภาพใช้ `vol_org`/`vol_size` (`nest_scene._set_vol_shape`)
 - ทรงรัง: `sim/parts/nest_chambers.gd` `_plan_new` (ห้องลูกปัดตามอุโมงค์ + กิ่งที่ก้น; นิสัย wind/lean/bush), ผนังห้องเป็นแฉก `_lobe`
 
 ## หน่วยวัด

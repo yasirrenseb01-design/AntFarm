@@ -927,7 +927,7 @@ func _save_nest_png(path: String) -> void:
 		for x in nv.nx:
 			var open := 0
 			for z in nv.nz:
-				if nv.rho[(z * nv.ny + y) * nv.nx + x] < nv.AIR:
+				if nv.is_open(Vector3i(x, y, z)):
 					open += 1
 			var depth: float = float(nv.ny - y) / nv.ny
 			var soil: Color = Color(0.55, 0.42, 0.3).lerp(Color(0.62, 0.45, 0.32), depth)

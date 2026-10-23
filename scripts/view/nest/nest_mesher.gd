@@ -24,6 +24,8 @@ static func sample(nest, k: Vector3i) -> PackedFloat32Array:
 	var nx: int = nest.nx
 	var ny: int = nest.ny
 	var nz: int = nest.nz
+	var y_lo: int = nest.y_lo                 # (the soil held: y_lo .. ny - 1; below it counts as outside)
+	var hy: int = ny - y_lo
 	var air: int = nest.AIR
 	var solid := PackedFloat32Array()
 	solid.resize(B * B * B)
@@ -32,9 +34,9 @@ static func sample(nest, k: Vector3i) -> PackedFloat32Array:
 		for y in B:
 			var vy: int = o.y + y - 2
 			var row := (z * B + y) * B
-			if vz < 0 or vy < 0 or vz >= nz or vy >= ny:
+			if vz < 0 or vy < y_lo or vz >= nz or vy >= ny:
 				continue                      # outside the block counts as air (0)
-			var base := (vz * ny + vy) * nx
+			var base := (vz * hy + vy - y_lo) * nx
 			for x in B:
 				var vx: int = o.x + x - 2
 				if vx >= 0 and vx < nx and rho[base + vx] >= air:

@@ -21,6 +21,7 @@ var _queen_stay := 0.0                         # days since she last moved
 var _brood_stay := {"larvae": 0.0, "pupae": 0.0}
 var _ch_t := PackedFloat32Array()              # each chamber's temperature this colony tick (-1000: not dug yet)
 var ch_mean := PackedFloat32Array()            # and over about the last day (the queen goes by this, not by the hour)
+var surf_mean := -1000.0                       # the ground's daytime temperature over about the last ten days (°C)
 
 
 func _dev_rate(t: float) -> float:
@@ -64,6 +65,11 @@ func dev_in(c: int) -> float:
 ## Once a colony tick: the chambers' temperatures, then the queen's and the brood's chambers, and the nurses carry
 ## a few of the brood that are not where they should be.
 func _place_brood(dt: float) -> void:
+	var tod := time_of_day()
+	if tod > 0.33 and tod < 0.79:
+		# (by day: the lamps-on means of the soil-column study - García Ibarra et al. 2024 - are what nest depth went by)
+		var t: float = climate.surface()
+		surf_mean = t if surf_mean < -999.0 else surf_mean + (t - surf_mean) * minf(1.0, dt / (10.0 * 0.46))
 	var n: int = nest.chambers.size()
 	_ch_t.resize(n)
 	var had := ch_mean.size()

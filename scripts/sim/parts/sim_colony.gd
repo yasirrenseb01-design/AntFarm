@@ -25,6 +25,9 @@ func _new_day() -> void:
 		queen["rested"] = maxf(0.0, was - 1.0 / 300.0)
 		if scenario == "keeper" and was >= 0.5 and queen.rested < 0.5 and not fridge_on:
 			_log(T.rest_low, "bad")
+	# a hotter ground: a deeper nest. Young L. niger colonies under daytime surface means of ~22, ~36 and ~48 °C dug
+	# 13.7, 17.2 and 19.3 cm down, their chambers lower (García Ibarra et al. 2024) - the line through them, by 22 °C 1
+	nest.heat_k = clampf(1.0 + 0.016 * ((surf_mean if surf_mean > -999.0 else 22.0) - 22.0), 0.9, 1.45)
 	match nest.plan_chambers(eggs.size() + larvae.size() + pupae.size(), workers.size(), target_air()):
 		"planned":
 			_log(T.chamber_planned, "ok", [nest.chambers.size()])
