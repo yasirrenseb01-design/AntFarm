@@ -5,3 +5,5 @@ build/
 shots/
 *.exe
 *.tmp
+# research papers (PDFs stay local - copyright; reference/papers/README.md lists them)
+reference/papers/*.pdf
