@@ -152,6 +152,11 @@ func chamber_axes(ch: Dictionary) -> Vector3:
 		return Vector3(minf(g, 10.0), clampf(2.2 + g * 0.08, 2.2, 3.0), 1.0)
 	# (wide across as a share of its length: the swellings along an X-rayed L. niger tunnel are rounder than the
 	# chambers planned before v0.11.30 - those keep their 0.6)
+	if ch.has("round"):
+		# (since v0.11.31 the new ones are swellings more than halls: shorter for their size and a little higher -
+		# side on they looked like thin plates beside the X-rayed lumps; García Ibarra et al. 2024 Fig S2-S4)
+		var l := g * 0.78
+		return Vector3(l, clampf(2.0 + g * 0.08, 2.0, 2.8), maxf(2.6, l * float(ch.round)))
 	return Vector3(g, clampf(1.7 + g * 0.06, 1.7, 2.4), maxf(2.6, g * float(ch.get("round", 0.6))))
 
 
@@ -217,9 +222,11 @@ func _lowest_chamber() -> float:
 ## How deep (voxels below the surface) the nest's lowest chamber reaches for a colony of this size, at most the
 ## block's depth. Young L. niger colonies of ~100 workers dug 13.7-19.3 cm down in soil columns, within the first
 ## week (García Ibarra et al. 2024: deeper with a warmer surface); nests sink as colonies grow (Tschinkel 2015).
-## The curve through ~15 cm at 100 workers is ours [inference]: ~5 cm at 10, ~20 cm at 300, ~25 cm at 1000.
+## They went no deeper as they grew to 250-790 workers in the 100 days: depth rises only slowly with colony size here
+## [inference: ~15 cm at 100 workers, ~11 cm at 10, ~17 cm at 300, ~19 cm at 1000 - at 10 cm a tenfold, the
+## nests reached the bottom of the 30 cm soil and spread along it in a flat sheet]
 func target_depth(workers: int) -> float:
-	var cm := 15.0 + 10.0 * log(maxf(float(workers), 1.0) / 100.0) / log(10.0)
+	var cm := 15.0 + 4.0 * log(maxf(float(workers), 1.0) / 100.0) / log(10.0)
 	return clampf(cm * depth_k * heat_k / (VOXEL_MM / 10.0), 0.0, float(ny - y_floor) - 6.0)
 
 
@@ -243,7 +250,9 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	# chambers rather than ever-bigger ones. (L. neoniger chambers are 1-2 cm wide, 3-5 cm long - Wang et al. 1995 - but
 	# the X-rayed young L. niger nests show smaller swellings along the tunnel, a few mm high: García Ibarra et al. 2024;
 	# up to ~3.3 cm they were wide flat discs that hid the tunnel between them [inference: between the two])
-	var cap := clampf(6.0 + workers / 50.0, 6.0, 8.0)
+	# (and bigger in a big colony: with chambers too few or too small for its numbers the diggers made room anywhere,
+	# and widened the tunnel to a trench - 500 workers, 2026-10-24)
+	var cap := clampf(6.0 + workers / 80.0, 6.0, 11.0)
 	# the first workers open up and widen the founding cell they share with the queen and her brood (~0.25 voxel
 	# a worker) - only while it is the nest's one chamber; after that new chambers take the growth
 	for ch in chambers:
@@ -287,7 +296,7 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 			low_c = minf(low_c, float(ch.c.y))
 		deeper = low_c - 14.0 >= maxf(float(ny) - target_depth(workers), float(y_floor) + 8.0)
 	var crowded := load > floor_cap * 0.7
-	if pending > 0 or chambers.size() >= 32 or (chambers.size() >= wanted and not short and not crowded and not deeper):
+	if pending > 0 or chambers.size() >= 44 or (chambers.size() >= wanted and not short and not crowded and not deeper):
 		return event
 	return _plan_new(deeper, workers, event)
 
@@ -331,8 +340,12 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 			# a branch: off to the side, level or a little down (along the bottom where there is no more room)
 			hd = rng.randf() * TAU
 			# (a branch is a gallery out to a chamber, often long - the level runs at the bottom of the L- and T-shaped nests)
-			var reach := rng.randf_range(float(src.goal) + 8.0, float(src.goal) + 26.0) * spread_k
-			var dy := rng.randf_range(-1.0, 1.5) if float(src.c.y) - 5.0 < floor_y else -rng.randf_range(0.0, 4.0)
+			# - or, as often in a bushy-habited nest, a chamber close beside it: the clusters at the bottom of A5, B6
+			var near := rng.randf() < clampf(0.45 * bush_k, 0.15, 0.75)
+			var reach := (rng.randf_range(float(src.goal) + 3.0, float(src.goal) + 8.0) if near
+				else rng.randf_range(float(src.goal) + 8.0, float(src.goal) + 26.0)) * spread_k
+			# (a little up or down at the bottom too: level every time, they lay in one flat sheet along it)
+			var dy := rng.randf_range(-3.5, 3.0) if float(src.c.y) - 5.0 < floor_y else -rng.randf_range(0.0, 4.0)
 			site = Vector3(src.c) + Vector3(cos(hd) * reach, dy, sin(hd) * reach)
 		if slab:
 			site = Vector3(src.c.x + (1.0 if cos(hd) >= 0.0 else -1.0) * Vector2(site.x - src.c.x, site.z - src.c.z).length(),
@@ -357,7 +370,7 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 		for ch in chambers:
 			# (clear of the other chambers: those about level with it by their length, those above or below by height)
 			var dd: Vector3 = site - Vector3(ch.c)
-			if absf(dd.y) < 6.0 and Vector2(dd.x, dd.z).length() < float(ch.goal) + 6.0:
+			if absf(dd.y) < 6.0 and Vector2(dd.x, dd.z).length() < chamber_axes(ch).x + 4.0:
 				ok = false
 				break
 		if ok:

@@ -6,7 +6,7 @@ extends "res://scripts/view/ui/parts/hud_panel.gd"
 const AntTip := preload("res://scripts/view/ui/ant_tip.gd")
 const Guide := preload("res://scripts/view/ui/guide.gd")
 const Sounds := preload("res://scripts/view/ui/sounds.gd")
-const Lofi := preload("res://scripts/view/ui/lofi.gd")
+const Music := preload("res://scripts/view/ui/music.gd")
 
 
 func setup(s, w) -> void:
@@ -142,7 +142,7 @@ func refresh(delta: float) -> void:
 		# background music, at the keeper's volume (not in test shots and runs)
 		var testing := Array(OS.get_cmdline_user_args()).any(func(a): return a.begins_with("--shot") or a.begins_with("--selftest"))
 		if not testing:
-			music = Lofi.new()
+			music = Music.new()
 			music.volume = float(settings.get("music", 0.6))
 			add_child(music)
 	if _fps_label != null and _fps_label.visible:
