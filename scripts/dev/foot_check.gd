@@ -213,7 +213,7 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 		if debug:
 			print("    leg %d%s planted %s gd0 %.2f upy %.2f fmode %d reach %.2f  T %s  tipErr %.3f  gd_tip %.2f" % [li, "R" if side > 0 else "L", planted, gd, M.basis.y.y / sc, fmode, reach,
 				M * T, (A2 - TA).length(), _ground_dy(nest, M * tip, upw)])
-		out.append([M * tip, planted, int(li)])
+		out.append([M * tip, planted, int(li), (tip - T).length(), M * T, M * Cy])
 	return out
 
 
@@ -335,6 +335,18 @@ static func measure(nv, tally: Dictionary) -> void:
 				_note(tally, "brood", tip)
 				continue
 			var gd := _ground_dy(nest, tip, upw)
+			# (through the soil's surface for real: in the soil itself - not the feet's map, which adds the brood and the
+			# nestmates climbed on - by more than SUNK whichever way the surface is; along the ant's up alone, a foot set on
+			# the wall beside it or on the ceiling curving over it counted as deep in. The keeper's target, 2026-10-24: <= 1%)
+			var rho_map: PackedByteArray = rho
+			rho = nest.rho
+			if _vol(nest, tip) >= 0.5 and not _open_within(nest, tip, SUNK):
+				tally.foot_pen = int(tally.get("foot_pen", 0)) + 1
+				var why := "the leg could not reach its foothold" if float(f[3]) > 0.1 else (
+					"its foothold in the soil" if _vol(nest, f[4]) >= 0.55 else "its foothold on the surface")
+				why += ", the leg's root in the soil too" if _vol(nest, f[5]) >= 0.5 else ""
+				tally["pw:" + why] = int(tally.get("pw:" + why, 0)) + 1
+			rho = rho_map
 			if (gd > SUNK or gd < -AIR_GAP) and where == "floor" and tally.has("debug") and int(tally.get("dbg_floor", 0)) < 8:
 				tally.dbg_floor = int(tally.get("dbg_floor", 0)) + 1
 				print("  FLOOR foot gd %.2f leg %d  ant %s up %s body_gap %.2f custom %s" % [gd, f[2], M.origin, upw, body_gap, mm.get_instance_custom_data(i)])
@@ -402,11 +414,28 @@ static func _note(tally: Dictionary, kind: String, at: Vector3) -> void:
 	tally.foot_at = w
 
 
+## Whether there is open space within r of p (14 directions, at r/2 and r): the surface close by.
+static func _open_within(nest, p: Vector3, r: float) -> bool:
+	for d in [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(0, 0, -1),
+			Vector3(1, 1, 1), Vector3(1, 1, -1), Vector3(1, -1, 1), Vector3(1, -1, -1), Vector3(-1, 1, 1), Vector3(-1, 1, -1),
+			Vector3(-1, -1, 1), Vector3(-1, -1, -1)]:
+		var u: Vector3 = (d as Vector3).normalized()
+		if _vol(nest, p + u * r * 0.5) < 0.5 or _vol(nest, p + u * r) < 0.5:
+			return true
+	return false
+
+
 static func report(tally: Dictionary) -> String:
 	var n := maxf(1.0, float(tally.get("feet", 0)))
 	var s := "planted feet %d: in the air %.2f%% (of them far from any soil %.2f%%), in the soil %.2f%%, in the brood %.2f%%" % [
 		int(tally.get("feet", 0)), 100.0 * float(tally.get("foot_air", 0)) / n, 100.0 * float(tally.get("foot_air_far", 0)) / n,
 		100.0 * float(tally.get("foot_soil", 0)) / n, 100.0 * float(tally.get("foot_brood", 0)) / n]
+	s += "
+    planted feet through the soil's surface (in by more than %.2f whichever way): %.2f%%" % [SUNK, 100.0 * float(tally.get("foot_pen", 0)) / n]
+	for k in tally:
+		if String(k).begins_with("pw:"):
+			s += "
+      through the surface: %5d  %s" % [tally[k], String(k).substr(3)]
 	for bk in ["body still", "body bobbing", "body moving up/down"]:
 		if tally.has("vn:" + bk):
 			s += "
