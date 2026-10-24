@@ -15,6 +15,7 @@ var _sel_mm: MultiMesh            # its white outline
 var _sel_shader_mat: ShaderMaterial
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const GroundData := preload("res://scripts/view/outworld/ground_data.gd")
+const SceneryDraw := preload("res://scripts/view/outworld/scenery_draw.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units
 const ANT_SCALE := 1.1
@@ -294,82 +295,9 @@ func _box(size: Vector3, pos: Vector3, mat: Material) -> void:
 	add_child(mi)
 
 
-## Litter, pebbles, moss, grass and the crater/midden grains, from the top-down view's layout.
+## Litter, pebbles, moss, grass, weeds, the garden's big stones and the crater/midden grains (scenery_draw.gd).
 func _build_scenery() -> void:
-	_props_h.setup(Vector2(sim.WORLD) * U)
-	for l in ground.litter:
-		if l.twig:
-			_props_h.stamp_twig(l.p * U, l.a, l.l * 2.0 * U, 0.85, 0.5 + 0.05)
-		else:
-			_props_h.stamp_leaf(l.p * U, l.a, l.l * U, l.w * U, l.curl, 0.05)
-	for p in ground.pebbles:
-		var pr: Vector2 = p.r * U
-		_props_h.stamp_cap(p.p * U, p.a, pr, minf(pr.x, pr.y) * 0.65)
-	for m in ground.moss:
-		for b in m:
-			_props_h.stamp_cap(b[0] * U, 0.0, Vector2.ONE * b[1] * U, b[1] * U * 0.55 + 0.05)
-	_props_h.keep_litter()
-	for l in ground.litter:
-		var mi := MeshInstance3D.new()
-		var ang: float = l.a
-		if l.twig:
-			mi.mesh = Props.twig(l.l * 2.0 * U, int(l.p.x * 7 + l.p.y))
-		else:
-			mi.mesh = Props.leaf(l.l * U, l.w * U, l.c, l.curl)
-		mi.material_override = _litter_mat if not l.twig else _prop_mat
-		mi.position = _on_ground(l.p, 0.05)
-		mi.basis = Basis(Vector3.UP, -ang)
-		add_child(mi)
-	var stone := _multimesh(_blob_mesh(Vector3.ONE), _vc_mat(0.9, false, false), true)
-	stone.instance_count = ground.pebbles.size()
-	for i in ground.pebbles.size():
-		var p: Dictionary = ground.pebbles[i]
-		var r: Vector2 = p.r * U
-		var b := Basis(Vector3.UP, -p.a).scaled(Vector3(r.x, minf(r.x, r.y) * 0.65, r.y))
-		stone.set_instance_transform(i, Transform3D(b, _on_ground(p.p, 0.0)))
-		stone.set_instance_color(i, (p.c as Color).darkened(0.3).srgb_to_linear())
-	var moss := _multimesh(_blob_mesh(Vector3.ONE), _vc_mat(1.0, false, false), true)
-	var blobs := []
-	for m in ground.moss:
-		blobs.append_array(m)
-	moss.instance_count = blobs.size()
-	for i in blobs.size():
-		var b: Array = blobs[i]
-		var r: float = b[1] * U
-		moss.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(r, r * 0.55, r)), _on_ground(b[0], 0.05)))
-		moss.set_instance_color(i, Color(0.22, 0.33, 0.12).lerp(Color(0.36, 0.48, 0.18), b[2]).srgb_to_linear())
-	var grass := _multimesh(Props.blade(), _grass_mat, true)
-	var blades := []
-	var gr := RandomNumberGenerator.new()
-	gr.seed = 777 + sim.plot_seed
-	for t in ground.tufts:
-		var n := gr.randi_range(9, 16)
-		for k in n:
-			var yaw := gr.randf() * TAU
-			var h := gr.randf_range(6.0, 17.0) * (1.25 if k < 3 else 1.0)
-			var lean := gr.randf_range(0.05, 0.5)
-			var at: Vector2 = t.p + Vector2(gr.randfn(0.0, 2.2), gr.randfn(0.0, 2.2))
-			var dry := gr.randf() < 0.14
-			var col := Color(0.24, 0.42, 0.13).lerp(Color(0.5, 0.64, 0.26), gr.randf())
-			if dry:
-				col = Color(0.56, 0.5, 0.32).lerp(Color(0.68, 0.6, 0.4), gr.randf())
-			blades.append([at, yaw, h, lean, col])
-	grass.instance_count = blades.size()
-	for i in blades.size():
-		var b: Array = blades[i]
-		var basis := (Basis(Vector3.UP, b[1]) * Basis(Vector3.BACK, -b[3])).scaled(Vector3(b[2] * 0.8, b[2], 3.2))
-		grass.set_instance_transform(i, Transform3D(basis, _on_ground(b[0], -0.15)))
-		grass.set_instance_color(i, (b[4] as Color).srgb_to_linear())
-	var grains := _multimesh(_blob_mesh(Vector3.ONE), _vc_mat(0.95, false, false), true)
-	var bits := []
-	bits.append_array(ground.crater)
-	bits.append_array(ground.midden_bits)
-	grains.instance_count = bits.size()
-	for i in bits.size():
-		var g: Dictionary = bits[i]
-		var r: float = g.r * U
-		grains.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(r, r * 0.7, r)), _on_ground(g.p, 0.0)))
-		grains.set_instance_color(i, (g.c as Color).darkened(0.2).srgb_to_linear())
+	SceneryDraw.build(self)
 
 
 func _sway_mat(srgb: bool, back: Color, rough: float) -> ShaderMaterial:

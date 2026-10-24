@@ -6,6 +6,7 @@ extends RefCounted
 const PHER_HOME := Color(0.5, 0.66, 1.0)
 const PHER_FOOD := Color(0.98, 0.68, 0.27)
 const PHER_ALARM := Color(1.0, 0.22, 0.18)
+const GardenLayout := preload("res://scripts/view/outworld/garden_layout.gd")
 
 var sim
 var tool := "pan"          # "pan" = just look around; other tools place things
@@ -23,6 +24,8 @@ var litter: Array = []
 var pebbles: Array = []
 var moss: Array = []
 var tufts: Array = []
+var boulders: Array = []           # the garden's big stones, outside the plot (garden_layout.gd; wild only)
+var rosettes: Array = []           # low broad-leaved weeds (wild only)
 var crater: Array = []
 var midden_bits: Array = []
 
@@ -75,6 +78,15 @@ func _build_scenery() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 4242 if sim.plot_seed == 0 else sim.plot_seed
 	var size: Vector2 = sim.WORLD
+	if sim.scenario == "wild":
+		GardenLayout.build(self, sim, r)          # grouped as a patch of garden looks (v0.11.37)
+	else:
+		_scatter(r, size)
+	_crater_and_midden(r)
+
+
+## The keeper's box: the scenery scattered evenly (as everywhere until v0.11.37).
+func _scatter(r: RandomNumberGenerator, size: Vector2) -> void:
 	for i in 900:
 		var p := Vector2(r.randf() * size.x, r.randf() * size.y)
 		var tone := r.randf()
@@ -104,6 +116,9 @@ func _build_scenery() -> void:
 		for k in r.randi_range(5, 9):
 			blades.append([r.randf() * TAU, r.randf_range(8, 22), r.randf()])
 		tufts.append({"p": p, "b": blades})
+
+
+func _crater_and_midden(r: RandomNumberGenerator) -> void:
 	# a lone founding queen has dug only a little; an established nest has a proper crater
 	for i in (90 if sim.workers.is_empty() else 420):
 		var a := r.randf() * TAU

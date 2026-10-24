@@ -41,7 +41,9 @@ scripts/
     common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset)
     outworld/  พื้นที่หาอาหาร 3 มิติ: outworld_view.gd + parts/ (scene, props, creatures, camera),
                ground_data.gd (ภาพผิวดิน, ภาพกลิ่นทาง, ของประดับ, แสงฟ้า, เครื่องมือที่เลือก — เดิมอยู่ในมุมบน 2 มิติ ลบ v0.11.5),
-               prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader)
+               prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader),
+               garden_layout.gd (จัดของประดับฉากสวนเป็นกลุ่ม: หินใหญ่นอกมุมแปลง มอส กรวด ใบไม้ ดงหญ้า; v0.11.37),
+               scenery_draw.gd (สร้างเมชของประดับจากผังใน ground_data; แยกจาก outworld_scene v0.11.37)
     nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
     ui/        hud.gd + parts/ (base, colonies, enemies, controls, panel), draw_kit.gd (วาดมด 2 มิติในภาพตัดขวางของแผงข้าง), species_window.gd (เลือกชนิดมดตอนเริ่มรังใหม่), paper.gd (สไตล์สมุดบันทึก: กระดาษคราฟต์ ธีมหน้าต่าง เสียงดินสอ), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()),
                sounds.gd (เสียงเตือน), music.gd (เพลงพื้นหลัง 2 เพลงจากไฟล์ `assets/audio/music/` เล่นสลับกัน)
