@@ -52,7 +52,14 @@ uniform bool shadow_pose = true;
 uniform sampler2D prop_tex : filter_linear;
 uniform vec2 prop_size = vec2(1.0);
 uniform bool has_props = false;
-uniform vec3 limb_gain = vec3(1.0);   // appendages are lighter than the body: amber-orange in L. niger queens
+uniform vec3 limb_gain = vec3(1.0);
+// nest workers: where each tripod's feet were set down (nest_bodies.gd _feet_rec), a row of 8 texels per ant (its
+// instance, or feet_row for the selection outline): for each tripod the body's transform when they landed (3 rows of
+// basis x, y, z and origin) and (the stride's dx then, its signed share of turning, the feet's mode then, -1 none /
+// 0 planted / 1 + how far through its swing). Elsewhere off: the feet are worked out from the body as it is now.
+uniform bool feet_on = false;
+uniform int feet_row = -1;
+uniform sampler2D feet_tex : filter_nearest;   // appendages are lighter than the body: amber-orange in L. niger queens
 varying float stretch;
 varying float limb;
 varying float gband;              // gaster: 1 on the stretched membranes between the plates (a full crop)
@@ -132,6 +139,87 @@ float ground_dy(vec3 fw, vec3 upw) {
 	return 0.0;
 }
 
+// The stride's foothold for a step of dx (model units, + ahead) and a share of turning tws (signed: + anticlockwise
+// seen from above), before it is looked for on the soil.
+vec3 stride_t(vec3 F, float dx, float tws, float fmode) {
+	float tw = abs(tws);
+	// turning on the spot the planted feet sweep round the body (along the circle through each foot),
+	// not straight back as in walking
+	vec2 tg = normalize(vec2(F.z, -F.x)) * (tws < 0.0 ? -1.0 : 1.0);
+	vec3 T = F + vec3(dx * (1.0 - tw) + tg.x * dx * tw, 0.0, tg.y * dx * tw);
+	if (fmode > 0.5 && fmode < 1.5) {
+		// up on a nestmate's back: its feet drawn in over the back it walks on (straddling it, they hung in
+		// the air beside it), and down a little to its rounded sides
+		float zk = T.z * 0.42;
+		T.z = zk;
+		T.y -= 0.35 * K * clamp(abs(zk) / (0.8 * K), 0.0, 1.0);
+	}
+	return T;
+}
+
+// The foot at T (model units) set down on the real ground under it (rough nest floors, the slope outside), the body
+// at M. (Its body lifted - the brood, the soil clearance: 0.6-1.1. A leg spread wide reaches ~0.75 down, one drawn in
+// under the body ~1.05: beyond what it reaches where it is, the foot steps nearer the body.)
+vec3 set_down(vec3 T, mat4 M, vec3 H, vec3 C, vec3 dAF, float lmax, float fmode) {
+	float reach = fmode > 1.5 ? 0.5 + 0.1 * (fmode - 1.0) : 0.5;
+	vec3 upw = normalize(M[1].xyz);
+	float sc = length(M[1].xyz);
+	vec3 fw = (M * vec4(T, 1.0)).xyz;
+	float gd = ground_dy(fw, upw);
+	// at an edge (over a drop, or against a wall rising beside it) there is no ground the leg can reach
+	// straight under the foot: the foot is set down nearer the body, where there is (as an ant at the
+	// lip of a shaft steps short) - it hung in the air, or went into the wall
+	// (as far in as the edge is: between the two samples either side of it, so the foot moves on smoothly as
+	// the body does, not in jumps)
+	float hd0 = length((T + dAF - C).xz);
+	float r0 = min(reach, sqrt(max(lmax * lmax - hd0 * hd0, 0.0)) + dAF.y - C.y);
+	if (ground_mode == 1 && (gd < -r0 * sc || gd > 0.6 * sc)) {
+		float fprev = 0.0;
+		float gprev = gd;
+		for (int k = 1; k <= 3; k++) {
+			float fk = 0.28 * float(k);
+			vec3 Tk = T;
+			Tk.xz = mix(T.xz, H.xz, fk);
+			float hdk = length((Tk + dAF - C).xz);
+			float rk = min(reach, sqrt(max(lmax * lmax - hdk * hdk, 0.0)) + dAF.y - C.y);
+			float gk = ground_dy((M * vec4(Tk, 1.0)).xyz, upw);
+			if (gk >= -rk * sc && gk <= 0.6 * sc) {
+				float bound = gprev < -rk * sc ? -rk * sc : 0.6 * sc;
+				float ff = mix(fprev, fk, clamp((bound - gprev) / (gk - gprev), 0.0, 1.0));
+				T.xz = mix(T.xz, H.xz, ff);
+				gd = ground_dy((M * vec4(T, 1.0)).xyz, upw);
+				break;
+			}
+			fprev = fk;
+			gprev = gk;
+			if (k == 3 && fmode > 1.5) {
+				// up on the brood with nothing in reach under it or nearer the body: a little forward or back
+				// along the body, onto the cocoon there (it hung over the gap between them)
+				for (int j = 0; j < 18; j++) {
+					float sh = (0.45 * float(1 + (j % 6) / 2)) * (j % 2 == 0 ? 1.0 : -1.0);
+					vec3 Tj = T;
+					Tj.xz = mix(T.xz, H.xz, j < 6 ? 0.4 : (j < 12 ? 0.75 : 1.0));    // (last: right under the body, on what holds it up)
+					Tj.x += sh * K * 3.0;
+					float hdj = length((Tj + dAF - C).xz);
+					float rj = min(reach, sqrt(max(lmax * lmax - hdj * hdj, 0.0)) + dAF.y - C.y);
+					float gj = ground_dy((M * vec4(Tj, 1.0)).xyz, upw);
+					if (gj >= -rj * sc && gj <= 0.6 * sc) {
+						T = Tj;
+						gd = gj;
+						break;
+					}
+				}
+			}
+		}
+	}
+	// (on a wall or the ceiling with no soil under the foot - the glass of a glass nest - it stays put;
+	// on a floor it reaches down for the ground as far as the leg goes)
+	if (gd > -1.35 || abs(M[1].y) > 0.5 * sc) {
+		T.y += clamp(gd / sc, -reach, 0.6);         // (up a steep chamber edge the foot climbs with it)
+	}
+	return T;
+}
+
 // Grooming runs through a cycle of ~13 s, each step easing into the next: the antennae drawn through the combs
 // on the forelegs (half of it), a foreleg drawn through the mouthparts (a quarter), the gaster wiped with a hind
 // leg (a quarter). x, y, z = how much of each is going on now.
@@ -185,7 +273,7 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 
 // The body's pose for one activity code (act + 100 if the crop is full): the vertex V (normal NR) of body
 // part `part` moved for that activity. Called twice while easing from one activity into the next.
-vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec3 bend, float fmode, out float stretch_out) {
+vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec3 bend, float fmode, int row, out float stretch_out) {
 	float full = code >= 99.5 ? 1.0 : 0.0;
 	float act = code - full * 100.0;
 	stretch_out = 0.0;
@@ -262,100 +350,68 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			vec3 N = vec3(L.x + L.y, 1.75, 2.05 * side) * K;
 			vec3 A = vec3(L.x + L.z * 0.85, 0.35, 2.9 * side) * K;
 			vec3 F = vec3(L.x + L.z, 0.0, 3.15 * side) * K;
-			// where the foot is: planted and sliding back under the body for the duty part of the
-			// cycle, then lifted and swung forward (eased) to its next foothold
+			// where the foot is: planted for the duty part of the cycle, then lifted and swung forward (eased) to its
+			// next foothold
 			float duty = mix(0.55, 0.42, clamp((sscale - 1.0) / 0.5, 0.0, 1.0));
 			float u = fract((gait + grp) / TAU);
 			float amp = STRIDE_A * K * sscale * mv;
-			float dx;
-			float up = 0.0;
-			if (u < duty) {
-				dx = amp * (1.0 - 2.0 * u / duty);
-			} else {
-				float w = (u - duty) / (1.0 - duty);
-				dx = amp * (-1.0 + 2.0 * w * w * (3.0 - 2.0 * w));
-				up = LIFT_H * K * min(sscale, 1.2) * mv * sin(PI * w);
-			}
-			if (mv < 0.05) {
-				dx += 0.03 * K * sin(t * 0.9 + li * 2.0 + side);    // standing: tiny shifts of weight
-			}
-			if (act == 13.0) {
-				dx += 0.12 * K * (1.0 - li) + 0.05 * K * sin(t * 13.0 + li * 2.0 + side);   // braced, tugging
-			}
-			// turning on the spot the planted feet sweep round the body (along the circle through each foot),
-			// not straight back as in walking
-			vec2 tg = normalize(vec2(F.z, -F.x)) * tdir;
-			vec3 T = F + vec3(dx * (1.0 - tw) + tg.x * dx * tw, 0.0, tg.y * dx * tw);
-			if (fmode > 0.5 && fmode < 1.5) {
-				// up on a nestmate's back: its feet drawn in over the back it walks on (straddling it, they hung in
-				// the air beside it), and down a little to its rounded sides
-				float zk = T.z * 0.42;
-				T.z = zk;
-				T.y -= 0.35 * K * clamp(abs(zk) / (0.8 * K), 0.0, 1.0);
-			}
-			// (its body lifted - the brood, the soil clearance: 0.6-1.1. A leg spread wide reaches ~0.75 down, one drawn in
-			// under the body ~1.05: beyond what it reaches where it is, the foot steps nearer the body)
-			float reach = fmode > 1.5 ? 0.5 + 0.1 * (fmode - 1.0) : 0.5;
+			float tws = tw * tdir;
 			// how far down this leg can set its foot at T: its ankle can be at most femur + tibia from the coxa
 			float lmax = 0.97 * (length(N - C) + length(A - N));
 			vec3 dAF = A - F;
-			// set the foot down on the real ground under it (rough nest floors, the slope outside)
-			if (ground_mode != 0 && probe) {                  // (not for shadows)
-				vec3 upw = normalize(M[1].xyz);
-				float sc = length(M[1].xyz);
-				vec3 fw = (M * vec4(T, 1.0)).xyz;
-				float gd = ground_dy(fw, upw);
-				// at an edge (over a drop, or against a wall rising beside it) there is no ground the leg can reach
-				// straight under the foot: the foot is set down nearer the body, where there is (as an ant at the
-				// lip of a shaft steps short) - it hung in the air, or went into the wall
-				// (as far in as the edge is: between the two samples either side of it, so the foot moves on smoothly as
-				// the body does, not in jumps)
-				float hd0 = length((T + dAF - C).xz);
-				float r0 = min(reach, sqrt(max(lmax * lmax - hd0 * hd0, 0.0)) + dAF.y - C.y);
-				if (ground_mode == 1 && (gd < -r0 * sc || gd > 0.6 * sc)) {
-					float fprev = 0.0;
-					float gprev = gd;
-					for (int k = 1; k <= 3; k++) {
-						float fk = 0.28 * float(k);
-						vec3 Tk = T;
-						Tk.xz = mix(T.xz, H.xz, fk);
-						float hdk = length((Tk + dAF - C).xz);
-						float rk = min(reach, sqrt(max(lmax * lmax - hdk * hdk, 0.0)) + dAF.y - C.y);
-						float gk = ground_dy((M * vec4(Tk, 1.0)).xyz, upw);
-						if (gk >= -rk * sc && gk <= 0.6 * sc) {
-							float bound = gprev < -rk * sc ? -rk * sc : 0.6 * sc;
-							float ff = mix(fprev, fk, clamp((bound - gprev) / (gk - gprev), 0.0, 1.0));
-							T.xz = mix(T.xz, H.xz, ff);
-							gd = ground_dy((M * vec4(T, 1.0)).xyz, upw);
-							break;
-						}
-						fprev = fk;
-						gprev = gk;
-						if (k == 3 && fmode > 1.5) {
-							// up on the brood with nothing in reach under it or nearer the body: a little forward or back
-							// along the body, onto the cocoon there (it hung over the gap between them)
-							for (int j = 0; j < 18; j++) {
-								float sh = (0.45 * float(1 + (j % 6) / 2)) * (j % 2 == 0 ? 1.0 : -1.0);
-								vec3 Tj = T;
-								Tj.xz = mix(T.xz, H.xz, j < 6 ? 0.4 : (j < 12 ? 0.75 : 1.0));    // (last: right under the body, on what holds it up)
-								Tj.x += sh * K * 3.0;
-								float hdj = length((Tj + dAF - C).xz);
-								float rj = min(reach, sqrt(max(lmax * lmax - hdj * hdj, 0.0)) + dAF.y - C.y);
-								float gj = ground_dy((M * vec4(Tj, 1.0)).xyz, upw);
-								if (gj >= -rj * sc && gj <= 0.6 * sc) {
-									T = Tj;
-									gd = gj;
-									break;
-								}
-							}
-						}
+			bool ground = ground_mode != 0 && probe;           // (not for shadows)
+			bool on_nm = fmode > 0.5 && fmode < 1.5;            // (up on a nestmate's back: not looking for the soil)
+			float up = 0.0;
+			vec3 T;
+			// nest workers: its tripod's feet stay where they were set down (nest_bodies.gd _feet_rec: the body as it was
+			// when they landed) - worked out from where the body is now, they slid and jumped as it was pushed, turned
+			// and lifted, and as the search for the ground under them found another spot (feet_bench, 2026-10-24)
+			int g = grp < 0.5 ? 0 : 4;
+			vec4 fp = feet_on && row >= 0 ? texelFetch(feet_tex, ivec2(g + 3, row), 0) : vec4(-1.0);
+			if (fp.w >= -0.5) {
+				vec4 r0 = texelFetch(feet_tex, ivec2(g, row), 0);
+				vec4 r1 = texelFetch(feet_tex, ivec2(g + 1, row), 0);
+				vec4 r2 = texelFetch(feet_tex, ivec2(g + 2, row), 0);
+				mat4 Ml = mat4(vec4(r0.x, r1.x, r2.x, 0.0), vec4(r0.y, r1.y, r2.y, 0.0), vec4(r0.z, r1.z, r2.z, 0.0), vec4(r0.w, r1.w, r2.w, 1.0));
+				vec3 Tl = stride_t(F, fp.x, fp.y, fp.z);
+				if (ground && !(fp.z > 0.5 && fp.z < 1.5)) {
+					Tl = set_down(Tl, Ml, H, C, dAF, lmax, fp.z);
+				}
+				vec3 Pw = (Ml * vec4(Tl, 1.0)).xyz;
+				if (fp.w > 0.5) {
+					// swinging: from where it stood to where it will land (looked for from where the body is now)
+					float w = clamp(fp.w - 1.0, 0.0, 1.0);
+					vec3 T1 = stride_t(F, amp, tws, fmode);
+					if (ground && !on_nm) {
+						T1 = set_down(T1, M, H, C, dAF, lmax, fmode);
 					}
+					Pw = mix(Pw, (M * vec4(T1, 1.0)).xyz, w * w * (3.0 - 2.0 * w));
+					up = LIFT_H * K * min(sscale, 1.2) * mv * sin(PI * w);
 				}
-				// (on a wall or the ceiling with no soil under the foot - the glass of a glass nest - it stays put;
-				// on a floor it reaches down for the ground as far as the leg goes)
-				if (gd > -1.35 || abs(M[1].y) > 0.5 * sc) {
-					T.y += clamp(gd / sc, -reach, 0.6);         // (up a steep chamber edge the foot climbs with it)
+				// (back into the body's own units: its basis is a rotation scaled the same on every axis)
+				vec3 d = Pw - M[3].xyz;
+				T = vec3(dot(M[0].xyz, d), dot(M[1].xyz, d), dot(M[2].xyz, d)) / dot(M[0].xyz, M[0].xyz);
+			} else {
+				// planted and sliding back under the body for the duty part of the cycle, worked out from the body as
+				// it is now (the queen, the ants outside)
+				float dx;
+				if (u < duty) {
+					dx = amp * (1.0 - 2.0 * u / duty);
+				} else {
+					float w = (u - duty) / (1.0 - duty);
+					dx = amp * (-1.0 + 2.0 * w * w * (3.0 - 2.0 * w));
+					up = LIFT_H * K * min(sscale, 1.2) * mv * sin(PI * w);
 				}
+				if (mv < 0.05) {
+					dx += 0.03 * K * sin(t * 0.9 + li * 2.0 + side);    // standing: tiny shifts of weight
+				}
+				T = stride_t(F, dx, tws, fmode);
+				if (ground && !on_nm) {
+					T = set_down(T, M, H, C, dAF, lmax, fmode);
+				}
+			}
+			if (act == 13.0) {
+				T.x += 0.12 * K * (1.0 - li) + 0.05 * K * sin(t * 13.0 + li * 2.0 + side);   // braced, tugging
 			}
 			T.y += up - hlift;                               // (the body is raised by hlift below)
 			bool cleaning = false;
@@ -549,17 +605,18 @@ void vertex() {
 	float fmode = floor(cz / 16384.0);
 	cz -= fmode * 16384.0;
 	float on_back = fmode > 0.5 && fmode < 1.5 ? 1.0 : 0.0;
+	int row = feet_row >= 0 ? feet_row : INSTANCE_ID;
 	float lc = floor(cz / 600.0);
 	float clock = cz - lc * 600.0;
 	if (lc > 0.5) {
 		bend.z = (lc - 11.0) * 0.04;
 	}
-	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS && on_back < 0.5, bend, fmode, s1);
+	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS && on_back < 0.5, bend, fmode, row, s1);
 	stretch = s1;
 	if (left > 0.002 && prev != code && !IN_SHADOW_PASS) {      // (a shadow skips the easing)
 		vec3 n0 = NORMAL;
 		float s0;
-		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, on_back < 0.5, bend, fmode, s0);
+		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, on_back < 0.5, bend, fmode, row, s0);
 		v1 = mix(v1, v0, left);
 		n1 = normalize(mix(n1, n0, left) + vec3(0.0, 1e-4, 0.0));
 		stretch = mix(s1, s0, left);

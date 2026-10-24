@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_duties.gd"
-## Nest view, layer 11 of 12: the nestmates walking the real tunnels, their roles and activities,
+## Nest view, layer 12 of 13: the nestmates walking the real tunnels, their roles and activities,
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 
@@ -321,6 +321,7 @@ func _update_ants(delta: float) -> void:
 	var xs := []
 	var cols := []
 	var cus := []
+	var fts := PackedFloat32Array()        # (where each drawn ant's feet stand: _feet_rec)
 	var larva_loads := []
 	var cocoon_loads := []
 	var shell_loads := []
@@ -552,8 +553,9 @@ func _update_ants(delta: float) -> void:
 			xs.append(tr)
 			cols.append(_mate_color(m, body, young))
 			cus.append(_custom(m, m.act))
+			fts.append_array(_feet_rec(m, tr, cus[-1]))
 			if sel_kind == "worker" and int(m.get("wid", -1)) == sel_id:
-				sel_at = [tr, cus[-1]]
+				sel_at = [tr, cus[-1], xs.size() - 1]
 			if m.carry:
 				if m.get("item", "") == "cocoon":
 					cocoon_loads.append(tr * CARRY_OFFSET)
@@ -569,6 +571,12 @@ func _update_ants(delta: float) -> void:
 	fprof["ants: look ahead"] = fprof.get("ants: look ahead", 0) + us_gap
 	tp = _nprof("ants: loop (all)", tp)
 	_emerging(xs, cols, cus, young)
+	while fts.size() < xs.size() * 32:                  # (just out of the cocoon: legs folded, no feet to remember)
+		var none := PackedFloat32Array()
+		none.resize(32)
+		none[15] = -1.0
+		none[31] = -1.0
+		fts.append_array(none)
 
 	# diggers come from the simulation; we smooth their hops and show them biting at the dig face
 	var seen := {}
@@ -627,8 +635,9 @@ func _update_ants(delta: float) -> void:
 			xs.append(tr)
 			cols.append(body)
 			cus.append(_custom(v, act))
+			fts.append_array(_feet_rec(v, tr, cus[-1]))
 			if sel_kind == "digger" and id == sel_id:
-				sel_at = [tr, cus[-1]]
+				sel_at = [tr, cus[-1], xs.size() - 1]
 			if d.carry:
 				pellet_loads.append(tr * CARRY_OFFSET)
 	for id in _dig_vis.keys():
@@ -640,6 +649,7 @@ func _update_ants(delta: float) -> void:
 	if not sel_at.is_empty():
 		_sel_mm.set_instance_transform(0, sel_at[0])
 		_sel_mm.set_instance_custom_data(0, sel_at[1])
+		_sel_mat.set_shader_parameter("feet_row", sel_at[2])
 		_sel_mm.set_instance_color(0, Color.WHITE)       # (its alpha carries nothing: the body parts are in the mesh's own)
 	# written as one buffer (a call per instance per field was a millisecond or more with hundreds of ants)
 	if _ant_mm.instance_count != xs.size():
@@ -659,6 +669,7 @@ func _update_ants(delta: float) -> void:
 		k += 20
 	if xs.size() > 0:
 		_ant_mm.buffer = buf
+	_upload_feet(fts, xs.size())
 	_fill(_carry_larva_mm, larva_loads)
 	_fill(_carry_cocoon_mm, cocoon_loads)
 	_fill(_carry_shell_mm, shell_loads)

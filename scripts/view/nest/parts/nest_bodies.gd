@@ -1,6 +1,6 @@
-extends "res://scripts/view/nest/parts/nest_lifecycle.gd"
-## Nest view, layer 6 of 12 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves —
-## easing along its voxel path, turning, the leg cycle, and bodies keeping out of one another (and the queen),
+extends "res://scripts/view/nest/parts/nest_feet.gd"
+## Nest view, layer 7 of 13 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves -
+## easing along its voxel path, turning, and bodies keeping out of one another (and the queen),
 ## and (moved from nest_mates.gd in v0.8.16) whether it stands on the brood (where it stops: nest_rest.gd).
 
 
@@ -131,25 +131,6 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	return Transform3D(Basis(f, y, f.cross(y)).scaled(Vector3.ONE * scale), np - v.vu * 0.4)
 
 
-## Its legs step as far as the body it is drawn with has really gone this frame (call with the finished transform): the
-## pushes and lifts after _smooth (kept apart, out of the walls, held behind another) move it off its point on the path,
-## and stepping by the path its planted feet slid - walking on the spot against a nestmate, they jumped from frame to
-## frame (feet_bench, 2026-10-24). Forward only: a body pushed sideways or back does not step its feet straight back.
-## And the share of its stepping that is turning (the shader's gait_w turn, as the queen's): its planted feet sweep
-## round the body as it turns - they slid straight back while the body turned over them.
-func _step_gait(v: Dictionary, tr: Transform3D, delta: float, scale: float) -> void:
-	var o: Vector3 = v.get("g_at", tr.origin)
-	var d := tr.origin - o
-	v.g_at = tr.origin
-	var walked := 0.0
-	if v.get("walks", false) and d.length() < 0.6:
-		walked = maxf(0.0, d.dot(tr.basis.x.normalized()))
-	var sweep := float(v.get("sweep", 0.0))
-	v.gait = fmod(float(v.get("gait", 0.0)) + (walked + absf(sweep)) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
-	var tshare := sweep / maxf(absf(sweep) + walked, 0.0001) if float(v.get("mv", 0.0)) > 0.05 else 0.0
-	v.tshare = lerpf(float(v.get("tshare", 0.0)), tshare, minf(1.0, 6.0 * delta))
-
-
 ## The nearest larva (drawn) within `reach` of p, or INF.
 func _larva_within(p: Vector3, reach: float) -> Vector3:
 	var best := Vector3.INF
@@ -161,90 +142,6 @@ func _larva_within(p: Vector3, reach: float) -> Vector3:
 			bd = d
 			best = o
 	return best
-
-
-func _custom(v: Dictionary, act: int) -> Color:
-	var clock: float = v.get("anim", 0.0)
-	v.vact = AntModel.act_step(v.get("vact", Vector3(-1, 0, 0)), act, clock)    # poses ease into one another
-	var gx := AntModel.gait_x(v.get("gait", 0.0), v.get("bend", Vector2.ZERO))       # (and the waist and neck bent to the ground)
-	var cz := AntModel.clock_z(clock, v.get("lat", 0.0))                              # (and bent sideways round a turn)
-	cz += 16384.0 * float(_feet_mode(v))
-	if v.get("fed", false):
-		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))   # crop full of honeydew
-	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))
-
-
-## Where its feet stand (the shader's z / 16384): 0 on the floor, 1 on a nestmate's back (not reaching for the soil),
-## 2-5 its body lifted off the floor - on the brood, pushed clear of the soil, at a shaft's lip - its feet reaching
-## 0.6-0.9 down (0.5 on the floor). With some hold-off and eased, so the reach never flips from frame to frame (the
-## feet jumped: the keeper saw them shake, 2026-10-22).
-func _feet_mode(v: Dictionary) -> int:
-	var on_back: bool = v.get("fback", false)
-	var ov := float(v.get("over", 0.0))
-	if v.has("over_on") and ov > 0.35:
-		on_back = true
-	elif not v.has("over_on") or ov < 0.2:
-		on_back = false
-	v.fback = on_back
-	var lifted := float(v.get("clr", 0.0)) if on_back else maxf(ov, float(v.get("clr", 0.0)))    # (the back under it is in the foot map)
-	if v.has("xf"):
-		# (and by what is really under it - every fourth frame, kept between)
-		if (_mate_frame + int(v.get("wid", v.get("id", 0)))) % 4 == 0 or not v.has("floor_gap"):
-			v.floor_gap = _gap_under(v.xf)
-		lifted = maxf(lifted, float(v.floor_gap))
-	var want := clampf(0.5 + lifted, 0.5, 1.1)
-	v.freach = move_toward(float(v.get("freach", 0.5)), want, 1.2 * get_process_delta_time())
-	return 1 + roundi((float(v.freach) - 0.5) / 0.1) if float(v.freach) > 0.55 else 0
-
-
-## How far below the body the floor is (along its up, up to 1.5): where the feet's own map of the floor (the soil and the
-## brood on it, nest_scene._foot_rho, read as the shader reads it) turns solid.
-func _gap_under(xf: Transform3D) -> float:
-	# (as the shader's ground_dy: from just above the feet down to the first solid, or up out of it)
-	var up := xf.basis.y.normalized()
-	var fw := xf.origin
-	var prev := 0.5
-	var dprev := _foot_at(fw + up * prev)
-	if dprev >= 0.5:
-		return 0.0                             # (the floor rises here: not lifted)
-	for i in range(1, 9):
-		var s := 0.5 - 0.25 * i
-		var d := _foot_at(fw + up * s)
-		if d >= 0.5:
-			return maxf(0.0, -lerpf(prev, s, clampf((0.5 - dprev) / maxf(d - dprev, 0.001), 0.0, 1.0)))
-		prev = s
-		dprev = d
-	return 1.5
-
-
-## The feet's floor map at p, as the shader samples it (trilinear over the voxels; 0 open, 1 solid).
-func _foot_at(p: Vector3) -> float:
-	# (the feet's map, unless the soil was just taken in deeper and it is not laid out again yet)
-	var rho: PackedByteArray = _foot_rho if _foot_rho.size() == nest.rho.size() else nest.rho
-	var nx: int = nest.nx
-	var ny: int = nest.ny
-	var nz: int = nest.nz
-	var y_lo: int = nest.y_lo
-	var x0 := floori(p.x)
-	var y0 := floori(p.y)
-	var z0 := floori(p.z)
-	var fx := p.x - x0
-	var fy := p.y - y0
-	var fz := p.z - z0
-	var v := 0.0
-	for dz in 2:
-		var z := clampi(z0 + dz, 0, nz - 1)
-		var wz := fz if dz == 1 else 1.0 - fz
-		for dy in 2:
-			var y := clampi(y0 + dy, y_lo, ny - 1)
-			var wy := (fy if dy == 1 else 1.0 - fy) * wz
-			var row := (z * (ny - y_lo) + y - y_lo) * nx
-			v += wy * ((1.0 - fx) * rho[row + clampi(x0, 0, nx - 1)] + fx * rho[row + clampi(x0 + 1, 0, nx - 1)])
-	return v / 255.0
-
-
-const _NEAR := [Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),
-	Vector3i(1, 0, 1), Vector3i(1, 0, -1), Vector3i(-1, 0, 1), Vector3i(-1, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]
 
 
 ## Bodies do not pass through one another: each ant is two discs along its body (head-thorax and
@@ -435,10 +332,6 @@ func _tends_brood(m: Dictionary) -> bool:
 	return m.get("role", "") in ["nurse", "carry", "attend"] or m.has("script") or m.has("deliver")
 
 
-## How many body parts of nestmates still stand on eggs, larvae or cocoons: dev check (--trace).
-var _overlap_who := []
-
-
 func brood_overlaps() -> int:
 	_overlap_who.clear()
 	var n := 0
@@ -613,4 +506,3 @@ func _shown_act(m: Dictionary) -> int:
 	if p is Dictionary and p.get("role", "") == "groomer" and int(m.act) == ACT_REST:
 		return 23
 	return int(m.act)
-

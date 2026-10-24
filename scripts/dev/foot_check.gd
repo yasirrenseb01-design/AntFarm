@@ -92,8 +92,80 @@ static func _ground_dy(nest, fw: Vector3, upw: Vector3) -> float:
 	return -1.4
 
 
-## The six feet of one drawn ant: [[world tip, planted?, leg index], ...] (empty when its legs are posed).
-static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
+## The shader's stride_t(): the stride's foothold for a step of dx and a signed share of turning.
+static func _stride_t(F: Vector3, dx: float, tws: float, fmode: float) -> Vector3:
+	var tw := absf(tws)
+	var tg := Vector2(F.z, -F.x).normalized() * (-1.0 if tws < 0.0 else 1.0)
+	var T := F + Vector3(dx * (1.0 - tw) + tg.x * dx * tw, 0.0, tg.y * dx * tw)
+	if fmode > 0.5 and fmode < 1.5:
+		T.z *= 0.42
+		T.y -= 0.35 * K * clampf(absf(T.z) / (0.8 * K), 0.0, 1.0)
+	return T
+
+
+## The shader's set_down(): [T set down on the soil, where it was found (0 under it, 1-3 nearer the body, 10 + j the
+## brood search), T before its height was set, how far it was raised or lowered (world units)].
+static func _set_down(nest, T: Vector3, M: Transform3D, H: Vector3, C: Vector3, dAF: Vector3, lmax: float, fmode: float) -> Array:
+	var reach := 0.5 + 0.1 * (fmode - 1.0) if fmode > 1.5 else 0.5
+	var upw := M.basis.y.normalized()
+	var sc := M.basis.y.length()
+	var br := 0
+	var gd := _ground_dy(nest, M * T, upw)
+	var hd0 := Vector2((T + dAF - C).x, (T + dAF - C).z).length()
+	var r0 := minf(reach, sqrt(maxf(lmax * lmax - hd0 * hd0, 0.0)) + dAF.y - C.y)
+	if gd < -r0 * sc or gd > 0.6 * sc:
+		var fprev := 0.0
+		var gprev := gd
+		for k in range(1, 4):              # (at an edge, set down nearer the body where it reaches)
+			var fk := 0.28 * k
+			var Tk := T
+			Tk.x = lerpf(T.x, H.x, fk)
+			Tk.z = lerpf(T.z, H.z, fk)
+			var hdk := Vector2((Tk + dAF - C).x, (Tk + dAF - C).z).length()
+			var rk := minf(reach, sqrt(maxf(lmax * lmax - hdk * hdk, 0.0)) + dAF.y - C.y)
+			var gk := _ground_dy(nest, M * Tk, upw)
+			if gk >= -rk * sc and gk <= 0.6 * sc:
+				var bound := -rk * sc if gprev < -rk * sc else 0.6 * sc
+				var ff := lerpf(fprev, fk, clampf((bound - gprev) / (gk - gprev), 0.0, 1.0))
+				T.x = lerpf(T.x, H.x, ff)
+				T.z = lerpf(T.z, H.z, ff)
+				gd = _ground_dy(nest, M * T, upw)
+				br = k
+				break
+			fprev = fk
+			gprev = gk
+			if k == 3 and fmode > 1.5:
+				for j in 18:
+					var sh := 0.45 * float(1 + (j % 6) / 2) * (1.0 if j % 2 == 0 else -1.0)
+					var fi := 0.4 if j < 6 else (0.75 if j < 12 else 1.0)
+					var Tj := T
+					Tj.x = lerpf(T.x, H.x, fi) + sh * K * 3.0
+					Tj.z = lerpf(T.z, H.z, fi)
+					var hdj := Vector2((Tj + dAF - C).x, (Tj + dAF - C).z).length()
+					var rj := minf(reach, sqrt(maxf(lmax * lmax - hdj * hdj, 0.0)) + dAF.y - C.y)
+					var gj := _ground_dy(nest, M * Tj, upw)
+					if gj >= -rj * sc and gj <= 0.6 * sc:
+						T = Tj
+						gd = gj
+						br = 10 + j
+						break
+	var Ts := T
+	var hy := 0.0
+	if gd > -1.35 or absf(M.basis.y.y) > 0.5 * sc:
+		hy = clampf(gd / sc, -reach, 0.6)
+		T.y += hy
+	return [T, br, Ts, hy * sc]
+
+
+static func _rec_xf(rec: PackedFloat32Array, k: int) -> Transform3D:
+	return Transform3D(Basis(Vector3(rec[k], rec[k + 4], rec[k + 8]), Vector3(rec[k + 1], rec[k + 5], rec[k + 9]),
+		Vector3(rec[k + 2], rec[k + 6], rec[k + 10])), Vector3(rec[k + 3], rec[k + 7], rec[k + 11]))
+
+
+## The six feet of one drawn ant: [[world tip, planted?, leg index, how far the leg misses its foothold, foothold,
+## coxa, info for why it jumped], ...] (empty when its legs are posed). rec: its row of the shader's feet_tex (where its
+## tripods were set down: nest_bodies._feet_rec), or empty.
+static func feet(nest, M: Transform3D, cus: Color, rec := PackedFloat32Array(), debug := false) -> Array:
 	var y := cus.g
 	var code := fmod(floorf(y + 0.0005), 128.0)
 	var act := code - (100.0 if code >= 99.5 else 0.0)
@@ -139,72 +211,63 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 		var duty := lerpf(0.55, 0.42, clampf((sscale - 1.0) / 0.5, 0.0, 1.0))
 		var u := fposmod((gait + grp) / TAU, 1.0)
 		var amp := STRIDE_A * K * sscale * mv
-		var dx := 0.0
-		var up := 0.0
-		var planted := u < duty or mv < 0.05
-		if u < duty:
-			dx = amp * (1.0 - 2.0 * u / duty)
-		else:
-			var w := (u - duty) / (1.0 - duty)
-			dx = amp * (-1.0 + 2.0 * w * w * (3.0 - 2.0 * w))
-			up = 0.42 * K * minf(sscale, 1.2) * mv * sin(PI * w)
-		if mv < 0.05:
-			dx += 0.03 * K * sin(t * 0.9 + li * 2.0 + side)
-		var tg := Vector2(F.z, -F.x).normalized() * tdir
-		var T := F + Vector3(dx * (1.0 - tw) + tg.x * dx * tw, 0.0, tg.y * dx * tw)
-		if on_back > 0.5:
-			T.z *= 0.42
-			T.y -= 0.35 * K * clampf(absf(T.z) / (0.8 * K), 0.0, 1.0)
-		var T0 := T
-		var tb := M * T                             # (the stride's foothold, before it is looked for on the soil)
-		var br := 0                                 # (where it was found: 0 under it, 1-3 nearer the body, 10 + j the brood search)
-		var fw := M * T
-		var gd := _ground_dy(nest, fw, upw) if on_back < 0.5 else 0.0
 		var lmax := 0.97 * ((N - C).length() + (A - N).length())
 		var dAF := A - F
-		var hd0 := Vector2((T + dAF - C).x, (T + dAF - C).z).length()
-		var r0 := minf(reach, sqrt(maxf(lmax * lmax - hd0 * hd0, 0.0)) + dAF.y - C.y)
-		if on_back < 0.5 and (gd < -r0 * sc or gd > 0.6 * sc):
-			var fprev := 0.0
-			var gprev := gd
-			for k in range(1, 4):              # (the shader: at an edge, set down nearer the body where it reaches)
-				var fk := 0.28 * k
-				var Tk := T
-				Tk.x = lerpf(T.x, H.x, fk)
-				Tk.z = lerpf(T.z, H.z, fk)
-				var hdk := Vector2((Tk + dAF - C).x, (Tk + dAF - C).z).length()
-				var rk := minf(reach, sqrt(maxf(lmax * lmax - hdk * hdk, 0.0)) + dAF.y - C.y)
-				var gk := _ground_dy(nest, M * Tk, upw)
-				if gk >= -rk * sc and gk <= 0.6 * sc:
-					var bound := -rk * sc if gprev < -rk * sc else 0.6 * sc
-					var ff := lerpf(fprev, fk, clampf((bound - gprev) / (gk - gprev), 0.0, 1.0))
-					T.x = lerpf(T.x, H.x, ff)
-					T.z = lerpf(T.z, H.z, ff)
-					gd = _ground_dy(nest, M * T, upw)
-					br = k
-					break
-				fprev = fk
-				gprev = gk
-				if k == 3 and fmode > 1.5:
-					for j in 18:
-						var sh := 0.45 * float(1 + (j % 6) / 2) * (1.0 if j % 2 == 0 else -1.0)
-						var fi := 0.4 if j < 6 else (0.75 if j < 12 else 1.0)
-						var Tj := T
-						Tj.x = lerpf(T.x, H.x, fi) + sh * K * 3.0
-						Tj.z = lerpf(T.z, H.z, fi)
-						var hdj := Vector2((Tj + dAF - C).x, (Tj + dAF - C).z).length()
-						var rj := minf(reach, sqrt(maxf(lmax * lmax - hdj * hdj, 0.0)) + dAF.y - C.y)
-						var gj := _ground_dy(nest, M * Tj, upw)
-						if gj >= -rj * sc and gj <= 0.6 * sc:
-							T = Tj
-							gd = gj
-							br = 10 + j
-							break
-		var ts := M * T                             # (after the search, before it is set down on the soil)
+		var up := 0.0
+		var planted := false
+		var T := Vector3.ZERO
+		var T0 := Vector3.ZERO
+		var tb := Vector3.ZERO
+		var ts := Vector3.ZERO
+		var br := 0
 		var hy := 0.0
-		if on_back < 0.5 and (gd > -1.35 or absf(M.basis.y.y) > 0.5 * sc):
-			hy = clampf(gd / sc, -reach, 0.6)
-			T.y += hy
+		var lo := Vector3.INF
+		var g := 0 if grp < 0.5 else 16
+		if rec.size() >= 32 and rec[g + 15] >= -0.5:
+			# (the shader's remembered feet: set down from the body as it was when they landed)
+			var Ml := _rec_xf(rec, g)
+			lo = Ml.origin
+			var Tl := _stride_t(F, rec[g + 12], rec[g + 13], rec[g + 14])
+			T0 = Tl
+			tb = Ml * Tl
+			ts = tb
+			if not (rec[g + 14] > 0.5 and rec[g + 14] < 1.5):
+				var sd := _set_down(nest, Tl, Ml, H, C, dAF, lmax, rec[g + 14])
+				Tl = sd[0]
+				br = sd[1]
+				ts = Ml * (sd[2] as Vector3)
+				hy = sd[3]
+			var Pw := Ml * Tl
+			planted = rec[g + 15] < 0.5
+			if not planted:
+				var w := clampf(rec[g + 15] - 1.0, 0.0, 1.0)
+				var T1 := _stride_t(F, amp, tw * tdir, fmode)
+				if on_back < 0.5:
+					T1 = _set_down(nest, T1, M, H, C, dAF, lmax, fmode)[0]
+				Pw = Pw.lerp(M * T1, w * w * (3.0 - 2.0 * w))
+				up = 0.42 * K * minf(sscale, 1.2) * mv * sin(PI * w)
+			T = M.affine_inverse() * Pw
+		else:
+			var dx := 0.0
+			planted = u < duty or mv < 0.05
+			if u < duty:
+				dx = amp * (1.0 - 2.0 * u / duty)
+			else:
+				var w := (u - duty) / (1.0 - duty)
+				dx = amp * (-1.0 + 2.0 * w * w * (3.0 - 2.0 * w))
+				up = 0.42 * K * minf(sscale, 1.2) * mv * sin(PI * w)
+			if mv < 0.05:
+				dx += 0.03 * K * sin(t * 0.9 + li * 2.0 + side)
+			T = _stride_t(F, dx, tw * tdir, fmode)
+			T0 = T
+			tb = M * T
+			ts = tb
+			if on_back < 0.5:
+				var sd := _set_down(nest, T, M, H, C, dAF, lmax, fmode)
+				T = sd[0]
+				br = sd[1]
+				ts = M * (sd[2] as Vector3)
+				hy = sd[3]
 		T.y += up - hlift
 		var v0 := Vector2((F - H).x, (F - H).z)
 		var v1 := Vector2((T - H).x, (T - H).z)
@@ -219,10 +282,10 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 		var A2 := N2 + _rot_axis(Ay - Ny, ik[2], ik[1])
 		var tip := A2 + (Fy - Ay)
 		if debug:
-			print("    leg %d%s planted %s gd0 %.2f upy %.2f fmode %d reach %.2f  T %s  tipErr %.3f  gd_tip %.2f" % [li, "R" if side > 0 else "L", planted, gd, M.basis.y.y / sc, fmode, reach,
+			print("    leg %d%s planted %s upy %.2f fmode %d reach %.2f  T %s  tipErr %.3f  gd_tip %.2f" % [li, "R" if side > 0 else "L", planted, M.basis.y.y / sc, fmode, reach,
 				M * T, (A2 - TA).length(), _ground_dy(nest, M * tip, upw)])
 		var info := {"u": u, "mv": mv, "ss": sscale, "tw": tw * tdir, "fm": fmode, "act": act, "br": br, "tb": tb, "ts": ts,
-			"hy": hy * sc, "err": M.basis * (tip - T), "M": M, "tl": T0}
+			"hy": hy, "err": M.basis * (tip - T), "M": M, "tl": T0, "lo": lo}
 		out.append([M * tip, planted, int(li), (tip - T).length(), M * T, M * Cy, info])
 	return out
 
@@ -260,7 +323,7 @@ static func measure(nv, tally: Dictionary) -> void:
 				if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
 					print("  M5 over %.2f clr %.2f fgap %.2f freach %.2f role %s up %s" % [float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)), float(mt.get("floor_gap", -1.0)),
 						float(mt.get("freach", 0.0)), mt.get("role", "dig"), M.basis.y.normalized()])
-		var fs := feet(nest, M, mm.get_instance_custom_data(i), dbg)
+		var fs := feet(nest, M, mm.get_instance_custom_data(i), _rec(nv, i), dbg)
 		var upw := M.basis.y.normalized()
 		# jitter: a planted foot stays where it is in the world while the body walks over it - from one frame to the
 		# next it may slide a little with the stride, not jump (only when measured every frame: --seq-every=1)
@@ -368,11 +431,19 @@ static func measure(nv, tally: Dictionary) -> void:
 					"its foothold in the soil" if _vol(nest, f[4]) >= 0.55 else "its foothold on the surface")
 				why += ", the leg's root in the soil too" if _vol(nest, f[5]) >= 0.5 else ""
 				tally["pw:" + why] = int(tally.get("pw:" + why, 0)) + 1
+				if float(f[3]) > 0.1:
+					# (where the foothold it could not reach lies from where the foot rests, in its own units / K)
+					var Tl: Vector3 = M.affine_inverse() * (f[4] as Vector3)
+					var li := float(f[2])
+					var L := Vector3(0.85, 0.75, 1.8) if li < 0.5 else (Vector3(0.2, 0.1, -0.1) if li < 1.5 else Vector3(-0.4, -0.65, -2.2))
+					var d := Tl / K - Vector3(L.x + L.z, 0.0, 3.15 * signf(Tl.z))
+					var uk := "leg %d: ahead %.0f out %.0f up %.0f" % [li, d.x, d.z * signf(Tl.z), d.y]
+					tally["un:" + uk] = int(tally.get("un:" + uk, 0)) + 1
 			rho = rho_map
 			if (gd > SUNK or gd < -AIR_GAP) and where == "floor" and tally.has("debug") and int(tally.get("dbg_floor", 0)) < 8:
 				tally.dbg_floor = int(tally.get("dbg_floor", 0)) + 1
 				print("  FLOOR foot gd %.2f leg %d  ant %s up %s body_gap %.2f custom %s" % [gd, f[2], M.origin, upw, body_gap, mm.get_instance_custom_data(i)])
-				feet(nest, M, mm.get_instance_custom_data(i), true)
+				feet(nest, M, mm.get_instance_custom_data(i), _rec(nv, i), true)
 			if gd > SUNK:
 				tally.foot_soil = int(tally.get("foot_soil", 0)) + 1
 				tally["soil:" + where] = int(tally.get("soil:" + where, 0)) + 1
@@ -411,7 +482,7 @@ static func measure(nv, tally: Dictionary) -> void:
 					print("  WHO ", who)
 					if gd <= -1.35 and where == "over the brood" and int(tally.get("dbg_l", 0)) < 2:
 						tally.dbg_l = int(tally.get("dbg_l", 0)) + 1
-						feet(nest, M, mm.get_instance_custom_data(i), true)
+						feet(nest, M, mm.get_instance_custom_data(i), _rec(nv, i), true)
 					print("  UP %s leg %d fmode %d gd %.2f body_gap %.2f  nearest brood %.2f ant %.2f  tip-origin along up %.2f" % [where, f[2],
 						int(floorf(mm.get_instance_custom_data(i).b / 16384.0)), gd, body_gap, bd_min, an_min, (tip - M.origin).dot(upw)])
 				if not on and where == "over the brood":
@@ -435,6 +506,8 @@ static func _jump_cause(a: Dictionary, b: Dictionary, body: float) -> String:
 		return "the body moved far in one frame (%.1f-%.1f)" % [snappedf(body - 0.05, 0.1), snappedf(body - 0.05, 0.1) + 0.1]
 	if a.act != b.act:
 		return "its activity changed"
+	if a.lo != b.lo:
+		return "set down again (left behind: the body moved on without stepping)"
 	if (float(a.mv) < 0.05) != (float(b.mv) < 0.05):
 		return "it started or stopped walking (standing, every foot counts as planted)"
 	if float(b.u) < float(a.u) - 0.02:
@@ -478,6 +551,11 @@ static func _jump_cause(a: Dictionary, b: Dictionary, body: float) -> String:
 	if top == d_height:
 		return "its height on the soil changed"
 	return "the leg reaching it or not (IK)"
+
+
+static func _rec(nv, i: int) -> PackedFloat32Array:
+	var b: PackedFloat32Array = nv._feet_buf
+	return b.slice(i * 32, i * 32 + 32) if b.size() >= i * 32 + 32 else PackedFloat32Array()
 
 
 static func _note(tally: Dictionary, kind: String, at: Vector3) -> void:
@@ -546,6 +624,14 @@ static func report(tally: Dictionary) -> String:
 	for c in jc:
 		s += "
       jumping: %5.1f%%  %s" % [100.0 * float(c[0]) / maxf(1.0, float(tally.get("jit", 0))), c[1]]
+	var un := []
+	for k in tally:
+		if String(k).begins_with("un:"):
+			un.append([int(tally[k]), String(k).substr(3)])
+	un.sort_custom(func(x, y): return x[0] > y[0])
+	for c in un.slice(0, 12):
+		s += "
+        out of reach: %5d  %s" % c
 	for k in tally:
 		if String(k).begins_with("side:"):
 			s += "

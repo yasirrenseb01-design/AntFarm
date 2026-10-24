@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_bodies.gd"
-## Nest view, layer 7 of 12 (split from parts/nest_bodies.gd in v0.8.55): where a nestmate stops and how it
+## Nest view, layer 8 of 13 (split from parts/nest_bodies.gd in v0.8.55): where a nestmate stops and how it
 ## lies there - a free patch of floor with room for its body (not in a nestmate, the queen's legs or a narrow
 ## tunnel), clear of the soil where a chamber floor curves (lifted) or a wall is close (turned away), stepping
 ## aside when pushed; and the one drawn nestmate per real worker inside.

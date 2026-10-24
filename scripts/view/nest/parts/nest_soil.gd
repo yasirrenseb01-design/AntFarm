@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_rest.gd"
-## Nest view, layer 8 of 12 (split from nest_contact.gd in v0.11.26): bodies out of the soil - an ant shifted and
+## Nest view, layer 9 of 13 (split from nest_contact.gd in v0.11.26): bodies out of the soil - an ant shifted and
 ## turned out of the walls of a bend, feeling ahead with its antennae, its head tipped up and its gaster lifted where
 ## they meet the surface.
 

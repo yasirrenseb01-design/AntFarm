@@ -158,6 +158,7 @@ func setup(s) -> void:
 	var sel_mat: ShaderMaterial = ant_mat.duplicate()
 	sel_mat.shader = outline
 	_sel_mm = _multimesh(_ant_meshes.lo, sel_mat, true, false)
+	_sel_mat = sel_mat
 	_sel_mm.use_custom_data = true
 	var selq_mat: ShaderMaterial = queen_mat.duplicate()
 	selq_mat.shader = outline

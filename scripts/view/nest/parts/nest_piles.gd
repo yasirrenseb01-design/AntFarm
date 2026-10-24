@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_brood.gd"
-## Nest view, layer 4 of 12: the brood piles - each egg, larva and cocoon laid down like a real object on the
+## Nest view, layer 4 of 13: the brood piles - each egg, larva and cocoon laid down like a real object on the
 ## floor (or on the heap), clear of the chamber walls and the queen, and left exactly where it lies until
 ## nurses carry its pile elsewhere.
 

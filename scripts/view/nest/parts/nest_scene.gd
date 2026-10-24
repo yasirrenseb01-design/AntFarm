@@ -1,7 +1,7 @@
 extends Node3D
 ## 3D view of the underground nest: the soil block sliced open by a camera-facing cut plane,
 ## with diggers from the simulation, resting nestmates, brood piles and the queen.
-## Nest view, layer 1 of 12: state and the building blocks of the scene (soil chunks, materials,
+## Nest view, layer 1 of 13: state and the building blocks of the scene (soil chunks, materials,
 ## meshes, the glass case). Layers: nest_scene <- nest_camera <- nest_brood <- nest_lifecycle <- nest_bodies <- nest_mates <- nest_view.
 const Ant := preload("res://scripts/sim/ant.gd")
 const Mesher := preload("res://scripts/view/nest/nest_mesher.gd")
@@ -126,6 +126,9 @@ var _floor_cache := {}          # floor heights under brood spots (see _floor_ca
 var sel_kind := ""                # the ant the keeper clicked: "worker" | "digger" | "queen" ("" = none)
 var sel_id := -1                  # its worker id (a digger: the digger's own id)
 var _sel_mm: MultiMesh            # its white outline (shaders/ants/ant_outline.gdshader)
+var _sel_mat: ShaderMaterial
+var _feet_tex: ImageTexture       # where the workers' tripods were set down (nest_bodies._feet_rec, ant_core.gdshaderinc feet_tex)
+var _feet_buf := PackedFloat32Array()     # (the same, kept for the dev checks: dev/foot_check.gd)
 var _sel_queen_mm: MultiMesh
 var _sel_brood_mm: MultiMesh       # the rim round a clicked egg, larva or cocoon
 var fprof := {}                 # dev (--perf): microseconds per part of refresh(), summed
