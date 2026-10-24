@@ -58,6 +58,7 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	# backing away from what it holds or works at (pulling a callow out): it keeps facing it, walking backwards
 	var backing := face != Vector3.INF and flat.dot(face - np) < 0.0
 	var lat := 0.0
+	var sweep := 0.0                                  # (how far its feet step round as it turns, signed: + anticlockwise from above)
 	if moving and not backing and flat.length() > 0.12:
 		var want := flat.normalized()
 		var rate := 5.0
@@ -86,7 +87,7 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 		else:
 			v.vf = _turn_to(v.vf, want, minf(1.0, rate * delta))
 		var turned := old_f.angle_to(v.vf)            # turning takes steps as well as walking does
-		v.gait = fmod(v.gait + (step.length() + turned * 0.9 * scale) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
+		sweep = turned * 0.9 * scale * signf(old_f.cross(v.vf).dot(v.vu))
 	var rd: Vector3 = v.get("rest_dir", Vector3.ZERO)
 	if moving:
 		v.rest_dir = Vector3.ZERO
@@ -97,19 +98,27 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 		to -= v.vu * to.dot(v.vu)
 		if to.length_squared() > 0.01:
 			var want := to.normalized()
+			var old_f: Vector3 = v.vf
 			v.vf = _turn_to(v.vf, want, minf(1.0, 5.0 * delta))
+			var turned := old_f.angle_to(v.vf)
+			if turned > 0.2 * delta:
+				# (turning to face it, its legs step round too: carried round with the body, its planted feet slid)
+				sweep = turned * 0.9 * scale * signf(old_f.cross(v.vf).dot(v.vu))
+				moving = true
 	elif not moving and rd != Vector3.ZERO:
 		# standing with its head or gaster in the wall: it turns round on the spot to lie clear (stepping)
 		var want := (rd - (v.vu as Vector3) * rd.dot(v.vu)).normalized()
 		var old_f: Vector3 = v.vf
 		v.vf = _turn_to(v.vf, want, minf(1.0, 3.0 * delta))
 		var turned := old_f.angle_to(v.vf)
-		v.gait = fmod(v.gait + turned * 0.9 / AntModel.stride_len(v.get("stride", 1.0)) * TAU, TAU * 64.0)
+		sweep = turned * 0.9 * scale * signf(old_f.cross(v.vf).dot(v.vu))
 		if turned > 0.2 * delta:
 			moving = true                          # (its legs step as it turns)
 		if (v.vf as Vector3).dot(want) > 0.995:
 			v.rest_dir = Vector3.ZERO
 	v.mv = lerpf(v.mv, 1.0 if moving else 0.0, minf(1.0, 8.0 * delta))
+	v.sweep = sweep
+	v.walks = moving and not backing and flat.length() > 0.12
 	v.lat = lerpf(float(v.get("lat", 0.0)), lat, minf(1.0, 6.0 * delta))
 	v.vu = (v.vu as Vector3).lerp(up, minf(1.0, 2.5 * delta)).normalized()     # (slowly: zigzagging along a floor-wall crease the up of each cell differs, and the body twisted to and fro)
 	v.vp = np
@@ -120,6 +129,25 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	y = y.normalized()
 	f = (f - y * f.dot(y)).normalized()
 	return Transform3D(Basis(f, y, f.cross(y)).scaled(Vector3.ONE * scale), np - v.vu * 0.4)
+
+
+## Its legs step as far as the body it is drawn with has really gone this frame (call with the finished transform): the
+## pushes and lifts after _smooth (kept apart, out of the walls, held behind another) move it off its point on the path,
+## and stepping by the path its planted feet slid - walking on the spot against a nestmate, they jumped from frame to
+## frame (feet_bench, 2026-10-24). Forward only: a body pushed sideways or back does not step its feet straight back.
+## And the share of its stepping that is turning (the shader's gait_w turn, as the queen's): its planted feet sweep
+## round the body as it turns - they slid straight back while the body turned over them.
+func _step_gait(v: Dictionary, tr: Transform3D, delta: float, scale: float) -> void:
+	var o: Vector3 = v.get("g_at", tr.origin)
+	var d := tr.origin - o
+	v.g_at = tr.origin
+	var walked := 0.0
+	if v.get("walks", false) and d.length() < 0.6:
+		walked = maxf(0.0, d.dot(tr.basis.x.normalized()))
+	var sweep := float(v.get("sweep", 0.0))
+	v.gait = fmod(float(v.get("gait", 0.0)) + (walked + absf(sweep)) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
+	var tshare := sweep / maxf(absf(sweep) + walked, 0.0001) if float(v.get("mv", 0.0)) > 0.05 else 0.0
+	v.tshare = lerpf(float(v.get("tshare", 0.0)), tshare, minf(1.0, 6.0 * delta))
 
 
 ## The nearest larva (drawn) within `reach` of p, or INF.
@@ -142,8 +170,8 @@ func _custom(v: Dictionary, act: int) -> Color:
 	var cz := AntModel.clock_z(clock, v.get("lat", 0.0))                              # (and bent sideways round a turn)
 	cz += 16384.0 * float(_feet_mode(v))
 	if v.get("fed", false):
-		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))   # crop full of honeydew
-	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0)))
+		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))   # crop full of honeydew
+	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))
 
 
 ## Where its feet stand (the shader's z / 16384): 0 on the floor, 1 on a nestmate's back (not reaching for the soil),

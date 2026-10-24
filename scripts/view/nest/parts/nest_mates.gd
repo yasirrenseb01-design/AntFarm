@@ -542,6 +542,7 @@ func _update_ants(delta: float) -> void:
 		m.zo = tr.origin
 		m.zo_up = up2
 		m.xf = tr
+		_step_gait(m, tr, md, m.size)
 		if m.act == ACT_FEED and not m.has("script") and _visible(tr.origin) and m.get("larva_at", Vector3.INF) != Vector3.INF:
 			# the droplet between its mandibles and the larva's head end
 			var lm: Vector3 = tr * MOUTH
@@ -620,6 +621,7 @@ func _update_ants(delta: float) -> void:
 		v.clr = move_toward(float(v.get("clr", 0.0)), float(v.dclr), (2.0 if float(v.dclr) > float(v.get("clr", 0.0)) else 0.3) * delta)
 		tr.origin += tr.basis.y.normalized() * float(v.clr)
 		v.xf = tr
+		_step_gait(v, tr, delta, v.size)
 		if _shown(tr):
 			var act := ACT_CARRY if d.carry else (ACT_DIG if v.still > 0.25 else ACT_WALK)
 			xs.append(tr)

@@ -108,8 +108,8 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 	var t := cz - lc * 600.0
 	var cw := cus.a
 	var tcode := floorf(cw / 1000.0)
-	var tw := fmod(tcode, 9.0) / 8.0
-	var tdir := -1.0 if tcode >= 9.0 else 1.0
+	var tw := fmod(tcode, 17.0) / 16.0
+	var tdir := -1.0 if tcode >= 17.0 else 1.0
 	cw -= tcode * 1000.0
 	var sscale := floorf(cw) / 100.0
 	var mv := cw
@@ -155,6 +155,9 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 		if on_back > 0.5:
 			T.z *= 0.42
 			T.y -= 0.35 * K * clampf(absf(T.z) / (0.8 * K), 0.0, 1.0)
+		var T0 := T
+		var tb := M * T                             # (the stride's foothold, before it is looked for on the soil)
+		var br := 0                                 # (where it was found: 0 under it, 1-3 nearer the body, 10 + j the brood search)
 		var fw := M * T
 		var gd := _ground_dy(nest, fw, upw) if on_back < 0.5 else 0.0
 		var lmax := 0.97 * ((N - C).length() + (A - N).length())
@@ -178,6 +181,7 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 					T.x = lerpf(T.x, H.x, ff)
 					T.z = lerpf(T.z, H.z, ff)
 					gd = _ground_dy(nest, M * T, upw)
+					br = k
 					break
 				fprev = fk
 				gprev = gk
@@ -194,9 +198,13 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 						if gj >= -rj * sc and gj <= 0.6 * sc:
 							T = Tj
 							gd = gj
+							br = 10 + j
 							break
+		var ts := M * T                             # (after the search, before it is set down on the soil)
+		var hy := 0.0
 		if on_back < 0.5 and (gd > -1.35 or absf(M.basis.y.y) > 0.5 * sc):
-			T.y += clampf(gd / sc, -reach, 0.6)
+			hy = clampf(gd / sc, -reach, 0.6)
+			T.y += hy
 		T.y += up - hlift
 		var v0 := Vector2((F - H).x, (F - H).z)
 		var v1 := Vector2((T - H).x, (T - H).z)
@@ -213,7 +221,9 @@ static func feet(nest, M: Transform3D, cus: Color, debug := false) -> Array:
 		if debug:
 			print("    leg %d%s planted %s gd0 %.2f upy %.2f fmode %d reach %.2f  T %s  tipErr %.3f  gd_tip %.2f" % [li, "R" if side > 0 else "L", planted, gd, M.basis.y.y / sc, fmode, reach,
 				M * T, (A2 - TA).length(), _ground_dy(nest, M * tip, upw)])
-		out.append([M * tip, planted, int(li), (tip - T).length(), M * T, M * Cy])
+		var info := {"u": u, "mv": mv, "ss": sscale, "tw": tw * tdir, "fm": fmode, "act": act, "br": br, "tb": tb, "ts": ts,
+			"hy": hy * sc, "err": M.basis * (tip - T), "M": M, "tl": T0}
+		out.append([M * tip, planted, int(li), (tip - T).length(), M * T, M * Cy, info])
 	return out
 
 
@@ -228,6 +238,7 @@ static func measure(nv, tally: Dictionary) -> void:
 			brood.append([BodyCheck._larva_spheres(x) if mm == nv._larva_mm else BodyCheck._cocoon_spheres(x), x.origin])
 	var mm: MultiMesh = nv._ant_mm
 	tally.frames_f = int(tally.get("frames_f", 0)) + 1
+	tally.dt_sum = float(tally.get("dt_sum", 0.0)) + nv.get_process_delta_time()    # (a jump a frame is longer at a lower frame rate)
 	SwayCheck.measure(nv, tally)          # (steps, bobbing, swaying: dev/sway_check.gd)
 	tally.prev = tally.get("prev_next", {})
 	tally.prev_next = {}
@@ -260,7 +271,7 @@ static func measure(nv, tally: Dictionary) -> void:
 				if fs[k][1] and prev[k][1]:
 					var jump: float = (fs[k][0] as Vector3).distance_to(prev[k][0])
 					var dvert := absf(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))
-					var vprev: float = prev[k][4] if prev[k].size() > 4 else 0.0
+					var vprev: float = prev[k][4]
 					tally.vib_n = int(tally.get("vib_n", 0)) + 1
 					var bodyv := absf(((M.origin - (prev[k][3] as Vector3))).dot(upw))
 					var bk := "body still" if bodyv < 0.01 else ("body bobbing" if bodyv < 0.05 else "body moving up/down")
@@ -271,7 +282,7 @@ static func measure(nv, tally: Dictionary) -> void:
 					var sgn_now := signf(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))
 					if dvert > 0.02 and absf(vprev) > 0.02 and signf(vprev) != sgn_now:
 						tally.flick = int(tally.get("flick", 0)) + 1      # (up then down, or down then up: a flicker)
-					fs[k].append(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))
+					fs[k].append(((fs[k][0] as Vector3) - (prev[k][0] as Vector3)).dot(upw))    # (this frame's move along up, for the next)
 					tally.jit_n = int(tally.get("jit_n", 0)) + 1
 					var fm := int(floorf(mm.get_instance_custom_data(i).b / 16384.0))
 					tally["jn:%d" % fm] = int(tally.get("jn:%d" % fm, 0)) + 1
@@ -280,11 +291,22 @@ static func measure(nv, tally: Dictionary) -> void:
 						print("  JUMP mode %d leg %d by %.2f  body moved %.3f  up %s  old %s new %s" % [fm, fs[k][2], jump, (prev[k][3] as Vector3).distance_to(M.origin),
 							upw, prev[k][0], fs[k][0]])
 					if jump > 0.12:
+						var cause := _jump_cause(prev[k][5], fs[k][6], (prev[k][3] as Vector3).distance_to(M.origin))
+						tally["jc:" + cause] = int(tally.get("jc:" + cause, 0)) + 1
+						if cause.begins_with("stride: the body moved sideways") or cause.begins_with("stride: the body moved backwards"):
+							var who := "not a nestmate (a digger?)"
+							for mt in nv._mates:
+								if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+									var vel: Vector3 = mt.get("vel", Vector3.ZERO)
+									var off := rad_to_deg((M.basis.x.normalized()).angle_to(vel)) if vel.length() > 0.05 else -1.0
+									who = "role %s, %s, heading off its motion %s" % [mt.get("role", "?"), "facing something" if mt.has("face") and mt.face != Vector3.INF else "not facing",
+										"(still)" if off < 0.0 else "%d-%d deg" % [int(off / 30.0) * 30, int(off / 30.0) * 30 + 30]]
+							tally["side:" + who] = int(tally.get("side:" + who, 0)) + 1
 						tally.jit = int(tally.get("jit", 0)) + 1
 						tally["j:%d" % fm] = int(tally.get("j:%d" % fm, 0)) + 1
 		var cur := []
 		for f in fs:
-			cur.append([f[0], f[1], f[2], M.origin, f[3] if f.size() > 3 else 0.0])
+			cur.append([f[0], f[1], f[2], M.origin, f[7] if f.size() > 7 else 0.0, f[6]])
 		if not tally.has("prev_next"):
 			tally.prev_next = {}
 		tally.prev_next[key] = cur
@@ -405,6 +427,59 @@ static func measure(nv, tally: Dictionary) -> void:
 						tally.foot_air_far = int(tally.get("foot_air_far", 0)) + 1      # (no soil within reach at all)
 
 
+## Why a planted foot jumped from one frame to the next (a, b: feet()'s info for it then and now): first what changed
+## at once (the body, the activity, a new step, the feet's mode, where the foothold search found ground), else the
+## stage of the shader's foot that moved the most - the stride's foothold, the search, its height on the soil, the leg.
+static func _jump_cause(a: Dictionary, b: Dictionary, body: float) -> String:
+	if body > 0.25:
+		return "the body moved far in one frame (%.1f-%.1f)" % [snappedf(body - 0.05, 0.1), snappedf(body - 0.05, 0.1) + 0.1]
+	if a.act != b.act:
+		return "its activity changed"
+	if (float(a.mv) < 0.05) != (float(b.mv) < 0.05):
+		return "it started or stopped walking (standing, every foot counts as planted)"
+	if float(b.u) < float(a.u) - 0.02:
+		return "a new step began with no swing between (the gait ran past the swing in a frame)"
+	if a.fm != b.fm:
+		if int(a.fm) > 1 and int(b.fm) > 1:
+			return "how far down its lifted feet reach changed (a 0.1 step of freach)"
+		return "its feet's mode changed (floor / on a back / lifted %d -> %d)" % [mini(int(a.fm), 2), mini(int(b.fm), 2)]
+	if a.br != b.br:
+		var kind := func(x: int) -> String: return "under it" if x == 0 else ("nearer the body" if x < 10 else "the brood search")
+		return "the foothold search found ground elsewhere (%s -> %s)" % [kind.call(int(a.br)), kind.call(int(b.br))]
+	var d_base := ((b.tb as Vector3) - (a.tb as Vector3)).length()
+	var d_search := (((b.ts as Vector3) - (b.tb as Vector3)) - ((a.ts as Vector3) - (a.tb as Vector3))).length()
+	var d_height := absf(float(b.hy) - float(a.hy))
+	var d_leg := ((b.err as Vector3) - (a.err as Vector3)).length()
+	var top := maxf(maxf(d_base, d_search), maxf(d_height, d_leg))
+	if top == d_base:
+		if absf(float(b.mv) - float(a.mv)) > 0.03:
+			return "stride: its speed changed (mv %s)" % ("up" if float(b.mv) > float(a.mv) else "down")
+		if a.ss != b.ss:
+			return "stride: its step length changed"
+		if a.tw != b.tw:
+			return "stride: its share of turning changed"
+		var Ma: Transform3D = a.M
+		var Mb: Transform3D = b.M
+		var tl: Vector3 = b.tl
+		var rot := ((Mb.basis * tl) - (Ma.basis * tl)).length()      # (the body turning or tilting under the same foothold)
+		if rot > 0.5 * d_base:
+			return "stride: the body turned or tilted more than the feet step round"
+		var mvd := Mb.origin - Ma.origin
+		var fwd := Ma.basis.x.normalized()
+		var slide := 2.0 * STRIDE_A * K * float(b.ss) * float(b.mv) / lerpf(0.55, 0.42, clampf((float(b.ss) - 1.0) / 0.5, 0.0, 1.0)) * (float(b.u) - float(a.u))
+		var sc := Ma.basis.y.length()
+		if absf(mvd.dot(Ma.basis.z.normalized())) > 0.5 * absf(mvd.dot(fwd)):
+			return "stride: the body moved sideways (the feet slide only back)"
+		if mvd.dot(fwd) < -0.02:
+			return "stride: the body moved backwards"
+		return "stride: the body moved %s than the feet slide back" % ("further" if mvd.dot(fwd) > slide * sc else "less")
+	if top == d_search:
+		return "the foothold search moved it (same kind)"
+	if top == d_height:
+		return "its height on the soil changed"
+	return "the leg reaching it or not (IK)"
+
+
 static func _note(tally: Dictionary, kind: String, at: Vector3) -> void:
 	var w: Dictionary = tally.get("foot_at", {})
 	if not w.has(kind):
@@ -461,6 +536,20 @@ static func report(tally: Dictionary) -> String:
 		100.0 * float(tally.get("flick", 0)) / maxf(1.0, float(tally.get("vib_n", 0)))]
 	s += "
     planted feet jumping more than 0.12 between frames: %.2f%% of %d" % [100.0 * float(tally.get("jit", 0)) / maxf(1.0, float(tally.get("jit_n", 0))), int(tally.get("jit_n", 0))]
+	s += "
+      frames %d, %.1f ms a frame on average" % [int(tally.get("frames_f", 0)), 1000.0 * float(tally.get("dt_sum", 0.0)) / maxf(1.0, float(tally.get("frames_f", 0)))]
+	var jc := []
+	for k in tally:
+		if String(k).begins_with("jc:"):
+			jc.append([int(tally[k]), String(k).substr(3)])
+	jc.sort_custom(func(x, y): return x[0] > y[0])
+	for c in jc:
+		s += "
+      jumping: %5.1f%%  %s" % [100.0 * float(c[0]) / maxf(1.0, float(tally.get("jit", 0))), c[1]]
+	for k in tally:
+		if String(k).begins_with("side:"):
+			s += "
+        sideways/backwards: %5d  %s" % [tally[k], String(k).substr(5)]
 	for k in tally:
 		if String(k).begins_with("upwhy:"):
 			s += "

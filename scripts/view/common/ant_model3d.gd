@@ -286,7 +286,7 @@ static func stride_len(s: float) -> float:
 ## The shader's INSTANCE_CUSTOM.w: whole part = stride scale x 100, fraction = how much it is walking.
 ## turn: the share of the motion that is turning on the spot, signed (+ = anticlockwise seen from above).
 static func gait_w(mv: float, s: float, turn := 0.0) -> float:
-	var tc := roundi(clampf(absf(turn), 0.0, 1.0) * 8.0) + (9 if turn < 0.0 else 0)
+	var tc := roundi(clampf(absf(turn), 0.0, 1.0) * 16.0) + (17 if turn < 0.0 else 0)    # (in sixteenths: in eighths a planted foot jumped as the share changed)
 	return float(tc) * 1000.0 + floorf(s * 100.0) + clampf(mv, 0.0, 0.999)
 
 

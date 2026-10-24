@@ -195,11 +195,11 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 	mat3 R = mat3(1.0);
 	vec3 piv = vec3(0.0);
 
-	// w: whole part = stride x 100 + 1000 x turning code (0..8 = share of the steps that turn the body
-	// anticlockwise in eighths, +9 = clockwise), fraction = how much it is walking
+	// w: whole part = stride x 100 + 1000 x turning code (0..16 = share of the steps that turn the body
+	// anticlockwise in sixteenths, +17 = clockwise), fraction = how much it is walking
 	float tcode = floor(cw / 1000.0);
-	float tw = mod(tcode, 9.0) / 8.0;
-	float tdir = tcode >= 9.0 ? -1.0 : 1.0;
+	float tw = mod(tcode, 17.0) / 16.0;
+	float tdir = tcode >= 17.0 ? -1.0 : 1.0;
 	cw -= tcode * 1000.0;
 	float sscale = floor(cw) / 100.0;
 	if (sscale < 0.01) {
