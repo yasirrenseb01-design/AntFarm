@@ -4,6 +4,7 @@ extends RefCounted
 ## litter heights the ants walk up over (prop_heights.gd).
 ## Split from outworld_scene.gd (_build_scenery) in v0.11.37.
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
+const WeedMesh := preload("res://scripts/view/common/weed_mesh.gd")
 const U := 1.0 / 3.0
 
 
@@ -44,20 +45,18 @@ static func build(v) -> void:
 		_add_mesh(v, leaves.commit(), v._litter_mat)
 	if n_twigs > 0:
 		_add_mesh(v, twigs.commit(), v._prop_mat)
-	# weeds: a rosette of leaves lifted from one point, green (they wither with the grass in winter)
+	# weeds: plantain, dandelion and clover (weed_mesh.gd), green (they wither with the grass in winter); which kind and
+	# how each leaf stands are drawn from where the weed grows, so the garden's layout draws are left as they were
 	if not ground.rosettes.is_empty():
-		var weeds := SurfaceTool.new()
-		weeds.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var weeds := WeedMesh.new()
+		var on_ground := func(q: Vector2) -> Vector3: return v._on_ground(q / U, -0.05)
 		for w in ground.rosettes:
-			var at: Vector3 = v._on_ground(w.p, -0.1)
-			for k in int(w.n):
-				var ang: float = w.a + TAU * k / float(w.n) + sin(k * 2.3) * 0.25
-				var size := 1.0 - 0.3 * float(k % 3) / 2.0
-				var length: float = w.l * U * size
-				var xf := Transform3D(Basis(Vector3.UP, -ang) * Basis(Vector3.BACK, w.tilt + 0.08 * (k % 2)),
-					Vector3.ZERO).translated_local(Vector3(length * 0.5, 0, 0))
-				weeds.append_from(Props.leaf(length, w.w * U * size, w.c, -0.15), 0, Transform3D(xf.basis, at + xf.origin))
-		_add_mesh(v, weeds.commit(), v._plant_mat)
+			var r := RandomNumberGenerator.new()
+			r.seed = (int(w.p.x * 131.0) * 7919 + int(w.p.y * 17.0) ^ int(v.sim.plot_seed)) & 0x7fffffff | 1
+			var pick := r.randf()
+			var kind := WeedMesh.PLANTAIN if pick < 0.45 else (WeedMesh.DANDELION if pick < 0.75 else WeedMesh.CLOVER)
+			weeds.plant(kind, v._on_ground(w.p, -0.05), float(w.l) / 22.0, r, on_ground)
+		_add_mesh(v, weeds.commit(), v._weed_mat)
 	for b in ground.boulders:
 		var outline := PackedVector2Array()
 		for p in b.poly:

@@ -77,6 +77,7 @@ var _t := 0.0
 var _wet := 0.0
 var _plant_mat: ShaderMaterial      # host plants and fallen leaves move in the air
 var _litter_mat: ShaderMaterial
+var _weed_mat: ShaderMaterial       # the garden's weeds (shaders/plants/weed_leaf)
 var _grass_mat: ShaderMaterial
 var _aphid_meshes: Array = []
 var _aphid_wings: Mesh
@@ -388,7 +389,7 @@ func _seasons(delta: float) -> void:
 	var wither: float = 1.0 - sim.season_life() if wild else 0.0
 	var frost_to: float = clampf((0.5 - sim.climate.air) / 3.0, 0.0, 1.0) if wild else 0.0
 	_frost = frost_to if _frost < 0.0 else move_toward(_frost, frost_to, delta * 0.2 * maxf(speed, 0.5))
-	for m in [_grass_mat, _plant_mat]:
+	for m in [_grass_mat, _plant_mat, _weed_mat]:
 		m.set_shader_parameter("wither", wither)
 		m.set_shader_parameter("frost", _frost)
 	_ground_mat.set_shader_parameter("frost", _frost)

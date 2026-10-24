@@ -38,7 +38,8 @@ scripts/
   sim/         simulation.gd + parts/ (sim_state, sim_base, sim_foragers, sim_enemies, sim_warmth, sim_colony, sim_duties), lang.gd (ภาษา),
                ant.gd, climate.gd, nest_volume.gd (+ parts/nest_voxels, nest_chambers), pheromone_field.gd, species/
   view/
-    common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset)
+    common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset),
+               weed_mesh.gd (วัชพืชในแปลงสวน: ผักกาดน้ำ แดนดิไลออน โคลเวอร์ — รูปใบและเส้นใบวาดใน shaders/plants/weed_leaf; v0.11.38)
     outworld/  พื้นที่หาอาหาร 3 มิติ: outworld_view.gd + parts/ (scene, props, creatures, camera),
                ground_data.gd (ภาพผิวดิน, ภาพกลิ่นทาง, ของประดับ, แสงฟ้า, เครื่องมือที่เลือก — เดิมอยู่ในมุมบน 2 มิติ ลบ v0.11.5),
                prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader),

@@ -43,6 +43,8 @@ func setup(s) -> void:
 	_plant_mat = _sway_mat(true, Color(0.05, 0.07, 0.02), 0.7)
 	_litter_mat = _sway_mat(true, Color(0.08, 0.05, 0.02), 0.8)
 	_grass_mat = _sway_mat(false, Color(0.05, 0.07, 0.02), 0.65)
+	_weed_mat = ShaderMaterial.new()
+	_weed_mat.shader = load("res://shaders/plants/weed_leaf.gdshader")
 	_aphid_meshes = [Props.aphid(0), Props.aphid(1), Props.aphid(2)]
 	_aphid_wings = Props.aphid_wings()
 	_build_ground()
@@ -164,6 +166,7 @@ func refresh(delta: float) -> void:
 	_ground_mat.set_shader_parameter("wet", _wet)
 	_grass_mat.set_shader_parameter("wind", 1.3 + 1.8 * _wet)
 	_plant_mat.set_shader_parameter("wind", 0.45 + 0.7 * _wet)
+	_weed_mat.set_shader_parameter("wind", 0.45 + 0.7 * _wet)
 	_litter_mat.set_shader_parameter("wind", 0.35 + 0.6 * _wet)
 	_seasons(delta)
 	_light()
