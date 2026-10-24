@@ -164,7 +164,8 @@ func _room_near(p: Vector3) -> int:
 ## A nestmate licking another clean: standing beside it, head to its body (the tending pose, as at the brood), the other
 ## standing still. Like the feeding: false if there is no room beside it.
 func _start_groom(g: Dictionary, r: Dictionary) -> bool:
-	if g.has("script") or r.has("script") or not g.has("vp") or not r.has("vp") or (r.vu as Vector3).y < 0.85:
+	# (both on a floor: a groomer up a wall had no floor under it on its way, see nest_lifecycle._step_anims)
+	if g.has("script") or r.has("script") or not g.has("vp") or not r.has("vp") or (r.vu as Vector3).y < 0.85 or (g.vu as Vector3).y < 0.85:
 		return false
 	var rp: Vector3 = r.vp
 	# its middle about half a body length plus the other's width from the other's middle: its head at the other's side
@@ -183,7 +184,7 @@ func _start_groom(g: Dictionary, r: Dictionary) -> bool:
 	# only a step or two from where it is, on open floor all the way (it walks there straight: a longer way went through
 	# the tunnel walls)
 	var mid := ((g.vp as Vector3) + spot) * 0.5
-	if (g.vp as Vector3).distance_to(spot) > 1.8 or _density_at(spot) > 0.35 or _density_at(mid) > 0.35 or absf(spot.y - rp.y) > 0.6:
+	if (g.vp as Vector3).distance_to(spot) > 1.8 or _density_at(spot) > 0.35 or _density_at(mid) > 0.35 or absf(spot.y - rp.y) > 0.6 or not _open_walk(g.vp, spot):
 		return false
 	var a := {"k": "groom", "t": 0.0, "d": randf_range(GROOM_S.x, GROOM_S.y) * _anim_k(), "giver": g, "taker": r, "spot": spot, "p": rp}
 	g.partner = r

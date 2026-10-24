@@ -28,7 +28,9 @@ func _poll_events() -> void:
 					_start_eclose(e.s)
 
 
-## Nearby nestmates free to help; they must be close, since they walk straight to the spot.
+## Nearby nestmates free to help; they must be close, since they walk straight to the spot - and with open floor
+## all the way: near as the crow flies, one in the chamber below walked up to it through the soil and was drawn
+## inside it for seconds (the keeper saw it, 2026-10-24; dev/buried_check.gd).
 func _helpers(p: Vector3, n: int, max_d := 6.0) -> Array:
 	var cands := []
 	for m in _mates:
@@ -39,8 +41,12 @@ func _helpers(p: Vector3, n: int, max_d := 6.0) -> Array:
 			cands.append([d - (4.0 if int(m.get("vd", -1)) == Ant.D_CARRY else 0.0), m])     # (set to carry brood: first)
 	cands.sort_custom(func(a, b): return a[0] < b[0])
 	var out := []
-	for c in cands.slice(0, n):
-		out.append(c[1])
+	for c in cands:
+		var m: Dictionary = c[1]
+		if _open_walk((m.vp as Vector3) if m.has("vp") else Vector3(m.cell), p):
+			out.append(m)
+			if out.size() >= n:
+				break
 	return out
 
 
@@ -464,9 +470,11 @@ func _step_anims(adt: float) -> void:
 	for m in _mates:
 		if m.has("script"):
 			var sp: Vector3 = (m.script.pos as Vector3).move_toward(m.script.goal, walk * adt)
-			# on the floor under it all the way (a chamber floor curves: a straight line would dip into it)
+			# on the floor under it all the way (a chamber floor curves: a straight line would dip into it) - a floor
+			# really found: none within reach gives back its own height, and it was raised 0.45 a frame, up through
+			# the soil (a groomer up a wall rose into the ceiling and stayed in it for seconds - the keeper saw it, 2026-10-24)
 			var fl := _floor_cached(sp)
-			if absf(fl + 0.45 - sp.y) < 1.2:
+			if absf(fl + 0.45 - sp.y) < 1.2 and _density_at(Vector3(sp.x, fl - 0.25, sp.z)) >= 0.5 and _density_at(Vector3(sp.x, fl + 0.35, sp.z)) < 0.5:
 				sp.y = fl + 0.45
 			m.script.pos = sp
 	# a queen on her own goes to her brood every so often (never in the middle of another moment)
