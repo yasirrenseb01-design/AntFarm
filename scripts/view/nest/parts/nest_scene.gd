@@ -66,6 +66,7 @@ var _pupa_prev := ""
 var _moved_p := 1 << 20            # cocoons already carried to it
 var _queen_room_ch := -1           # the chamber she is in (or walking to)
 var _queen_path: Array = []        # floor positions still to walk on her way there
+var _queen_roam_left := 30.0       # seconds until she next walks to another spot of her chamber (nest_lifecycle._queen_roam)
 var _queen_rest_turn := 0.0        # which way she faces when nothing else turns her
 var _queen_home_prev := Vector3.ZERO
 var _queen_walk_fwd := Vector3.RIGHT   # the way she faces on her way (eased)

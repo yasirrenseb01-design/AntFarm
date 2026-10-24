@@ -667,6 +667,11 @@ func _take_shot() -> void:
 			print(FootCheck.report(_feet))
 		if _opts.has("buried"):
 			print(BuriedCheck.report(_buried))
+		if _opts.has("warmth"):
+			# (--warmth: each chamber's depth and its temperature over the last day, and where the queen and brood are kept)
+			for i in sim.nest.chambers.size():
+				print("  chamber %d depth %.1f cm, %.1f C over the last day%s%s%s" % [i, sim.chamber_depth_cm(i), sim.ch_mean[i] if i < sim.ch_mean.size() else -1000.0,
+					" QUEEN" if i == sim.queen_at else "", " larvae" if i == int(sim.brood_at.larvae) else "", " pupae" if i == int(sim.brood_at.pupae) else ""])
 		if _opts.has("pops") and mode == "nest" and _jit_frames > 0:
 			var secs := _jit_frames / 60.0
 			print("jitter: %d turn flicks, %d bobs in %.0f ant-seconds (%.2f / %.2f per ant-minute)" % [_jit_turns, _jit_bobs, secs,

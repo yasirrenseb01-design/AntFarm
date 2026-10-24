@@ -91,12 +91,27 @@ func _place_brood(dt: float) -> void:
 			if nest.chambers[i].get("kind", "") == "queen":
 				queen_at = i
 	# the queen: to the warmest good chamber, only now and then (she is heavy and slow; a young colony's one chamber)
+	# - and in the winter rest to the deepest, the brood with her: the chambers' daily means differ by under a degree
+	# (the soil's yearly warmth reaches far deeper than a nest), no chamber lets the brood grow, and she stayed in her
+	# founding chamber at the top for four years (the keeper, 2026-10-24) [inference: ants overwinter deep in the nest,
+	# below the frost - general; no measurement for L. niger queens found]
 	_queen_stay += dt
+	var winter := hibernating()
+	var deepest: int = open[0]
+	for i in open:
+		if chamber_depth_cm(i) > chamber_depth_cm(deepest):
+			deepest = i
 	var q_best: int = open[0]
 	for i in open:
 		if _mean_score(i) > _mean_score(q_best):
 			q_best = i
-	if q_best != queen_at and _queen_stay > 2.0 and _mean_score(q_best) > _mean_score(queen_at) + 0.15 and queen.alive:
+	var better := _mean_score(q_best) > _mean_score(queen_at) + 0.15
+	if winter:
+		q_best = deepest
+		better = true
+	elif queen_at == deepest:
+		better = _mean_score(q_best) > _mean_score(queen_at)          # (out of her winter quarters as soon as it is warmer up)
+	if q_best != queen_at and _queen_stay > 2.0 and better and queen.alive:
 		queen_at = q_best
 		_queen_stay = 0.0
 	# larvae (by day and night) and cocoons (a little higher, drier)
@@ -104,10 +119,10 @@ func _place_brood(dt: float) -> void:
 		var up := 0.0 if kind == "larvae" else 0.012
 		_brood_stay[kind] += dt
 		var cur: int = brood_at[kind]
-		var best := _best_chamber(open, up)
+		var best := deepest if winter else _best_chamber(open, up)
 		if cur < 0 or cur >= n or not nest.chambers[cur].get("open", true):
 			brood_at[kind] = best
-		elif best != cur and _brood_stay[kind] > (0.08 if kind == "larvae" else 0.25) and _score(best, up) > _score(cur, up) + 0.08:
+		elif best != cur and _brood_stay[kind] > (0.08 if kind == "larvae" else 0.25) and (winter or _score(best, up) > _score(cur, up) + 0.08):
 			brood_at[kind] = best
 			_brood_stay[kind] = 0.0
 	# the nurses carry a few at a time (eggs stay where she laid them: she lays new ones where she goes)

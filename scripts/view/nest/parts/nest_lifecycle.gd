@@ -759,6 +759,7 @@ const QUEEN_WALK := 2.5          # voxels a second
 
 
 func _queen_walk(adt: float) -> void:
+	_queen_roam(adt)
 	if _queen_path.is_empty() or adt <= 0.0 or _queen_busy():
 		return
 	var to: Vector3 = _queen_path[0]
@@ -771,6 +772,37 @@ func _queen_walk(adt: float) -> void:
 		return
 	# (her body is turned along her way in nest_brood._queen_pose)
 	_spots.queen = (_spots.queen as Vector3) + d.normalized() * minf(d.length(), QUEEN_WALK * adt)
+
+
+## Between her moments she walks to another spot of her chamber floor now and then, slowly, and stays there (the eggs
+## she lays next lie by her there) - the keeper never saw her walk (2026-10-24) [inference: no measurement of how
+## often a Lasius niger queen moves about her chamber found].
+func _queen_roam(adt: float) -> void:
+	if adt <= 0.0 or not _queen_path.is_empty() or _queen_busy() or not _room_of.has(_queen_room_ch) or not sim.queen.alive:
+		return
+	_queen_roam_left -= adt
+	if _queen_roam_left > 0.0:
+		return
+	_queen_roam_left = randf_range(25.0, 70.0)
+	var here: Vector3 = _spots.queen
+	var cands := []
+	for sp in _rooms[_room_of[_queen_room_ch]].spots:
+		var d := (sp as Vector3).distance_to(here)
+		if d > 1.5 and d < 6.0 and not _brood_cells.has(Vector3i(roundi(sp.x), roundi(sp.y), roundi(sp.z))):
+			# (room for her all round: her gaster is long and turned any way - by a wall it lay in the soil)
+			var clear := true
+			for o in [Vector3(1.6, 0.6, 0), Vector3(-1.6, 0.6, 0), Vector3(0, 0.6, 1.6), Vector3(0, 0.6, -1.6), Vector3(1.1, 0.6, 1.1),
+					Vector3(-1.1, 0.6, 1.1), Vector3(1.1, 0.6, -1.1), Vector3(-1.1, 0.6, -1.1)]:
+				if _density_at((sp as Vector3) + o) >= 0.5:
+					clear = false
+					break
+			if clear:
+				cands.append(sp)
+	if cands.is_empty():
+		return
+	var path := _path_to(here, cands[randi() % cands.size()])
+	if not path.is_empty():
+		_queen_path = path
 
 
 func _queen_busy() -> bool:
