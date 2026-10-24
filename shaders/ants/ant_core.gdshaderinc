@@ -76,29 +76,42 @@ vec3 yaw(vec3 v, float a) { float c = cos(a); float s = sin(a); return vec3(v.x 
 const float STRIDE_A = 1.3;      // ant_model3d.gd STRIDE_A
 const float LIFT_H = 0.42;       // how high a swinging foot is raised, design units
 
-// Two-segment leg (femur C->N, tibia N->A) reaching for an ankle target TA, in the vertical plane
-// through C and TA. Returns the femur and tibia rotations (about `axis`) for the knee-up solution.
-vec2 leg_ik(vec3 C, vec3 N, vec3 A, vec3 TA, out vec3 axis) {
-	vec3 d = TA - C;
-	vec3 dir = normalize(vec3(d.x, 0.0, d.z) + vec3(1e-4, 0.0, 0.0));
-	axis = normalize(cross(dir, vec3(0.0, 1.0, 0.0)));
-	vec2 u1 = vec2(dot(N - C, dir), N.y - C.y);
-	vec2 r2 = vec2(dot(A - C, dir), A.y - C.y);
-	vec2 c2 = vec2(dot(TA - C, dir), TA.y - C.y);
-	float l1 = length(u1);
-	float l2 = length(r2 - u1);
-	float dr = length(r2);
-	float dc = clamp(length(c2), abs(l1 - l2) + 1e-4, l1 + l2 - 1e-4);
-	float a0 = acos(clamp((l1 * l1 + dr * dr - l2 * l2) / (2.0 * l1 * dr), -1.0, 1.0));
-	float a1 = acos(clamp((l1 * l1 + dc * dc - l2 * l2) / (2.0 * l1 * dc), -1.0, 1.0));
-	float sgn = sign(r2.x * u1.y - r2.y * u1.x);
-	float f = atan(c2.y, c2.x) - atan(r2.y, r2.x) + sgn * (a1 - a0);
-	vec2 n2 = vec2(u1.x * cos(f) - u1.y * sin(f), u1.x * sin(f) + u1.y * cos(f));
-	vec2 cc = normalize(c2) * dc;
-	vec2 tb0 = r2 - u1;
-	vec2 tb1 = cc - n2;
-	float t = atan(tb1.y, tb1.x) - atan(tb0.y, tb0.x);
-	return vec2(f, t);
+// Two-segment leg (femur C->N, tibia N->A, at their true lengths) reaching for an ankle target TA in 3D: the knee in
+// the plane through the coxa, the target and where the knee is at rest (when that is nearly on the line, up and out:
+// outw). Out of reach the leg points straight at the target. Gives the knee N2 and the ankle A2. (It used to solve in
+// the upright plane through C and TA with the leg's lengths as seen in that plane - shorter than they are, and an
+// ankle target right above or below the coxa had no plane: the foot missed its foothold by up to 0.8, often into
+// the soil - feet_bench, 2026-10-24.)
+void leg_ik(vec3 C, vec3 N, vec3 A, vec3 TA, vec3 outw, out vec3 N2, out vec3 A2) {
+	float l1 = length(N - C);
+	float l2 = length(A - N);
+	vec3 D = TA - C;
+	float dl = max(length(D), 1e-5);
+	vec3 n = D / dl;
+	float d = clamp(dl, abs(l1 - l2) + 1e-4, l1 + l2 - 1e-4);
+	vec3 k0 = N - C;
+	vec3 pk = k0 - n * dot(k0, n);
+	if (length(pk) < 0.2 * l1) {
+		pk += (vec3(0.0, 1.0, 0.0) + 0.5 * outw) * 0.17 * l1;
+		pk -= n * dot(pk, n);
+	}
+	pk = normalize(pk);
+	float a = (l1 * l1 - l2 * l2 + d * d) / (2.0 * d);
+	N2 = C + n * a + pk * sqrt(max(l1 * l1 - a * a, 0.0));
+	A2 = C + n * d;
+}
+
+// The rotation turning the direction of a into that of b (the shortest way round).
+mat3 rot_to(vec3 a, vec3 b) {
+	a = normalize(a);
+	b = normalize(b);
+	vec3 v = cross(a, b);
+	float c = dot(a, b);
+	if (c < -0.9999) {
+		return mat3(1.0);
+	}
+	mat3 vx = mat3(vec3(0.0, v.z, -v.y), vec3(-v.z, 0.0, v.x), vec3(v.y, -v.x, 0.0));
+	return mat3(1.0) + vx + vx * vx / (1.0 + c);
 }
 
 // How far (world units, along the ant's up) the real ground lies from a foot placed at fw: + above, - below.
@@ -176,8 +189,13 @@ vec3 set_down(vec3 T, mat4 M, vec3 H, vec3 C, vec3 dAF, float lmax, float fmode)
 	if (ground_mode == 1 && (gd < -r0 * sc || gd > 0.6 * sc)) {
 		float fprev = 0.0;
 		float gprev = gd;
-		for (int k = 1; k <= 3; k++) {
-			float fk = 0.28 * float(k);
+		bool found = false;
+		vec3 Tb = T;                // (in the soil with no ground in reach: the try with the surface nearest above it)
+		float gb = gd;
+		// (last right under the hip: in a tunnel narrower than its legs spread both walls were in reach of nothing
+		// nearer, and the foot was left in the wall - feet_bench, 2026-10-24)
+		for (int k = 1; k <= 4; k++) {
+			float fk = k < 4 ? 0.28 * float(k) : 1.0;
 			vec3 Tk = T;
 			Tk.xz = mix(T.xz, H.xz, fk);
 			float hdk = length((Tk + dAF - C).xz);
@@ -188,11 +206,16 @@ vec3 set_down(vec3 T, mat4 M, vec3 H, vec3 C, vec3 dAF, float lmax, float fmode)
 				float ff = mix(fprev, fk, clamp((bound - gprev) / (gk - gprev), 0.0, 1.0));
 				T.xz = mix(T.xz, H.xz, ff);
 				gd = ground_dy((M * vec4(T, 1.0)).xyz, upw);
+				found = true;
 				break;
+			}
+			if (gk > 0.0 && gk < gb) {
+				Tb = Tk;
+				gb = gk;
 			}
 			fprev = fk;
 			gprev = gk;
-			if (k == 3 && fmode > 1.5) {
+			if (k == 4 && fmode > 1.5) {
 				// up on the brood with nothing in reach under it or nearer the body: a little forward or back
 				// along the body, onto the cocoon there (it hung over the gap between them)
 				for (int j = 0; j < 18; j++) {
@@ -206,16 +229,22 @@ vec3 set_down(vec3 T, mat4 M, vec3 H, vec3 C, vec3 dAF, float lmax, float fmode)
 					if (gj >= -rj * sc && gj <= 0.6 * sc) {
 						T = Tj;
 						gd = gj;
+						found = true;
 						break;
 					}
 				}
 			}
 		}
+		if (!found && gd > 0.6 * sc && gb < gd) {
+			T = Tb;
+			gd = gb;
+		}
 	}
 	// (on a wall or the ceiling with no soil under the foot - the glass of a glass nest - it stays put;
-	// on a floor it reaches down for the ground as far as the leg goes)
+	// on a floor it reaches down for the ground as far as the leg goes; up a steep chamber edge the foot climbs with it,
+	// and with its body sunk in the floor - squeezed down a tunnel - up onto the floor, as far as a leg folds: 1.0)
 	if (gd > -1.35 || abs(M[1].y) > 0.5 * sc) {
-		T.y += clamp(gd / sc, -reach, 0.6);         // (up a steep chamber edge the foot climbs with it)
+		T.y += clamp(gd / sc, -reach, 1.0);
 	}
 	return T;
 }
@@ -451,20 +480,21 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			vec3 Fy = H + yaw(F - H, th);
 			// ...and femur and tibia bend at the knee so the tarsus lies where the foot is
 			vec3 TA = T + (Ay - Fy);
-			vec3 ax;
-			vec2 ang = leg_ik(Cy, Ny, Ay, TA, ax);
-			vec3 N2 = Cy + rot_axis(Ny - Cy, ax, ang.x);
-			vec3 A2 = N2 + rot_axis(Ay - Ny, ax, ang.y);
+			vec3 N2;
+			vec3 A2;
+			leg_ik(Cy, Ny, Ay, TA, normalize(vec3(Fy.x - H.x, 0.0, Fy.z - H.z)), N2, A2);
+			mat3 Rf = rot_to(Ny - Cy, N2 - Cy);
+			mat3 Rt = rot_to(Ay - Ny, A2 - N2);
 			vec3 p = H + yaw(V - H, th);
 			vec3 nn = yaw(NR, th);
 			if (seg > 3.5) {
 				p = A2 + (p - Ay);
 			} else if (seg > 2.5) {
-				p = N2 + rot_axis(p - Ny, ax, ang.y);
-				nn = rot_axis(nn, ax, ang.y);
+				p = N2 + Rt * (p - Ny);
+				nn = Rt * nn;
 			} else if (seg > 1.5) {
-				p = Cy + rot_axis(p - Cy, ax, ang.x);
-				nn = rot_axis(nn, ax, ang.x);
+				p = Cy + Rf * (p - Cy);
+				nn = Rf * nn;
 			}
 			V = p;
 			NR = nn;

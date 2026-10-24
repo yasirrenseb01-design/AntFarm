@@ -16,28 +16,22 @@ const AIR_GAP := 0.15        # world units (~0.2 mm)
 const SUNK := 0.12
 
 
-## The shader's leg_ik(): femur and tibia rotations for the knee-up solution reaching the ankle for TA.
-static func _leg_ik(C: Vector3, N: Vector3, A: Vector3, TA: Vector3) -> Array:
-	var d := TA - C
-	var dir := (Vector3(d.x, 0.0, d.z) + Vector3(1e-4, 0.0, 0.0)).normalized()
-	var axis := dir.cross(Vector3.UP).normalized()
-	var u1 := Vector2((N - C).dot(dir), N.y - C.y)
-	var r2 := Vector2((A - C).dot(dir), A.y - C.y)
-	var c2 := Vector2((TA - C).dot(dir), TA.y - C.y)
-	var l1 := u1.length()
-	var l2 := (r2 - u1).length()
-	var dr := r2.length()
-	var dc := clampf(c2.length(), absf(l1 - l2) + 1e-4, l1 + l2 - 1e-4)
-	var a0 := acos(clampf((l1 * l1 + dr * dr - l2 * l2) / (2.0 * l1 * dr), -1.0, 1.0))
-	var a1 := acos(clampf((l1 * l1 + dc * dc - l2 * l2) / (2.0 * l1 * dc), -1.0, 1.0))
-	var sgn := signf(r2.x * u1.y - r2.y * u1.x)
-	var f := atan2(c2.y, c2.x) - atan2(r2.y, r2.x) + sgn * (a1 - a0)
-	var n2 := Vector2(u1.x * cos(f) - u1.y * sin(f), u1.x * sin(f) + u1.y * cos(f))
-	var cc := c2.normalized() * dc
-	var tb0 := r2 - u1
-	var tb1 := cc - n2
-	var t := atan2(tb1.y, tb1.x) - atan2(tb0.y, tb0.x)
-	return [f, t, axis]
+## The shader's leg_ik(): [knee, ankle] of the two-segment leg reaching for the ankle target TA in 3D.
+static func _leg_ik(C: Vector3, N: Vector3, A: Vector3, TA: Vector3, outw: Vector3) -> Array:
+	var l1 := (N - C).length()
+	var l2 := (A - N).length()
+	var D := TA - C
+	var dl := maxf(D.length(), 1e-5)
+	var n := D / dl
+	var d := clampf(dl, absf(l1 - l2) + 1e-4, l1 + l2 - 1e-4)
+	var k0 := N - C
+	var pk := k0 - n * k0.dot(n)
+	if pk.length() < 0.2 * l1:
+		pk += (Vector3.UP + 0.5 * outw) * 0.17 * l1
+		pk -= n * pk.dot(n)
+	pk = pk.normalized()
+	var a := (l1 * l1 - l2 * l2 + d * d) / (2.0 * d)
+	return [C + n * a + pk * sqrt(maxf(l1 * l1 - a * a, 0.0)), C + n * d]
 
 
 static func _yaw(v: Vector3, a: float) -> Vector3:
@@ -49,6 +43,8 @@ static func _rot_axis(v: Vector3, k: Vector3, a: float) -> Vector3:
 
 
 ## The soil volume as the shader samples it (texture(vol): rho / 255, trilinear, voxel centres on the integers).
+static var _ik_cases := 0
+static var _sd_dbg := false
 static var rho := PackedByteArray()        # what the feet stand on (nest_scene._foot_rho: the soil and the brood)
 
 
@@ -116,14 +112,19 @@ static func _set_down(nest, T: Vector3, M: Transform3D, H: Vector3, C: Vector3, 
 	if gd < -r0 * sc or gd > 0.6 * sc:
 		var fprev := 0.0
 		var gprev := gd
-		for k in range(1, 4):              # (at an edge, set down nearer the body where it reaches)
-			var fk := 0.28 * k
+		var found := false
+		var Tb := T
+		var gb := gd
+		for k in range(1, 5):              # (at an edge, set down nearer the body where it reaches; last right under the hip)
+			var fk := 0.28 * k if k < 4 else 1.0
 			var Tk := T
 			Tk.x = lerpf(T.x, H.x, fk)
 			Tk.z = lerpf(T.z, H.z, fk)
 			var hdk := Vector2((Tk + dAF - C).x, (Tk + dAF - C).z).length()
 			var rk := minf(reach, sqrt(maxf(lmax * lmax - hdk * hdk, 0.0)) + dAF.y - C.y)
 			var gk := _ground_dy(nest, M * Tk, upw)
+			if _sd_dbg:
+				print("      k %d fk %.2f gk %.2f rk %.2f (sc %.2f) at %s  vol %.2f" % [k, fk, gk, rk, sc, M * Tk, _vol(nest, M * Tk)])
 			if gk >= -rk * sc and gk <= 0.6 * sc:
 				var bound := -rk * sc if gprev < -rk * sc else 0.6 * sc
 				var ff := lerpf(fprev, fk, clampf((bound - gprev) / (gk - gprev), 0.0, 1.0))
@@ -131,10 +132,14 @@ static func _set_down(nest, T: Vector3, M: Transform3D, H: Vector3, C: Vector3, 
 				T.z = lerpf(T.z, H.z, ff)
 				gd = _ground_dy(nest, M * T, upw)
 				br = k
+				found = true
 				break
+			if gk > 0.0 and gk < gb:
+				Tb = Tk
+				gb = gk
 			fprev = fk
 			gprev = gk
-			if k == 3 and fmode > 1.5:
+			if k == 4 and fmode > 1.5:
 				for j in 18:
 					var sh := 0.45 * float(1 + (j % 6) / 2) * (1.0 if j % 2 == 0 else -1.0)
 					var fi := 0.4 if j < 6 else (0.75 if j < 12 else 1.0)
@@ -148,11 +153,16 @@ static func _set_down(nest, T: Vector3, M: Transform3D, H: Vector3, C: Vector3, 
 						T = Tj
 						gd = gj
 						br = 10 + j
+						found = true
 						break
+		if not found and gd > 0.6 * sc and gb < gd:
+			T = Tb
+			gd = gb
+			br = 5
 	var Ts := T
 	var hy := 0.0
 	if gd > -1.35 or absf(M.basis.y.y) > 0.5 * sc:
-		hy = clampf(gd / sc, -reach, 0.6)
+		hy = clampf(gd / sc, -reach, 1.0)
 		T.y += hy
 	return [T, br, Ts, hy * sc]
 
@@ -222,11 +232,13 @@ static func feet(nest, M: Transform3D, cus: Color, rec := PackedFloat32Array(), 
 		var br := 0
 		var hy := 0.0
 		var lo := Vector3.INF
+		var lu := upw
 		var g := 0 if grp < 0.5 else 16
 		if rec.size() >= 32 and rec[g + 15] >= -0.5:
 			# (the shader's remembered feet: set down from the body as it was when they landed)
 			var Ml := _rec_xf(rec, g)
 			lo = Ml.origin
+			lu = Ml.basis.y.normalized()
 			var Tl := _stride_t(F, rec[g + 12], rec[g + 13], rec[g + 14])
 			T0 = Tl
 			tb = Ml * Tl
@@ -277,15 +289,17 @@ static func feet(nest, M: Transform3D, cus: Color, rec := PackedFloat32Array(), 
 		var Ay := H + _yaw(A - H, th)
 		var Fy := H + _yaw(F - H, th)
 		var TA := T + (Ay - Fy)
-		var ik := _leg_ik(Cy, Ny, Ay, TA)
-		var N2 := Cy + _rot_axis(Ny - Cy, ik[2], ik[0])
-		var A2 := N2 + _rot_axis(Ay - Ny, ik[2], ik[1])
+		var ik := _leg_ik(Cy, Ny, Ay, TA, Vector3(Fy.x - H.x, 0.0, Fy.z - H.z).normalized())
+		var A2: Vector3 = ik[1]
 		var tip := A2 + (Fy - Ay)
+		if planted and OS.has_environment("IKCASES") and _ik_cases < 3000 and (tip - T).length() > 0.02:
+			_ik_cases += 1        # (dev: the planted feet the leg misses, for trying other leg solutions offline)
+			print("IKCASE %d %d %.4f %.4f %.4f %.4f" % [li, side, T.x / K, T.y / K, T.z / K, (tip - T).length() / K])
 		if debug:
 			print("    leg %d%s planted %s upy %.2f fmode %d reach %.2f  T %s  tipErr %.3f  gd_tip %.2f" % [li, "R" if side > 0 else "L", planted, M.basis.y.y / sc, fmode, reach,
 				M * T, (A2 - TA).length(), _ground_dy(nest, M * tip, upw)])
 		var info := {"u": u, "mv": mv, "ss": sscale, "tw": tw * tdir, "fm": fmode, "act": act, "br": br, "tb": tb, "ts": ts,
-			"hy": hy, "err": M.basis * (tip - T), "M": M, "tl": T0, "lo": lo}
+			"hy": hy, "err": M.basis * (tip - T), "M": M, "tl": T0, "lo": lo, "lu": lu}
 		out.append([M * tip, planted, int(li), (tip - T).length(), M * T, M * Cy, info])
 	return out
 
@@ -431,6 +445,26 @@ static func measure(nv, tally: Dictionary) -> void:
 					"its foothold in the soil" if _vol(nest, f[4]) >= 0.55 else "its foothold on the surface")
 				why += ", the leg's root in the soil too" if _vol(nest, f[5]) >= 0.5 else ""
 				tally["pw:" + why] = int(tally.get("pw:" + why, 0)) + 1
+				if why.begins_with("its foothold in the soil"):
+					# (how it got there: where the search found it, how far it was raised or lowered, and the soil from
+					# the foothold along its up now)
+					var inf: Dictionary = f[6]
+					var fk := "found %s, raised %.1f, soil above it %.1f, body up %.1f" % ["under it" if int(inf.br) == 0 else ("nearer the body" if int(inf.br) < 10 else "brood search"),
+						snappedf(float(inf.hy), 0.2), snappedf(_ground_dy(nest, f[4], upw), 0.2), snappedf(upw.y, 0.5)]
+					tally["un:" + fk] = int(tally.get("un:" + fk, 0)) + 1
+					if tally.has("debug") and int(tally.get("dbg_fis", 0)) < 12:
+						tally.dbg_fis = int(tally.get("dbg_fis", 0)) + 1
+						var fw: Vector3 = f[4]
+						var soil_v := _vol(nest, fw)
+						rho = rho_map
+						print("  FIS at %s soil %.2f map %.2f  gd(map) along landing up %.2f now %.2f  up then %s now %s  tip %s" % [fw, soil_v, _vol(nest, fw),
+							_ground_dy(nest, fw, inf.lu), _ground_dy(nest, fw, upw), inf.lu, upw, tip])
+						if int(tally.dbg_fis) <= 3:
+							_sd_dbg = true
+							print("   body at %s" % M.origin)
+							feet(nest, M, mm.get_instance_custom_data(i), _rec(nv, i), true)
+							_sd_dbg = false
+						rho = nest.rho
 				if float(f[3]) > 0.1:
 					# (where the foothold it could not reach lies from where the foot rests, in its own units / K)
 					var Tl: Vector3 = M.affine_inverse() * (f[4] as Vector3)
@@ -629,7 +663,7 @@ static func report(tally: Dictionary) -> String:
 		if String(k).begins_with("un:"):
 			un.append([int(tally[k]), String(k).substr(3)])
 	un.sort_custom(func(x, y): return x[0] > y[0])
-	for c in un.slice(0, 12):
+	for c in un.slice(0, 20):
 		s += "
         out of reach: %5d  %s" % c
 	for k in tally:
