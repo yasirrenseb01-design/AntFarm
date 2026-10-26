@@ -24,6 +24,15 @@ func _init() -> void:
 	_is("keeper's saves: wild", h.wild, [1])
 	_is("hidden", h.hidden(), [2, 3])
 	_is("opened (slot 3 played last)", h.pick(3), 1)
+	# the bigger tank takes a new slot, never a hidden one (its bigger box is set when a colony starts in it)
+	var bigs := HomeStore.new()
+	bigs.load_layout()
+	bigs.buy("big")
+	_is("big tank: a new slot", [bigs.big, bigs.hidden().has(2) and bigs.hidden().has(3)], [5, false])
+	bigs.tanks = [4]
+	bigs.wild = [1]
+	bigs.big = 0
+	bigs.save_layout()
 	h.add_tank()
 	_is("another tank: tanks", h.tanks, [4, 3])
 	_is("another tank: wild", h.wild, [1, 2])

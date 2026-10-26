@@ -135,7 +135,18 @@ func why_not(item: String, points: float) -> String:
 func buy(item: String) -> bool:
 	match item:
 		"big":
-			var t := add_tank()
+			# (a new slot, never a hidden one: the bigger box is set when a colony starts - an old one would keep its own)
+			var t := 0
+			if tanks.size() < Store.SLOTS / 2:
+				t = _free()
+				if t != 0:
+					tanks.append(t)
+					var w := _take(["wild"])
+					if w == 0:
+						tanks.pop_back()
+						t = 0
+					else:
+						wild.append(w)
 			if t == 0:
 				return false
 			big = t

@@ -15,7 +15,9 @@ const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 signal logged(entry: Dictionary)
 
 const TPD := 3600                    # ticks per game day (60 s at 1×)
-const WORLD := Vector2(1200, 750)    # outworld in px, 1 px ≈ 0.5 mm → 60 × 37.5 cm box
+const SMALL_WORLD := Vector2(1200, 750)   # outworld in px, 1 px ≈ 0.5 mm → 60 × 37.5 cm box
+const BIG_WORLD := Vector2(1800, 1125)    # the Home's bigger tank (the shop, v0.11.43): 90 × 56 cm, half as wide again
+var WORLD := SMALL_WORLD             # this colony's (set at setup, kept in the save)
 const CELL := 5.0
 const NEST_R := 9.0
 const COLONY_EVERY := 20             # colony bookkeeping runs every N ticks

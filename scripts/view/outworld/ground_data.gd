@@ -130,7 +130,11 @@ func _crater_and_midden(r: RandomNumberGenerator) -> void:
 			"c": Color(0.18, 0.12, 0.08).lerp(Color(0.38, 0.27, 0.16), r.randf())})
 
 
-## Keeps the trail texture current (a sixth of its rows a frame) while the outworld is on screen.
+## Keeps the trail texture current while the outworld is on screen: about PHER_CELLS cells a frame - all of a small
+## box every 6 frames; the bigger tank's box (2.25 times the cells) every ~14, at the same cost a frame (v0.11.43: a
+## sixth of the rows took twice the time there, ~10 ms a frame).
+const PHER_CELLS := 6000
+
 func tick_pheromones() -> void:
 	if not show_pheromones:
 		return
@@ -138,7 +142,7 @@ func tick_pheromones() -> void:
 	var h: int = sim.gh
 	var home = sim.home
 	var food = sim.food
-	for k in h / 6 + 1:
+	for k in mini(h, ceili(PHER_CELLS / float(w))):
 		var y := _pher_row
 		_pher_row = (_pher_row + 1) % h
 		for x in w:

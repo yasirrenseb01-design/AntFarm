@@ -5,7 +5,9 @@ extends "res://scripts/sim/parts/sim_state.gd"
 
 # ---------------------------------------------------------------- setup
 
-func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, scen := "keeper") -> void:
+## big_box: a formicarium in the Home's bigger tank - a foraging box half as wide and deep again (BIG_WORLD).
+func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, scen := "keeper", big_box := false) -> void:
+	WORLD = BIG_WORLD if big_box and scen == "keeper" else SMALL_WORLD
 	if seed_value != 0:
 		rng.seed = seed_value
 	else:

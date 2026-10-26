@@ -87,7 +87,7 @@ func to_dict() -> Dictionary:
 	return {
 		"version": SAVE_VERSION, "species": sp["id"], "scenario": scenario, "start_doy": start_doy, "cold_days": cold_days, "fridge_on": fridge_on, "rng_seed": rng.seed, "rng_state": rng.state, "tick": tick,
 		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(), "alarm": alarm.to_dict(), "next_cid": _next_cid,
-		"plot_seed": plot_seed, "nest_pos": nest_pos, "midden_pos": midden_pos, "traits": traits,
+		"world": [WORLD.x, WORLD.y], "plot_seed": plot_seed, "nest_pos": nest_pos, "midden_pos": midden_pos, "traits": traits,
 		"brood_at": brood_at, "queen_at": queen_at, "queen_stay": _queen_stay, "ch_mean": ch_mean, "surf_mean": surf_mean,
 		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
@@ -103,6 +103,9 @@ func to_dict() -> Dictionary:
 
 
 func from_dict(d: Dictionary) -> void:
+	# the box: one of the two sizes there are (saved from v0.11.43; before that every box was the small one)
+	var wd = d.get("world", [])
+	WORLD = BIG_WORLD if wd is Array and wd.size() == 2 and Vector2(float(wd[0]), float(wd[1])) == BIG_WORLD else SMALL_WORLD
 	gw = int(WORLD.x / CELL)
 	gh = int(WORLD.y / CELL)
 	rng.seed = d.rng_seed

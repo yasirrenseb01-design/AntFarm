@@ -199,7 +199,7 @@ home_door,ประตู,The door
 home_shop,ร้านค้า,Shop
 shop_title,ร้านค้า,Shop
 shop_big,ตู้ที่ 2 (ใหญ่ขึ้น),"A second, bigger tank"
-shop_big_note,วางบนโต๊ะข้างตู้แรก ได้รังเพิ่ม 1 รัง (และแปลงในโหมดป่าเพิ่ม 1),"Stands on the desk beside the first: one more colony (and one more plot in the wild mode)"
+shop_big_note,วางบนโต๊ะข้างตู้แรก กล่องหากินในเกม 90×56 ซม. (ตู้เล็ก 60×37.5) ได้รังใหม่ 1 รัง (และแปลงในโหมดป่าเพิ่ม 1),"Stands on the desk beside the first: a 90 × 56 cm foraging box in the game (a small tank's is 60 × 37.5) for a new colony (and one more plot in the wild mode)"
 shop_small,ตู้เล็กเพิ่ม,Another small tank
 shop_small_note,ได้รังเพิ่ม 1 รัง (และแปลงในโหมดป่าเพิ่ม 1) — ต้องมีที่ว่างบนชั้นวาง,One more colony (and one more plot in the wild mode) — needs a free place on a shelf
 shop_shelf2,ชั้นวาง 2 ตู้,A shelf for 2 tanks
