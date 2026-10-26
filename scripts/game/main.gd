@@ -69,10 +69,18 @@ func _ready() -> void:
 	var lang := String(_opts.get("lang", _settings.get("lang", "")))
 	L.use(lang if lang != "" else L.default_lang())
 	var loaded := false
-	var first_run := _persist and next_nest == "" and not _opts.has("testsave") and range(1, Store.SLOTS + 1).all(func(s): return not Store.exists(s))
+	var first_run := false
 	if _persist:
 		_settings = Store.settings()
 		slot = next_slot if next_slot > 0 else int(_settings.get("slot", 1))
+		if not _opts.has("testsave"):
+			home.load_layout()
+			if next_slot <= 0:
+				# (the last one played, unless it is hidden now - the keeper's slots 2 and 3 until there are more tanks)
+				slot = home.pick(slot)
+				first_run = slot == 0 and next_nest == ""
+				if slot == 0:
+					slot = home.tanks[0]
 		Harmony.base = Store.base
 		harmony.load_purse()
 		next_slot = 0
@@ -146,6 +154,7 @@ func _ready() -> void:
 		outworld.follow_creature(id))
 	nest_view.cut_changed.connect(func(v): hud.set_cut(v))
 	hud.current_slot = slot
+	hud.home = home if _persist and not _opts.has("testsave") else null
 	hud.settings = _settings
 	hud.colony_new.connect(func(s, kind): _go_to(s, kind))
 	hud.colony_play.connect(func(s): _go_to(s, ""))
@@ -162,6 +171,9 @@ func _ready() -> void:
 	title = Title.new()
 	add_child(title)
 	title.setup(self)
+	home_room = HomeRoom.new()
+	add_child(home_room)
+	home_room.setup(self)
 	hud.menu_requested.connect(func(): title.open(not _demo))
 	if one != null:
 		one.wake.connect(_wake)
@@ -345,19 +357,6 @@ func _enter_desktop() -> void:
 		get_tree().create_timer(2.0).timeout.connect(func(): get_tree().quit())
 		return
 	desktop.enter()
-
-
-## "รังใหม่" on the title screen: into the first empty slot (the colony shown before the first one: slot 1); all
-## three hold a colony - "my colonies", to pick which to start again.
-func _title_new_colony() -> void:
-	var to := slot if _demo else 0
-	for s in range(1, Store.SLOTS + 1):
-		if to == 0 and not Store.exists(s):
-			to = s
-	if to == 0:
-		hud.open_colonies()
-		return
-	hud.open_species(to, false)
 
 
 ## The desktop shortcut was used while this game runs (single_instance.gd): out of the wallpaper, or the window forward.

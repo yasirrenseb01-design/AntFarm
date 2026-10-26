@@ -82,8 +82,8 @@ func setup(m) -> void:
 	_go_on_note.custom_minimum_size.y = Page.LINE
 	_go_on_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	col.add_child(_go_on_note)
-	_item(col, tr("title_new"), func(): main._title_new_colony())
-	_item(col, tr("my_colonies"), func(): h.open_colonies())
+	_item(col, tr("title_home"), func(): main.home_room.open())
+	_item(col, tr("title_wild"), func(): h.open_colonies("wild"))
 	_item(col, tr("settings"), func(): h.open_settings())
 	_item(col, tr("wallpaper"), func(): main._enter_desktop())
 	_item(col, tr("title_quit"), func(): main.get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST))
@@ -205,7 +205,7 @@ func open(can_go_on := true) -> void:
 	_go_on.visible = can_go_on
 	_go_on_note.visible = can_go_on
 	var s = main.sim
-	_go_on_note.text = tr("title_colony_note") % [main.slot, s.year(), s.date_text(), s.workers.size(),
+	_go_on_note.text = (tr("title_colony_note_wild") if s.scenario == "wild" else tr("title_colony_note")) % [main.hud.slot_no(main.slot), s.year(), s.date_text(), s.workers.size(),
 		"" if s.queen.alive else tr("title_queen_dead")]
 	_shot = -1
 	_named_turn = false
@@ -253,6 +253,8 @@ func _set_view(m: String) -> void:
 func _unhandled_key_input(e: InputEvent) -> void:
 	if not (e is InputEventKey and e.pressed and not e.echo):
 		return
+	if main.home_room != null and main.home_room.is_open:
+		return                                        # (the Home has the keys)
 	if e.keycode == KEY_F8 and not main.desktop.on and (clip or not is_open):
 		# clip mode: the tour with nothing on screen, F8 (or Esc) again to stop
 		if clip:

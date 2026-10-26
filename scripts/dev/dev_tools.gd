@@ -237,7 +237,18 @@ func _take_shot() -> void:
 			nest_view.target = Vector3(float(tp[0]), float(tp[1]), float(tp[2]))
 			nest_view.snap_camera()
 	if _opts.has("colonies"):
-		hud.open_colonies()
+		hud.open_colonies(String(_opts["colonies"]) if _opts["colonies"] != "1" else "")    # (--colonies=wild|keeper)
+	if _opts.has("home"):
+		home_room.open()                     # (--home [--home-hour=<h>] [--home-at=x,z,yaw,pitch]: the Home, the camera there)
+		if _opts.has("home-at"):
+			var hp: PackedStringArray = String(_opts["home-at"]).split(",")
+			home_room._cam.position = Vector3(float(hp[0]), home_room.EYE, float(hp[1]))
+			home_room._yaw = float(hp[2])
+			home_room._pitch = float(hp[3])
+			home_room._aim()
+		if _opts.has("home-point"):
+			var pp: PackedStringArray = String(_opts["home-point"]).split(",")
+			home_room._point(Vector2(float(pp[0]), float(pp[1])))     # (as if the pointer were there)
 	if _opts.has("name-first") and not sim.workers.is_empty():
 		sim.name_ant(sim.workers[0].id, String(_opts["name-first"]))     # (--name-first=<name>: the title tour follows it)
 	if _opts.has("fridge"):

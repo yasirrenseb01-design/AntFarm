@@ -89,7 +89,7 @@ func _build_top(root: Control) -> void:
 	row.add_child(swrap)
 
 	var mine := _button(tr("my_colonies"), false)
-	mine.pressed.connect(open_colonies)
+	mine.pressed.connect(func(): open_colonies())
 	var fwrap := CenterContainer.new()
 	fwrap.add_child(mine)
 	row.add_child(fwrap)

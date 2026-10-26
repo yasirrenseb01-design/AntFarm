@@ -8,9 +8,13 @@ const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
 const L := preload("res://scripts/sim/lang.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const Harmony := preload("res://scripts/game/harmony.gd")
+const HomeStore := preload("res://scripts/game/home_store.gd")
+var home := HomeStore.new()       # which slots are the Home's tanks and which the wild mode's (home.json)
 var harmony := Harmony.new()       # the keeper's Colony Harmony points (one purse for every colony)
 var _away_rate := 0.0              # game days per real hour of the time away being worked out
 const Title := preload("res://scripts/game/title.gd")
+const HomeRoom := preload("res://scripts/game/home.gd")
+var home_room                   # game/home.gd: the Home, the room with the tanks
 const Graphics := preload("res://scripts/game/graphics.gd")
 const SingleInstance := preload("res://scripts/game/single_instance.gd")
 const Migrations := preload("res://scripts/sim/save_migrations.gd")

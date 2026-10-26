@@ -185,11 +185,25 @@ days_n,%.1f วัน,%.1f days
 # title,,
 title_notebook,สมุดบันทึกผู้เลี้ยงมด,Keeper's field notebook
 title_go_on,เล่นต่อ,Continue
-title_new,รังใหม่,New colony
+title_home,บ้าน,Home
+title_wild,โหมดป่า,Wild mode
+wild_colonies,โหมดป่า: รังในแปลงสวน,Wild mode: colonies in the garden
+tank_colonies,ตู้เลี้ยงในบ้าน,The tanks at home
+new_title_wild,เริ่มรังใหม่ในแปลงสวน %d,New colony in garden plot %d
+new_title_tank,เริ่มรังใหม่ในตู้ %d,New colony in tank %d
+home_back,← หน้าแรก,← Title page
+home_title,บ้าน,Home
+home_help,"เดิน: W A S D · มองรอบ: กดปุ่มขวาค้างแล้วลาก · ซูม: ลูกกลิ้ง · คลิกตู้เพื่อเข้ารัง · Esc กลับหน้าแรก","Walk: W A S D · look round: hold the right button and drag · zoom: wheel · click a tank to go in · Esc: title page"
+home_purse,Colony Harmony %s,Colony Harmony %s
+home_door,ประตู,The door
+home_soon,อัปเดตเร็วๆ นี้,Coming in an update soon
+home_tank_empty,ตู้ %d · ว่าง\nคลิก: เริ่มรังใหม่,Tank %d · empty\nClick: start a new colony
+home_tank,ตู้ %d · วันที่ %d · มดงาน %d ตัว%s\nคลิก: เข้ารังนี้,Tank %d · day %d · %d workers%s\nClick: go into this colony
 my_colonies,รังของฉัน,My colonies
 settings,ตั้งค่า,Settings
 title_quit,ออกจากเกม,Quit
-title_colony_note,รัง %d · ปีที่ %d · %s · มดงาน %d ตัว%s,Colony %d · year %d · %s · %d workers%s
+title_colony_note,ตู้ %d · ปีที่ %d · %s · มดงาน %d ตัว%s,Tank %d · year %d · %s · %d workers%s
+title_colony_note_wild,โหมดป่า แปลง %d · ปีที่ %d · %s · มดงาน %d ตัว%s,Wild mode plot %d · year %d · %s · %d workers%s
 title_queen_dead, · ราชินีตายแล้ว, · the queen is dead
 shot_outworld,พื้นที่หาอาหาร,The outworld
 shot_plot,แปลงดินรอบรัง,The ground around the nest

@@ -3,7 +3,7 @@ extends RefCounted
 ## Each slot has the full compressed colony state plus a small JSON summary for the menu, so the
 ## menu never has to load a whole colony just to show what is in a slot.
 
-const SLOTS := 3
+const SLOTS := 32                 # the highest slot number (home_store.gd says which are shown: the tanks and the wild mode's)
 static var base := "user://"      # tests point this at a sandbox folder so they never touch real saves
 
 ## Game days that pass per real hour while the game is closed (0 = time stops); the words are keys of lang/strings.csv.

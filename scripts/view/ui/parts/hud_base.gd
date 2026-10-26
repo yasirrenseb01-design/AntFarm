@@ -47,6 +47,7 @@ var _t := 0.0
 var _frame := 0
 var current_slot := 1
 var settings := {}
+var home                       # game/home_store.gd: which slots are the Home's tanks and which the wild mode's (main sets it)
 var _colonies: Window
 var _settings_win: Window
 var _paper_theme: Theme         # the windows: the field notebook (ui/paper.gd)

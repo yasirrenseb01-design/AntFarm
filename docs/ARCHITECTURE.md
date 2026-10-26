@@ -32,7 +32,8 @@
 ## โฟลเดอร์
 ```
 scripts/
-  game/        main.gd (จุดเริ่ม), save_store.gd, desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), title.gd (หน้าแรก + กล้องเดินชมรัง),
+  game/        main.gd (จุดเริ่ม), save_store.gd, home_store.gd (ช่องเซฟของตู้ใน Home/โหมดป่า), home.gd (ห้อง Home: กล้อง มือ คลิกตู้),
+               harmony.gd (แต้ม Colony Harmony), desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), title.gd (หน้าแรก + กล้องเดินชมรัง),
                single_instance.gd (เกมเดียวต่อเครื่อง: ตัวที่สองบอกตัวแรกให้ขึ้นมา, พอร์ต 47815), parts/ (main_base, main_camera)
   dev/         dev_tools.gd (--shot, --selftest), ตัวเลือกบรรทัดคำสั่งอยู่หัว main.gd
   sim/         simulation.gd + parts/ (sim_state, sim_base, sim_foragers, sim_enemies, sim_warmth, sim_colony, sim_duties), lang.gd (ภาษา),
@@ -113,7 +114,10 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 ต้นถั่วมีไฟล์ `.json` คู่กัน เก็บเส้นลำต้น (ให้เพลี้ยและมดเกาะ)
 
 ## เซฟ
-- `scripts/game/save_store.gd`: 3 ช่อง (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
+- `scripts/game/home_store.gd` (v0.11.41): `user://home.json` {"v":1,"tanks":[ช่อง...],"wild":[ช่อง...]} — ตู้แต่ละตู้ใน Home = 1 ช่อง (ฉาก keeper),
+  โหมดป่ามีช่องเท่าจำนวนตู้ (ฉาก wild) แยกกัน; ช่องที่ไม่อยู่ในทั้งสองรายการ = ซ่อน ไม่ลบ (ซื้อตู้เพิ่มจะเอาคืนก่อนตามฉาก);
+  ครั้งแรก: ตู้ 1 = ช่องว่างใหม่, โหมดป่า = ช่องสวนเลขต่ำสุดที่มี (`tests/home_test.gd`); ห้อง 3 มิติ `scripts/view/home/home_room.gd`
+- `scripts/game/save_store.gd`: ช่อง 1–32 (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
 - เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 11)
 - **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง

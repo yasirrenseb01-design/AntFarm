@@ -35,21 +35,25 @@ func _build_colonies(root: Control) -> void:
 	root.add_child(_report)
 
 
-func open_colonies() -> void:
+## The colonies of one kind (scen: "wild" - the wild mode's - or "keeper" - the Home's tanks; "": the kind being played).
+func open_colonies(scen := "") -> void:
+	if scen == "":
+		scen = "wild" if sim.scenario == "wild" else "keeper"
+	_colonies.title = tr("wild_colonies") if scen == "wild" else tr("tank_colonies")
 	for c in _colonies_body.get_children():
 		c.queue_free()
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 12)
 	col.custom_minimum_size = Vector2(560, 0)
 	_colonies_body.add_child(col)
-	for s in range(1, Store.SLOTS + 1):
+	for s in slots_of(scen):
 		var m: Dictionary = Store.meta(s)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		var info := VBoxContainer.new()
 		info.add_theme_constant_override("separation", 0)
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.add_child(_label(tr("col_slot") % [s, tr("col_playing") if s == current_slot else ""], 15, Paper.ACCENT if s == current_slot else Paper.INK))
+		info.add_child(_label(tr("col_slot") % [slot_no(s), tr("col_playing") if s == current_slot else ""], 15, Paper.ACCENT if s == current_slot else Paper.INK))
 		var desc := tr("col_empty")
 		if not m.is_empty():
 			var when := Time.get_datetime_string_from_unix_time(int(m.get("saved_unix", 0)) + _tz_offset(), true)
@@ -71,7 +75,7 @@ func open_colonies() -> void:
 		var occupied: bool = not m.is_empty()
 		fresh.pressed.connect(func():
 			_colonies.hide()
-			open_species(slot_k, occupied))
+			open_species(slot_k, occupied, scen))
 		row.add_child(fresh)
 		col.add_child(row)
 	col.add_child(HSeparator.new())
@@ -89,12 +93,26 @@ func open_colonies() -> void:
 	_colonies.popup_centered()
 
 
+## The save slots of the wild mode ("wild") or of the Home's tanks (anything else), from home.json (main sets home).
+func slots_of(scen: String) -> Array:
+	if home == null:
+		return [1, 2, 3]
+	return home.wild if scen == "wild" else home.tanks
+
+
+## What the keeper calls a slot: its place among the tanks or among the wild mode's colonies (1, 2...).
+func slot_no(slot: int) -> int:
+	if home == null:
+		return slot
+	return (home.wild.find(slot) if home.wild.has(slot) else home.tanks.find(slot)) + 1
+
+
 ## A new colony, step 1: which ant (view/ui/species_window.gd), then where and how it starts (_open_new_colony).
-func open_species(slot: int, occupied: bool) -> Window:
+func open_species(slot: int, occupied: bool, scen := "") -> Window:
 	var w := SpeciesWindow.new()
 	_colonies.get_parent().add_child(w)
 	w.setup(self)
-	w.chosen.connect(func(_id): _open_new_colony(slot, occupied))
+	w.chosen.connect(func(_id): _open_new_colony(slot, occupied, scen))
 	w.reset_size()
 	w.popup_centered()
 	return w
@@ -296,10 +314,11 @@ const NEW_STARTS := [["queen", "start_queen", "start_queen_note"],
 	["young", "start_young", "start_young_note"]]
 
 
-## The new-colony window: pick a scenario, a nest and a start, then start it in this slot.
-func _open_new_colony(slot: int, occupied: bool) -> void:
+## The new-colony window: pick a scenario, a nest and a start, then start it in this slot (scen: the scenario fixed -
+## a tank is a formicarium, the wild mode a garden plot; "": the keeper picks).
+func _open_new_colony(slot: int, occupied: bool, scen := "") -> void:
 	var win := Window.new()
-	win.title = tr("new_title") % slot
+	win.title = (tr("new_title_wild") if scen == "wild" else tr("new_title_tank")) % slot_no(slot) if scen != "" else tr("new_title") % slot
 	win.theme = _colonies.theme
 	win.transient = true
 	win.exclusive = true
@@ -316,8 +335,13 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 	col.custom_minimum_size = Vector2(540, 0)
 	body.add_child(col)
 	var picked := {}
-	var rates := EnemyRate.new(self, 1.0, "wild", true)
-	for group in [["scenario", "new_scene", NEW_SCENARIOS], ["nest", "new_nest", NEW_NESTS], ["start", "new_start", NEW_STARTS]]:
+	var rates := EnemyRate.new(self, 0.0 if scen == "keeper" else 1.0, "keeper" if scen == "keeper" else "wild", true)
+	var groups: Array = [["nest", "new_nest", NEW_NESTS], ["start", "new_start", NEW_STARTS]]
+	if scen == "":
+		groups.push_front(["scenario", "new_scene", NEW_SCENARIOS])
+	else:
+		picked["scenario"] = scen
+	for group in groups:
 		var key: String = group[0]
 		var opts: Array = group[2]
 		col.add_child(_label(tr(group[1]), 15, Paper.ACCENT))
@@ -343,7 +367,7 @@ func _open_new_colony(slot: int, occupied: bool) -> void:
 			row.add_child(b)
 		col.add_child(note)
 	col.add_child(_label(tr("new_enemies"), 15, Paper.ACCENT))
-	picked["rate"] = 1.0
+	picked["rate"] = 0.0 if scen == "keeper" else 1.0
 	rates.changed.connect(func(v):
 		picked["rate"] = v
 		picked["rate_set"] = true)
