@@ -6,12 +6,19 @@ extends RefCounted
 ## tank, a garden for the wild mode) before a new number is used.
 ## The first time (no home.json): one tank, a new slot of its own; the wild mode's colony the lowest garden slot there
 ## is (the keeper's slot 1 - their slots 2 and 3 hidden until there are more tanks, as they agreed).
+## The shop (the keeper, 2026-10-27; prices in Colony Harmony points): a second, bigger tank (on the desk, once), a small
+## tank (one more colony: it needs a free place on a shelf - the desk holds only the first), a shelf for 2 or for 4
+## (only somewhere to put tanks; up to MAX_SHELVES against the walls). Kept with the rest: {"big": slot, "shelves": [2, 4]}.
 
 const Store := preload("res://scripts/game/save_store.gd")
 const MAX_TEXT := 4096
+const PRICES := {"small": 100.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0}
+const MAX_SHELVES := 4
 
 var tanks: Array = []          # slot numbers, in the order the tanks were had
 var wild: Array = []
+var big := 0                   # the bigger tank's slot (0: not bought)
+var shelves: Array = []        # each shelf bought: how many tanks it holds (2 or 4)
 
 
 static func _path() -> String:
@@ -21,6 +28,8 @@ static func _path() -> String:
 func load_layout() -> void:
 	tanks = []
 	wild = []
+	big = 0
+	shelves = []
 	var path := _path()
 	if FileAccess.file_exists(path):
 		var f := FileAccess.open(path, FileAccess.READ)
@@ -31,6 +40,14 @@ func load_layout() -> void:
 				wild = _slots(d.get("wild"))
 				for s in tanks:
 					wild.erase(s)
+				var b = d.get("big")
+				if (b is float or b is int) and tanks.has(int(b)):
+					big = int(b)
+				var sh = d.get("shelves")
+				if sh is Array:
+					for c in sh:
+						if (c is float or c is int) and (int(c) == 2 or int(c) == 4) and shelves.size() < MAX_SHELVES:
+							shelves.append(int(c))
 	if tanks.is_empty():
 		_first_time()
 	while wild.size() < tanks.size():
@@ -67,16 +84,94 @@ func save_layout() -> void:
 	DirAccess.make_dir_recursive_absolute(Store.base)
 	var f := FileAccess.open(_path(), FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify({"v": 1, "tanks": tanks, "wild": wild}))
+		f.store_string(JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves}))
 
 
-## Another tank (the shop): one more colony on the desk and one more in the wild mode.
-func add_tank() -> void:
+## Another tank: one more colony at home and one more in the wild mode; its slot (0 if there can be no more).
+func add_tank() -> int:
 	if tanks.size() >= Store.SLOTS / 2:
-		return
-	tanks.append(_take(["keeper"]))
-	wild.append(_take(["wild"]))
+		return 0
+	var t := _take(["keeper"])
+	if t == 0:
+		return 0
+	tanks.append(t)                     # (before the wild mode's is picked: else both took the same free number)
+	var w := _take(["wild"])
+	if w == 0:
+		tanks.pop_back()
+		return 0
+	wild.append(w)
 	save_layout()
+	return t
+
+
+## How many small tanks there are, and how many there is room for (the desk's one and the shelves').
+func smalls() -> int:
+	return tanks.size() - (1 if big != 0 else 0)
+
+
+func small_room() -> int:
+	var n := 1
+	for c in shelves:
+		n += int(c)
+	return n
+
+
+## Why that cannot be bought now (a key of lang/strings.csv), "" if it can.
+func why_not(item: String, points: float) -> String:
+	if item == "big" and big != 0:
+		return "shop_owned"
+	if item.begins_with("shelf") and shelves.size() >= MAX_SHELVES:
+		return "shop_no_wall"
+	if item == "small" and smalls() >= small_room():
+		return "shop_no_place"
+	if (item == "small" or item == "big") and tanks.size() >= Store.SLOTS / 2:
+		return "shop_full"
+	if points < float(PRICES[item]):
+		return "shop_short"
+	return ""
+
+
+## Buys it (the points are the caller's to take): true if it was.
+func buy(item: String) -> bool:
+	match item:
+		"big":
+			var t := add_tank()
+			if t == 0:
+				return false
+			big = t
+		"small":
+			if add_tank() == 0:
+				return false
+		"shelf2", "shelf4":
+			shelves.append(2 if item == "shelf2" else 4)
+		_:
+			return false
+	save_layout()
+	return true
+
+
+## Where each tank stands: [{"slot", "number", "big", "shelf" (-1: the desk), "spot"}]. The first small tank and the
+## big one on the desk, the other small ones on the shelves in the order they were bought.
+func places() -> Array:
+	var out: Array = []
+	var shelf := 0
+	var spot := 0
+	var desk_small := false
+	for i in tanks.size():
+		var s: int = tanks[i]
+		var p := {"slot": s, "number": i + 1, "big": s == big, "shelf": -1, "spot": 0}
+		if s != big:
+			if not desk_small:
+				desk_small = true
+			else:
+				while shelf < shelves.size() and spot >= int(shelves[shelf]):
+					shelf += 1
+					spot = 0
+				p.shelf = shelf if shelf < shelves.size() else -2      # (-2: nowhere - a home.json changed by hand)
+				p.spot = spot
+				spot += 1
+		out.append(p)
+	return out
 
 
 ## A hidden slot holding a colony of that scenario, else the lowest number with nothing in it.

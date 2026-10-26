@@ -9,27 +9,65 @@ const W := 4.0                    # the room, x and z
 const H := 2.6
 const DESK := Vector3(0.0, 0.75, -1.62)      # the desk top's centre (its top surface at y 0.75)
 const DESK_SIZE := Vector3(1.5, 0.04, 0.72)
-const TANK := Vector3(0.30, 0.20, 0.15)      # a tank's glass
+const TANK := Vector3(0.30, 0.20, 0.15)      # a small tank's glass
+const BIG := Vector3(0.44, 0.27, 0.22)       # the bigger one's (the shop's second tank)
+const SHELF_D := 0.3                         # a shelf's depth; each column 0.45 wide, two tiers
+const SHELF_Y := [0.55, 1.08]                # the tops of its boards a tank stands on
+# where the shelves go, in the order they are bought: the foot's centre against a wall, and its turn (front to the room)
+const SHELF_AT := [[Vector3(1.45, 0, -1.85), 0.0], [Vector3(-1.0, 0, 1.85), PI], [Vector3(0.55, 0, 1.85), PI],
+	[Vector3(-1.85, 0, 1.0), PI * 0.5]]
 const DOOR := Vector3(1.98, 0.0, 0.85)       # the door's foot, on the right wall
 const WIN_Z := -0.7                          # the window's centre along the left wall
+var blocks: Array = []            # Rect2s on the floor (x, z) the keeper cannot walk into: the desk and the shelves
 var items: Array = []             # what the pointer can be on: {"kind": "tank"|"door", "box": AABB, "slot": n, "mats": [...]}
 var _sun: DirectionalLight3D
 var _lamp: OmniLight3D
 var _sky: StandardMaterial3D
 
 
-func build(tanks: Array, filled: Callable, day: bool) -> void:
+## places: home_store.places() (where each tank stands); shelves: how many tanks each shelf bought holds.
+func build(places: Array, shelves: Array, filled: Callable, day: bool) -> void:
 	_room()
 	_window(day)
 	_desk()
 	_chair()
 	_door()
 	_lights(day)
-	# the tanks along the desk, the first in the middle
-	var n := tanks.size()
-	for i in n:
-		var x := (i - (n - 1) * 0.5) * (TANK.x + 0.12)
-		_tank(Vector3(DESK.x + x, DESK.y + DESK_SIZE.y * 0.5, DESK.z + 0.05), int(tanks[i]), i + 1, filled.call(int(tanks[i])))
+	blocks.append(Rect2(DESK.x - DESK_SIZE.x * 0.5, DESK.z - DESK_SIZE.z * 0.5, DESK_SIZE.x, DESK_SIZE.z))
+	var units: Array = []
+	for i in mini(shelves.size(), SHELF_AT.size()):
+		units.append(_shelf(i, int(shelves[i])))
+	# on the desk: the small one in the middle, or left of the big one
+	var has_big := places.any(func(p): return p.big)
+	var top := DESK.y + DESK_SIZE.y * 0.5
+	for p in places:
+		var full: bool = filled.call(int(p.slot))
+		if p.shelf == -1:
+			var x := 0.0 if not has_big else (0.3 if p.big else -0.25)
+			_tank(self, Vector3(DESK.x + x, top, DESK.z + 0.05), BIG if p.big else TANK, int(p.slot), int(p.number), full)
+		elif p.shelf >= 0 and p.shelf < units.size():
+			var cols := int(shelves[p.shelf]) / 2
+			var col: int = int(p.spot) % cols
+			var tier: int = int(p.spot) / cols
+			_tank(units[p.shelf], Vector3((col - (cols - 1) * 0.5) * 0.45, SHELF_Y[tier], 0.0), TANK, int(p.slot), int(p.number), full)
+
+
+## A shelf against a wall: two tiers of boards, one column for each two tanks it holds.
+func _shelf(i: int, holds: int) -> Node3D:
+	var u := Node3D.new()
+	u.position = SHELF_AT[i][0]
+	u.rotation.y = SHELF_AT[i][1]
+	add_child(u)
+	var w := 0.45 * (holds / 2)
+	var m := wood(Color(0.5, 0.36, 0.22), Color(0.66, 0.5, 0.33), 9.0, 9.0, 55.0)
+	for y in [0.06] + SHELF_Y:
+		_box(Vector3(w, 0.025, SHELF_D), Vector3(0, y - 0.0125, 0), m, u)
+	for sx in [-1, 1]:
+		_box(Vector3(0.025, SHELF_Y[1], SHELF_D), Vector3(sx * (w * 0.5 + 0.0125), SHELF_Y[1] * 0.5, 0), m, u)
+	_box(Vector3(w, SHELF_Y[1], 0.01), Vector3(0, SHELF_Y[1] * 0.5, -SHELF_D * 0.5 + 0.005), m, u)      # the back
+	var r := (u.transform * AABB(Vector3(-w * 0.5 - 0.03, 0, -SHELF_D * 0.5), Vector3(w + 0.06, 1, SHELF_D)))
+	blocks.append(Rect2(r.position.x, r.position.z, r.size.x, r.size.z))
+	return u
 
 
 # ---------------------------------------------------------------- materials and pieces
@@ -269,28 +307,28 @@ func _rod(a: Vector3, b: Vector3, r: float, mat: Material) -> void:
 
 ## One tank: a wooden base, glass, a wooden lid with a vent, and, when it has a colony, soil with tunnels against the
 ## front glass; a card with its number on the base.
-func _tank(at: Vector3, slot: int, number: int, has_colony: bool) -> void:
+func _tank(parent: Node3D, at: Vector3, sz: Vector3, slot: int, number: int, has_colony: bool) -> void:
 	var t := Node3D.new()
 	t.position = at
-	add_child(t)
+	parent.add_child(t)
 	var base_m := wood(Color(0.32, 0.2, 0.1), Color(0.46, 0.29, 0.15), 9.0, 9.0, 50.0)
 	var lid_m := base_m.duplicate()
-	_box(Vector3(TANK.x + 0.02, 0.025, TANK.z + 0.02), Vector3(0, 0.0125, 0), base_m, t)
+	_box(Vector3(sz.x + 0.02, 0.025, sz.z + 0.02), Vector3(0, 0.0125, 0), base_m, t)
 	var glass := StandardMaterial3D.new()
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glass.albedo_color = Color(0.85, 0.95, 0.95, 0.1)
 	glass.roughness = 0.04
 	glass.metallic_specular = 0.9
 	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var g := _box(TANK, Vector3(0, 0.025 + TANK.y * 0.5, 0), glass, t)
+	var g := _box(sz, Vector3(0, 0.025 + sz.y * 0.5, 0), glass, t)
 	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_box(Vector3(TANK.x + 0.012, 0.015, TANK.z + 0.012), Vector3(0, 0.025 + TANK.y + 0.0075, 0), lid_m, t)
-	_box(Vector3(0.08, 0.004, 0.05), Vector3(0.07, 0.025 + TANK.y + 0.016, 0), flat(Color(0.2, 0.2, 0.2), 0.6, 0.5), t)
+	_box(Vector3(sz.x + 0.012, 0.015, sz.z + 0.012), Vector3(0, 0.025 + sz.y + 0.0075, 0), lid_m, t)
+	_box(Vector3(0.08, 0.004, 0.05), Vector3(0.07, 0.025 + sz.y + 0.016, 0), flat(Color(0.2, 0.2, 0.2), 0.6, 0.5), t)
 	if has_colony:
 		var soil := ShaderMaterial.new()
 		soil.shader = _soil_shader()
 		soil.set_shader_parameter("seed", float(slot) * 3.7)
-		_box(Vector3(TANK.x - 0.006, TANK.y * 0.72, TANK.z - 0.006), Vector3(0, 0.025 + TANK.y * 0.36, 0), soil, t)
+		_box(Vector3(sz.x - 0.006, sz.y * 0.72, sz.z - 0.006), Vector3(0, 0.025 + sz.y * 0.36, 0), soil, t)
 	# the card with its number
 	var card := Label3D.new()
 	card.text = str(number)
@@ -298,12 +336,12 @@ func _tank(at: Vector3, slot: int, number: int, has_colony: bool) -> void:
 	card.pixel_size = 0.0005
 	card.modulate = Color(0.16, 0.11, 0.07)
 	card.outline_size = 0
-	card.position = Vector3(-TANK.x * 0.5 + 0.03, 0.0125, TANK.z * 0.5 + 0.0105)
+	card.position = Vector3(-sz.x * 0.5 + 0.03, 0.0125, sz.z * 0.5 + 0.0105)
 	card.double_sided = false
 	t.add_child(card)
-	_box(Vector3(0.04, 0.02, 0.001), Vector3(-TANK.x * 0.5 + 0.03, 0.0125, TANK.z * 0.5 + 0.0102), flat(Color(0.9, 0.85, 0.72), 0.9), t)
+	_box(Vector3(0.04, 0.02, 0.001), Vector3(-sz.x * 0.5 + 0.03, 0.0125, sz.z * 0.5 + 0.0102), flat(Color(0.9, 0.85, 0.72), 0.9), t)
 	items.append({"kind": "tank", "slot": slot, "number": number, "mats": [base_m, lid_m],
-		"box": AABB(at + Vector3(-TANK.x * 0.5 - 0.01, 0, -TANK.z * 0.5 - 0.01), Vector3(TANK.x + 0.02, TANK.y + 0.05, TANK.z + 0.02))})
+		"box": t.global_transform * AABB(Vector3(-sz.x * 0.5 - 0.01, 0, -sz.z * 0.5 - 0.01), Vector3(sz.x + 0.02, sz.y + 0.05, sz.z + 0.02))})
 
 
 static var _soil: Shader

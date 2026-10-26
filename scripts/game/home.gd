@@ -9,6 +9,7 @@ extends CanvasLayer
 const Room := preload("res://scripts/view/home/home_room.gd")
 const Paper := preload("res://scripts/view/ui/paper.gd")
 const Store := preload("res://scripts/game/save_store.gd")
+const Shop := preload("res://scripts/game/home_shop.gd")
 const EYE := 1.55                 # metres: the keeper's eyes
 const WALK := 1.3                 # metres a second
 const LOOK := 0.005               # radians a pixel of mouse
@@ -29,6 +30,8 @@ var _tip: Label
 var _toast: Label
 var _toast_t := 0.0
 var _purse: Label
+var shop                          # game/home_shop.gd: the shop page
+var _day := true
 var _hand_open: Texture2D
 var _hand_point: Texture2D
 
@@ -62,6 +65,7 @@ func _build() -> void:
 	_vp.positional_shadow_atlas_size = 2048
 	_box.add_child(_vp)
 	var day := _is_day()
+	_day = day
 	_env = Environment.new()
 	_env.background_mode = Environment.BG_COLOR
 	_env.background_color = Color(0.05, 0.05, 0.06)
@@ -76,9 +80,7 @@ func _build() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = _env
 	_vp.add_child(we)
-	_room = Room.new()
-	_vp.add_child(_room)
-	_room.build(main.home.tanks, func(s): return Store.exists(s), day)
+	rebuild_room()
 	_cam = Camera3D.new()
 	_cam.fov = 62.0
 	_cam.near = 0.03
@@ -104,6 +106,8 @@ func _build() -> void:
 	row.add_child(title)
 	_purse = h._label("", 14, Paper.INK)
 	row.add_child(_purse)
+	var shop_b: Button = h._button(tr("home_shop"), false)
+	row.add_child(shop_b)
 	var help: Label = h._label(tr("home_help"), 12, Color(1, 1, 1, 0.85))
 	help.anchor_top = 1.0
 	help.anchor_bottom = 1.0
@@ -113,8 +117,31 @@ func _build() -> void:
 	help.add_theme_constant_override("shadow_offset_x", 1)
 	help.add_theme_constant_override("shadow_offset_y", 1)
 	root.add_child(help)
+	shop = Shop.new()
+	root.add_child(shop)
+	shop.setup(self)
+	shop_b.pressed.connect(shop.toggle)
 	_tip = _note(root, h)
 	_toast = _note(root, h)
+
+
+## The room (again after something is bought): the tanks where home_store.places() puts them.
+func rebuild_room() -> void:
+	if _room != null and is_instance_valid(_room):
+		_room.queue_free()
+	_room = Room.new()
+	_vp.add_child(_room)
+	_room.build(main.home.places(), main.home.shelves, func(s): return Store.exists(s), _day)
+	_hot = null
+
+
+## A short note on paper under the bar, gone after a moment.
+func toast(text: String, at := Vector2(-1, -1)) -> void:
+	_toast.text = text
+	_toast.reset_size()
+	_toast.position = at if at.x >= 0.0 else Vector2((get_viewport().get_visible_rect().size.x - _toast.size.x) * 0.5, 70)
+	_toast.visible = true
+	_toast_t = 2.5
 
 
 ## A note on paper beside the pointer.
@@ -182,7 +209,9 @@ func _leave() -> void:
 
 func _update_purse() -> void:
 	var p: float = main.harmony.points
-	_purse.text = tr("home_purse") % (str(int(p)) if p >= 100.0 else "%.1f" % p)
+	_purse.text = tr("home_purse") % (Shop.num(p) if p >= 100.0 else "%.1f" % p)
+	if shop.visible and shop.purse != null and is_instance_valid(shop.purse):
+		shop.purse.text = _purse.text
 
 
 func _aim() -> void:
@@ -201,16 +230,25 @@ func _process(delta: float) -> void:
 		var lim: float = Room.W * 0.5 - MARGIN
 		p.x = clampf(p.x, -lim, lim)
 		p.z = clampf(p.z, -lim, lim)
-		# (not through the desk)
-		var dz: float = Room.DESK.z + Room.DESK_SIZE.z * 0.5 + 0.25
-		if absf(p.x - Room.DESK.x) < Room.DESK_SIZE.x * 0.5 + 0.2 and p.z < dz:
-			p.z = dz
+		# (not through the desk or a shelf: each way on its own, so the keeper slides along it)
+		var q := _cam.position
+		if _blocked(Vector2(p.x, q.z)):
+			p.x = q.x
+		if _blocked(Vector2(p.x, p.z)):
+			p.z = q.z
 		_cam.position = p
 	if _toast.visible:
 		_toast_t -= delta
 		if _toast_t <= 0.0:
 			_toast.visible = false
 	_update_purse()
+
+
+func _blocked(at: Vector2) -> bool:
+	for r in _room.blocks:
+		if (r as Rect2).grow(0.25).has_point(at):
+			return true
+	return false
 
 
 func _on_input(e: InputEvent) -> void:
@@ -269,11 +307,7 @@ func _describe(it) -> String:
 
 func _click(it) -> void:
 	if it.kind == "door":
-		_toast.text = tr("home_soon")
-		_toast.reset_size()
-		_toast.position = _tip.position + Vector2(0, 40)
-		_toast.visible = true
-		_toast_t = 2.0
+		toast(tr("home_soon"), _tip.position + Vector2(0, 40))
 		return
 	var s: int = it.slot
 	if not Store.exists(s):

@@ -196,6 +196,25 @@ home_title,บ้าน,Home
 home_help,"เดิน: W A S D · มองรอบ: กดปุ่มขวาค้างแล้วลาก · ซูม: ลูกกลิ้ง · คลิกตู้เพื่อเข้ารัง · Esc กลับหน้าแรก","Walk: W A S D · look round: hold the right button and drag · zoom: wheel · click a tank to go in · Esc: title page"
 home_purse,Colony Harmony %s,Colony Harmony %s
 home_door,ประตู,The door
+home_shop,ร้านค้า,Shop
+shop_title,ร้านค้า,Shop
+shop_big,ตู้ที่ 2 (ใหญ่ขึ้น),"A second, bigger tank"
+shop_big_note,วางบนโต๊ะข้างตู้แรก ได้รังเพิ่ม 1 รัง (และแปลงในโหมดป่าเพิ่ม 1),"Stands on the desk beside the first: one more colony (and one more plot in the wild mode)"
+shop_small,ตู้เล็กเพิ่ม,Another small tank
+shop_small_note,ได้รังเพิ่ม 1 รัง (และแปลงในโหมดป่าเพิ่ม 1) — ต้องมีที่ว่างบนชั้นวาง,One more colony (and one more plot in the wild mode) — needs a free place on a shelf
+shop_shelf2,ชั้นวาง 2 ตู้,A shelf for 2 tanks
+shop_shelf2_note,ที่วางตู้เล็ก 2 ตู้ (ตู้ซื้อแยก),Room for 2 small tanks (the tanks are bought separately)
+shop_shelf4,ชั้นวาง 4 ตู้,A shelf for 4 tanks
+shop_shelf4_note,ที่วางตู้เล็ก 4 ตู้ (ตู้ซื้อแยก),Room for 4 small tanks (the tanks are bought separately)
+shop_price,%s แต้ม,%s points
+shop_buy,ซื้อ,Buy
+shop_owned,มีแล้ว,Bought
+shop_no_place,ไม่มีที่ว่างบนชั้นวาง — ซื้อชั้นวางก่อน,No free place on a shelf — buy a shelf first
+shop_no_wall,ไม่มีผนังว่างสำหรับชั้นวางแล้ว,No wall left for another shelf
+shop_full,มีตู้ครบเท่าที่เกมรองรับแล้ว,As many tanks as the game can keep
+shop_short,แต้มยังไม่พอ,Not enough points yet
+shop_confirm,ซื้อ %s ราคา %s แต้ม?\nเหลือ %s แต้ม,Buy %s for %s points?\n%s points left
+shop_bought,ซื้อแล้ว: %s,Bought: %s
 home_soon,อัปเดตเร็วๆ นี้,Coming in an update soon
 home_tank_empty,ตู้ %d · ว่าง\nคลิก: เริ่มรังใหม่,Tank %d · empty\nClick: start a new colony
 home_tank,ตู้ %d · วันที่ %d · มดงาน %d ตัว%s\nคลิก: เข้ารังนี้,Tank %d · day %d · %d workers%s\nClick: go into this colony
