@@ -7,10 +7,11 @@ extends RefCounted
 ## earns nothing more and a slower pace nothing less. x1.5 while the game runs (in its window or as the wallpaper),
 ## x1 for the time away worked out on return, and x0.3 in the wild mode (the garden) either way.
 
-const BORN := 10.0
-const SURVIVED := 6.0
-const FED := 0.5
-const DUG := 0.25
+# (a tenth of the first values, v0.11.39 - the keeper, 2026-10-27: smaller numbers, not inflated; the prices too)
+const BORN := 1.0
+const SURVIVED := 0.6
+const FED := 0.05
+const DUG := 0.025
 const LIVE := 1.5
 const AWAY := 1.0
 const WILD := 0.3
@@ -57,9 +58,11 @@ func load_purse() -> void:
 	var d = JSON.parse_string(f.get_as_text())          # (only a number is taken from it: nothing in the file is run)
 	if d is Dictionary and (d.get("points") is float or d.get("points") is int):
 		points = clampf(float(d.points), 0.0, MAX_POINTS)
+		if not (d.get("v") is float or d.get("v") is int):
+			points /= 10.0                              # (earned at v0.11.39's ten-times values)
 
 
 func save_purse() -> void:
 	var f := FileAccess.open(base + "harmony.json", FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify({"points": points}))
+		f.store_string(JSON.stringify({"points": points, "v": 2}))
