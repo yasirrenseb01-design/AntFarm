@@ -71,6 +71,7 @@ func _bite(s: Vector3i) -> void:
 	_mark(s)
 	if rho[i] < AIR:
 		air += 1
+		dug += 1
 		proj[(s.y - y_lo) * nx + s.x] += 1
 		if s.y < y_lo + 4 and y_lo > y_floor:
 			_extend_to = s.y - EXTEND_BY         # (near the bottom of the soil held: more of it, before the next step)

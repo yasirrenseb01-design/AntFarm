@@ -25,8 +25,10 @@ func _build_top(root: Control) -> void:
 	clock.add_theme_constant_override("separation", 0)
 	_clock = _label("", 20, INK, _mono)
 	_weather = _label("", 12, MUTED)
+	_harmony_l = _label("", 12, AMBER)
 	clock.add_child(_clock)
 	clock.add_child(_weather)
+	clock.add_child(_harmony_l)
 	row.add_child(clock)
 
 	var speeds := HBoxContainer.new()

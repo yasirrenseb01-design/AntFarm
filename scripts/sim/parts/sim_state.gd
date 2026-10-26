@@ -74,6 +74,10 @@ var egg_acc := 0.0
 ## dead = workers (dead_by: starve, thirst, old, out = lost while foraging, enemy); brood_dead = eggs, larvae
 ## and pupae lost to drought, mould or heat (larvae eaten by hungry workers are counted in cannibalized)
 var stats := {"dead": 0, "cannibalized": 0, "born": 0, "sugar_in": 0, "protein_in": 0, "brood_dead": 0, "dead_by": {}}
+# what the colony has done since it was loaded, for the keeper's Colony Harmony points (game/harmony.gd; not saved,
+# and nothing in the simulation reads it): workers born, of them big ones, back alive from a fight, nestmates fed
+var harmony_n := {"born": 0, "big": 0, "survived": 0, "fed": 0}
+const HARMONY_BIG := 1.06      # a big worker: the largest fifth of the sizes a worker comes out at (0.7 - 1.15, sim_base._adult_size)
 var history: Array = []
 var log_entries: Array = []
 

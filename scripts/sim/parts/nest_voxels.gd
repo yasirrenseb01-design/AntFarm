@@ -44,6 +44,7 @@ var dug_at := PackedInt32Array()        # tick of the most recent bite at/near e
 var dist := PackedInt32Array()          # steps to the entrance through open space, -1 if cut off
 var dirty: Dictionary = {}              # chunk coords (Vector3i) whose mesh must be rebuilt
 var air := 0
+var dug := 0                       # blocks dug out since it was loaded (the keeper's Colony Harmony points; not saved)
 var proj := PackedInt32Array()       # open voxels along z for each (x, y): the side-view outline
 var excavated := 0                      # bites dumped on the surface
 var chambers: Array = []                # {"c": Vector3, "r": float, "goal": float, "kind": String}

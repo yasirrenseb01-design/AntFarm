@@ -422,6 +422,9 @@ func _brood(dt: float) -> void:
 			_event("eclose", nw.size)
 			workers.append(nw)
 			stats.born += 1
+			harmony_n.born += 1
+			if nw.size >= HARMONY_BIG:
+				harmony_n.big += 1
 			if stats.born <= 3 or stats.born % 25 == 0:
 				_log(T.new_worker, "ok", [stats.born])
 

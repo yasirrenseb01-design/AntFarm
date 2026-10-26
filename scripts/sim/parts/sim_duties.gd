@@ -189,6 +189,7 @@ func _share_honeydew(inside: Array) -> void:
 		t.energy = minf(1.0, t.energy + FED_ENERGY)
 		t.sweet = 1.0
 		f.n_mates += 1
+		harmony_n.fed += 1
 		if f.duty == -1:
 			f.duty = Ant.D_FEED_MATE
 			f.partner = t.id
@@ -215,6 +216,7 @@ func _share_honeydew(inside: Array) -> void:
 			t.sweet = maxf(t.sweet, g.sweet * 0.5)
 			g.sweet *= 0.7
 			g.n_mates += 1
+			harmony_n.fed += 1
 
 
 # ---------------------------------------------------------------- for the views and the star ants panel

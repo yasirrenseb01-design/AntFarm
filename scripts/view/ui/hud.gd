@@ -128,6 +128,16 @@ func _unhandled_key_input(e: InputEvent) -> void:
 
 # ---------------------------------------------------------------- refresh
 
+## 12345 -> "12,345"
+static func _thousands(n: int) -> String:
+	var t := str(absi(n))
+	var out := ""
+	while t.length() > 3:
+		out = "," + t.substr(t.length() - 3) + out
+		t = t.substr(0, t.length() - 3)
+	return ("-" if n < 0 else "") + t + out
+
+
 func refresh(delta: float) -> void:
 	_t += delta
 	_tick_banner(delta)
@@ -135,6 +145,9 @@ func refresh(delta: float) -> void:
 	_clock.text = tr("clock_line") % [sim.year(), sim.date_text(), sim.season_name(), sim.clock_text()]
 	var sky := tr("sky_rain") if sim.climate.raining() else (tr("sky_night") if sim.sun_height() < -0.05 else tr("sky_clear"))
 	_weather.text = tr("weather_line") % [sim.climate.air, sky, int(sim.activity * 100)]
+	_harmony_l.visible = harmony >= 0.0
+	if harmony >= 0.0:
+		_harmony_l.text = tr("harmony_line") % _thousands(int(harmony))
 	_frame += 1
 	if _frame == 2:
 		_fps_label.visible = bool(settings.get("show_fps", false))

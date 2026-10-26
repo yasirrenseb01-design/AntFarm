@@ -153,6 +153,7 @@ func _release(c: Dictionary, clinging: Array) -> void:
 			a.foe = 0
 			if not a.dead:
 				a.n_fights += 1          # came through a fight with it alive
+				harmony_n.survived += 1
 
 
 ## The enemy bites an ant: often fatal, otherwise it limps on maimed (a leg or antenna lost).

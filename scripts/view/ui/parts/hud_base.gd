@@ -63,6 +63,8 @@ var _chime: AudioStreamPlayer
 var _fps_label: Label
 var _dev_speed_buttons: Array = []   # 20× 50× 100× (F10)
 var real_speed := 0.0               # the speed the game is really running at (set by main)
+var harmony := -1.0                 # the keeper's Colony Harmony points (set by main; below 0: not shown)
+var _harmony_l: Label
 var music                   # ui/music.gd (null in test runs)
 var _outside_tools: Array = []
 var _cut_row: HBoxContainer

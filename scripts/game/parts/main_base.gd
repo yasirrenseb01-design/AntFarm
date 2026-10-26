@@ -7,6 +7,9 @@ const NestView := preload("res://scripts/view/nest/nest_view.gd")
 const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
 const L := preload("res://scripts/sim/lang.gd")
 const Store := preload("res://scripts/game/save_store.gd")
+const Harmony := preload("res://scripts/game/harmony.gd")
+var harmony := Harmony.new()       # the keeper's Colony Harmony points (one purse for every colony)
+var _away_rate := 0.0              # game days per real hour of the time away being worked out
 const Title := preload("res://scripts/game/title.gd")
 const Graphics := preload("res://scripts/game/graphics.gd")
 const SingleInstance := preload("res://scripts/game/single_instance.gd")
@@ -62,6 +65,7 @@ func _set_mode(m: String) -> void:
 func _save_now() -> void:
 	if _persist and sim != null and not _demo and not _opts.has("testsave"):        # (a grown test colony stays as it was)
 		Store.save(slot, sim)
+		harmony.save_purse()
 		_autosave_t = 0.0
 
 
@@ -85,6 +89,7 @@ func _plan_catchup(meta: Dictionary) -> void:
 	var real_s: float = maxf(0.0, Time.get_unix_time_from_system() - (float(saved) if saved is int or saved is float else 0.0))
 	real_s += float(_opts.get("pretend-away", "0")) * 3600.0
 	var days := real_s / 3600.0 * rate
+	_away_rate = rate
 	_away_hours = real_s / 3600.0
 	_away_capped = days > Store.MAX_AWAY_DAYS
 	days = minf(days, Store.MAX_AWAY_DAYS)
@@ -136,6 +141,7 @@ func _run_catchup() -> void:
 		_catchup_left -= 1
 		if care and sim.tick % sim.TPD == sim.TPD / 4:
 			sim.auto_care(sim.day())
+	_earn(_away_rate, false)
 	var done := _catchup_total - _catchup_left
 	_overlay_label.text = tr("away_running") % [
 		float(done) / sim.TPD, float(_catchup_total) / sim.TPD]
@@ -145,6 +151,12 @@ func _run_catchup() -> void:
 		_overlay.queue_free()
 		_save_now()
 		_report_away()
+
+
+## Colony Harmony for what the colony did since the last call (not a test colony, nor the one behind the title).
+func _earn(game_days_per_hour: float, live: bool) -> void:
+	if _persist and not _demo and not _opts.has("testsave") and sim != null:
+		harmony.collect(sim, game_days_per_hour, live)
 
 
 func _report_away() -> void:

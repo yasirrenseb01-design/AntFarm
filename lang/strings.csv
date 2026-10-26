@@ -442,6 +442,7 @@ sky_rain,ฝนตก,rain
 sky_night,กลางคืน,night
 sky_clear,แจ่มใส,clear
 weather_line,อากาศ %.1f°C · %s · มดออกหากิน %d%%,Air %.1f°C · %s · foraging %d%%
+harmony_line,✦ Colony Harmony %s,✦ Colony Harmony %s
 fps_line,%d FPS · จริง %.1f×,%d FPS · real %.1f×
 queen_fat,ไขมัน %d%%,Fat %d%%
 queen_not_laying,หยุดวางไข่,Not laying

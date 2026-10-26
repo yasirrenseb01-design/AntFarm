@@ -73,6 +73,8 @@ func _ready() -> void:
 	if _persist:
 		_settings = Store.settings()
 		slot = next_slot if next_slot > 0 else int(_settings.get("slot", 1))
+		Harmony.base = Store.base
+		harmony.load_purse()
 		next_slot = 0
 		if next_nest == "":
 			var data := Store.load_slot(slot)
@@ -184,7 +186,7 @@ func _ready() -> void:
 		_show_catchup_overlay()
 	if _opts.has("clip"):
 		title.open_clip.call_deferred()             # (dev: clip mode, as F8 starts it)
-	elif _opts.has("title") or (_persist and not skip_title and not _opts.has("testsave") and not _opts.has("desktop")
+	elif _opts.has("title") or (_persist and not skip_title and not _opts.has("testsave") and not _opts.has("desktop") and not _opts.has("no-title")
 			and not _opts.has("desktop-after")):
 		title.open.call_deferred(not _demo)          # (what the game opens on; deferred: the views place their cameras first)
 	if skip_title and _persist and not _demo and not _opts.has("testsave"):
@@ -246,6 +248,7 @@ func _process(delta: float) -> void:
 				_acc = 0.0
 				break
 		_sim_us = Time.get_ticks_usec() - t0
+		_earn(speed * Harmony.GAME_DAYS_PER_HOUR_1X, true)
 		# the speed actually reached (steps a second / 60), shown with the frame rate (F3)
 		if delta > 0.0:
 			hud.real_speed = lerpf(hud.real_speed, done / delta / 60.0, minf(1.0, 2.0 * delta))
@@ -261,6 +264,7 @@ func _process(delta: float) -> void:
 	nest_view.speed = speed
 	nest_view.refresh(delta)
 	t0 = _pt("nest view", t0)
+	hud.harmony = harmony.points if _persist and not _demo and not _opts.has("testsave") else -1.0
 	hud.refresh(delta)
 	_pt("hud", t0)
 

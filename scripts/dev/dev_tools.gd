@@ -16,6 +16,14 @@ func _take_shot() -> void:
 		sim.step()
 		if _opts.has("autokeep") and sim.tick % sim.TPD == 0:
 			_keeper(sim.day())
+	if _opts.has("harmony") and days > 0.0:
+		# (--harmony with --warm: what the colony did over those days, and the Colony Harmony points it makes a real hour)
+		var Hm := preload("res://scripts/game/harmony.gd")
+		var h: Dictionary = sim.harmony_n
+		var raw: float = (h.born + h.big) * Hm.BORN + h.survived * Hm.SURVIVED + h.fed * Hm.FED + sim.nest.dug * Hm.DUG
+		var per_h: float = raw / days * Hm.GAME_DAYS_PER_HOUR_1X
+		print("harmony over %.0f days, %d workers now: born %d (big %d), survived a fight %d, fed %d, dug %d -> %.0f points; a real hour: playing %.0f, away %.0f, wild %.0f" % [
+			days, sim.workers.size(), h.born, h.big, h.survived, h.fed, sim.nest.dug, raw, per_h * Hm.LIVE, per_h * Hm.AWAY, per_h * Hm.WILD])
 	if _opts.has("tod"):
 		var target := int(float(_opts["tod"]) * sim.TPD)
 		while sim.tick % sim.TPD != target:
