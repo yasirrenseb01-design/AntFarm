@@ -1,6 +1,7 @@
 extends Node2D
 ## Game, layer 1 of 4: state, switching views, saving, and catching up on the time the game was
 ## closed. Layers: main_base <- main_camera <- dev/dev_tools <- main.
+const OutworldCard := preload("res://scripts/game/outworld_card.gd")
 const Sim := preload("res://scripts/sim/simulation.gd")
 const Hud := preload("res://scripts/view/ui/hud.gd")
 const NestView := preload("res://scripts/view/nest/nest_view.gd")
@@ -71,6 +72,8 @@ func _set_mode(m: String) -> void:
 func _save_now() -> void:
 	if _persist and sim != null and not _demo and not _opts.has("testsave"):        # (a grown test colony stays as it was)
 		Store.save(slot, sim)
+		if sim.scenario != "wild" and outworld != null:
+			OutworldCard.write(Store.base + "saves", slot, outworld)     # (the box from above, for the Home's tank)
 		harmony.save_purse()
 		_autosave_t = 0.0
 

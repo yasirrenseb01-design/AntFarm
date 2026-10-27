@@ -45,8 +45,14 @@ static func build(view: Node3D, info: Dictionary, big: bool, soil_bottom: float,
 		l.global_transform = Transform3D(gt.basis.orthonormalized(), gt.origin)
 	room._lamp.omni_range *= M
 	room._spot.spot_range *= M
-	room.lamp_gain = pow(M, room._lamp.omni_attenuation)
-	room.spot_gain = pow(M, room._spot.spot_attenuation)
+	# (no fall-off with distance: at this scale distance^-attenuation runs out of precision and the light stopped dead in
+	# a sharp circle on every wall - the keeper, 2026-10-27; the range's own soft edge does it, the energy set to what
+	# the lamp gives at a usual distance in the Home)
+	room.lamp_gain = pow(1.6, -room._lamp.omni_attenuation)
+	room.spot_gain = pow(0.7, -room._spot.spot_attenuation)
+	room._lamp.omni_attenuation = 0.0
+	room._spot.spot_attenuation = 0.0
+	room._lamp.omni_range = 4.2 * M
 	# (their shadows, tuned in metres, streak at this scale: none - the sun's and the moon's stay)
 	room._lamp.shadow_enabled = false
 	room._spot.shadow_enabled = false

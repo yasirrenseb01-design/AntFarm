@@ -128,7 +128,7 @@ static func backup(slot: int, tag: String) -> void:
 
 
 static func delete(slot: int) -> void:
-	for p in [_path(slot), _meta_path(slot), NestCard.path(_dir(), slot)]:
+	for p in [_path(slot), _meta_path(slot), NestCard.path(_dir(), slot), "%s/slot%d_outworld.png" % [_dir(), slot]]:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(p)
 

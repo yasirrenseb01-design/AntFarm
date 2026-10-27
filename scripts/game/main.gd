@@ -145,6 +145,8 @@ func _ready() -> void:
 	add_child(outworld)
 	outworld.room_info = _room_info()
 	outworld.setup(sim)
+	if sim.scenario != "wild":
+		OutworldCard.prepare(outworld)          # (the box from above for the Home's tank, taken with each save)
 	hud = Hud.new()
 	add_child(hud)
 	hud.nest_view = nest_view

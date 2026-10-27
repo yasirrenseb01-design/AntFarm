@@ -7,6 +7,7 @@ extends "res://scripts/view/home/home_kit.gd"
 ## at night the lamps. game/home.gd owns it (camera, the hand, what a click does).
 
 const View := preload("res://shaders/home/window_view.gdshader")
+const Yard := preload("res://scripts/view/home/home_yard.gd")
 const SHELF_D := 0.42                        # a shelf's depth; a column for a small tank (tank_spec), two tiers
 const SHELF_COL := 0.69
 const SHELF_Y := [0.55, 1.08]                # the tops of its boards a tank stands on
@@ -171,6 +172,7 @@ func _window() -> void:
 	_lawn.uv1_scale = Vector3(60, 60, 60)
 	_cyl(160.0, 0.02, Vector3(0, -0.03, 0), _lawn, self, -1.0, 64).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_plant(Vector3(x + 0.05, 0.9, WIN_Z + 0.42))
+	Yard.build(self)                         # (close by: a fence, a neighbour's house, trees: home_yard.gd)
 
 
 func _desk() -> void:
@@ -220,17 +222,29 @@ func _lights() -> void:
 	_spot.look_at_from_position(_spot.position, Vector3(DESK.x, DESK.y, DESK.z - 0.15), Vector3.UP)
 	_spot.light_color = Color(1.0, 0.82, 0.58)
 	_spot.spot_range = 1.7
-	_spot.spot_angle = 42.0
-	_spot.spot_angle_attenuation = 1.6
+	_spot.spot_angle = 58.0                 # (a soft-edged pool: 42 at 1.6 drew a hard circle on the wall)
+	_spot.spot_angle_attenuation = 0.7
 	_spot.shadow_enabled = true
 	add_child(_spot)
-	# the lamp itself
+	# the lamp itself: a weighted round base with a rocker switch, a hinge at its foot, the arm, a hinge under the shade
+	# (the keeper, 2026-10-27: more like a real one - with its cord and a plug in a socket)
 	var metal := flat(Color(0.15, 0.17, 0.16), 0.4, 0.6)
+	var steel := flat(Color(0.62, 0.62, 0.6), 0.3, 0.9)
 	var by := DESK.y + DESK_SIZE.y * 0.5
-	_cyl(0.07, 0.015, Vector3(DESK.x - 0.84, by + 0.008, DESK.z - 0.28), metal)
-	var foot := Vector3(DESK.x - 0.84, by + 0.01, DESK.z - 0.28)
+	var bc := Vector3(DESK.x - 0.84, by, DESK.z - 0.28)
+	_cyl(0.075, 0.012, bc + Vector3(0, 0.006, 0), metal, self, 0.072, 32)
+	_cyl(0.068, 0.006, bc + Vector3(0, 0.015, 0), metal, self, 0.06, 32)              # (its bevelled top)
+	_cyl(0.074, 0.002, bc + Vector3(0, 0.001, 0), flat(Color(0.08, 0.08, 0.08), 0.95))   # (a felt pad under it)
+	var sw := _box(Vector3(0.018, 0.006, 0.012), bc + Vector3(0.03, 0.019, 0.03), flat(Color(0.05, 0.05, 0.05), 0.4))
+	sw.rotation.x = 0.18                                                              # (the switch, rocked)
+	var foot := bc + Vector3(0, 0.03, 0)
 	var head := Vector3(DESK.x - 0.76, by + 0.52, DESK.z - 0.12)
+	_cyl(0.012, 0.022, bc + Vector3(0, 0.026, 0), steel, self, 0.009, 16)            # (the hinge's post)
 	_rod(foot, head, 0.008, metal)
+	for at in [foot, head]:
+		var k := _cyl(0.011, 0.02, at, steel)                                        # (the hinges' knobs)
+		k.rotation.z = PI * 0.5
+	_cord(bc + Vector3(-0.06, 0.004, -0.02))
 	# the shade, a cone, its open end to the tanks
 	var piv := _pivot(head, Vector3(DESK.x + DESK_SMALL_X, DESK.y, DESK.z - 0.15))
 	var cone := _cyl(0.075, 0.12, Vector3(0, 0, -0.05), metal, piv, 0.025, 20)
@@ -241,6 +255,40 @@ func _lights() -> void:
 	bulb.emission_energy_multiplier = 3.0
 	var b := _cyl(0.06, 0.004, Vector3(0, 0, -0.105), bulb, piv)
 	b.rotation.x = PI * 0.5
+
+
+## The lamp's cord: out of the back of its base, along the desk to its back edge, down behind it, along the floor by
+## the wall to a socket on the skirting, its plug in it.
+func _cord(from: Vector3) -> void:
+	var black := flat(Color(0.04, 0.04, 0.04), 0.55)
+	var by := DESK.y + DESK_SIZE.y * 0.5
+	var back := DESK.z - DESK_SIZE.z * 0.5
+	var sock := Vector3(DESK.x - 0.6, 0.25, -W * 0.5 + 0.006)                # the socket on the wall behind the desk
+	var pts := [from, Vector3(from.x - 0.03, by + 0.003, back + 0.06), Vector3(from.x - 0.05, by + 0.003, back + 0.004),
+		Vector3(from.x - 0.05, by - 0.03, back - 0.01), Vector3(from.x - 0.07, 0.45, back - 0.03),
+		Vector3(sock.x - 0.02, 0.27, sock.z + 0.04), Vector3(sock.x, sock.y, sock.z + 0.035)]
+	# a smooth curve through them (Catmull-Rom), drawn as short rods
+	var curve := []
+	for i in pts.size() - 1:
+		var p0: Vector3 = pts[maxi(i - 1, 0)]
+		var p1: Vector3 = pts[i]
+		var p2: Vector3 = pts[i + 1]
+		var p3: Vector3 = pts[mini(i + 2, pts.size() - 1)]
+		for k in 6:
+			var t := k / 6.0
+			curve.append(0.5 * ((2.0 * p1) + (p2 - p0) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t
+				+ (3.0 * p1 - p0 - 3.0 * p2 + p3) * t * t * t))
+	curve.append(pts[-1])
+	for i in curve.size() - 1:
+		_rod(curve[i], curve[i + 1], 0.0025, black)
+	# the socket: a white plate with two round holes' worth of plug in it
+	var white := flat(Color(0.93, 0.92, 0.88), 0.35)
+	_box(Vector3(0.08, 0.08, 0.008), sock + Vector3(0, 0, 0.004), white)
+	_box(Vector3(0.066, 0.066, 0.004), sock + Vector3(0, 0, 0.009), flat(Color(0.97, 0.96, 0.93), 0.3))
+	var plug := _cyl(0.017, 0.022, sock + Vector3(0, 0, 0.022), black, self, 0.015, 20)
+	plug.rotation.x = PI * 0.5
+	var grip := _cyl(0.008, 0.014, sock + Vector3(0, 0, 0.038), black, self, 0.004, 12)
+	grip.rotation.x = PI * 0.5
 
 
 ## The light at that hour (0..24, the computer's clock): the sun's height and bearing through the day - it comes in at

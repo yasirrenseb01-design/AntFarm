@@ -8,6 +8,7 @@ extends Node3D
 const Wood := preload("res://shaders/home/wood.gdshader")
 const Rug := preload("res://shaders/home/rug.gdshader")
 const NestCard := preload("res://scripts/game/nest_card.gd")
+const OutworldCard := preload("res://scripts/game/outworld_card.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const W := 4.0                    # the room, x and z
 const H := 2.6
@@ -372,6 +373,10 @@ func _tank(parent: Node3D, at: Vector3, big: bool, farm: bool, slot: int, number
 		if tex != null:
 			soil.set_shader_parameter("nest_tex", tex)
 			soil.set_shader_parameter("has_tex", true)
+		var top := OutworldCard.read(Store.base + "saves", slot)
+		if top != null and not farm:
+			soil.set_shader_parameter("top_tex", top)                 # (the foraging box from above: outworld_card.gd)
+			soil.set_shader_parameter("has_top", true)
 	var mats: Array = []
 	var o: Vector3
 	var foot_d: float
@@ -442,6 +447,7 @@ func _soil_box(t: Node3D, size: Vector3, centre: Vector3, m: ShaderMaterial, nes
 	m.set_shader_parameter("nest_x0", nest_x0)
 	m.set_shader_parameter("nest_w", nest_w)
 	m.set_shader_parameter("nest_h", nest_h)
+	m.set_shader_parameter("top_size", Vector2(size.x, size.z))
 	_box(size, centre, m, t)
 
 

@@ -14,6 +14,9 @@ uniform float nest_w = 1.0;
 uniform float nest_h = 1.0;
 uniform sampler2D nest_tex : filter_linear;
 uniform bool has_tex = false;
+uniform sampler2D top_tex : filter_linear_mipmap, source_color;   // the foraging floor from above (the Home: outworld_card.gd)
+uniform bool has_top = false;
+uniform vec2 top_size = vec2(1.0);       // the soil's top, mesh units (x, z)
 uniform float seed = 0.0;
 uniform float hilite = 0.0;            // the pointer is on its tank (the Home)
 
@@ -60,6 +63,9 @@ void fragment() {
 		vec2 q = m.xz * 60.0 + seed;
 		float k = vn(q) * 0.5 + vn(q * 2.3) * 0.3 + vn(q * 7.0) * 0.2;
 		c = mix(vec3(0.13, 0.09, 0.06), vec3(0.3, 0.21, 0.13), k) * (0.8 + 0.4 * h2(floor(m.xz * 1300.0)));
+		if (has_top) {
+			c = texture(top_tex, opos.xz / top_size + 0.5).rgb * 0.7;      // (it is lit again here: a picture already lit)
+		}
 	}
 	ALBEDO = c * 0.8;
 	ROUGHNESS = 0.95;

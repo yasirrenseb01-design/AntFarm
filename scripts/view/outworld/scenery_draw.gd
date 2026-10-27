@@ -88,6 +88,8 @@ static func build(v) -> void:
 	var bl := []
 	var gr := RandomNumberGenerator.new()
 	gr.seed = 777 + v.sim.plot_seed
+	var box: bool = v.sim.scenario != "wild"
+	var lim: Vector2 = v.sim.WORLD - Vector2(2, 2)
 	for t in ground.tufts:
 		var n := gr.randi_range(9, 16)
 		if t.has("n"):
@@ -103,6 +105,20 @@ static func build(v) -> void:
 			var col := Color(0.24, 0.42, 0.13).lerp(Color(0.5, 0.64, 0.26), gr.randf())
 			if dry:
 				col = Color(0.56, 0.5, 0.32).lerp(Color(0.68, 0.6, 0.4), gr.randf())
+			if box:
+				# in a keeper's box no blade through the glass (the keeper, 2026-10-27): its foot inside, and one that would
+				# lean out leans back in (its top 1/U px a unit away, along (cos yaw, -sin yaw))
+				at = at.clamp(Vector2(2, 2), lim)
+				for tries in 3:
+					var tip: Vector2 = at + Vector2(cos(yaw), -sin(yaw)) * h * sin(lean) / v.U
+					if tip.x < 2.0 or tip.x > lim.x:
+						yaw = PI - yaw
+					elif tip.y < 2.0 or tip.y > lim.y:
+						yaw = -yaw
+					else:
+						break
+					if tries == 2:
+						lean *= 0.3
 			bl.append([at, yaw, h, lean, col])
 	grass.instance_count = bl.size()
 	for i in bl.size():

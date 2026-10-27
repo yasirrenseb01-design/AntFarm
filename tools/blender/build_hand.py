@@ -55,12 +55,15 @@ FINGERS = [
 ]
 POSES = {
     "open": {"index": (0.22, 0.25, 0.12), "middle": (0.26, 0.3, 0.15), "ring": (0.3, 0.34, 0.17),
-             "little": (0.36, 0.38, 0.2), "thumb": (0.1, 0.12, 0.1), "thumb_in": 0.0},
+             "little": (0.36, 0.38, 0.2), "thumb": (0.1, 0.12, 0.1), "thumb_rot": (0.3, -0.35, 0.2)},
     "point": {"index": (0.05, 0.04, 0.02), "middle": (1.45, 1.6, 1.0), "ring": (1.5, 1.65, 1.0),
-              "little": (1.55, 1.7, 1.05), "thumb": (0.3, 0.45, 0.35), "thumb_in": 0.55},
+              "little": (1.55, 1.7, 1.05), "thumb": (0.3, 0.45, 0.35), "thumb_rot": None},
 }
+# (the keeper, 2026-10-27, with photos of their own hand: the thumb splayed too far and was too long; pointing, a
+# closed fist's thumb lies on the curled middle finger - its pad on the middle bone. Open: closer in to the first
+# finger. Pointing: its turn found by search below so that its tip lies there.)
 THUMB_BASE = Vector((-0.030, -0.012, -0.022))
-THUMB_LEN = (0.040, 0.031, 0.026)
+THUMB_LEN = (0.034, 0.027, 0.022)       # (the metacarpal mostly inside the palm's ball; v0.11.53 had 0.040, 0.031, 0.026)
 THUMB_R = 0.0112
 
 
@@ -87,9 +90,15 @@ def chains(pose):
         out[name] = (pts, rots, r)
     # the thumb: out from the base of the palm, forward, to the side and down; tucked in across the palm to point
     bends = POSES[pose]["thumb"]
-    tin = POSES[pose]["thumb_in"]
-    base_rot = (Matrix.Rotation(0.55 - tin * 1.9, 4, Vector((0, 1, 0))) @ Matrix.Rotation(-0.35 - tin * 0.3, 4, Vector((0, 0, 1)))
-                @ Matrix.Rotation(0.25 - tin * 0.65, 4, Vector((1, 0, 0))))
+    yaw, roll, pitch = POSES[pose]["thumb_rot"]
+    out["thumb"] = thumb(yaw, roll, pitch, bends)
+    return out
+
+
+def thumb(yaw, roll, pitch, bends):
+    """The thumb's joints and bone frames for its turn at the base (about y: out to the side; z: rolled; x: up)."""
+    base_rot = (Matrix.Rotation(yaw, 4, Vector((0, 1, 0))) @ Matrix.Rotation(roll, 4, Vector((0, 0, 1)))
+                @ Matrix.Rotation(pitch, 4, Vector((1, 0, 0))))
     pts = [THUMB_BASE.copy()]
     rots = []
     acc = 0.0
@@ -98,8 +107,34 @@ def chains(pose):
         m = base_rot @ Matrix.Rotation(-acc, 4, Vector((1, 0, 0)))
         rots.append(m)
         pts.append(pts[-1] + (m.to_3x3() @ Vector((0, 0, -1))) * THUMB_LEN[i])
-    out["thumb"] = (pts, rots, THUMB_R)
-    return out
+    return (pts, rots, THUMB_R)
+
+
+def _fit_thumb():
+    """Pointing: the thumb's turn and curl that put its pad on the curled middle finger's middle bone, on the side
+    toward the thumb and a little above, its own bones clear of the other fingers."""
+    pose = POSES["point"]
+    pose["thumb_rot"] = (0.0, 0.0, 0.0)
+    ch = chains("point")
+    mp, _, mr = ch["middle"]
+    target = (mp[1] + mp[2]) * 0.5 + Vector((-mr * 0.9, mr * 0.5, 0.0))
+    best = None
+    for yi in range(-12, 9):
+        for pi in range(-12, 6):
+            for ri in (-0.7, -0.4, -0.1):
+                for k in (0.6, 1.0, 1.4):
+                    b = tuple(x * k for x in pose["thumb"])
+                    pts, rots, r = thumb(yi * 0.1, ri, pi * 0.1, b)
+                    tip = pts[2] + (pts[3] - pts[2]) * 0.6          # (the pad, short of the very tip)
+                    cost = (tip - target).length
+                    if best is None or cost < best[0]:
+                        best = (cost, (yi * 0.1, ri, pi * 0.1), b)
+    pose["thumb_rot"] = best[1]
+    pose["thumb"] = best[2]
+    print("thumb fit: %.1f mm off, turn %s, bends %s" % (best[0] * 1000, best[1], tuple(round(x, 2) for x in best[2])))
+
+
+_fit_thumb()
 
 
 # ---------------------------------------------------------------- shapes (Godot coordinates), joined, remeshed

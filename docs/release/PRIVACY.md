@@ -6,7 +6,7 @@
 
 - เกมไม่ต่ออินเทอร์เน็ต ไม่มีบัญชี ไม่มีโฆษณา ไม่มีสถิติการใช้งาน ไม่มีการรายงานข้อผิดพลาดอัตโนมัติ
 - ทุกอย่างที่เกมเขียนอยู่ในเครื่องคุณ ในโฟลเดอร์ `%APPDATA%\Godot\app_userdata\AntFarm\`
-  - `saves\` — รังมดของคุณ (ตู้ในบ้านและแปลงในโหมดป่า รวมชื่อมดที่คุณตั้ง) และสำเนาสำรองก่อนอัปเดตรูปแบบเซฟ
+  - `saves\` — รังมดของคุณ (ตู้ในบ้านและแปลงในโหมดป่า รวมชื่อมดที่คุณตั้ง) และสำเนาสำรองก่อนอัปเดตรูปแบบเซฟ และภาพเล็กของรัง/กล่องหาอาหาร (`slotN_nest.png`, `slotN_outworld.png`) ที่ห้อง Home ใช้แสดงในตู้
   - `home.json` — ตู้ไหนเป็นรังไหน ของที่ซื้อในร้าน; `harmony.json` — แต้ม Colony Harmony
   - `settings.cfg` — การตั้งค่า (ภาษา เสียงเพลง รังที่เล่นอยู่ ฯลฯ)
   - `desktop_mode.log` — บันทึกการเข้า/ออกโหมดวอลเปเปอร์ (ขนาดหน้าต่างและชื่อไดรเวอร์การ์ดจอ) ไว้ช่วยหาสาเหตุเมื่อมีปัญหา
@@ -24,7 +24,8 @@
 - The game never connects to the internet: no account, no ads, no usage statistics, no automatic crash reports.
 - Everything the game writes stays on your computer, in `%APPDATA%\Godot\app_userdata\AntFarm\`:
   - `saves\` — your colonies (the tanks at home and the wild mode's plots, including the names you give ants) and backups made
-    before a save-format update
+    before a save-format update, and small pictures of each nest and foraging box (`slotN_nest.png`, `slotN_outworld.png`) the Home shows in
+    its tanks
   - `home.json` — which tank holds which colony, what you bought in the shop; `harmony.json` — your Colony Harmony points
   - `settings.cfg` — your settings (language, music volume, the colony you play, …)
   - `desktop_mode.log` — a note each time the wallpaper mode starts or stops (window size and graphics driver name), to help find problems

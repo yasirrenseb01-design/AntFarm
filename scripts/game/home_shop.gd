@@ -5,7 +5,10 @@ extends PanelContainer
 
 const Paper := preload("res://scripts/view/ui/paper.gd")
 # what is sold, its name and its note (keys of lang/strings.csv, written out: tests/lang_test.gd finds them so)
-const ITEMS := [["big", "shop_big", "shop_big_note"], ["small", "shop_small", "shop_small_note"], ["farm", "shop_farm", "shop_farm_note"],
+# (the ant farm is not sold for now - the keeper, 2026-10-27: on its own its foraging floor is next to nothing; it comes
+# back after Early Access as an add-on joined to a tank by a tube, the colony's nest growing into it: BACKLOG. Farms
+# already bought stay as they are.)
+const ITEMS := [["big", "shop_big", "shop_big_note"], ["small", "shop_small", "shop_small_note"],
 	["shelf2", "shop_shelf2", "shop_shelf2_note"], ["shelf4", "shop_shelf4", "shop_shelf4_note"]]
 
 var home_ui                    # game/home.gd
