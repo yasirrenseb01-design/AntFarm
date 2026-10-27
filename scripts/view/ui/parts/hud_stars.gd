@@ -14,6 +14,7 @@ const STAR_COMING := [["feed_larvae", "top_feed_larvae"], ["carry_brood", "top_c
 	["corpses", "top_corpses"], ["fights", "top_fights"]]
 
 var _stars_list: VBoxContainer
+var _stars_scroll: ScrollContainer
 var _named_list: VBoxContainer
 var _stars_sig := ""                 # what the rows were built from (rebuilt only when it changes)
 var _star_follow := -2               # the worker the camera was sent after (-1: the queen, -2: none)
@@ -29,6 +30,7 @@ func _build_stars(root: Control) -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(STARS_W, 620)
 	_stars.add_child(scroll)
+	_stars_scroll = scroll
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 8)
 	col.custom_minimum_size = Vector2(STARS_W - 16, 0)
@@ -62,6 +64,7 @@ func toggle_stars() -> void:
 		_enemies.visible = false             # (one panel on the left at a time)
 		_stars_sig = ""
 		_refresh_stars()
+		fit_left_panel(_stars_scroll, STARS_W)
 
 
 ## What the colony knows of its workers now, ranked (until sim.top_ants() is there): size, age, injuries.

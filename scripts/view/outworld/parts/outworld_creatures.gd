@@ -525,9 +525,11 @@ func info_for(kind: String, id: int) -> Dictionary:
 	if kind != "worker":
 		return {}
 	for a in sim.outside:
-		if a.id == id and a.state != Ant.IN_NEST and not a.dead and not (a.act == 22 and a.busy > 0):
+		if a.id == id and a.state != Ant.IN_NEST and not a.dead:
 			var act: int = a.act if a.busy > 0 else 0
-			if a.state == Ant.DRAG:
+			if a.act == 22 and a.busy > 0:
+				act = 24                     # off past the edge of the plot (the tip's own code: 22 is grooming a nestmate)
+			elif a.state == Ant.DRAG:
 				act = 19
 			elif a.state == Ant.DEFEND:
 				act = 13 if a.busy > 0 else 14

@@ -75,10 +75,15 @@ func _wrap(h, text: String, size: int, color: Color, w: float) -> Label:
 func _build_card(row: Control, S) -> void:
 	var h = hud
 	var card: Dictionary = S.CARD
+	# the words scroll when the window is too short for them (1366 x 768: the window's top and the last lines were off
+	# the screen)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	row.add_child(scroll)
 	var text := VBoxContainer.new()
 	text.add_theme_constant_override("separation", 8)
 	text.custom_minimum_size.x = 430
-	row.add_child(text)
+	scroll.add_child(text)
 	var name_row := HBoxContainer.new()
 	name_row.add_theme_constant_override("separation", 10)
 	name_row.add_child(h._label(tr(S.DATA.name_th), 26, Paper.INK, h._display))
@@ -97,6 +102,8 @@ func _build_card(row: Control, S) -> void:
 	text.add_child(diff)
 	for t in card.care:
 		_point(text, t)
+	var room: float = hud.get_viewport().get_visible_rect().size.y - 150.0
+	scroll.custom_minimum_size = Vector2(450, minf(text.get_combined_minimum_size().y, maxf(room, 360.0)))
 	# the models, turning, on the right
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 8)

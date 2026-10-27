@@ -69,6 +69,8 @@ func _show(i: int) -> void:
 	_count.text = tr("guide_step") % [i + 1, _steps.size()]
 	_text.text = tr(_steps[i][0])
 	_next.text = tr("guide_next") if i < _steps.size() - 1 else tr("guide_done")
+	if _steps[i][1] == "water" and not hud._side.visible:
+		hud.set_side_open(true)              # (the water tube is in the side panel: folded away in a narrow window)
 	_card.reset_size()
 	_place.call_deferred()
 
@@ -90,11 +92,35 @@ func _place() -> void:
 		var r := t.get_global_rect()
 		at.x = clampf(r.get_center().x - cs.x * 0.5, 14.0, vp.x - cs.x - 14.0)
 		at.y = r.end.y + 70.0 if r.get_center().y < vp.y * 0.5 else r.position.y - cs.y - 70.0
+	# not over the ant's info box or a panel open on the left: along to where it is clear of them (it stays put while
+	# nothing is in its way)
+	var keep_out := _keep_out()
+	var spots: Array = [at.x, vp.x - cs.x - 14.0, 14.0, (vp.x - cs.x) * 0.5]
+	for x in spots:
+		var rr := Rect2(Vector2(x, at.y), cs)
+		if not keep_out.any(func(k): return (k as Rect2).intersects(rr)):
+			at.x = x
+			break
 	_card.position = at
 	queue_redraw()
 
 
+## What the card keeps clear of: the ant's info box, the enemy or star ants panel on the left, the camera buttons.
+func _keep_out() -> Array:
+	var out := []
+	for c in [hud.ant_tip, hud._enemies, hud._stars, hud._cam_pad]:
+		if c != null and is_instance_valid(c) and c.is_visible_in_tree():
+			out.append((c as Control).get_global_rect().grow(8.0))
+	return out
+
+
+var _seen_out := []
+
 func _process(_delta: float) -> void:
+	var now := _keep_out()
+	if str(now) != str(_seen_out):
+		_seen_out = now
+		_place()                                           # (a box or panel opened or closed: out of its way)
 	queue_redraw()                                         # (the arrow follows the bar as it changes)
 
 

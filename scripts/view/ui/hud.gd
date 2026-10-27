@@ -11,6 +11,9 @@ const Music := preload("res://scripts/view/ui/music.gd")
 
 func setup(s, w) -> void:
 	sim = s
+	# every word is put through tr() by the code (tests/lang_test.gd): nothing is translated by itself - an ant the keeper
+	# named "queen" or "eggs" showed the word for it instead of its name
+	auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	ground = w
 	sim.logged.connect(_on_logged)
 	var root := Control.new()
@@ -142,6 +145,7 @@ func refresh(delta: float) -> void:
 	_t += delta
 	_tick_banner(delta)
 	_tick_stars()
+	_fit_tools()
 	_clock.text = tr("clock_line") % [sim.year(), sim.date_text(), sim.season_name(), sim.clock_text()]
 	var sky := tr("sky_rain") if sim.climate.raining() else (tr("sky_night") if sim.sun_height() < -0.05 else tr("sky_clear"))
 	_weather.text = tr("weather_line") % [sim.climate.air, sky, int(sim.activity * 100)]

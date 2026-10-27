@@ -9,6 +9,7 @@ signal enemy_watch(id: int)          # the camera should follow this enemy (sim.
 const ENEMY_W := 390.0
 
 var _enemies: PanelContainer
+var _enemies_scroll: ScrollContainer
 var _enemy_release: Array = []       # the release buttons (off while the outworld is full)
 var _enemy_warn: Label
 var _enemy_list: VBoxContainer
@@ -22,10 +23,14 @@ func _build_enemies(root: Control) -> void:
 	_enemies.position = Vector2(14, 140)
 	_enemies.visible = false
 	root.add_child(_enemies)
+	# (it scrolls when the window is too short for it: in 1366 x 768 its foot ran off the bottom, over the tools)
+	_enemies_scroll = ScrollContainer.new()
+	_enemies_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_enemies.add_child(_enemies_scroll)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
 	col.custom_minimum_size = Vector2(ENEMY_W, 0)
-	_enemies.add_child(col)
+	_enemies_scroll.add_child(col)
 	var head := HBoxContainer.new()
 	var title := _label(tr("en_title"), 17, INK, _display)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -74,6 +79,15 @@ func _build_enemies(root: Control) -> void:
 	col.add_child(_enemy_clear)
 
 
+## A panel on the left (its scroll box): as tall as its contents, but never down over the tools at the bottom of the
+## window (from y 140 to ~150 px above the bottom; 620 at most).
+func fit_left_panel(scroll: ScrollContainer, w: float) -> void:
+	var room: float = get_viewport().get_visible_rect().size.y - 140.0 - 150.0
+	var need: float = scroll.get_child(0).get_combined_minimum_size().y if scroll.get_child_count() > 0 else 0.0
+	scroll.custom_minimum_size = Vector2(w, clampf(minf(need, 620.0), 200.0, maxf(room, 200.0)))
+	(scroll.get_parent() as Control).reset_size()
+
+
 func _wrapped(text: String, size: int, color: Color) -> Label:
 	var l := _label(text, size, color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -88,6 +102,7 @@ func toggle_enemies() -> void:
 		if _stars != null:
 			_stars.visible = false             # (one panel on the left at a time)
 		_refresh_enemies()
+		fit_left_panel(_enemies_scroll, ENEMY_W + 16.0)
 
 
 func _release_enemy(kind: String) -> void:

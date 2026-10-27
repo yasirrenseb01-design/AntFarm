@@ -255,6 +255,8 @@ func _take_shot() -> void:
 		if _opts.has("home-point"):
 			var pp: PackedStringArray = String(_opts["home-point"]).split(",")
 			home_room._point(Vector2(float(pp[0]), float(pp[1])))     # (as if the pointer were there)
+	if _opts.has("side-open"):
+		hud.set_side_open(true)              # (dev: the side panel open, whatever the window's width)
 	if _opts.has("follow-prey"):
 		_follow_prey(600)                    # (dev: the camera on the first nestmate carrying prey down, once there is one)
 	if _opts.has("send-deep"):

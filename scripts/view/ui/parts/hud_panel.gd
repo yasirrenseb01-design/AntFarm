@@ -288,6 +288,22 @@ func _draw_chart() -> void:
 
 ## The side panel folded away or out (kept in the settings; the first time folded on a window too narrow for both it
 ## and the top bar). Folded, the outworld's camera centres on the whole window and the camera buttons move right.
+## The tools at the bottom left, drawn smaller (down to 0.7) when they would run under the side panel - a narrow window
+## with the panel open (1366 wide, the formicarium's nine tools went under it in English). The camera buttons go up
+## over them where the two meet (_fit_bottom).
+func _fit_tools() -> void:
+	if _tools_bar == null or _side == null:
+		return
+	var vw: float = _side.get_viewport_rect().size.x
+	var edge: float = (vw - PANEL_W - 14.0) if _side.visible else vw
+	var need: float = _tools_bar.get_combined_minimum_size().x
+	var f := clampf((edge - _tools_bar.offset_left - 12.0) / maxf(need, 1.0), 0.7, 1.0)
+	if absf(f - _tools_bar.scale.x) > 0.005:
+		_tools_bar.pivot_offset = Vector2(0.0, _tools_bar.size.y)
+		_tools_bar.scale = Vector2(f, f)
+		_fit_bottom()
+
+
 func set_side_open(open: bool, keep := true) -> void:
 	_side.visible = open
 	_side_tab.visible = not open
@@ -329,8 +345,9 @@ func _fit_bottom() -> void:
 	_cam_pad.offset_bottom = -12.0
 	var vp := _side.get_viewport_rect().size
 	var pad_left: float = vp.x + _cam_pad.offset_right - _cam_pad.get_combined_minimum_size().x
-	if _tools_bar.position.x + _tools_bar.get_combined_minimum_size().x + 8.0 > pad_left:
-		_cam_pad.offset_bottom = -12.0 - _tools_bar.get_combined_minimum_size().y - 34.0
+	var k: float = _tools_bar.scale.x             # (drawn smaller in a narrow window: _fit_tools)
+	if _tools_bar.position.x + _tools_bar.get_combined_minimum_size().x * k + 8.0 > pad_left:
+		_cam_pad.offset_bottom = -12.0 - _tools_bar.get_combined_minimum_size().y * k - 34.0
 
 
 ## The top bar fitted to the window: all of it if there is room; else tighter, then without the species' name (in

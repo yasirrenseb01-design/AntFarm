@@ -118,12 +118,15 @@ func _show_catchup_overlay() -> void:
 	bg.color = Color(0.06, 0.045, 0.035, 0.97)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(bg)
+	# (in the middle of the window whatever size it is, now or after: it was placed once from the size at the start,
+	# and off to the right in a 1366 x 768 window)
+	var mid := CenterContainer.new()
+	mid.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_overlay.add_child(mid)
 	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
 	box.custom_minimum_size = Vector2(520, 0)
-	box.position = get_viewport_rect().size * 0.5 - Vector2(260, 60)
 	box.add_theme_constant_override("separation", 12)
-	_overlay.add_child(box)
+	mid.add_child(box)
 	_overlay_label = Label.new()
 	_overlay_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_overlay_label.add_theme_font_size_override("font_size", 18)

@@ -282,7 +282,7 @@ func _act_name(act: int) -> String:
 		18: return tr("act_flipped")
 		19: return tr("act_drag")
 		20: return tr("act_glass")
-		22: return tr("act_beyond")
+		24: return tr("act_beyond")          # (outworld info_for: the simulation's 22, off past the plot's edge)
 	return "-"
 
 

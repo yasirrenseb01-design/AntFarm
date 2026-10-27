@@ -5,7 +5,7 @@
 - ทำเสร็จแล้ว: ลบออกจากที่นี่ (ไปอยู่ใน CHANGELOG) — ไม่ต้องเก็บไว้ขีดฆ่า
 - ถ้าไฟล์เกิน ~300 บรรทัด: แยกเป็น `docs/roadmap/backlog/PART<N>.md` ทีละส่วน แล้วให้ไฟล์นี้เหลือแค่สารบัญ
 
-## สถานะล่าสุด (2026-10-27, หลัง v0.11.46) — เริ่ม session ใหม่ อ่านตรงนี้ก่อน
+## สถานะล่าสุด (2026-10-27, หลัง v0.11.47) — R2 เสร็จ ต่อไป R5 — เริ่ม session ใหม่ อ่านตรงนี้ก่อน
 - **งานที่กำลังทำ: Colony Harmony + ห้อง Home — ผู้เล่นตั้งใจให้ทันก่อน Early Access 2 พ.ย. 2026** (ยังเหลือ R5/R6 ด้วย: zip+SHA-256,
   ทดสอบเครื่องเปล่า, ปิดคำสั่ง dev ที่เขียนไฟล์, หน้าร้าน itch.io, README, เครดิตเพลง AI)
   - **ทำแล้ว (v0.11.39–40): แต้ม Colony Harmony** `scripts/game/harmony.gd` — มดงานเกิด 1 (ตัวใหญ่ = ขนาด ≥ 1.06 `HARMONY_BIG`
@@ -185,19 +185,18 @@
     แผ่นความร้อน = "Heat mat" · มดงานตัวใหญ่/เล็ก = "Large/Small worker" (ไม่ใช้ major/minor: L. niger ไม่แบ่งวรรณะ) ·
     สาเหตุตายต่อท้าย "X has died — starved / of thirst / of old age / lost while foraging / bitten by an enemy" ·
     หัวบันทึก "Day 12 06:30" · ชื่อหน้าแรก "Keeper's field notebook" · มดงานออกหากิน = "foraging %d%%" (แถบอากาศ)
-  - **อาจล้น (ภาษาอังกฤษยาวกว่า) — ยังไม่ได้ดูภาพ:** แถบบน (Outworld 3D / Nest 3D / Enemies / Star ants / My colonies / Wallpaper / Menu —
+  - **(ดูภาพแล้ว v0.11.47 R2 — แก้ที่ล้นแล้ว; ที่ต่ำกว่า 1366×768 ยังไม่ได้ดู)** เดิมจดไว้ว่าอาจล้น: แถบบน (Outworld 3D / Nest 3D / Enemies / Star ants / My colonies / Wallpaper / Menu —
     แถบบนเคยล้นที่ 1600 อยู่แล้ว); แถบเครื่องมือล่าง (Hand (move the view), Drop of honey, Dead cricket, Stone, Wipe scent, See through the soil,
     Add water, Show scent, Heat mat, Hibernate in fridge); ตารางแผงข้าง 4 คอลัมน์ กว้าง 352 (Workers died, Brood lost, Egg→worker, Nest volume,
     Fat reserve, Development, Worker size); ตัวเลือกเวลาตอนปิดเกม (1 game day = 24 real hours (real time)); ปุ่มรังใหม่ (Garden / meadow (outdoors),
     A 3-month-old colony (14 workers)); แถวในแผงมดเด่น (Brought home the most honeydew); ปุ่มในหน้าเลือกชนิดมด; คำใบ้ปุ่มกล้องมุมซ้ายล่าง
   - ยังไม่ได้ทำ: ฟอนต์ที่มีทั้งสองภาษาแบบลายมือ/พิมพ์ดีด (ตอนนี้ฟอนต์เดิม); ชื่อเดือนในบันทึกเก่า (ก่อน v0.11.12) ยังเป็นไทย;
-    Label ของ Godot แปลข้อความเองถ้าตรงกับรหัสพอดี (เช่น มดชื่อ "queen" จะขึ้นเป็นคำแปล) — ถ้าเจอให้ปิด `auto_translate_mode` ที่ root ของ HUD;
-    `_act_name` ใน `ant_tip.gd` มี `22:` สองครั้ง (มีมาก่อน — กิจกรรม 22 "ออกไปหากินนอกแปลง" ไม่เคยขึ้น)
+    (แก้แล้ว v0.11.47: ชื่อมดที่ตรงกับรหัสคำแปล, รหัสกิจกรรม 22 ซ้ำ)
 - **R7 ทำแล้ว v0.11.14** — สเปกสำหรับหน้าร้าน (R6): วัดบน i5-12450H + Intel UHD (ออนบอร์ด) และ RTX 3050 Laptop, RAM 16 GB;
   ในรังที่มีมดหลายร้อยตัว ติดที่ CPU (~20 ms/เฟรม ที่ 300 ตัว) — CPU ที่อ่อนกว่า i5 รุ่น 12 จะได้ fps น้อยกว่านี้; ลดงานคำนวณมดในรัง
   (อัปเดตมดที่อยู่ไกล/นอกจอน้อยลง) เป็นงานหลังปล่อย (ระบบนี้จูนมาเป็นสิบรอบ — วัดมดจมดิน/ทับกันก่อนส่งทุกครั้ง)
-- **R4 ทำแล้ว v0.11.13** — ที่ยังเหลือ: ขั้น "เติมน้ำ" พูดถึงหลอดน้ำในแผงสถานะ แต่หน้าต่างแคบแผงพับอยู่ (ไม่เปิดให้เอง);
-  การ์ดไม่หลบกล่องข้อมูลมด/แผงศัตรูถ้าเปิดอยู่
+- **R4 ทำแล้ว v0.11.13** (ที่เหลือสองข้อแก้แล้ว v0.11.47: เปิดแผงข้างให้ตอนขั้นเติมน้ำ, การ์ดหลบกล่องข้อมูล/แผง)
+- R2: ตัวช่วยบรรทัดล่าง ("Left drag: turn ...") ในมุมในรังที่ 1366 ถูกปุ่มกล้องบังท้ายบรรทัด; หน้าต่างแคบกว่า 1366 ยังไม่ได้ตรวจ
 - **R8 ทำแล้ว v0.11.14 (คลาวด์)** — รายงาน `docs/release/SECURITY_REVIEW.md` (20 ข้อ), `docs/release/PRIVACY.md`, เทสต์ `tests/save_fuzz_test.gd`; ที่ยังเหลือ:
   - `override.cfg` ข้าง exe เปลี่ยน project setting ได้ — ลอง `application/config/disable_project_settings_override=true` บน Windows
     (บน Linux headless ใส่แล้ว Godot ค้างทุกครั้ง แม้ไม่มี override.cfg — จึงยังไม่ใส่); ต้องลองทั้ง editor, `tools/check.ps1` และ exe
