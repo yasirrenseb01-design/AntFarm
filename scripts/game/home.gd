@@ -18,6 +18,8 @@ const WALK := 1.3                 # metres a second
 const LOOK := 0.0025              # radians a pixel of mouse
 const MARGIN := 0.3               # how near a wall the keeper can walk
 const SIT_S := 0.6                # seconds to sit down or get up
+const START_Z := -0.15            # where the keeper stands at first: behind the chair, the desk in view (at -0.55, v0.11.49,
+                                  # they stood inside the chair's room and could not take a step)
 
 var main
 var is_open := false
@@ -96,7 +98,7 @@ func _build() -> void:
 	_cam.near = 0.03
 	_cam.current = true
 	_vp.add_child(_cam)
-	_cam.position = Vector3(0.0, EYE, -0.55)
+	_cam.position = Vector3(0.0, EYE, START_Z)
 	if main._opts.has("home-fov"):
 		_cam.fov = float(main._opts["home-fov"])          # (dev: a closer look)
 	# the room's warm edges darkened a little (a vignette)
@@ -308,8 +310,12 @@ func _walk(mv: Vector2, delta: float) -> void:
 	var lim: float = Room.W * 0.5 - MARGIN
 	p.x = clampf(p.x, -lim, lim)
 	p.z = clampf(p.z, -lim, lim)
-	# (not through the desk, the chair or a shelf: each way on its own, so the keeper slides along it)
+	# (not through the desk, the chair or a shelf: each way on its own, so the keeper slides along it; one already in
+	# something's room - got up from the chair, or a shelf bought where they stood - walks out of it freely)
 	var q := _cam.position
+	if _blocked(Vector2(q.x, q.z)):
+		_cam.position = p
+		return
 	if _blocked(Vector2(p.x, q.z)):
 		p.x = q.x
 	if _blocked(Vector2(p.x, p.z)):

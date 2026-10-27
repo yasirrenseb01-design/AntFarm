@@ -252,6 +252,21 @@ func _take_shot() -> void:
 			home_room._aim()
 		if _opts.has("shop"):
 			home_room.shop.toggle()           # (--shop: the shop page open)
+		if _opts.has("home-walk"):
+			# (dev: --home-walk=<key>: that key held for a second after one - W A S or D - and where the keeper went)
+			var key: int = {"w": KEY_W, "a": KEY_A, "s": KEY_S, "d": KEY_D}.get(String(_opts["home-walk"]).to_lower(), KEY_W)
+			get_tree().create_timer(1.0).timeout.connect(func():
+				var from: Vector3 = home_room._cam.position
+				var ev := InputEventKey.new()
+				ev.physical_keycode = key
+				ev.keycode = key
+				ev.pressed = true
+				Input.parse_input_event(ev)
+				get_tree().create_timer(1.0).timeout.connect(func():
+					var up := ev.duplicate()
+					up.pressed = false
+					Input.parse_input_event(up)
+					print("home walk %s: %s -> %s (%.2f m)" % [_opts["home-walk"], from, home_room._cam.position, from.distance_to(home_room._cam.position)])))
 		if _opts.has("home-sit"):
 			for it in home_room._room.items:  # (--home-sit: as if the chair were clicked)
 				if it.kind == "chair":
