@@ -94,6 +94,24 @@ func _build() -> void:
 	_env.adjustment_enabled = true                   # (a warmer, softer room: the keeper, 2026-10-27 "cozy")
 	_env.adjustment_saturation = 1.08
 	_env.adjustment_contrast = 1.04
+	# (v0.11.61, the keeper: "it looks like a game from the early 2000s" - in the renderer the game runs on (mobile: no
+	# ambient occlusion, bounced light or screen reflections) the room is given: AgX tone mapping (light colours that roll
+	# off softly instead of burning to flat yellow), softer shadows, a reflection probe for the varnished floor, the
+	# corners and contact shadows in the room's own materials - home_room.gd)
+	_env.tonemap_mode = Environment.TONE_MAPPER_AGX
+	_env.tonemap_exposure = 1.15
+	_env.glow_intensity = 0.4
+	_env.glow_bloom = 0.04
+	if not low:
+		RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
+		RenderingServer.positional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
+		var probe := ReflectionProbe.new()
+		probe.size = Vector3(Room.W, Room.H, Room.W)
+		probe.position = Vector3(0, Room.H * 0.5, 0)
+		probe.box_projection = true
+		probe.interior = true
+		probe.update_mode = ReflectionProbe.UPDATE_ONCE
+		_vp.add_child(probe)
 	var we := WorldEnvironment.new()
 	we.environment = _env
 	_vp.add_child(we)

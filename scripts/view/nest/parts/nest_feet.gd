@@ -91,7 +91,8 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 				v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty), tws, fmode)
 			else:
 				v.twist = true                               # (standing, turned or pushed off its feet: _step_gait)
-			v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty), tws, fmode)
+				# (its planted feet stay where they are until it steps them: v0.11.60 moved their stride here and they
+				# twitched without the body moving)
 		elif not stance and (absf(tws) > 0.3 or mv <= 0.05):      # (or stepping its feet again, standing: _step_gait)
 			# in the air while the body turns on the spot: the foot it lifts goes round with the body (left where it was
 			# lifted, the front feet swung in behind the middle ones as the body turned past them - TWIST, 2026-10-28)

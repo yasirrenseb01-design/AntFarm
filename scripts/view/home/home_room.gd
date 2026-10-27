@@ -49,6 +49,10 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 	_door()
 	_lights()
 	_rug(Vector3(0.1, 0, 0.25), Vector2(1.6, 1.1))
+	# (contact shadows under the furniture: desk, chair, fridge - v0.11.61)
+	_contact(Vector3(DESK.x, 0, DESK.z), Vector2(DESK_SIZE.x + 0.5, DESK_SIZE.z + 0.4), 0.0, 0.5)
+	_contact(CHAIR, Vector2(0.75, 0.75), CHAIR_TURN, 0.45)
+	_contact(FRIDGE_AT, Vector2(Fridge.SIZE.x + 0.35, Fridge.SIZE.z + 0.35), 0.0, 0.6)
 	blocks.append(Rect2(DESK.x - DESK_SIZE.x * 0.5, DESK.z - DESK_SIZE.z * 0.5, DESK_SIZE.x, DESK_SIZE.z))
 	var units: Array = []
 	for i in mini(shelves.size(), SHELF_AT.size()):
@@ -117,11 +121,55 @@ func _shelf(i: int, holds: int) -> Node3D:
 	return u
 
 
+var _ao_mats: Array = []          # the walls', ceiling's and floor's: keeper_room.gd sets their to_room
+
+
+## A wall's (or the ceiling's) material: its colour dimmed into the corners and along the floor and ceiling.
+func _wall_mat(c: Color, rough: float) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = preload("res://shaders/home/room_wall.gdshader")
+	m.set_shader_parameter("albedo", c)
+	m.set_shader_parameter("rough", rough)
+	m.set_shader_parameter("room", Vector2(W, H))
+	_ao_mats.append(m)
+	return m
+
+
+## Soft dark patches on the floor under the furniture (the light from the room gathering less there - contact shadow),
+## decals: the mobile renderer has no ambient occlusion of its own.
+func _contact(at: Vector3, size: Vector2, turn := 0.0, strength := 0.55) -> void:
+	if _blot == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(0, 0, 0, 1))
+		g.set_color(1, Color(0, 0, 0, 0))
+		_blot = GradientTexture2D.new()
+		_blot.gradient = g
+		_blot.fill = GradientTexture2D.FILL_RADIAL
+		_blot.fill_from = Vector2(0.5, 0.5)
+		_blot.fill_to = Vector2(1.0, 0.5)
+		_blot.width = 128
+		_blot.height = 128
+	var d := Decal.new()
+	d.texture_albedo = _blot
+	d.size = Vector3(size.x, 0.3, size.y)
+	d.position = at + Vector3(0, 0.05, 0)
+	d.rotation.y = turn
+	d.albedo_mix = strength
+	d.modulate = Color(0, 0, 0, strength)
+	d.cull_mask = 1
+	add_child(d)
+
+
+static var _blot: GradientTexture2D
+
+
 func _room() -> void:
 	var floor_m := wood(Color(0.36, 0.21, 0.11), Color(0.56, 0.35, 0.19), 0.14, 1.3, 70.0)
 	_box(Vector3(W, 0.05, W), Vector3(0, -0.025, 0), floor_m)
-	var wall := flat(Color(0.9, 0.82, 0.69), 0.92)           # (a warm cream: the keeper, 2026-10-27 "cozy")
-	var ceil_m := flat(Color(0.95, 0.91, 0.84), 0.95)
+	var wall := _wall_mat(Color(0.9, 0.82, 0.69), 0.92)      # (a warm cream: the keeper, 2026-10-27 "cozy")
+	var ceil_m := _wall_mat(Color(0.95, 0.91, 0.84), 0.95)
+	floor_m.set_shader_parameter("room_half", W * 0.5)       # (the floor dims a little toward the walls)
+	floor_m.set_shader_parameter("rough", 0.38)              # (a varnished floor: the window and the lamps shine on it)
 	# (over the walls' tops: a ceiling only as wide as the room let the sun in along its edges - a bright line on top of
 	# every wall, the keeper, 2026-10-27)
 	_box(Vector3(W + 0.4, 0.1, W + 0.4), Vector3(0, H + 0.05, 0), ceil_m)

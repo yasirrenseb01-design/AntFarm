@@ -36,7 +36,7 @@ static func build(view: Node3D, info: Dictionary, big: bool, soil_bottom: float,
 		at = Transform3D(g.basis.orthonormalized(), g * inside)
 	room.transform = Transform3D(Basis.from_scale(Vector3.ONE * M), Vector3(0, soil_bottom, 0)) * at.affine_inverse()
 	var to_room: Transform3D = room.transform.affine_inverse()
-	for m in room._views:
+	for m in room._views + room._ao_mats:
 		m.set_shader_parameter("to_room", Projection(to_room))
 	# the lights out from under the scale
 	room.fridge_light.omni_range *= M

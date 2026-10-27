@@ -11,7 +11,8 @@ uniform bool along_z = false;
 uniform float grain = 60.0;
 uniform float rough = 0.55;
 uniform float gloss_seams = 0.0;
-uniform float hilite = 0.0;               // the pointer is on it (a tank's base)
+uniform float hilite = 0.0;
+uniform float room_half = 0.0;            // the floor: how far its walls are from the middle (0: not the floor)               // the pointer is on it (a tank's base)
 
 varying vec3 opos;
 varying vec3 onrm;
@@ -62,6 +63,10 @@ void fragment() {
 		seam = max(1.0 - smoothstep(0.0, 0.025, min(sv, 1.0 - sv)), 1.0 - smoothstep(0.0, 0.004, min(su, 1.0 - su)));
 	}
 	c *= 1.0 - seam * 0.55;
+	if (room_half > 0.0) {
+		float dw = room_half - max(abs(opos.x), abs(opos.z));
+		c *= 0.72 + 0.28 * smoothstep(0.0, 0.45, dw);     // (darker into the skirting, as light gathers less there)
+	}
 	ALBEDO = c;
 	ROUGHNESS = mix(rough, rough + 0.25, seam + g * 0.2);
 	SPECULAR = 0.4;

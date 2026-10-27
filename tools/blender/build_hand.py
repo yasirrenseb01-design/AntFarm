@@ -213,12 +213,14 @@ blob(Vector((0.0, 0.0, -0.05)), Vector((0.039, 0.0135, 0.052)))
 blob(Vector((0.0, 0.001, -0.086)), Vector((0.037, 0.011, 0.018)))
 blob(Vector((0.0, -0.002, -0.014)), Vector((0.03, 0.014, 0.022)))
 blob(Vector((0.0, -0.003, 0.006)), Vector((0.03, 0.0145, 0.02)))           # (the wrist into the heel: no step)
-blob(Vector((-0.022, -0.009, -0.03)), Vector((0.018, 0.013, 0.026)))      # the thumb's ball
+# the thumb's ball: long and low, sloping into the palm and down to the wrist (a round ball stood up as a lump: the
+# keeper, 2026-10-28)
+blob(Vector((-0.02, -0.007, -0.028)), Vector((0.016, 0.0095, 0.036)))
 blob(Vector((0.024, -0.007, -0.03)), Vector((0.012, 0.011, 0.03)))        # the outer heel
 # the wrist and the forearm, back into the sleeve
 tube([Vector((0, -0.002, 0.004)), Vector((0, -0.003, 0.08)), Vector((0, -0.004, 0.2))], [0.0255, 0.028, 0.033], flat=0.72)
-# the nails: thin plates on the backs of the last bones
-for name, (pts, rots, r) in rest.items():
+# (no nails: the keeper, 2026-10-28 - they stood up as lumps; NAILS=1 brings them back)
+for name, (pts, rots, r) in (rest.items() if globals().get("NAILS", "") == "1" else []):
     m3 = rots[2].to_3x3()
     d = m3 @ Vector((0, 0, -1))
     upn = m3 @ Vector((0, 1, 0))
@@ -354,7 +356,7 @@ def colour(g, n):
         dd = m3 @ Vector((0, 0, -1))
         rel = g - pts[3]
         along = rel.dot(dd)
-        if n.dot(upn) > 0.55 and -0.013 < along < 0.0015 and abs(rel.dot(dd.cross(upn).normalized())) < r * 0.7:
+        if globals().get("NAILS", "") == "1" and n.dot(upn) > 0.55 and -0.013 < along < 0.0015 and abs(rel.dot(dd.cross(upn).normalized())) < r * 0.7:
             c = NAIL_EDGE if along > -0.0025 else NAIL
     return (c.x, c.y, c.z, 0.0)
 
