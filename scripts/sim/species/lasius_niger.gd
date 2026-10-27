@@ -85,4 +85,15 @@ const DATA := {
 
 	"body_color": Color(0.085, 0.062, 0.05),
 	"callow_color": Color(0.5, 0.36, 0.24),
+
+	# How the views draw it (species/registry.gd): the models' folder under assets/models/ants/ (worker_hi, worker_lo,
+	# queen_hi), the queen's model scaled to her length (~9 mm: 8-9 mm, workers 3.5-5 mm - docs/BIOLOGY.md), and how
+	# much lighter than the body the legs, the antennae and the mandibles are drawn (worker, queen: dark amber legs on
+	# a near-black queen, as in reference/ photos).
+	"look": {
+		"models": "",
+		"queen_scale": 1.75,
+		"worker_limbs": Vector3(1.7, 1.45, 1.25),
+		"queen_limbs": Vector3(5.6, 3.6, 1.8),
+	},
 }

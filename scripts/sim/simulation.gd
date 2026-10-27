@@ -108,6 +108,7 @@ func from_dict(d: Dictionary) -> void:
 	WORLD = BIG_WORLD if wd is Array and wd.size() == 2 and Vector2(float(wd[0]), float(wd[1])) == BIG_WORLD else SMALL_WORLD
 	gw = int(WORLD.x / CELL)
 	gh = int(WORLD.y / CELL)
+	sp = Species.data(String(d.get("species", Species.DEFAULT)))
 	rng.seed = d.rng_seed
 	rng.state = d.rng_state
 	tick = d.tick
@@ -222,11 +223,35 @@ func from_dict(d: Dictionary) -> void:
 
 
 ## A short summary for the save menu and the "while you were away" report.
+## How many game days the colony's sugar and protein last at today's appetite (x: sugar, y: protein; 999 = no end in
+## sight: nobody eating it, or aphids renewing it) - what is in the workers' crops and stored prey, and the food lying
+## in the box not yet carried in (the keeper's warnings, the keeper, 2026-10-27: "sometimes I forget"; hud_warn.gd,
+## the Home). Body fat is not counted: it is the winter's reserve, not the keeper's to fill. Only reads.
+func food_days() -> Vector2:
+	var s := sugar
+	var p := protein
+	var renew := false
+	for f in foods:
+		if f.get("rotten", false):
+			continue
+		if int(f.type) == Ant.SUGAR:
+			s += float(f.amt)
+			renew = renew or float(f.get("regen", 0.0)) > 0.0
+		else:
+			p += float(f.amt)
+	var heat := cold_factor(climate.nest)
+	var s_need: float = ((sp["sugar_queen"] if queen.alive else 0.0) + workers.size() * sp["sugar_worker"]
+		+ larvae.size() * sp["sugar_larva"] * clampf(dev, 0.1, 1.0)) * heat
+	var p_need: float = larvae.size() * sp["protein_larva"] * clampf(dev, 0.1, 1.0)
+	return Vector2(999.0 if renew or s_need <= 0.0 else minf(999.0, s / s_need), 999.0 if p_need <= 0.0 else minf(999.0, p / p_need))
+
+
 func summary() -> Dictionary:
-	return {"day": day(), "workers": workers.size(), "eggs": eggs.size(), "larvae": larvae.size(),
+	var fd := food_days()
+	return {"sugar_days": snappedf(fd.x, 0.1), "protein_days": snappedf(fd.y, 0.1), "day": day(), "workers": workers.size(), "eggs": eggs.size(), "larvae": larvae.size(),
 		"pupae": pupae.size(), "born": stats.born, "dead": stats.dead, "brood_dead": stats.brood_dead + stats.cannibalized,
 		"chambers": nest.chambers.size(), "volume": nest.volume_cm3(), "humidity": humidity,
-		"queen": queen.alive, "glass": nest.slab, "scenario": scenario, "founding": founding()}
+		"queen": queen.alive, "glass": nest.slab, "scenario": scenario, "founding": founding(), "fridge": fridge_on}
 
 
 ## The automatic keeper used by tests and, if the player allows it, while the game is closed:

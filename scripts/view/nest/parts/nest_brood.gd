@@ -340,7 +340,7 @@ func _queen_pose() -> void:
 		fwd = fwd.normalized()
 		_queen_walk_fwd = _queen_walk_fwd.slerp(fwd, minf(1.0, 5.0 * get_process_delta_time())).normalized()
 		var f := (_queen_walk_fwd - up * _queen_walk_fwd.dot(up)).normalized()
-		_queen_xf = Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * QUEEN_SCALE), qp + up * (QUEEN_LIFT + 0.45))
+		_queen_xf = Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * queen_scale), qp + up * (QUEEN_LIFT + 0.45))
 		if absf(f.y) < 0.7:
 			_queen_turn = atan2(-f.z, f.x)          # (so she stands facing her way once she is there)
 			_queen_rest_turn = _queen_turn
@@ -365,7 +365,7 @@ func _queen_pose() -> void:
 		_queen_dy = lerpf(_queen_dy, want_dy, k)
 		_queen_pitch = lerpf(_queen_pitch, want_pitch, k)
 		var qbasis := Basis(Vector3.UP, _queen_turn) * Basis(Vector3.BACK, _queen_pitch)
-		_queen_xf = Transform3D(qbasis.scaled(Vector3.ONE * QUEEN_SCALE), at + Vector3.UP * _queen_dy)
+		_queen_xf = Transform3D(qbasis.scaled(Vector3.ONE * queen_scale), at + Vector3.UP * _queen_dy)
 		_queen_mm.set_instance_transform(0, _queen_xf)
 		_queen_mm.set_instance_color(0, AntModel.body_linear(Color(0.07, 0.055, 0.047)))     # glossy black-brown, darker than her workers
 		# the cells under her body, for the nestmates' routes

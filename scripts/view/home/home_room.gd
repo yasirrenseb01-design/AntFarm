@@ -8,6 +8,9 @@ extends "res://scripts/view/home/home_kit.gd"
 
 const View := preload("res://shaders/home/window_view.gdshader")
 const Yard := preload("res://scripts/view/home/home_yard.gd")
+const Fridge := preload("res://scripts/view/home/home_fridge.gd")
+const Zodiac := preload("res://scripts/view/home/zodiac_stars.gd")
+const FRIDGE_AT := Vector3(-1.58, 0.0, -1.66)    # the wintering fridge: the corner left of the desk, its door to the room
 const SHELF_D := 0.42                        # a shelf's depth; a column for a small tank (tank_spec), two tiers
 const SHELF_COL := 0.69
 const SHELF_Y := [0.55, 1.08]                # the tops of its boards a tank stands on
@@ -20,6 +23,10 @@ const DESK_SMALL_X := -0.313                 # the small tank on the desk, left 
 const DESK_BIG_X := 0.463
 var lamp_gain := 1.0                         # the lamps' light falls off as distance to the power of their
 var spot_gain := 1.0                         # attenuation: the room drawn scaled up (keeper_room.gd) makes up for it
+var doy := -1.0                              # the day of the year for the stars (-1: the computer's date; the game's in a colony)
+var fridge_light: OmniLight3D                # (keeper_room.gd: lights do not scale)
+var lamp_on := true                          # the desk lamp switched on (its switch: a click on it - game/home.gd)
+var _bulb: StandardMaterial3D
 var tank_nodes := {}                         # slot -> its tank's node (keeper_room.gd puts the game's box there)
 var _sun: DirectionalLight3D
 var _moon: DirectionalLight3D
@@ -46,11 +53,28 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 	var units: Array = []
 	for i in mini(shelves.size(), SHELF_AT.size()):
 		units.append(_shelf(i, int(shelves[i])))
+	# the wintering fridge; a small tank whose colony is resting in it stands on one of its shelves (home_fridge.gd)
+	var fr: Dictionary = Fridge.build(self, FRIDGE_AT, 0.0)
+	fridge_light = fr.light
+	var fs: Vector3 = Fridge.SIZE
+	blocks.append(Rect2(FRIDGE_AT.x - fs.x * 0.5, FRIDGE_AT.z - fs.z * 0.5, fs.x, fs.z + 0.05))
+	var resting := []
+	var free_spots: Array = fr.spots.duplicate()
 	# on the desk, against the wall: the small one left of the middle, the bigger one right of it
 	var top := DESK.y + DESK_SIZE.y * 0.5
 	for p in places:
 		var s := int(p.slot)
 		var full: bool = filled.call(s)
+		if full and bool(Store.meta(s).get("fridge", false)):
+			resting.append(int(p.number))
+			if not p.big and not p.get("farm", false) and not free_spots.is_empty():
+				var t2: Node3D = _tank(fr.node, free_spots.pop_front(), false, false, s, int(p.number), true,
+					float(Store.meta(s).get("nest_x0", (Spec.SMALL.x - Spec.NEST.x) * 0.5)))
+				tank_nodes[s] = t2
+				if s == hide:
+					t2.visible = false
+					items.pop_back()
+				continue
 		var big: bool = p.big
 		var farm: bool = p.get("farm", false)
 		var f := Spec.floor_of(big)
@@ -70,6 +94,8 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 			if s == hide:
 				t.visible = false
 				items.pop_back()
+	items.append({"kind": "fridge", "mats": [], "resting": resting,
+		"box": AABB(FRIDGE_AT - Vector3(fs.x * 0.5, 0, fs.z * 0.5), fs + Vector3(0, 0, 0.06))})
 	set_hour(hour)
 
 
@@ -245,11 +271,13 @@ func _lights() -> void:
 		var k := _cyl(0.011, 0.02, at, steel)                                        # (the hinges' knobs)
 		k.rotation.z = PI * 0.5
 	_cord(bc + Vector3(-0.06, 0.004, -0.02))
+	items.append({"kind": "lamp", "mats": [], "box": AABB(bc + Vector3(-0.09, 0.0, -0.09), Vector3(0.26, 0.6, 0.3))})
 	# the shade, a cone, its open end to the tanks
 	var piv := _pivot(head, Vector3(DESK.x + DESK_SMALL_X, DESK.y, DESK.z - 0.15))
 	var cone := _cyl(0.075, 0.12, Vector3(0, 0, -0.05), metal, piv, 0.025, 20)
 	cone.rotation.x = PI * 0.5            # (its wide end, -y, along the pivot's -z: to the tanks)
 	var bulb := flat(Color(1, 0.95, 0.85))
+	_bulb = bulb
 	bulb.emission_enabled = true
 	bulb.emission = Color(1, 0.86, 0.62)
 	bulb.emission_energy_multiplier = 3.0
@@ -264,9 +292,11 @@ func _cord(from: Vector3) -> void:
 	var by := DESK.y + DESK_SIZE.y * 0.5
 	var back := DESK.z - DESK_SIZE.z * 0.5
 	var sock := Vector3(DESK.x - 0.6, 0.25, -W * 0.5 + 0.006)                # the socket on the wall behind the desk
+	# (down the 2 cm between the desk and the wall - v0.11.54 ran it through the wall: the keeper, 2026-10-27)
+	var gap := (back + (-W * 0.5)) * 0.5
 	var pts := [from, Vector3(from.x - 0.03, by + 0.003, back + 0.06), Vector3(from.x - 0.05, by + 0.003, back + 0.004),
-		Vector3(from.x - 0.05, by - 0.03, back - 0.01), Vector3(from.x - 0.07, 0.45, back - 0.03),
-		Vector3(sock.x - 0.02, 0.27, sock.z + 0.04), Vector3(sock.x, sock.y, sock.z + 0.035)]
+		Vector3(from.x - 0.05, by - 0.03, gap), Vector3(from.x - 0.07, 0.45, gap),
+		Vector3(sock.x - 0.02, 0.3, gap), Vector3(sock.x, sock.y + 0.045, sock.z + 0.03)]
 	# a smooth curve through them (Catmull-Rom), drawn as short rods
 	var curve := []
 	for i in pts.size() - 1:
@@ -279,6 +309,10 @@ func _cord(from: Vector3) -> void:
 			curve.append(0.5 * ((2.0 * p1) + (p2 - p0) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t
 				+ (3.0 * p1 - p0 - 3.0 * p2 + p3) * t * t * t))
 	curve.append(pts[-1])
+	for i in curve.size():
+		var c: Vector3 = curve[i]
+		c.z = maxf(c.z, -W * 0.5 + 0.004)                  # (the curve's swing never into the wall)
+		curve[i] = c
 	for i in curve.size() - 1:
 		_rod(curve[i], curve[i + 1], 0.0025, black)
 	# the socket: a white plate with two round holes' worth of plug in it
@@ -287,8 +321,8 @@ func _cord(from: Vector3) -> void:
 	_box(Vector3(0.066, 0.066, 0.004), sock + Vector3(0, 0, 0.009), flat(Color(0.97, 0.96, 0.93), 0.3))
 	var plug := _cyl(0.017, 0.022, sock + Vector3(0, 0, 0.022), black, self, 0.015, 20)
 	plug.rotation.x = PI * 0.5
-	var grip := _cyl(0.008, 0.014, sock + Vector3(0, 0, 0.038), black, self, 0.004, 12)
-	grip.rotation.x = PI * 0.5
+	# (the cord out of the top of the plug, bending down: the plug's cable sleeve)
+	_rod(sock + Vector3(0, 0.012, 0.024), sock + Vector3(0, 0.045, 0.03), 0.004, black)
 
 
 ## The light at that hour (0..24, the computer's clock): the sun's height and bearing through the day - it comes in at
@@ -312,11 +346,20 @@ func set_hour(h: float) -> void:
 	_moon.visible = day < 0.6
 	_lamp.light_energy = lerpf(1.9, 0.35, day) * lamp_gain
 	_spot.light_energy = lerpf(2.4, 1.2, day) * spot_gain
+	_spot.visible = lamp_on
+	if _bulb != null:
+		_bulb.emission_energy_multiplier = 3.0 if lamp_on else 0.0
+		_bulb.albedo_color = Color(1, 0.95, 0.85) if lamp_on else Color(0.75, 0.73, 0.7)
 	if _env != null:
 		_env.background_color = Color(0.015, 0.025, 0.07).lerp(Color(0.32, 0.55, 0.85), day).lerp(Color(0.6, 0.5, 0.62), dusk * 0.5)
 		_env.ambient_light_color = Color(0.36, 0.33, 0.42).lerp(Color(0.86, 0.76, 0.62), day)
 		_env.ambient_light_energy = lerpf(0.2, 0.42, day)
+	# the night sky turning: the time of year by the computer's date (the Home), or the game's (keeper_room.gd: doy)
+	var sid := Zodiac.lst(h, doy if doy >= 0.0 else Zodiac.today())
+	var zd := Zodiac.dirs(sid)
 	for m in _views:
+		m.set_shader_parameter("sky_from_room", Zodiac.to_room(sid).transposed())
+		m.set_shader_parameter("zodiac", zd)
 		m.set_shader_parameter("day", day)
 		m.set_shader_parameter("dusk", dusk)
 		m.set_shader_parameter("sun_dir", s)

@@ -164,14 +164,15 @@ func build(swing := 0.0, queen := false, detailed := true) -> ArrayMesh:
 
 static var _cache := {}
 # appendage colour relative to the body tint (see limb_gain in shaders/ant.gdshader)
-const WORKER_LIMBS := Vector3(1.7, 1.45, 1.25)
-const QUEEN_LIMBS := Vector3(5.6, 3.6, 1.8)     # (on her near-black body: dark amber legs, as in reference/ photos)
+# (how much lighter than the body the limbs are drawn: the species' "look" - species/registry.gd)
 
 
 ## The model sculpted in Blender (tools/blender/build_ant.py -> assets/models/ants/*.antmesh) when present,
 ## otherwise the procedural one below.
-static func make(swing := 0.0, queen := false, detailed := true) -> ArrayMesh:
-	var key := "%s_%s" % ["queen" if queen else "worker", "hi" if detailed else "lo"]
+## look: the species' (sim.sp["look"]; its "models" folder under assets/models/ants/, "" the first species').
+static func make(swing := 0.0, queen := false, detailed := true, look: Dictionary = {}) -> ArrayMesh:
+	var dir := String(look.get("models", ""))
+	var key := "%s%s_%s" % [dir + "/" if dir != "" else "", "queen" if queen else "worker", "hi" if detailed else "lo"]
 	if not _cache.has(key):
 		var m := load_antmesh("res://assets/models/ants/%s.antmesh" % key)
 		if m == null:

@@ -32,6 +32,23 @@ float ridge(float x, float seed) {
 	return a * 0.6 + b * 0.28 + n1(x * 7.3 + seed * 3.0) * 0.1 + n1(x * 19.0 + seed) * 0.02;
 }
 
+uniform mat3 sky_from_room = mat3(1.0);   // the room's directions into the sky's frame (zodiac_stars.to_room, inverse)
+uniform vec4 zodiac[96];                  // the zodiac's stars: direction in the room, brightness (0: no more)
+
+float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+
+// One layer of faint stars: in each cell of a grid over the sky's directions (n across), one star or none (density),
+// somewhere inside it, of a random brightness up to bmax; drawn a pixel or so across wherever it is.
+float field_stars(vec3 e, float n, float density, float bmax) {
+	vec3 g = e * n;
+	vec3 cell = floor(g);
+	if (h3(cell) > density) { return 0.0; }
+	vec3 at = cell + 0.2 + 0.6 * vec3(h3(cell + 1.3), h3(cell + 2.7), h3(cell + 4.1));
+	float px = max(length(fwidth(g)), 1e-4);
+	float b = bmax * pow(h3(cell + 7.7), 3.0);
+	return b * (1.0 - smoothstep(0.0, 1.6 * px, length(g - at)));
+}
+
 vec3 sky_at(float v) {
 	vec3 top = mix(vec3(0.015, 0.025, 0.07), vec3(0.32, 0.55, 0.85), day);
 	vec3 low = mix(vec3(0.04, 0.06, 0.12), vec3(0.72, 0.84, 0.94), day);
@@ -50,8 +67,21 @@ void fragment() {
 		// the sun's glow (by day) and stars (at night)
 		float sd = acos(clamp(dot(wdir, normalize(sun_dir)), -1.0, 1.0)) * 1.6;
 		c += vec3(1.0, 0.85, 0.6) * (exp(-sd * 9.0) * 0.6 + exp(-sd * 60.0) * 1.5) * smoothstep(0.0, 0.2, day) * (0.4 + dusk);
-		float st = step(0.997, h2(floor(uv * vec2(900.0 / wrap * 4.0, 450.0))));
-		c += vec3(st) * (1.0 - smoothstep(0.0, 0.25, day)) * smoothstep(0.45, 0.7, uv.y) * 0.8;
+		// stars (the keeper, 2026-10-27: a repeating pattern, and not over the whole sky): faint ones scattered at random
+		// over the sky's sphere in its own frame, three sizes of cell, and the zodiac's bright stars where they are
+		// (zodiac_stars.gd), all turning with the hour; fading into the haze toward the horizon
+		float night = 1.0 - smoothstep(0.0, 0.25, day);
+		if (night > 0.0 && wdir.y > -0.05) {
+			vec3 e = sky_from_room * wdir;
+			float sum = field_stars(e, 60.0, 0.18, 0.8) + field_stars(e, 130.0, 0.07, 0.4) + field_stars(e, 260.0, 0.025, 0.25);
+			for (int i = 0; i < 96; i++) {
+				vec4 z = zodiac[i];
+				if (z.w <= 0.0) { break; }
+				float ang = 1.0 - dot(wdir, z.xyz);           // (about half the angle, squared)
+				sum += 1.6 * z.w * exp(-ang / (3.0e-6 * (0.6 + z.w)));
+			}
+			c += vec3(0.95, 0.97, 1.0) * sum * night * smoothstep(-0.05, 0.25, wdir.y);
+		}
 		// three ranges, nearer ones lower, darker, less hazy
 		for (int i = 0; i < 3; i++) {
 			float fi = float(i);

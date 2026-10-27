@@ -162,6 +162,7 @@ func refresh(delta: float) -> void:
 		_render_log()
 	if fmod(_t, 0.2) > delta:
 		return
+	_refresh_food_warn()
 	var q: Label = _vals["queen"]
 	if not sim.queen.alive:
 		_show(q, tr("tip_dead"), DANGER)

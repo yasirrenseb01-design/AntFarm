@@ -150,9 +150,26 @@ func _door() -> void:
 
 # ---------------------------------------------------------------- the desk and what is on it
 
-## A drawer under the desk top: its front with a raised panel and bevelled edges, a brass bar pull on two posts.
-func _drawer(at: Vector3, w: float, h: float) -> void:
+## A drawer under the desk top: its front with a raised panel and bevelled edges, a brass bar pull on two posts; behind
+## it the drawer's box (sides, bottom, back: something to keep things in) in a case hung under the top - its two
+## sides, its bottom and its back (the keeper, 2026-10-27: only its front was there).
+func _drawer(at: Vector3, w: float, h: float, depth := 0.5) -> void:
 	var front := wood(Color(0.38, 0.23, 0.12), Color(0.52, 0.34, 0.19), 9.0, 9.0, 45.0)
+	var ply := wood(Color(0.55, 0.42, 0.28), Color(0.66, 0.52, 0.36), 9.0, 9.0, 70.0)        # (the drawer: lighter wood)
+	var t := 0.012
+	var zc := at.z - 0.01 - depth * 0.5
+	for sx in [-1, 1]:
+		_box(Vector3(t, h - 0.02, depth - 0.02), Vector3(at.x + sx * (w * 0.5 - 0.02 - t * 0.5), at.y - 0.005, zc), ply)
+	_box(Vector3(w - 0.04, t, depth - 0.02), Vector3(at.x, at.y - h * 0.5 + 0.012, zc), ply)
+	_box(Vector3(w - 0.04, h - 0.02, t), Vector3(at.x, at.y - 0.005, at.z - 0.01 - depth + 0.02), ply)
+	# the case round it: sides and bottom of the desk's wood, down from the top
+	var case_m := front
+	var top_y := at.y + h * 0.5 + 0.004
+	var ch := h + 0.03
+	for sx in [-1, 1]:
+		_box(Vector3(0.018, ch, depth + 0.01), Vector3(at.x + sx * (w * 0.5 + 0.009), top_y - ch * 0.5, zc), case_m)
+	_box(Vector3(w + 0.036, 0.016, depth + 0.01), Vector3(at.x, top_y - ch - 0.008, zc), case_m)
+	_box(Vector3(w + 0.036, ch, 0.016), Vector3(at.x, top_y - ch * 0.5, at.z - 0.02 - depth), case_m)
 	var panel := wood(Color(0.42, 0.26, 0.14), Color(0.58, 0.39, 0.22), 9.0, 9.0, 45.0)
 	_box(Vector3(w, h, 0.02), at, front)
 	_box(Vector3(w - 0.05, h - 0.04, 0.008), at + Vector3(0, 0, 0.012), panel)

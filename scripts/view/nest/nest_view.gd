@@ -7,6 +7,7 @@ extends "res://scripts/view/nest/parts/nest_mates.gd"
 
 func setup(s) -> void:
 	sim = s
+	queen_scale = float(sim.sp.look.queen_scale)
 	nest = sim.nest
 	_feed = EventFeed.new(sim)
 	target = Vector3(nest.nx / 2.0, nest.ny - 16.0, nest.nz / 2.0)
@@ -110,7 +111,7 @@ func setup(s) -> void:
 	# legs, antennae, head, mandibles and gaster are animated per ant by shaders/ant.gdshader
 	var ant_mat := ShaderMaterial.new()
 	ant_mat.shader = load("res://shaders/ants/ant.gdshader")
-	_ant_meshes = {"hi": AntModel.make(), "lo": AntModel.make(0.0, false, false)}
+	_ant_meshes = {"hi": AntModel.make(0.0, false, true, sim.sp.look), "lo": AntModel.make(0.0, false, false, sim.sp.look)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true)
 	_ant_shader_mat = ant_mat
 	_ant_mm.use_custom_data = true
@@ -144,13 +145,13 @@ func setup(s) -> void:
 	dew.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_fx_drop_mm = _multimesh(_ellipsoid(0.16, 0.14), dew, false)
 	_bits_mm = _multimesh(_ellipsoid(0.38, 0.26), _mat_simple(Color(0.45, 0.3, 0.18), 0.7), false)
-	ant_mat.set_shader_parameter("limb_gain", AntModel.WORKER_LIMBS)
+	ant_mat.set_shader_parameter("limb_gain", sim.sp.look.worker_limbs)
 	# feet find the real floor in the soil volume (updated in place as the ants dig)
 	ant_mat.set_shader_parameter("ground_mode", 1)
 	ant_mat.set_shader_parameter("vol", _foot_vol)          # (the soil and the brood on it: nest_scene._upload_foot_volume)
 	var queen_mat: ShaderMaterial = ant_mat.duplicate()
-	queen_mat.set_shader_parameter("limb_gain", AntModel.QUEEN_LIMBS)
-	var queen_mesh := AntModel.make(0.0, true, true)
+	queen_mat.set_shader_parameter("limb_gain", sim.sp.look.queen_limbs)
+	var queen_mesh := AntModel.make(0.0, true, true, sim.sp.look)
 	_queen_mm = _multimesh(queen_mesh, queen_mat, true)
 	_queen_mm.use_custom_data = true
 	# the selection outline: the clicked ant's body drawn again, white, from the inside

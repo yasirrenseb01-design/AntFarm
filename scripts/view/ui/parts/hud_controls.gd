@@ -35,6 +35,17 @@ func _build_top(root: Control) -> void:
 	_harmony_tab.add_child(_harmony_row)
 	root.add_child(_harmony_tab)
 	_join_tab.call_deferred()
+	# the food warning, on paper under the bar (the keeper, 2026-10-27: sugar or protein about to run out - food_warning)
+	_food_warn = _label("", 13, Color(0.75, 0.33, 0.05))
+	var fsb: StyleBox = Paper.page()
+	fsb.content_margin_left = 12
+	fsb.content_margin_right = 12
+	fsb.content_margin_top = 4
+	fsb.content_margin_bottom = 5
+	_food_warn.add_theme_stylebox_override("normal", fsb)
+	_food_warn.visible = false
+	_food_warn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_food_warn)
 	row.add_child(clock)
 
 	var speeds := HBoxContainer.new()
@@ -147,6 +158,37 @@ func _place_tab() -> void:
 		b = (sb as StyleBoxFlat).border_width_bottom
 	_harmony_tab.position = _top.position + Vector2(0, _top.size.y - b)
 	_harmony_tab.visible = _top.visible and harmony >= 0.0
+	if _food_warn != null:
+		_food_warn.position = _top.position + Vector2((_harmony_tab.size.x + 10.0) if _harmony_tab.visible else 0.0, _top.size.y + 4.0)
+
+
+const FOOD_WARN_DAYS := 2.0            # game days of sugar or protein left: warned (the keeper's choice, 2026-10-27)
+
+## The keeper's colony about to run out of sugar or protein (sim.food_days: what is in the crops and stored, and the
+## food still lying in the box): a note under the top bar, orange, red when it is under half a day. Not for a founding
+## queen (she lives on her reserves) nor a garden plot (the ants find their own).
+func food_warning() -> String:
+	if sim.scenario == "wild" or sim.workers.is_empty() or sim.founding():
+		return ""
+	var fd: Vector2 = sim.food_days()
+	var parts := []
+	if fd.x < FOOD_WARN_DAYS:
+		parts.append(tr("food_low_sugar") % ("%.1f" % fd.x))
+	if fd.y < FOOD_WARN_DAYS:
+		parts.append(tr("food_low_protein") % ("%.1f" % fd.y))
+	return " · ".join(parts)
+
+
+func _refresh_food_warn() -> void:
+	if _food_warn == null:
+		return
+	var w := food_warning()
+	_food_warn.visible = w != "" and _top.visible
+	if w != "":
+		var fd: Vector2 = sim.food_days()
+		_food_warn.text = "⚠ " + w
+		_food_warn.add_theme_color_override("font_color", Color(0.72, 0.12, 0.08) if minf(fd.x, fd.y) < 0.5 else Color(0.75, 0.33, 0.05))
+		_food_warn.reset_size()
 
 
 func _build_tools(root: Control) -> void:

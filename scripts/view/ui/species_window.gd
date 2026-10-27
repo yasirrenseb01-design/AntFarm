@@ -5,10 +5,10 @@ extends Window
 
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
-const LasiusNiger := preload("res://scripts/sim/species/lasius_niger.gd")
+const Species := preload("res://scripts/sim/species/registry.gd")
 const Paper := preload("res://scripts/view/ui/paper.gd")
 
-const SPECIES := [LasiusNiger]
+const SPECIES := Species.ALL
 ## what can be shown: [button, caption, kind, scale, body colour key]
 const SHOWN := [
 	["sp_queen", "sp_queen_cap", "queen", 1.75, ""],
@@ -197,9 +197,10 @@ func _build_stage() -> void:
 	_vp.add_child(_pivot)
 	_mat = ShaderMaterial.new()
 	_mat.shader = load("res://shaders/ants/ant.gdshader")
-	_mat.set_shader_parameter("limb_gain", AntModel.WORKER_LIMBS)
+	var look: Dictionary = SPECIES[0].DATA.look
+	_mat.set_shader_parameter("limb_gain", look.worker_limbs)
 	_queen_mat = _mat.duplicate()
-	_queen_mat.set_shader_parameter("limb_gain", AntModel.QUEEN_LIMBS)
+	_queen_mat.set_shader_parameter("limb_gain", look.queen_limbs)
 
 
 ## Puts one of SHOWN on the turntable, sized to fill it.
@@ -209,7 +210,7 @@ func _show(i: int) -> void:
 	_ant_mm = null
 	var s: Array = SHOWN[i]
 	_caption.text = tr(s[1])
-	var sp: Dictionary = LasiusNiger.DATA
+	var sp: Dictionary = SPECIES[0].DATA
 	match s[2]:
 		"queen", "worker":
 			var queen: bool = s[2] == "queen"
@@ -217,10 +218,10 @@ func _show(i: int) -> void:
 			mm.transform_format = MultiMesh.TRANSFORM_3D
 			mm.use_colors = true
 			mm.use_custom_data = true
-			mm.mesh = AntModel.make(0.0, queen, true)
+			mm.mesh = AntModel.make(0.0, queen, true, sp.look)
 			mm.instance_count = 1
 			var aabb: AABB = mm.mesh.get_aabb()
-			var fit := 4.6 / maxf(aabb.size.x, aabb.size.z) * (float(s[3]) / (1.75 if queen else 1.15))
+			var fit := 4.6 / maxf(aabb.size.x, aabb.size.z) * (float(s[3]) / (float(sp.look.queen_scale) if queen else 1.15))
 			mm.set_instance_transform(0, Transform3D(Basis.from_scale(Vector3.ONE * fit), Vector3.ZERO))
 			mm.set_instance_color(0, AntModel.body_linear(Color(0.07, 0.055, 0.047) if queen else sp[s[4]]))
 			var mi := MultiMeshInstance3D.new()

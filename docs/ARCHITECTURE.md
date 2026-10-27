@@ -126,7 +126,10 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
   `outworld.room_info` จาก `main._room_info`); **ขนาดตู้/ดิน/รัง/มด: `view/common/tank_spec.gd` ที่เดียว**
   (+ `tests/tank_spec_test.gd`); ดินหลังกระจก `shaders/common/tank_soil.gdshader` (Home และในเกม); มือ `assets/models/hand/` จาก `tools/blender/build_hand.py`;
   `meta.nest_x0` (เมตร จากซ้ายในกล่องถึงบล็อกรัง) เขียนกับเซฟ; ภาพกล่องจากมุมบน `saves/slotN_outworld.png` (`game/outworld_card.gd`,
-  กล้องเตรียมไว้ตอนเปิดรัง ถ่ายตอนเซฟ); นอกหน้าต่าง `view/home/home_yard.gd` (รั้ว บ้าน ต้นไม้)
+  กล้องเตรียมไว้ตอนเปิดรัง ถ่ายตอนเซฟ); นอกหน้าต่าง `view/home/home_yard.gd` (รั้ว บ้าน 3 หลัง ถนน ต้นไม้ `assets/models/trees/` จาก
+  `tools/blender/build_tree.py`); ตู้เย็นจำศีล `view/home/home_fridge.gd`; ดาว `view/home/zodiac_stars.gd`;
+  **สายพันธุ์: `scripts/sim/species/registry.gd`** (เพิ่มพันธุ์ใหม่ = ไฟล์ใหม่ในโฟลเดอร์นั้น + ใส่ใน `ALL`; ค่าภาพอยู่ใน `DATA.look`;
+  `tests/species_test.gd`); เตือนอาหาร `sim.food_days()` → `hud_controls.food_warning()` / `home._check_food()` (meta `sugar_days`, `protein_days`)
   ครั้งแรก: ตู้ 1 = ช่องว่างใหม่, โหมดป่า = ช่องสวนเลขต่ำสุดที่มี (`tests/home_test.gd`); ห้อง 3 มิติ `scripts/view/home/home_room.gd`
 - `scripts/game/save_store.gd`: ช่อง 1–32 (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
 - เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 11)

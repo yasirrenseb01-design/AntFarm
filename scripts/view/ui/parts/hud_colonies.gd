@@ -112,7 +112,7 @@ func open_species(slot: int, occupied: bool, scen := "", nest := "") -> Window:
 	var w := SpeciesWindow.new()
 	_colonies.get_parent().add_child(w)
 	w.setup(self)
-	w.chosen.connect(func(_id): _open_new_colony(slot, occupied, scen, nest))
+	w.chosen.connect(func(id): _open_new_colony(slot, occupied, scen, nest, id))
 	w.reset_size()
 	w.popup_centered()
 	return w
@@ -331,7 +331,7 @@ const NEW_STARTS := [["queen", "start_queen", "start_queen_note"],
 ## a tank is a formicarium, the wild mode a garden plot; "": the keeper picks).
 ## nest: the nest fixed too ("soil" | "glass": a tank's own - the keeper, 2026-10-27: the ant farm is a tank bought
 ## in the shop, not a choice here); "": the keeper picks.
-func _open_new_colony(slot: int, occupied: bool, scen := "", nest := "") -> void:
+func _open_new_colony(slot: int, occupied: bool, scen := "", nest := "", species := "") -> void:
 	var win := Window.new()
 	win.title = (tr("new_title_wild") if scen == "wild" else tr("new_title_tank")) % slot_no(slot) if scen != "" else tr("new_title") % slot
 	win.theme = _colonies.theme
@@ -405,7 +405,7 @@ func _open_new_colony(slot: int, occupied: bool, scen := "", nest := "") -> void
 	var go := _button(tr("new_go"), false)
 	go.pressed.connect(func():
 		win.queue_free()
-		colony_new.emit(slot, "%s:%s:%s:%s" % [picked.nest, picked.start, picked.scenario, picked.rate]))
+		colony_new.emit(slot, "%s:%s:%s:%s:%s" % [picked.nest, picked.start, picked.scenario, picked.rate, species]))
 	foot.add_child(go)
 	col.add_child(foot)
 	win.reset_size()

@@ -7,6 +7,7 @@ func _light() -> void:
 	if room != null:
 		# a keeper's box: the Home's room round it lit by its own sun, moon and lamps at the game's hour (keeper_room.gd)
 		_sun.visible = false
+		room.doy = sim.doy_f()
 		room.set_hour(sim.time_of_day() * 24.0)
 		room._sun.basis = _room_rot * room._sun.basis            # (the room turned with its tank)
 		var far := maxf(150.0, cam_dist * 2.5)

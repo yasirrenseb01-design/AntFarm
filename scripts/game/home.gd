@@ -49,6 +49,7 @@ var _move_from := Transform3D()   # sitting down / getting up: from where, to wh
 var _move_to := Transform3D()
 var _move_t := 1.0
 var _clock_t := 0.0
+var _food: Label
 
 
 func setup(m) -> void:
@@ -187,6 +188,9 @@ void fragment() { float d = length(UV - 0.5) * 22.0; float r = mix(5.0, 8.0, hot
 	shop_b.pressed.connect(shop.toggle)
 	_tip = _note(root, h)
 	_toast = _note(root, h)
+	_food = _note(root, h)                       # (the tanks whose sugar or protein is running out: _check_food)
+	_food.add_theme_color_override("font_color", Color(0.75, 0.33, 0.05))
+	_food.position = Vector2(20, 56)
 	_set_clock()
 
 
@@ -195,6 +199,7 @@ func rebuild_room() -> void:
 	if _room != null and is_instance_valid(_room):
 		_room.queue_free()
 	_room = Room.new()
+	_room.lamp_on = bool(main._settings.get("home_lamp", true))
 	_vp.add_child(_room)
 	_room.build(main.home.places(), main.home.shelves, func(s): return Store.exists(s), _hour(), _env)
 	_hot = null
@@ -253,6 +258,35 @@ func open() -> void:
 	_move_t = 1.0
 	_aim()
 	_update_purse()
+	_check_food()
+
+
+## The keeper's colonies about to run out of sugar or protein (the keeper, 2026-10-27: "sometimes I forget"): the one
+## open now from the simulation itself, the others from what they were when saved (save_store meta: sugar_days,
+## protein_days - sim.food_days); under 2 game days (hud_controls.FOOD_WARN_DAYS). A founding queen and a colony
+## without workers are not warned about.
+func _check_food() -> void:
+	var lines := []
+	for p in main.home.places():
+		var s: int = p.slot
+		var w := ""
+		if s == main.slot and not main._demo and main.sim != null and main.sim.scenario != "wild":
+			w = main.hud.food_warning()
+		else:
+			var m: Dictionary = Store.meta(s)
+			if m.is_empty() or int(m.get("workers", 0)) == 0 or bool(m.get("founding", false)):
+				continue
+			var parts := []
+			for k in [["sugar_days", "food_low_sugar"], ["protein_days", "food_low_protein"]]:
+				var d := float(m.get(k[0], 999.0))
+				if d < main.hud.FOOD_WARN_DAYS:
+					parts.append(tr(k[1]) % ("%.1f" % d))
+			w = " · ".join(parts)
+		if w != "":
+			lines.append(tr("home_food_low") % [p.number, w])
+	_food.text = ("⚠ " + "\n⚠ ".join(lines)) if not lines.is_empty() else ""
+	_food.visible = not lines.is_empty()
+	_food.reset_size()
 
 
 ## Back to the title page.
@@ -334,6 +368,7 @@ func _process(delta: float) -> void:
 	if _clock_t > 20.0:
 		_clock_t = 0.0
 		_set_clock()                                 # (the sun moves on)
+		_check_food()
 	_update_purse()
 
 
@@ -434,6 +469,11 @@ func _point(at: Vector2) -> void:
 func _describe(it) -> String:
 	if it.kind == "door":
 		return tr("home_door")
+	if it.kind == "lamp":
+		return tr("home_lamp_off") if _room.lamp_on else tr("home_lamp_on")
+	if it.kind == "fridge":
+		var r: Array = it.resting
+		return tr("home_fridge_none") if r.is_empty() else tr("home_fridge") % ", ".join(r.map(func(n): return str(n)))
 	if it.kind == "chair":
 		return tr("home_stand") if _seated else tr("home_chair")
 	var s: int = it.slot
@@ -447,6 +487,16 @@ func _describe(it) -> String:
 func _click(it) -> void:
 	if it.kind == "door":
 		toast(tr("home_soon"), _tip.position + Vector2(0, 40))
+		return
+	if it.kind == "fridge":
+		return
+	if it.kind == "lamp":
+		# its switch (kept in the settings: the lamp round a box in the game is the same lamp - keeper_room.gd)
+		_room.lamp_on = not _room.lamp_on
+		main._settings["home_lamp"] = _room.lamp_on
+		Store.save_settings(main._settings)
+		_set_clock()
+		_tip.text = _describe(it)
 		return
 	if it.kind == "chair":
 		if _seated:

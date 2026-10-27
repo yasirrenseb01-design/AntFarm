@@ -152,7 +152,7 @@ func _queen_egg_moment(a: Dictionary, u: float) -> void:
 		_queen_act = ACT_CARRY
 		_queen_turn_t = a.turn1
 		if not a.has("step"):
-			var face := Transform3D(Basis(Vector3.UP, a.turn1).scaled(Vector3.ONE * QUEEN_SCALE), home + _queen_step)
+			var face := Transform3D(Basis(Vector3.UP, a.turn1).scaled(Vector3.ONE * queen_scale), home + _queen_step)
 			var reach: Vector3 = ((a.pile as Vector3) - face * MOUTH_CARRY) * Vector3(1, 0, 1)
 			reach -= reach.normalized() * 0.25 if reach.length() > 0.25 else reach
 			a.step = _queen_step + reach.limit_length(3.5)
@@ -183,7 +183,7 @@ func _queen_egg_moment(a: Dictionary, u: float) -> void:
 ## Whether her six feet (roughly where they stand, in her model) would be on open floor with her centre at
 ## `at` facing `turn`, not in the soil of a chamber wall.
 func _queen_feet_clear(at: Vector3, turn: float) -> bool:
-	var xf := Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * QUEEN_SCALE), at)
+	var xf := Transform3D(Basis(Vector3.UP, turn).scaled(Vector3.ONE * queen_scale), at)
 	var mid := _floor_cached(at)
 	for f in [Vector3(0.8, 0, 0.85), Vector3(0.8, 0, -0.85), Vector3(-0.1, 0, 1.1), Vector3(-0.1, 0, -1.1),
 			Vector3(-0.85, 0, 1.0), Vector3(-0.85, 0, -1.0)]:
@@ -230,7 +230,7 @@ func _queen_eclose(a: Dictionary, u: float, ep: Dictionary, callow_head: Vector3
 		return
 	var grip: Vector3 = ep.head if u < 0.5 else callow_head
 	_queen_turn_t = a.q_turn
-	var face := Transform3D(Basis(Vector3.UP, a.q_turn).scaled(Vector3.ONE * QUEEN_SCALE), home + _queen_step)
+	var face := Transform3D(Basis(Vector3.UP, a.q_turn).scaled(Vector3.ONE * queen_scale), home + _queen_step)
 	var reach: Vector3 = (grip - face * TIP_LICK) * Vector3(1, 0, 1)
 	var want: Vector3 = _queen_step + reach.limit_length(4.0)
 	if not _queen_feet_clear(home + want, a.q_turn):
@@ -500,7 +500,7 @@ func _step_anims(adt: float) -> void:
 					if not a.has("step"):
 						# up to it, once she has turned to it: her mouthparts on the item (worked out from the
 						# heading she turns to, not the one she is still turning from)
-						var face := Transform3D(Basis(Vector3.UP, a.turn1).scaled(Vector3.ONE * QUEEN_SCALE), _spots.queen + Vector3.UP * QUEEN_LIFT + _queen_step)
+						var face := Transform3D(Basis(Vector3.UP, a.turn1).scaled(Vector3.ONE * queen_scale), _spots.queen + Vector3.UP * QUEEN_LIFT + _queen_step)
 						var reach: Vector3 = ((a.at as Vector3) - face * TIP_LICK) * Vector3(1, 0, 1)
 						var stop: float = a.get("contact", 0.3)
 						reach -= reach.normalized() * stop if reach.length() > stop else reach

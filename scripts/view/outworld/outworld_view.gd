@@ -57,14 +57,14 @@ func setup(s) -> void:
 
 	var ant_mat := ShaderMaterial.new()
 	ant_mat.shader = load("res://shaders/ants/ant.gdshader")
-	ant_mat.set_shader_parameter("limb_gain", AntModel.WORKER_LIMBS)
+	ant_mat.set_shader_parameter("limb_gain", sim.sp.look.worker_limbs)
 	ant_mat.set_shader_parameter("ground_mode", 2)       # feet on the uneven outworld floor
 	_ant_shader_mat = ant_mat
 	# feet are set down on the litter as well as the ground (the grid was built with the scenery above)
 	ant_mat.set_shader_parameter("prop_tex", _props_h.texture())
 	ant_mat.set_shader_parameter("prop_size", Vector2(_props_h.w, _props_h.h) * PropHeights.CELL)
 	ant_mat.set_shader_parameter("has_props", true)
-	_ant_meshes = {"hi": AntModel.make(), "lo": AntModel.make(0.0, false, false)}
+	_ant_meshes = {"hi": AntModel.make(0.0, false, true, sim.sp.look), "lo": AntModel.make(0.0, false, false, sim.sp.look)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
 	_corpse_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
 	var sel_mat: ShaderMaterial = ant_mat.duplicate()       # the selection outline (filled with litter heights below)

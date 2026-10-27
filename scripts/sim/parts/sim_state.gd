@@ -6,7 +6,7 @@ extends RefCounted
 const Ant := preload("res://scripts/sim/ant.gd")
 const Field := preload("res://scripts/sim/pheromone_field.gd")
 const Climate := preload("res://scripts/sim/climate.gd")
-const LasiusNiger := preload("res://scripts/sim/species/lasius_niger.gd")
+const Species := preload("res://scripts/sim/species/registry.gd")
 const NestVolume := preload("res://scripts/sim/nest_volume.gd")
 const T := preload("res://scripts/sim/text_th.gd")     # journal keys
 const L := preload("res://scripts/sim/lang.gd")        # words in the language in use
@@ -29,7 +29,7 @@ const FOOD_EVAP := 0.9993
 const RAIN_EVAP := 0.985
 const ALARM_EVAP := 0.97             # alarm pheromone is volatile: gone within a minute or two
 
-var sp: Dictionary = LasiusNiger.DATA
+var sp: Dictionary = Species.data(Species.DEFAULT)      # (setup and from_dict set it: the colony's own kind)
 var rng := RandomNumberGenerator.new()
 var tick := 0
 var climate: Climate

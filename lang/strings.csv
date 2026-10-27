@@ -196,6 +196,10 @@ home_title,บ้าน,Home
 home_help,"เดิน: W A S D · มองรอบ: ขยับเมาส์ · คลิก: ตู้ เก้าอี้ ประตู · Tab: ปล่อยเมาส์ไว้กดปุ่ม/ร้านค้า · ซูม: ลูกกลิ้ง · Esc กลับหน้าแรก","Walk: W A S D · look round: move the mouse · click: a tank, the chair, the door · Tab: free the pointer for the buttons and the shop · zoom: wheel · Esc: title page"
 home_purse,Colony Harmony %s,Colony Harmony %s
 home_door,ประตู,The door
+home_lamp_off,"โคมไฟ · คลิก: ปิด","The lamp · click: switch it off"
+home_lamp_on,"โคมไฟ · คลิก: เปิด","The lamp · click: switch it on"
+home_fridge,"ตู้เย็นจำศีล 4–12°C · ตู้ที่จำศีลอยู่: %s","The wintering fridge, 4-12°C · tanks resting in it: %s"
+home_fridge_none,"ตู้เย็นจำศีล 4–12°C · ยังไม่มีตู้ไหนจำศีล (กด จำศีลในตู้เย็น ในรัง)","The wintering fridge, 4-12°C · no tank resting in it (Hibernate in fridge, in the colony)"
 home_shop,ร้านค้า,Shop
 shop_title,ร้านค้า,Shop
 shop_big,ตู้ที่ 2 (ใหญ่ขึ้น),"A second, bigger tank"
@@ -464,6 +468,9 @@ en_title,ศัตรู · ปล่อยมาดูมดสู้,Enemies �
 en_rate,ศัตรูธรรมชาติมาเองบ่อยแค่ไหน,How often natural enemies come by themselves
 en_how,ปล่อยเอง: ศัตรูเดินเข้ามาจากขอบพื้นที่หาอาหาร ล่าอยู่ราวครึ่งวันในเกมแล้วจากไป ถ้ามดไม่รุมฆ่าหรือไล่ไปก่อน · มดที่เจอจะปล่อยกลิ่นเตือนภัย พวกพ้องกรูมากัดและพ่นกรดฟอร์มิก · ศัตรูที่ตายกลายเป็นอาหารของรัง,"Let one in: it walks in from the edge of the outworld and hunts for about half a game day, then leaves, unless the ants kill it or drive it off first · the ant that meets it gives off alarm pheromone and nestmates rush in to bite and spray formic acid · a dead enemy becomes food for the colony"
 en_release,ปล่อย,Let in
+food_low_sugar,"น้ำตาลใกล้หมด: พอกินอีก ~%s วันในเกม (วางน้ำผึ้ง)","Sugar running out: ~%s game days left (put honey in)"
+food_low_protein,"โปรตีนใกล้หมด: พอกินอีก ~%s วันในเกม (วางจิ้งหรีด)","Protein running out: ~%s game days left (put a cricket in)"
+home_food_low,"ตู้ %s: %s","Tank %s: %s"
 en_release_cost,ปล่อย · %s,Let in · %s
 en_need_points,ปล่อยศัตรูใช้ %s แต้ม Colony Harmony ต่อตัว (50 ต่อรังที่มีมด) — แต้มยังไม่พอ,Letting an enemy in costs %s Colony Harmony points (50 for each colony with ants) — not enough points yet
 en_now,ในพื้นที่หาอาหารตอนนี้,In the outworld now

@@ -23,6 +23,7 @@ static func build(view: Node3D, info: Dictionary, big: bool, soil_bottom: float,
 	if not places.any(func(p): return int(p.slot) == slot):
 		places = [{"slot": slot, "number": 1, "big": big, "farm": false, "shelf": -1, "spot": 0}]
 	var room = HomeRoom.new()
+	room.lamp_on = bool(info.get("lamp", true))
 	view.add_child(room)
 	room.build(places, info.get("shelves", []), func(s): return Store.exists(s), 12.0, env, slot)
 	var t: Node3D = room.tank_nodes.get(slot)
@@ -38,9 +39,12 @@ static func build(view: Node3D, info: Dictionary, big: bool, soil_bottom: float,
 	for m in room._views:
 		m.set_shader_parameter("to_room", Projection(to_room))
 	# the lights out from under the scale
-	for l in [room._sun, room._moon, room._lamp, room._spot]:
+	room.fridge_light.omni_range *= M
+	room.fridge_light.omni_attenuation = 0.0
+	room.fridge_light.light_energy *= 0.4
+	for l in [room._sun, room._moon, room._lamp, room._spot, room.fridge_light]:
 		var gt: Transform3D = l.global_transform
-		room.remove_child(l)
+		l.get_parent().remove_child(l)
 		view.add_child(l)
 		l.global_transform = Transform3D(gt.basis.orthonormalized(), gt.origin)
 	room._lamp.omni_range *= M

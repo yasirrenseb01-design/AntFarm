@@ -130,7 +130,9 @@ func _ready() -> void:
 		var scen: String = parts[2] if parts.size() > 2 else String(_opts.get("scenario", "keeper"))
 		# (the Home's bigger tank: a bigger box; --big-box: dev)
 		var big_box: bool = _opts.has("big-box") or (_persist and not _opts.has("testsave") and home.big != 0 and home.big == slot)
-		sim.setup(int(_opts.get("seed", "0")), start, parts[0] == "glass", scen, big_box)
+		# (the species picked on the species page: its id, 5th - none before v0.11.55, and from the menu: the first one)
+		var species: String = parts[4] if parts.size() > 4 and parts[4] != "" else String(_opts.get("species-id", "lasius_niger"))
+		sim.setup(int(_opts.get("seed", "0")), start, parts[0] == "glass", scen, big_box, species)
 		if parts.size() > 3:
 			sim.set_enemy_rate(float(parts[3]))            # (the keeper's choice in the new-colony window)
 	sim.ant_substep = int(_opts.get("substep", "1"))
@@ -300,7 +302,7 @@ func _process(delta: float) -> void:
 ## Home's places and shelves and this slot - or only the slot (a test, the demo: its box on the desk by itself).
 func _room_info() -> Dictionary:
 	if home != null and _persist and not _opts.has("testsave"):
-		return {"places": home.places(), "shelves": home.shelves, "slot": slot}
+		return {"places": home.places(), "shelves": home.shelves, "slot": slot, "lamp": bool(_settings.get("home_lamp", true))}
 	return {"slot": slot}
 
 

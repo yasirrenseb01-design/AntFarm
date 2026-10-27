@@ -7,6 +7,9 @@ extends RefCounted
 ## (home_kit.W), the lawn at y = 0. home_room._window calls build().
 
 const Kit := preload("res://scripts/view/home/home_kit.gd")
+const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
+const ROAD_Z := Vector2(3.6, 9.6)            # the street beside the neighbour's house, running away from the window
+const ROAD_X := Vector2(-8.6, -25.5)         # (to the forest's painted edge, 26 m off)
 const FENCE_X := -8.0                 # the fence, along z
 const FENCE_Z := Vector2(-13.0, 11.0)
 const HOUSE := Vector3(-19.0, 0.0, -3.0)     # the neighbour's house: the middle of its foot
@@ -15,11 +18,50 @@ const HOUSE_SIZE := Vector3(6.5, 3.0, 9.0)   # depth (x), the walls' height, wid
 
 static func build(room: Node3D) -> void:
 	_fence(room)
-	_house(room)
-	_tree(room, Vector3(-11.5, 0, 4.5), 5.2, 1.0)
-	_tree(room, Vector3(-14.5, 0, -9.0), 6.0, 1.3)
-	for b in [[Vector3(-15.6, 0, 1.0), 0.8], [Vector3(-15.8, 0, -6.6), 0.9], [Vector3(-9.0, 0, -4.0), 0.6]]:
+	# the neighbour's house, a street beside it (the keeper, 2026-10-27), a house across the street on the left and
+	# another on the right of the first
+	_house(room, HOUSE, Color(0.93, 0.93, 0.9), Color(0.2, 0.32, 0.3), Color(0.32, 0.33, 0.35))
+	_house(room, Vector3(-19.5, 0.0, 15.2), Color(0.78, 0.84, 0.88), Color(0.55, 0.16, 0.12), Color(0.24, 0.25, 0.28))
+	_house(room, Vector3(-18.5, 0.0, -15.0), Color(0.93, 0.88, 0.72), Color(0.16, 0.2, 0.35), Color(0.38, 0.3, 0.26))
+	_road(room)
+	_tree(room, Vector3(-11.2, 0, 1.4), "tree_a", 0.95, 0.3)
+	_tree(room, Vector3(-14.0, 0, -9.3), "tree_b", 1.1, 2.1)
+	_tree(room, Vector3(-13.0, 0, 12.4), "tree_b", 0.85, 4.0)
+	_tree(room, Vector3(-24.0, 0, -6.5), "tree_a", 1.2, 1.2)
+	for b in [[Vector3(-15.6, 0, 1.0), 0.8], [Vector3(-15.8, 0, -6.6), 0.9], [Vector3(-9.0, 0, -4.0), 0.6],
+			[Vector3(-14.8, 0, 11.5), 0.7], [Vector3(-14.5, 0, -12.2), 0.75]]:
 		_shrub(room, b[0], b[1])
+
+
+## The street: asphalt between kerbs, a dashed white line down its middle, a pavement each side, a street lamp.
+static func _road(room: Node3D) -> void:
+	var asphalt := Kit.flat(Color(0.2, 0.2, 0.21), 0.95)
+	var kerb := Kit.flat(Color(0.62, 0.62, 0.6), 0.9)
+	var pave := Kit.flat(Color(0.55, 0.54, 0.52), 0.95)
+	var paint := Kit.flat(Color(0.92, 0.92, 0.88), 0.7)
+	var lx := absf(ROAD_X.y - ROAD_X.x)
+	var cx := (ROAD_X.x + ROAD_X.y) * 0.5
+	var cz := (ROAD_Z.x + ROAD_Z.y) * 0.5
+	var wz := ROAD_Z.y - ROAD_Z.x
+	_box(room, Vector3(lx, 0.04, wz), Vector3(cx, 0.02, cz), asphalt)
+	var x := ROAD_X.x - 0.5
+	while x > ROAD_X.y + 1.5:
+		_box(room, Vector3(1.5, 0.01, 0.1), Vector3(x - 0.75, 0.045, cz), paint)
+		x -= 3.0
+	for side in [-1, 1]:
+		var ez: float = cz + side * (wz * 0.5 + 0.07)
+		_box(room, Vector3(lx, 0.14, 0.14), Vector3(cx, 0.07, ez), kerb)
+		_box(room, Vector3(lx, 0.12, 1.4), Vector3(cx, 0.06, ez + side * 0.77), pave)
+	# the street lamp, on the pavement by the fence
+	var pole := Kit.flat(Color(0.18, 0.2, 0.2), 0.5, 0.5)
+	var lamp_at := Vector3(-9.6, 0, ROAD_Z.x - 0.75)
+	_cyl(room, 0.07, 4.6, lamp_at + Vector3(0, 2.3, 0), pole, 0.05)
+	_box(room, Vector3(0.05, 0.05, 1.0), lamp_at + Vector3(0, 4.55, 0.5), pole)
+	var head := Kit.flat(Color(0.95, 0.9, 0.75), 0.4)
+	head.emission_enabled = true
+	head.emission = Color(1.0, 0.85, 0.6)
+	head.emission_energy_multiplier = 0.6
+	_box(room, Vector3(0.22, 0.12, 0.4), lamp_at + Vector3(0, 4.48, 1.0), head)
 
 
 ## Pickets with pointed tops between square posts with caps, on two rails (seen from the house's side: the rails on
@@ -71,9 +113,8 @@ static func _fence(room: Node3D) -> void:
 		z += 2.4
 
 
-## A one-storey house, white clapboard, its long side to the window.
-static func _house(room: Node3D) -> void:
-	var c := HOUSE
+## A one-storey house in clapboard of that colour, its long side to the window, a door of that colour with a porch.
+static func _house(room: Node3D, c: Vector3, wall: Color, door: Color, roof_c: Color) -> void:
 	var s := HOUSE_SIZE
 	var board := ShaderMaterial.new()
 	var sh := Shader.new()
@@ -81,16 +122,18 @@ static func _house(room: Node3D) -> void:
 // clapboard: boards 16 cm high, each overlapping the one below - a shadow line under each, lighter toward its foot
 varying vec3 wp;
 void vertex() { wp = VERTEX; }      // (its own metres: the room is drawn scaled up round a box in the game)
+uniform vec3 tint : source_color = vec3(0.93, 0.93, 0.9);
 void fragment() {
 	float f = fract(wp.y / 0.16);
-	vec3 c = vec3(0.93, 0.93, 0.9) * (0.86 + 0.14 * f);
+	vec3 c = tint * (0.86 + 0.14 * f);
 	c *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, 0.06, f));
 	ALBEDO = c;
 	ROUGHNESS = 0.7;
 }"""
 	board.shader = sh
+	board.set_shader_parameter("tint", wall)
 	var trim := Kit.flat(Color(0.97, 0.97, 0.95), 0.5)
-	var roof := Kit.flat(Color(0.32, 0.33, 0.35), 0.85)
+	var roof := Kit.flat(roof_c, 0.85)
 	var glass := Kit.flat(Color(0.16, 0.2, 0.26), 0.15, 0.3)
 	var found := Kit.flat(Color(0.55, 0.53, 0.5), 0.95)
 	_box(room, Vector3(s.x + 0.1, 0.4, s.z + 0.1), c + Vector3(0, 0.2, 0), found)          # the foundation
@@ -130,45 +173,59 @@ void fragment() {
 			_box(room, Vector3(0.05, 1.25, 0.32), Vector3(fx + 0.05, 0.4 + 1.45, c.z + wz + sz * 0.68), Kit.flat(Color(0.12, 0.16, 0.2), 0.6))   # shutters
 	var dz := c.z + 0.7
 	_box(room, Vector3(0.08, 2.2, 1.1), Vector3(fx + 0.04, 0.4 + 1.1, dz), trim)
-	_box(room, Vector3(0.09, 2.0, 0.9), Vector3(fx + 0.05, 0.4 + 1.0, dz), Kit.flat(Color(0.2, 0.32, 0.3), 0.45))      # (a green door)
+	_box(room, Vector3(0.09, 2.0, 0.9), Vector3(fx + 0.05, 0.4 + 1.0, dz), Kit.flat(door, 0.45))
 	for i in 3:                                                                          # the porch's steps
 		_box(room, Vector3(0.9 - i * 0.3, 0.14, 1.6), Vector3(fx + 0.45 - i * 0.15, 0.07 + i * 0.14, dz), trim)
 	_box(room, Vector3(1.3, 0.08, 1.9), Vector3(fx + 0.65, 2.75, dz), trim)                # the porch's little roof
 	for sz in [-1, 1]:
 		_box(room, Vector3(0.08, 2.3, 0.08), Vector3(fx + 1.2, 1.15, dz + sz * 0.85), trim)
-	# a path to the porch
-	_box(room, Vector3(FENCE_X - fx - 0.4, 0.02, 1.0), Vector3((fx + FENCE_X) * 0.5, 0.01, dz), Kit.flat(Color(0.6, 0.6, 0.58), 0.95))
+	# a path to the porch (the first house: toward the fence; the others: their own yard)
+	var reach := minf(FENCE_X - fx - 0.4, 3.0)
+	_box(room, Vector3(reach, 0.02, 1.0), Vector3(fx + reach * 0.5, 0.01, dz), Kit.flat(Color(0.6, 0.6, 0.58), 0.95))
 
 
-## A leafy tree: a trunk forking into two, a crown of overlapping lumps, a little different in green.
-static func _tree(room: Node3D, at: Vector3, tall: float, wide: float) -> void:
-	var bark := Kit.flat(Color(0.3, 0.23, 0.17), 0.95)
-	var trunk_h := tall * 0.45
-	_cyl(room, 0.16 * wide, trunk_h, at + Vector3(0, trunk_h * 0.5, 0), bark, 0.11 * wide)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = int(at.x * 100.0 + at.z * 7.0)
-	for k in [-1, 1]:
-		var a := at + Vector3(0, trunk_h * 0.9, 0)
-		var b := a + Vector3(k * 0.5 * wide, tall * 0.25, rng.randf_range(-0.3, 0.3))
-		var piv := Node3D.new()
-		room.add_child(piv)
-		piv.look_at_from_position((a + b) * 0.5, b, Vector3.RIGHT)
-		var br := _cyl(piv, 0.08 * wide, a.distance_to(b), Vector3.ZERO, bark, 0.05 * wide)
-		br.rotation.x = PI * 0.5
-	for i in 14:
-		var leaf := Kit.flat(Color(0.2, 0.36, 0.13).lerp(Color(0.33, 0.48, 0.18), rng.randf()), 0.9)
-		var r := rng.randf_range(0.7, 1.15) * wide
-		var p := at + Vector3(rng.randfn(0.0, 0.8) * wide, tall * 0.68 + rng.randfn(0.0, 0.5), rng.randfn(0.0, 0.8) * wide)
-		var mi := MeshInstance3D.new()
-		var sm := SphereMesh.new()
-		sm.radius = r
-		sm.height = r * 1.7
-		sm.radial_segments = 14
-		sm.rings = 8
-		mi.mesh = sm
-		mi.material_override = leaf
-		mi.position = p
-		room.add_child(mi)
+## A leafy tree modelled in Blender (tools/blender/build_tree.py -> assets/models/trees/: forking limbs, a spray of
+## leaves at each twig; until v0.11.55 a trunk under a heap of green balls, the keeper: "it does not look real"),
+## turned and scaled so that no two look alike; its leaves sway a little in the wind (the vertex colour's alpha).
+static func _tree(room: Node3D, at: Vector3, which: String, scale: float, turn: float) -> void:
+	var m := AntModel.load_antmesh("res://assets/models/trees/%s.antmesh" % which)
+	if m == null:
+		return
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.material_override = _leaf_mat()
+	mi.position = at
+	mi.rotation.y = turn
+	mi.scale = Vector3.ONE * scale
+	room.add_child(mi)
+
+
+static var _leaves: ShaderMaterial
+
+static func _leaf_mat() -> ShaderMaterial:
+	if _leaves == null:
+		var sh := Shader.new()
+		sh.code = """shader_type spatial;
+render_mode cull_disabled;
+// a garden tree's bark and leaves (vertex colour, sRGB; alpha: how far the wind moves that point)
+varying float w;
+void vertex() {
+	w = COLOR.a;
+	vec3 p = VERTEX;
+	float t = TIME * 1.3 + NODE_POSITION_WORLD.x * 0.7;
+	VERTEX += vec3(sin(t + p.y * 0.8), 0.0, cos(t * 0.8 + p.x)) * 0.035 * w * w;
+	COLOR.rgb = pow(COLOR.rgb, vec3(2.2));
+}
+void fragment() {
+	ALBEDO = COLOR.rgb;
+	ROUGHNESS = 0.9;
+	SPECULAR = 0.15;                             // (leaves a little waxy, not shining white)
+	if (!FRONT_FACING) { NORMAL = -NORMAL; }
+	BACKLIGHT = vec3(0.25, 0.35, 0.1) * w;      // (sun through the leaves)
+}"""
+		_leaves = ShaderMaterial.new()
+		_leaves.shader = sh
+	return _leaves
 
 
 static func _shrub(room: Node3D, at: Vector3, r: float) -> void:

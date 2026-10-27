@@ -730,7 +730,7 @@ func _update_ants(delta: float) -> void:
 		var dturn := wrapf(_queen_turn - _queen_prev_turn, -PI, PI)
 		var turned := absf(dturn)
 		_queen_prev_turn = _queen_turn
-		var walked: float = ((_queen_step - _queen_step_prev).length() + ((_spots.queen as Vector3) - _queen_home_prev).length()) / QUEEN_SCALE
+		var walked: float = ((_queen_step - _queen_step_prev).length() + ((_spots.queen as Vector3) - _queen_home_prev).length()) / queen_scale
 		_queen_step_prev = _queen_step
 		_queen_home_prev = _spots.queen
 		var qs := 0.6                       # short, heavy steps
