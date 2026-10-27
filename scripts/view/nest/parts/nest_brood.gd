@@ -310,7 +310,22 @@ func _path_to(p: Vector3, goal: Vector3) -> Array:
 		# on the floor where there is one under the cell, else on the wall beside it (down a shaft)
 		out.append(Vector3(c.x, c.y - 0.45, c.z) if not nest.is_open(c + Vector3i(0, -1, 0)) else Vector3(c))
 	out.append(goal)
-	return out
+	return _smooth_path(out)
+
+
+## A path of cells eased into a curve (each point the mean of its neighbours, three times; the ends kept): walked
+## from cell to cell, the queen zig-zagged on the voxel grid (the keeper, 2026-10-27).
+static func _smooth_path(pts: Array) -> Array:
+	if pts.size() < 4:
+		return pts
+	var cur := pts.duplicate()
+	for pass_i in 3:
+		var nxt := [cur[0]]
+		for i in range(1, cur.size() - 1):
+			nxt.append(((cur[i - 1] as Vector3) + (cur[i] as Vector3) * 2.0 + (cur[i + 1] as Vector3)) * 0.25)
+		nxt.append(cur[-1])
+		cur = nxt
+	return cur
 
 
 func _pile_xf(spots: Array, i: int, scale: float) -> Transform3D:
@@ -351,7 +366,12 @@ func _queen_pose() -> void:
 	if show and not _queen_path.is_empty():
 		# on her way: along the floor and up or down the shaft walls, body along her way, feet to the soil
 		var cell := Vector3i(roundi(qp.x), roundi(qp.y + 0.45), roundi(qp.z))
-		var up := _up_at(cell)
+		# (heavy: on the floor she stays upright, never on the ceiling; only in a shaft with no floor under her does she
+		# stand on its wall - and her up turns smoothly, not cell by cell: the keeper, 2026-10-27, saw her walk upside
+		# down on the roof of a gallery and jerk from cell to cell)
+		var want_up := _queen_up(cell)
+		_queen_up_s = _queen_up_s.slerp(want_up, minf(1.0, 4.0 * get_process_delta_time())).normalized() if _queen_up_s != Vector3.ZERO else want_up
+		var up := _queen_up_s
 		var to: Vector3 = _queen_path[0]
 		var fwd := to - qp
 		fwd -= up * fwd.dot(up)
@@ -399,6 +419,19 @@ func _queen_pose() -> void:
 					var t := clampf((c - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
 					if c.distance_to(qa.lerp(qb, t)) < 1.1:
 						_queen_cells[Vector3i(x, y, z)] = true
+
+
+## Her up on her way: straight up where there is floor under her (in a low gallery the floor and the roof cancel in
+## _up_at and its first pick could be the roof), else the wall she is on - never pointing down.
+func _queen_up(c: Vector3i) -> Vector3:
+	if _holds(c + Vector3i(0, -1, 0)) or _holds(c + Vector3i(0, -2, 0)):
+		return Vector3.UP
+	var u := _up_at(c)
+	u.y = maxf(u.y, 0.0)
+	return u.normalized() if u.length_squared() > 0.01 else Vector3.UP
+
+
+var _queen_up_s := Vector3.ZERO
 
 
 ## Room kept for the queen where brood is laid: from her body as it is, and from her place (whichever way she

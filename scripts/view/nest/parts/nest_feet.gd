@@ -71,8 +71,8 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 			# (just come on screen: its feet where they would be now)
 			v.f_at[g] = tr
 			v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty) if stance else -amp, tws, fmode)
-		elif stance and (pu >= duty or u < pu - 0.0001 or at.origin.distance_to(tr.origin) > far):
-			v.f_at[g] = tr                                   # (set down: from a swing, or again, left behind)
+		elif stance and (pu >= duty or u < pu - 0.0001 or at.origin.distance_to(tr.origin) > far or _feet_twisted(at, tr, sc)):
+			v.f_at[g] = tr                                   # (set down: from a swing, or again, left behind or twisted)
 			v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty), tws, fmode)
 		v.f_u[g] = u
 		var x: Transform3D = v.f_at[g]
@@ -84,6 +84,15 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 		out[k + 12] = p.x; out[k + 13] = p.y; out[k + 14] = p.z
 		out[k + 15] = 0.0 if stance else 1.0 + (u - duty) / (1.0 - duty)
 	return out
+
+
+## Planted feet the body has turned, tipped or been pushed sideways away from: their legs crossed and bent backwards
+## (the keeper, 2026-10-27: workers tending the queen, turned and pushed by her body, had twisted legs). Past ~25
+## degrees of turn or tilt, or a third of a body width aside, the tripod steps again.
+static func _feet_twisted(at: Transform3D, tr: Transform3D, sc: float) -> bool:
+	if at.basis.x.normalized().dot(tr.basis.x.normalized()) < 0.9 or at.basis.y.normalized().dot(tr.basis.y.normalized()) < 0.9:
+		return true
+	return absf((tr.origin - at.origin).dot(at.basis.z.normalized())) > 0.35 * sc
 
 
 ## The feet records of this frame's drawn ants (_feet_rec, in instance order; those with none: -1) up to the shader.

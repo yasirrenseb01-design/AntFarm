@@ -762,16 +762,22 @@ func _queen_walk(adt: float) -> void:
 	_queen_roam(adt)
 	if _queen_path.is_empty() or adt <= 0.0 or _queen_busy():
 		return
-	var to: Vector3 = _queen_path[0]
-	var d: Vector3 = to - (_spots.queen as Vector3)
-	if d.length() < 0.15:
-		_spots.queen = to
-		_queen_path.pop_front()
-		if _queen_path.is_empty():
-			_refresh_egg_spots()
-		return
+	# (on along the eased path without stopping at each point: what is left of this frame's step carries on to the next -
+	# she slowed to a halt at every cell, and jerked)
+	var left := QUEEN_WALK * adt
+	while left > 0.0 and not _queen_path.is_empty():
+		var to: Vector3 = _queen_path[0]
+		var d: Vector3 = to - (_spots.queen as Vector3)
+		if d.length() <= left:
+			_spots.queen = to
+			left -= d.length()
+			_queen_path.pop_front()
+			if _queen_path.is_empty():
+				_refresh_egg_spots()
+		else:
+			_spots.queen = (_spots.queen as Vector3) + d.normalized() * left
+			left = 0.0
 	# (her body is turned along her way in nest_brood._queen_pose)
-	_spots.queen = (_spots.queen as Vector3) + d.normalized() * minf(d.length(), QUEEN_WALK * adt)
 
 
 ## Between her moments she walks to another spot of her chamber floor now and then, slowly, and stays there (the eggs
