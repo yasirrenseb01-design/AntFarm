@@ -3,6 +3,7 @@ extends RefCounted
 ## Each slot has the full compressed colony state plus a small JSON summary for the menu, so the
 ## menu never has to load a whole colony just to show what is in a slot.
 
+const NestCard := preload("res://scripts/game/nest_card.gd")
 const SLOTS := 32                 # the highest slot number (home_store.gd says which are shown: the tanks and the wild mode's)
 static var base := "user://"      # tests point this at a sandbox folder so they never touch real saves
 
@@ -68,6 +69,7 @@ static func save(slot: int, sim, extra: Dictionary = {}) -> bool:
 	if m:
 		m.store_string(JSON.stringify(meta))
 		m.close()
+	NestCard.write(_dir(), slot, sim.nest)              # (the nest, for the Home's tank glass)
 	return true
 
 
@@ -124,7 +126,7 @@ static func backup(slot: int, tag: String) -> void:
 
 
 static func delete(slot: int) -> void:
-	for p in [_path(slot), _meta_path(slot)]:
+	for p in [_path(slot), _meta_path(slot), NestCard.path(_dir(), slot)]:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(p)
 

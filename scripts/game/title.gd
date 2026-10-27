@@ -285,6 +285,9 @@ func _unhandled_key_input(e: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif not is_open and main.hud.visible and main.hud.ant_tip.sel.is_empty() and not main.desktop.on:
 		open()
+		# a tank's colony: back to the Home it is in (the keeper, 2026-10-27), the title page behind it
+		if main.home != null and main.home.tanks.has(main.slot) and not main._demo and main.home_room != null:
+			main.home_room.open()
 		get_viewport().set_input_as_handled()
 
 

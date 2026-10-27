@@ -5,7 +5,7 @@ extends PanelContainer
 
 const Paper := preload("res://scripts/view/ui/paper.gd")
 # what is sold, its name and its note (keys of lang/strings.csv, written out: tests/lang_test.gd finds them so)
-const ITEMS := [["big", "shop_big", "shop_big_note"], ["small", "shop_small", "shop_small_note"],
+const ITEMS := [["big", "shop_big", "shop_big_note"], ["small", "shop_small", "shop_small_note"], ["farm", "shop_farm", "shop_farm_note"],
 	["shelf2", "shop_shelf2", "shop_shelf2_note"], ["shelf4", "shop_shelf4", "shop_shelf4_note"]]
 
 var home_ui                    # game/home.gd
@@ -50,7 +50,7 @@ func refresh() -> void:
 	_col.add_child(h._label(tr("shop_title"), 18, Paper.ACCENT))
 	var have: float = home_ui.main.harmony.points
 	purse = h._label(tr("home_purse") % num(have), 13, Paper.PENCIL)
-	_col.add_child(purse)
+	_col.add_child(h.with_harmony_icon(purse, 18))
 	for row_of in ITEMS:
 		var item: String = row_of[0]
 		_col.add_child(HSeparator.new())
@@ -71,7 +71,9 @@ func refresh() -> void:
 		var right := VBoxContainer.new()
 		right.alignment = BoxContainer.ALIGNMENT_CENTER
 		var price: float = home_ui.main.home.PRICES[item]
-		right.add_child(h._label(tr("shop_price") % num(price), 13, Paper.ACCENT))
+		var price_row: HBoxContainer = h.with_harmony_icon(h._label(tr("shop_price") % num(price), 13, Paper.ACCENT), 16)
+		price_row.alignment = BoxContainer.ALIGNMENT_END
+		right.add_child(price_row)
 		var buy: Button = h._button(tr("shop_buy"), false)
 		buy.disabled = why != ""
 		var it: String = item

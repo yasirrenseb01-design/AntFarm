@@ -65,6 +65,7 @@ var _fps_label: Label
 var _dev_speed_buttons: Array = []   # 20× 50× 100× (F10)
 var real_speed := 0.0               # the speed the game is really running at (set by main)
 var harmony := -1.0                 # the keeper's Colony Harmony points (set by main; below 0: not shown)
+var _harmony_row: HBoxContainer
 var _harmony_l: Label
 var music                   # ui/music.gd (null in test runs)
 var _outside_tools: Array = []
@@ -174,6 +175,27 @@ static func _check_icon(on: bool) -> ImageTexture:
 					if q.x >= 0 and q.y >= 0 and q.x < n and q.y < n:
 						img.set_pixel(q.x, q.y, Color(0.12, 0.08, 0.05))
 	return ImageTexture.create_from_image(img)
+
+
+## The Colony Harmony points' icon (the keeper's drop of honey, 2026-10-27: assets/ui/harmony.png) at px high.
+static func harmony_icon(px: float) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = load("res://assets/ui/harmony.png")
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	t.custom_minimum_size = Vector2(px, px)
+	t.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+
+## Words with the points' icon before them.
+static func with_harmony_icon(l: Label, px: float) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	row.add_child(harmony_icon(px))
+	row.add_child(l)
+	return row
 
 
 func _label(text: String, size := 14, color := INK, font: Font = null) -> Label:

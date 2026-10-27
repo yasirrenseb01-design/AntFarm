@@ -193,7 +193,7 @@ new_title_wild,เริ่มรังใหม่ในแปลงสวน %
 new_title_tank,เริ่มรังใหม่ในตู้ %d,New colony in tank %d
 home_back,← หน้าแรก,← Title page
 home_title,บ้าน,Home
-home_help,"เดิน: W A S D · มองรอบ: กดปุ่มขวาค้างแล้วลาก · ซูม: ลูกกลิ้ง · คลิกตู้เพื่อเข้ารัง · Esc กลับหน้าแรก","Walk: W A S D · look round: hold the right button and drag · zoom: wheel · click a tank to go in · Esc: title page"
+home_help,"เดิน: W A S D · มองรอบ: ขยับเมาส์ · คลิก: ตู้ เก้าอี้ ประตู · Tab: ปล่อยเมาส์ไว้กดปุ่ม/ร้านค้า · ซูม: ลูกกลิ้ง · Esc กลับหน้าแรก","Walk: W A S D · look round: move the mouse · click: a tank, the chair, the door · Tab: free the pointer for the buttons and the shop · zoom: wheel · Esc: title page"
 home_purse,Colony Harmony %s,Colony Harmony %s
 home_door,ประตู,The door
 home_shop,ร้านค้า,Shop
@@ -215,6 +215,10 @@ shop_full,มีตู้ครบเท่าที่เกมรองรั�
 shop_short,แต้มยังไม่พอ,Not enough points yet
 shop_confirm,ซื้อ %s ราคา %s แต้ม?\nเหลือ %s แต้ม,Buy %s for %s points?\n%s points left
 shop_bought,ซื้อแล้ว: %s,Bought: %s
+home_chair,เก้าอี้ · คลิก: นั่ง,The chair · click: sit down
+home_stand,คลิก: ลุกขึ้น (หรือกด W A S D),Click: get up (or W A S D)
+shop_farm,ตู้แอนท์ฟาร์ม,An ant farm
+shop_farm_note,ตู้กระจกแบน ดินอยู่ระหว่างกระจกสองแผ่น เห็นอุโมงค์ทุกเส้น ได้รังใหม่ 1 รัง (และแปลงในโหมดป่าเพิ่ม 1) — ต้องมีที่ว่างบนชั้นวาง,"A flat glass frame with the soil between two panes: every tunnel in sight. One new colony (and one more plot in the wild mode) — needs a free place on a shelf"
 home_soon,อัปเดตเร็วๆ นี้,Coming in an update soon
 home_tank_empty,ตู้ %d · ว่าง\nคลิก: เริ่มรังใหม่,Tank %d · empty\nClick: start a new colony
 home_tank,ตู้ %d · วันที่ %d · มดงาน %d ตัว%s\nคลิก: เข้ารังนี้,Tank %d · day %d · %d workers%s\nClick: go into this colony
@@ -475,7 +479,7 @@ sky_rain,ฝนตก,rain
 sky_night,กลางคืน,night
 sky_clear,แจ่มใส,clear
 weather_line,อากาศ %.1f°C · %s · มดออกหากิน %d%%,Air %.1f°C · %s · foraging %d%%
-harmony_line,✦ Colony Harmony %s,✦ Colony Harmony %s
+harmony_line,Colony Harmony %s,Colony Harmony %s
 fps_line,%d FPS · จริง %.1f×,%d FPS · real %.1f×
 queen_fat,ไขมัน %d%%,Fat %d%%
 queen_not_laying,หยุดวางไข่,Not laying

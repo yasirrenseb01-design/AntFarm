@@ -252,6 +252,10 @@ func _take_shot() -> void:
 			home_room._aim()
 		if _opts.has("shop"):
 			home_room.shop.toggle()           # (--shop: the shop page open)
+		if _opts.has("home-sit"):
+			for it in home_room._room.items:  # (--home-sit: as if the chair were clicked)
+				if it.kind == "chair":
+					home_room._sit(it)
 		if _opts.has("home-point"):
 			var pp: PackedStringArray = String(_opts["home-point"]).split(",")
 			home_room._point(Vector2(float(pp[0]), float(pp[1])))     # (as if the pointer were there)

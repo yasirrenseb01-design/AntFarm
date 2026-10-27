@@ -28,7 +28,8 @@ func _build_top(root: Control) -> void:
 	_harmony_l = _label("", 12, AMBER)
 	clock.add_child(_clock)
 	clock.add_child(_weather)
-	clock.add_child(_harmony_l)
+	_harmony_row = with_harmony_icon(_harmony_l, 14)
+	clock.add_child(_harmony_row)
 	row.add_child(clock)
 
 	var speeds := HBoxContainer.new()

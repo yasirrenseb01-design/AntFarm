@@ -12,13 +12,15 @@ extends RefCounted
 
 const Store := preload("res://scripts/game/save_store.gd")
 const MAX_TEXT := 4096
-const PRICES := {"small": 100.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0}
+const PRICES := {"small": 100.0, "farm": 80.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0}
 const MAX_SHELVES := 4
 
 var tanks: Array = []          # slot numbers, in the order the tanks were had
 var wild: Array = []
 var big := 0                   # the bigger tank's slot (0: not bought)
 var shelves: Array = []        # each shelf bought: how many tanks it holds (2 or 4)
+var farms: Array = []          # the slots of the ant farms bought (a flat glass frame: its colony nests in the glass slab,
+                               # sim nest.slab; the keeper, 2026-10-27: sold in the shop, a little cheaper than a small tank)
 
 
 static func _path() -> String:
@@ -30,6 +32,7 @@ func load_layout() -> void:
 	wild = []
 	big = 0
 	shelves = []
+	farms = []
 	var path := _path()
 	if FileAccess.file_exists(path):
 		var f := FileAccess.open(path, FileAccess.READ)
@@ -48,6 +51,9 @@ func load_layout() -> void:
 					for c in sh:
 						if (c is float or c is int) and (int(c) == 2 or int(c) == 4) and shelves.size() < MAX_SHELVES:
 							shelves.append(int(c))
+				for s in _slots(d.get("farms")):
+					if tanks.has(s) and s != big:
+						farms.append(s)
 	if tanks.is_empty():
 		_first_time()
 	while wild.size() < tanks.size():
@@ -84,7 +90,7 @@ func save_layout() -> void:
 	DirAccess.make_dir_recursive_absolute(Store.base)
 	var f := FileAccess.open(_path(), FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves}))
+		f.store_string(JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves, "farms": farms}))
 
 
 ## Another tank: one more colony at home and one more in the wild mode; its slot (0 if there can be no more).
@@ -104,7 +110,8 @@ func add_tank() -> int:
 	return t
 
 
-## How many small tanks there are, and how many there is room for (the desk's one and the shelves').
+## How many small tanks there are (an ant farm takes a small tank's place), and how many there is room for (the desk's
+## one and the shelves').
 func smalls() -> int:
 	return tanks.size() - (1 if big != 0 else 0)
 
@@ -116,15 +123,20 @@ func small_room() -> int:
 	return n
 
 
+## The nest a colony started in that tank has: "glass" in an ant farm, else "soil".
+func nest_of(slot: int) -> String:
+	return "glass" if farms.has(slot) else "soil"
+
+
 ## Why that cannot be bought now (a key of lang/strings.csv), "" if it can.
 func why_not(item: String, points: float) -> String:
 	if item == "big" and big != 0:
 		return "shop_owned"
 	if item.begins_with("shelf") and shelves.size() >= MAX_SHELVES:
 		return "shop_no_wall"
-	if item == "small" and smalls() >= small_room():
+	if (item == "small" or item == "farm") and smalls() >= small_room():
 		return "shop_no_place"
-	if (item == "small" or item == "big") and tanks.size() >= Store.SLOTS / 2:
+	if (item == "small" or item == "farm" or item == "big") and tanks.size() >= Store.SLOTS / 2:
 		return "shop_full"
 	if points < float(PRICES[item]):
 		return "shop_short"
@@ -134,8 +146,9 @@ func why_not(item: String, points: float) -> String:
 ## Buys it (the points are the caller's to take): true if it was.
 func buy(item: String) -> bool:
 	match item:
-		"big":
-			# (a new slot, never a hidden one: the bigger box is set when a colony starts - an old one would keep its own)
+		"big", "farm":
+			# (a new slot, never a hidden one: the bigger box, or the glass slab, is set when a colony starts - an old one
+			# would keep its own)
 			var t := 0
 			if tanks.size() < Store.SLOTS / 2:
 				t = _free()
@@ -149,7 +162,10 @@ func buy(item: String) -> bool:
 						wild.append(w)
 			if t == 0:
 				return false
-			big = t
+			if item == "big":
+				big = t
+			else:
+				farms.append(t)
 		"small":
 			if add_tank() == 0:
 				return false
@@ -161,7 +177,7 @@ func buy(item: String) -> bool:
 	return true
 
 
-## Where each tank stands: [{"slot", "number", "big", "shelf" (-1: the desk), "spot"}]. The first small tank and the
+## Where each tank stands: [{"slot", "number", "big", "farm", "shelf" (-1: the desk), "spot"}]. The first small tank and the
 ## big one on the desk, the other small ones on the shelves in the order they were bought.
 func places() -> Array:
 	var out: Array = []
@@ -170,7 +186,7 @@ func places() -> Array:
 	var desk_small := false
 	for i in tanks.size():
 		var s: int = tanks[i]
-		var p := {"slot": s, "number": i + 1, "big": s == big, "shelf": -1, "spot": 0}
+		var p := {"slot": s, "number": i + 1, "big": s == big, "farm": farms.has(s), "shelf": -1, "spot": 0}
 		if s != big:
 			if not desk_small:
 				desk_small = true

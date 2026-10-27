@@ -75,7 +75,7 @@ func open_colonies(scen := "") -> void:
 		var occupied: bool = not m.is_empty()
 		fresh.pressed.connect(func():
 			_colonies.hide()
-			open_species(slot_k, occupied, scen))
+			open_species(slot_k, occupied, scen, home.nest_of(slot_k) if home != null and scen == "keeper" else ""))
 		row.add_child(fresh)
 		col.add_child(row)
 	col.add_child(HSeparator.new())
@@ -108,11 +108,11 @@ func slot_no(slot: int) -> int:
 
 
 ## A new colony, step 1: which ant (view/ui/species_window.gd), then where and how it starts (_open_new_colony).
-func open_species(slot: int, occupied: bool, scen := "") -> Window:
+func open_species(slot: int, occupied: bool, scen := "", nest := "") -> Window:
 	var w := SpeciesWindow.new()
 	_colonies.get_parent().add_child(w)
 	w.setup(self)
-	w.chosen.connect(func(_id): _open_new_colony(slot, occupied, scen))
+	w.chosen.connect(func(_id): _open_new_colony(slot, occupied, scen, nest))
 	w.reset_size()
 	w.popup_centered()
 	return w
@@ -316,7 +316,9 @@ const NEW_STARTS := [["queen", "start_queen", "start_queen_note"],
 
 ## The new-colony window: pick a scenario, a nest and a start, then start it in this slot (scen: the scenario fixed -
 ## a tank is a formicarium, the wild mode a garden plot; "": the keeper picks).
-func _open_new_colony(slot: int, occupied: bool, scen := "") -> void:
+## nest: the nest fixed too ("soil" | "glass": a tank's own - the keeper, 2026-10-27: the ant farm is a tank bought
+## in the shop, not a choice here); "": the keeper picks.
+func _open_new_colony(slot: int, occupied: bool, scen := "", nest := "") -> void:
 	var win := Window.new()
 	win.title = (tr("new_title_wild") if scen == "wild" else tr("new_title_tank")) % slot_no(slot) if scen != "" else tr("new_title") % slot
 	win.theme = _colonies.theme
@@ -336,7 +338,11 @@ func _open_new_colony(slot: int, occupied: bool, scen := "") -> void:
 	body.add_child(col)
 	var picked := {}
 	var rates := EnemyRate.new(self, 0.0 if scen == "keeper" else 1.0, "keeper" if scen == "keeper" else "wild", true)
-	var groups: Array = [["nest", "new_nest", NEW_NESTS], ["start", "new_start", NEW_STARTS]]
+	var groups: Array = [["start", "new_start", NEW_STARTS]]
+	if nest == "":
+		groups.push_front(["nest", "new_nest", NEW_NESTS])
+	else:
+		picked["nest"] = nest
 	if scen == "":
 		groups.push_front(["scenario", "new_scene", NEW_SCENARIOS])
 	else:

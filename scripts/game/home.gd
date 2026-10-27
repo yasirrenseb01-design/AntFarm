@@ -1,9 +1,11 @@
 extends CanvasLayer
-## The Home (the keeper, 2026-10-26): a room seen through the keeper's own eyes, only their hand as the pointer. The
-## tanks on the desk are the colonies (home_store.gd: one save slot each): a click on one goes into it, or starts a new
-## colony in an empty one; the door is not open yet. WASD / arrows walk, the right mouse button held looks round,
-## Esc goes back to the title page. The room is drawn in a viewport of its own (its own world and light); the colony's
-## views are not drawn meanwhile (the simulation goes on).
+## The Home (the keeper, 2026-10-26): a room seen through the keeper's own eyes, only their hand in the middle of the
+## view. The tanks on the desk are the colonies (home_store.gd: one save slot each): a click on one goes into it, or
+## starts a new colony in an empty one; the chair is sat on; the door is not open yet. The mouse turns the view (as in a
+## first-person game: the keeper, 2026-10-27 - no button held), WASD / arrows walk, Tab frees the pointer for the bar at
+## the top and the shop, Esc goes back to the title page. The room is drawn in a viewport of its own (its own world and
+## light); the colony's views are not drawn meanwhile (the simulation goes on). Day and night, and the sun through the
+## window, follow the computer's clock (home_room.set_hour).
 ## main.gd owns it: open() / close().
 
 const Room := preload("res://scripts/view/home/home_room.gd")
@@ -11,9 +13,11 @@ const Paper := preload("res://scripts/view/ui/paper.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const Shop := preload("res://scripts/game/home_shop.gd")
 const EYE := 1.55                 # metres: the keeper's eyes
+const EYE_SEATED := 1.15
 const WALK := 1.3                 # metres a second
-const LOOK := 0.005               # radians a pixel of mouse
+const LOOK := 0.0025              # radians a pixel of mouse
 const MARGIN := 0.3               # how near a wall the keeper can walk
+const SIT_S := 0.6                # seconds to sit down or get up
 
 var main
 var is_open := false
@@ -24,16 +28,22 @@ var _room
 var _env: Environment
 var _yaw := 0.0
 var _pitch := -0.42
-var _looking := false
-var _hot = null                   # the item the pointer is on (home_room.items), or null
+var _hot = null                   # the item the hand is on (home_room.items), or null
 var _tip: Label
 var _toast: Label
 var _toast_t := 0.0
 var _purse: Label
+var _help: Label
 var shop                          # game/home_shop.gd: the shop page
-var _day := true
+var _hand: TextureRect            # the keeper's hand, in the middle of the view
 var _hand_open: Texture2D
 var _hand_point: Texture2D
+var _free := false                # Tab: the pointer free for the bar and the shop (the view stays still)
+var _seated := false
+var _move_from := Transform3D()   # sitting down / getting up: from where, to where, how far along
+var _move_to := Transform3D()
+var _move_t := 1.0
+var _clock_t := 0.0
 
 
 func setup(m) -> void:
@@ -64,19 +74,19 @@ func _build() -> void:
 	_vp.msaa_3d = Viewport.MSAA_2X if String(main._settings.get("quality", "medium")) == "high" else Viewport.MSAA_DISABLED
 	_vp.positional_shadow_atlas_size = 2048
 	_box.add_child(_vp)
-	var day := _is_day()
-	_day = day
 	_env = Environment.new()
 	_env.background_mode = Environment.BG_COLOR
-	_env.background_color = Color(0.05, 0.05, 0.06)
+	_env.background_color = Color(0.05, 0.04, 0.035)
 	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	_env.ambient_light_color = Color(0.75, 0.72, 0.68) if day else Color(0.35, 0.33, 0.38)
-	_env.ambient_light_energy = 0.45 if day else 0.25
 	_env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	_env.tonemap_exposure = 1.05
+	_env.tonemap_exposure = 1.0
 	var low := String(main._settings.get("quality", "medium")) == "low"
 	_env.glow_enabled = not low
-	_env.glow_intensity = 0.4
+	_env.glow_intensity = 0.55
+	_env.glow_bloom = 0.08
+	_env.adjustment_enabled = true                   # (a warmer, softer room: the keeper, 2026-10-27 "cozy")
+	_env.adjustment_saturation = 1.08
+	_env.adjustment_contrast = 1.04
 	var we := WorldEnvironment.new()
 	we.environment = _env
 	_vp.add_child(we)
@@ -87,6 +97,29 @@ func _build() -> void:
 	_cam.current = true
 	_vp.add_child(_cam)
 	_cam.position = Vector3(0.0, EYE, -0.55)
+	if main._opts.has("home-fov"):
+		_cam.fov = float(main._opts["home-fov"])          # (dev: a closer look)
+	# the room's warm edges darkened a little (a vignette)
+	var vig := ColorRect.new()
+	vig.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vs := Shader.new()
+	vs.code = "shader_type canvas_item;\nvoid fragment() { vec2 d = UV - 0.5; float v = smoothstep(0.35, 0.85, length(d * vec2(1.0, 0.8))); COLOR = vec4(0.12, 0.06, 0.02, v * 0.45); }"
+	var vm := ShaderMaterial.new()
+	vm.shader = vs
+	vig.material = vm
+	root.add_child(vig)
+	# the hand, in the middle
+	_hand = TextureRect.new()
+	_hand.texture = _hand_open
+	_hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hand.anchor_left = 0.5
+	_hand.anchor_right = 0.5
+	_hand.anchor_top = 0.5
+	_hand.anchor_bottom = 0.5
+	_hand.offset_left = -19
+	_hand.offset_top = -3
+	root.add_child(_hand)
 	# a bar along the top on paper: back to the title page, the Home, the purse
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel", Paper.page())
@@ -105,24 +138,25 @@ func _build() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(title)
 	_purse = h._label("", 14, Paper.INK)
-	row.add_child(_purse)
+	row.add_child(h.with_harmony_icon(_purse, 22))
 	var shop_b: Button = h._button(tr("home_shop"), false)
 	row.add_child(shop_b)
-	var help: Label = h._label(tr("home_help"), 12, Color(1, 1, 1, 0.85))
-	help.anchor_top = 1.0
-	help.anchor_bottom = 1.0
-	help.offset_left = 20
-	help.offset_top = -30
-	help.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	help.add_theme_constant_override("shadow_offset_x", 1)
-	help.add_theme_constant_override("shadow_offset_y", 1)
-	root.add_child(help)
+	_help = h._label(tr("home_help"), 12, Color(1, 1, 1, 0.85))
+	_help.anchor_top = 1.0
+	_help.anchor_bottom = 1.0
+	_help.offset_left = 20
+	_help.offset_top = -30
+	_help.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_help.add_theme_constant_override("shadow_offset_x", 1)
+	_help.add_theme_constant_override("shadow_offset_y", 1)
+	root.add_child(_help)
 	shop = Shop.new()
 	root.add_child(shop)
 	shop.setup(self)
 	shop_b.pressed.connect(shop.toggle)
 	_tip = _note(root, h)
 	_toast = _note(root, h)
+	_set_clock()
 
 
 ## The room (again after something is bought): the tanks where home_store.places() puts them.
@@ -131,7 +165,7 @@ func rebuild_room() -> void:
 		_room.queue_free()
 	_room = Room.new()
 	_vp.add_child(_room)
-	_room.build(main.home.places(), main.home.shelves, func(s): return Store.exists(s), _day)
+	_room.build(main.home.places(), main.home.shelves, func(s): return Store.exists(s), _hour(), _env)
 	_hot = null
 
 
@@ -144,7 +178,7 @@ func toast(text: String, at := Vector2(-1, -1)) -> void:
 	_toast_t = 2.5
 
 
-## A note on paper beside the pointer.
+## A note on paper beside the hand.
 func _note(root: Control, h) -> Label:
 	var l: Label = h._label("", 14, Paper.INK)
 	var sb: StyleBox = Paper.page()
@@ -159,9 +193,17 @@ func _note(root: Control, h) -> Label:
 	return l
 
 
-func _is_day() -> bool:
-	var hr := int(main._opts.get("home-hour", Time.get_datetime_dict_from_system().hour))
-	return hr >= 6 and hr < 19
+## The hour now, on the computer's clock (--home-hour=<h>: dev, a fixed hour).
+func _hour() -> float:
+	if main._opts.has("home-hour"):
+		return float(main._opts["home-hour"])
+	var t := Time.get_datetime_dict_from_system()
+	return float(t.hour) + float(t.minute) / 60.0
+
+
+func _set_clock() -> void:
+	if _room != null and is_instance_valid(_room):
+		_room.set_hour(_hour())
 
 
 func open() -> void:
@@ -175,9 +217,10 @@ func open() -> void:
 	_yaw = 0.0
 	_pitch = -0.42
 	_hot = null
+	_free = false
+	_seated = false
+	_move_t = 1.0
 	_aim()
-	Input.set_custom_mouse_cursor(_hand_open, Input.CURSOR_ARROW, Vector2(19, 3))
-	Input.set_custom_mouse_cursor(_hand_point, Input.CURSOR_POINTING_HAND, Vector2(16, 2))
 	_update_purse()
 
 
@@ -193,16 +236,14 @@ func close() -> void:
 func _exit_tree() -> void:
 	if is_open:
 		get_viewport().disable_3d = false
-		Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
-		Input.set_custom_mouse_cursor(null, Input.CURSOR_POINTING_HAND)
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _leave() -> void:
 	is_open = false
 	visible = false
 	get_viewport().disable_3d = false
-	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
-	Input.set_custom_mouse_cursor(null, Input.CURSOR_POINTING_HAND)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	for c in get_children():
 		c.queue_free()
 
@@ -215,33 +256,65 @@ func _update_purse() -> void:
 
 
 func _aim() -> void:
-	_cam.rotation = Vector3(_pitch, _yaw, 0.0)
+	if _move_t >= 1.0:
+		_cam.rotation = Vector3(_pitch, _yaw, 0.0)
+
+
+## The pointer: held in the middle (turning the view) unless the keeper freed it (Tab), the shop is open, or a window
+## (a new colony, a question) is up.
+func _pointer_free() -> bool:
+	return _free or shop.visible or not get_viewport().get_embedded_subwindows().is_empty() or main._opts.has("shot")
 
 
 func _process(delta: float) -> void:
 	if not is_open:
 		return
+	var free := _pointer_free()
+	var want := Input.MOUSE_MODE_VISIBLE if free else Input.MOUSE_MODE_CAPTURED
+	if Input.mouse_mode != want:
+		Input.mouse_mode = want
+	_hand.visible = not free
+	if not free:
+		_point(get_viewport().get_visible_rect().size * 0.5)
+	# sitting down, getting up
+	if _move_t < 1.0:
+		_move_t = minf(1.0, _move_t + delta / SIT_S)
+		var k := smoothstep(0.0, 1.0, _move_t)
+		_cam.transform = _move_from.interpolate_with(_move_to, k)
+		if _move_t >= 1.0:
+			_aim()
 	var mv := Vector2(
 		float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT)),
 		float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP)))
-	if mv != Vector2.ZERO:
-		var step := mv.normalized().rotated(-_yaw) * WALK * delta
-		var p := _cam.position + Vector3(step.x, 0, step.y)
-		var lim: float = Room.W * 0.5 - MARGIN
-		p.x = clampf(p.x, -lim, lim)
-		p.z = clampf(p.z, -lim, lim)
-		# (not through the desk or a shelf: each way on its own, so the keeper slides along it)
-		var q := _cam.position
-		if _blocked(Vector2(p.x, q.z)):
-			p.x = q.x
-		if _blocked(Vector2(p.x, p.z)):
-			p.z = q.z
-		_cam.position = p
+	if mv != Vector2.ZERO and _move_t >= 1.0:
+		if _seated:
+			_stand()
+		else:
+			_walk(mv, delta)
 	if _toast.visible:
 		_toast_t -= delta
 		if _toast_t <= 0.0:
 			_toast.visible = false
+	_clock_t += delta
+	if _clock_t > 20.0:
+		_clock_t = 0.0
+		_set_clock()                                 # (the sun moves on)
 	_update_purse()
+
+
+func _walk(mv: Vector2, delta: float) -> void:
+	var step := mv.normalized().rotated(-_yaw) * WALK * delta
+	var p := _cam.position + Vector3(step.x, 0, step.y)
+	var lim: float = Room.W * 0.5 - MARGIN
+	p.x = clampf(p.x, -lim, lim)
+	p.z = clampf(p.z, -lim, lim)
+	# (not through the desk, the chair or a shelf: each way on its own, so the keeper slides along it)
+	var q := _cam.position
+	if _blocked(Vector2(p.x, q.z)):
+		p.x = q.x
+	if _blocked(Vector2(p.x, p.z)):
+		p.z = q.z
+	_cam.position = p
 
 
 func _blocked(at: Vector2) -> bool:
@@ -251,25 +324,47 @@ func _blocked(at: Vector2) -> bool:
 	return false
 
 
+## On the chair: the eyes lowered to a seated keeper's, facing the desk.
+func _sit(it) -> void:
+	_seated = true
+	_move_from = _cam.transform
+	var seat: Vector3 = it.seat
+	_yaw = float(it.face)
+	_pitch = -0.45
+	_move_to = Transform3D(Basis.from_euler(Vector3(_pitch, _yaw, 0.0)), Vector3(seat.x, EYE_SEATED, seat.z))
+	_move_t = 0.0
+
+
+func _stand() -> void:
+	_seated = false
+	_move_from = _cam.transform
+	var back := Vector3(sin(_yaw), 0.0, cos(_yaw)) * 0.55          # (a step back from the desk)
+	var p := Vector3(_cam.position.x, EYE, _cam.position.z) + back
+	_move_to = Transform3D(Basis.from_euler(Vector3(_pitch, _yaw, 0.0)), p)
+	_move_t = 0.0
+
+
 func _on_input(e: InputEvent) -> void:
-	if e is InputEventMouseButton:
-		if e.button_index == MOUSE_BUTTON_RIGHT:
-			_looking = e.pressed
-		elif e.button_index == MOUSE_BUTTON_LEFT and e.pressed and _hot != null:
+	if e is InputEventMouseButton and e.pressed:
+		if e.button_index == MOUSE_BUTTON_LEFT and _hot != null:
 			_click(_hot)
-		elif e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed:
+		elif e.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_cam.fov = maxf(35.0, _cam.fov - 3.0)
-		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed:
+		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_cam.fov = minf(70.0, _cam.fov + 3.0)
-	elif e is InputEventMouseMotion:
-		if _looking:
-			_yaw -= e.relative.x * LOOK
-			_pitch = clampf(_pitch - e.relative.y * LOOK, -1.3, 1.1)
-			_aim()
+	elif e is InputEventMouseMotion and _pointer_free():
 		_point(e.position)
 
 
-## What the pointer is on: the nearest item its ray goes into.
+func _input(e: InputEvent) -> void:
+	if not is_open or not (e is InputEventMouseMotion) or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		return
+	_yaw -= e.relative.x * LOOK
+	_pitch = clampf(_pitch - e.relative.y * LOOK, -1.3, 1.1)
+	_aim()
+
+
+## What the hand is on: the nearest item the view's ray through that point goes into.
 func _point(at: Vector2) -> void:
 	var from := _cam.project_ray_origin(at)
 	var dir := _cam.project_ray_normal(at)
@@ -283,7 +378,7 @@ func _point(at: Vector2) -> void:
 	if not is_same(best, _hot):
 		_hot = best
 		_room.hover(best)
-		_box.mouse_default_cursor_shape = Control.CURSOR_ARROW if best == null else Control.CURSOR_POINTING_HAND
+		_hand.texture = _hand_open if best == null else _hand_point
 	_tip.visible = best != null
 	if best != null:
 		_tip.text = _describe(best)
@@ -297,6 +392,8 @@ func _point(at: Vector2) -> void:
 func _describe(it) -> String:
 	if it.kind == "door":
 		return tr("home_door")
+	if it.kind == "chair":
+		return tr("home_stand") if _seated else tr("home_chair")
 	var s: int = it.slot
 	var m: Dictionary = Store.meta(s)
 	if m.is_empty():
@@ -309,9 +406,15 @@ func _click(it) -> void:
 	if it.kind == "door":
 		toast(tr("home_soon"), _tip.position + Vector2(0, 40))
 		return
+	if it.kind == "chair":
+		if _seated:
+			_stand()
+		else:
+			_sit(it)
+		return
 	var s: int = it.slot
 	if not Store.exists(s):
-		main.hud.open_species(s, false, "keeper")
+		main.hud.open_species(s, false, "keeper", main.home.nest_of(s))
 		return
 	if s == main.slot and not main._demo:
 		_leave()
@@ -323,6 +426,11 @@ func _click(it) -> void:
 
 
 func _unhandled_key_input(e: InputEvent) -> void:
-	if is_open and e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_ESCAPE:
+	if not is_open or not (e is InputEventKey and e.pressed and not e.echo):
+		return
+	if e.keycode == KEY_ESCAPE:
 		close()
+		get_viewport().set_input_as_handled()
+	elif e.keycode == KEY_TAB:
+		_free = not _free                        # (the pointer for the bar at the top, or back to turning the view)
 		get_viewport().set_input_as_handled()
