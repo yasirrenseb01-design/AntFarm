@@ -7,11 +7,19 @@ extends "res://scripts/view/home/home_kit.gd"
 ## at night the lamps. game/home.gd owns it (camera, the hand, what a click does).
 
 const View := preload("res://shaders/home/window_view.gdshader")
-const SHELF_D := 0.3                         # a shelf's depth; each column 0.45 wide, two tiers
+const SHELF_D := 0.42                        # a shelf's depth; a column for a small tank (tank_spec), two tiers
+const SHELF_COL := 0.69
 const SHELF_Y := [0.55, 1.08]                # the tops of its boards a tank stands on
 # where the shelves go, in the order they are bought: the foot's centre against a wall, and its turn (front to the room)
-const SHELF_AT := [[Vector3(1.45, 0, -1.85), 0.0], [Vector3(-1.0, 0, 1.85), PI], [Vector3(0.55, 0, 1.85), PI],
-	[Vector3(-1.85, 0, 1.0), PI * 0.5]]
+# (v0.11.53, the tanks as big as the game's: two along the wall behind the keeper, one on the left by the window, one on
+# the right between the desk and the door)
+const SHELF_AT := [[Vector3(-1.0, 0, 1.79), PI], [Vector3(0.55, 0, 1.79), PI], [Vector3(-1.79, 0, 0.7), PI * 0.5],
+	[Vector3(1.79, 0, -0.8), -PI * 0.5]]
+const DESK_SMALL_X := -0.313                 # the small tank on the desk, left of the middle; the bigger one right of it
+const DESK_BIG_X := 0.463
+var lamp_gain := 1.0                         # the lamps' light falls off as distance to the power of their
+var spot_gain := 1.0                         # attenuation: the room drawn scaled up (keeper_room.gd) makes up for it
+var tank_nodes := {}                         # slot -> its tank's node (keeper_room.gd puts the game's box there)
 var _sun: DirectionalLight3D
 var _moon: DirectionalLight3D
 var _lamp: OmniLight3D
@@ -22,8 +30,9 @@ var _lawn: StandardMaterial3D
 
 
 ## places: home_store.places() (where each tank stands); shelves: how many tanks each shelf bought holds; hour: the
-## clock's; env: the room's environment (its ambient light follows the hour).
-func build(places: Array, shelves: Array, filled: Callable, hour: float, env: Environment) -> void:
+## clock's; env: the room's environment (its ambient light follows the hour); hide: a slot whose tank is not drawn (the
+## colony open in the game, its box drawn there by the foraging view instead).
+func build(places: Array, shelves: Array, filled: Callable, hour: float, env: Environment, hide := 0) -> void:
 	_env = env
 	_room()
 	_window()
@@ -36,20 +45,30 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 	var units: Array = []
 	for i in mini(shelves.size(), SHELF_AT.size()):
 		units.append(_shelf(i, int(shelves[i])))
-	# on the desk: the small one in the middle, or left of the big one
-	var has_big := places.any(func(p): return p.big)
+	# on the desk, against the wall: the small one left of the middle, the bigger one right of it
 	var top := DESK.y + DESK_SIZE.y * 0.5
 	for p in places:
-		var full: bool = filled.call(int(p.slot))
-		var sz: Vector3 = BIG if p.big else (FARM if p.get("farm", false) else TANK)
+		var s := int(p.slot)
+		var full: bool = filled.call(s)
+		var big: bool = p.big
+		var farm: bool = p.get("farm", false)
+		var f := Spec.floor_of(big)
+		var x0 := float(Store.meta(s).get("nest_x0", (f.x - Spec.NEST.x) * 0.5)) if full else 0.0
+		var t: Node3D = null
 		if p.shelf == -1:
-			var x := 0.0 if not has_big else (0.3 if p.big else -0.25)
-			_tank(self, Vector3(DESK.x + x, top, DESK.z + 0.05), sz, int(p.slot), int(p.number), full)
+			var d := Spec.outside(big).z
+			t = _tank(self, Vector3(DESK_BIG_X if big else DESK_SMALL_X, top, DESK.z - DESK_SIZE.z * 0.5 + 0.03 + d * 0.5),
+				big, farm, s, int(p.number), full, x0)
 		elif p.shelf >= 0 and p.shelf < units.size():
 			var cols := int(shelves[p.shelf]) / 2
 			var col: int = int(p.spot) % cols
 			var tier: int = int(p.spot) / cols
-			_tank(units[p.shelf], Vector3((col - (cols - 1) * 0.5) * 0.45, SHELF_Y[tier], 0.0), sz, int(p.slot), int(p.number), full)
+			t = _tank(units[p.shelf], Vector3((col - (cols - 1) * 0.5) * SHELF_COL, SHELF_Y[tier], 0.0), big, farm, s, int(p.number), full, x0)
+		if t != null:
+			tank_nodes[s] = t
+			if s == hide:
+				t.visible = false
+				items.pop_back()
 	set_hour(hour)
 
 
@@ -59,7 +78,7 @@ func _shelf(i: int, holds: int) -> Node3D:
 	u.position = SHELF_AT[i][0]
 	u.rotation.y = SHELF_AT[i][1]
 	add_child(u)
-	var w := 0.45 * (holds / 2)
+	var w := SHELF_COL * (holds / 2)
 	var m := wood(Color(0.5, 0.36, 0.22), Color(0.66, 0.5, 0.33), 9.0, 9.0, 55.0)
 	for y in [0.06] + SHELF_Y:
 		_box(Vector3(w, 0.025, SHELF_D), Vector3(0, y - 0.0125, 0), m, u)
@@ -76,7 +95,9 @@ func _room() -> void:
 	_box(Vector3(W, 0.05, W), Vector3(0, -0.025, 0), floor_m)
 	var wall := flat(Color(0.9, 0.82, 0.69), 0.92)           # (a warm cream: the keeper, 2026-10-27 "cozy")
 	var ceil_m := flat(Color(0.95, 0.91, 0.84), 0.95)
-	_box(Vector3(W, 0.05, W), Vector3(0, H + 0.025, 0), ceil_m)
+	# (over the walls' tops: a ceiling only as wide as the room let the sun in along its edges - a bright line on top of
+	# every wall, the keeper, 2026-10-27)
+	_box(Vector3(W + 0.4, 0.1, W + 0.4), Vector3(0, H + 0.05, 0), ceil_m)
 	_box(Vector3(W, H, 0.1), Vector3(0, H * 0.5, -W * 0.5 - 0.05), wall)          # behind the desk
 	_box(Vector3(W, H, 0.1), Vector3(0, H * 0.5, W * 0.5 + 0.05), wall)           # behind the keeper
 	# the left wall, round the window (1.2 wide, 1.2 high, its sill at 0.9)
@@ -163,8 +184,8 @@ func _desk() -> void:
 	_box(Vector3(DESK_SIZE.x - 0.1, 0.1, 0.02), Vector3(DESK.x, lh - 0.05, DESK.z - DESK_SIZE.z * 0.5 + 0.05), leg)    # the back rail
 	_drawer(Vector3(DESK.x + 0.45, lh - 0.07, DESK.z + DESK_SIZE.z * 0.5 - 0.03), 0.45, 0.12)
 	var y := DESK.y + DESK_SIZE.y * 0.5
-	_notebook(Vector3(DESK.x - 0.55, y, DESK.z + 0.12), 0.2)
-	_pencil(Vector3(DESK.x - 0.42, y, DESK.z + 0.22), 0.5)
+	_notebook(Vector3(DESK.x - 0.72, y, DESK.z + 0.22), 0.2)
+	_pencil(Vector3(DESK.x - 0.52, y, DESK.z + 0.3), 0.5)
 
 
 func _lights() -> void:
@@ -173,7 +194,8 @@ func _lights() -> void:
 	shade.emission_enabled = true
 	shade.emission = Color(1.0, 0.8, 0.55)
 	shade.emission_energy_multiplier = 0.25
-	_cyl(0.2, 0.14, Vector3(0, H - 0.26, 0), shade, self, 0.16, 32)
+	# (a fabric shade lets the light through: no shadow of it on the ceiling - it drew a dark disc there)
+	_cyl(0.2, 0.14, Vector3(0, H - 0.26, 0), shade, self, 0.16, 32).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_cyl(0.005, 0.18, Vector3(0, H - 0.1, 0), flat(Color(0.1, 0.1, 0.1)))
 	_lamp = OmniLight3D.new()
 	_lamp.position = Vector3(0, H - 0.42, 0)
@@ -194,8 +216,8 @@ func _lights() -> void:
 	add_child(_moon)
 	# the desk lamp's light on the tanks
 	_spot = SpotLight3D.new()
-	_spot.position = Vector3(DESK.x - 0.5, DESK.y + 0.6, DESK.z + 0.1)
-	_spot.look_at_from_position(_spot.position, Vector3(DESK.x, DESK.y, DESK.z), Vector3.UP)
+	_spot.position = Vector3(DESK.x - 0.7, DESK.y + 0.6, DESK.z)
+	_spot.look_at_from_position(_spot.position, Vector3(DESK.x, DESK.y, DESK.z - 0.15), Vector3.UP)
 	_spot.light_color = Color(1.0, 0.82, 0.58)
 	_spot.spot_range = 1.7
 	_spot.spot_angle = 42.0
@@ -205,12 +227,12 @@ func _lights() -> void:
 	# the lamp itself
 	var metal := flat(Color(0.15, 0.17, 0.16), 0.4, 0.6)
 	var by := DESK.y + DESK_SIZE.y * 0.5
-	_cyl(0.07, 0.015, Vector3(DESK.x - 0.58, by + 0.008, DESK.z - 0.15), metal)
-	var foot := Vector3(DESK.x - 0.58, by + 0.01, DESK.z - 0.15)
-	var head := Vector3(DESK.x - 0.5, by + 0.52, DESK.z - 0.02)
+	_cyl(0.07, 0.015, Vector3(DESK.x - 0.84, by + 0.008, DESK.z - 0.28), metal)
+	var foot := Vector3(DESK.x - 0.84, by + 0.01, DESK.z - 0.28)
+	var head := Vector3(DESK.x - 0.76, by + 0.52, DESK.z - 0.12)
 	_rod(foot, head, 0.008, metal)
 	# the shade, a cone, its open end to the tanks
-	var piv := _pivot(head, Vector3(DESK.x - 0.1, DESK.y, DESK.z + 0.05))
+	var piv := _pivot(head, Vector3(DESK.x + DESK_SMALL_X, DESK.y, DESK.z - 0.15))
 	var cone := _cyl(0.075, 0.12, Vector3(0, 0, -0.05), metal, piv, 0.025, 20)
 	cone.rotation.x = PI * 0.5            # (its wide end, -y, along the pivot's -z: to the tanks)
 	var bulb := flat(Color(1, 0.95, 0.85))
@@ -240,8 +262,8 @@ func set_hour(h: float) -> void:
 	_sun.visible = elev > 0.0
 	_moon.light_energy = 0.18 * (1.0 - day)
 	_moon.visible = day < 0.6
-	_lamp.light_energy = lerpf(1.9, 0.35, day)
-	_spot.light_energy = lerpf(2.4, 1.2, day)
+	_lamp.light_energy = lerpf(1.9, 0.35, day) * lamp_gain
+	_spot.light_energy = lerpf(2.4, 1.2, day) * spot_gain
 	if _env != null:
 		_env.background_color = Color(0.015, 0.025, 0.07).lerp(Color(0.32, 0.55, 0.85), day).lerp(Color(0.6, 0.5, 0.62), dusk * 0.5)
 		_env.ambient_light_color = Color(0.36, 0.33, 0.42).lerp(Color(0.86, 0.76, 0.62), day)

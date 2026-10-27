@@ -150,11 +150,32 @@ func _forward() -> Vector3:
 
 func _update_camera() -> void:
 	var dir := Vector3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw))
-	_cam.position = target + dir * cam_dist
+	var dist := minf(cam_dist, _room_reach(dir))
+	_cam.position = target + dir * dist
 	_cam.look_at(target, Vector3.UP if pitch < 1.55 else _forward())
 	# keep the point of interest in the middle of the area left of the side panel
 	var vp := get_viewport().get_visible_rect().size
-	_cam.h_offset = side_px * 0.5 * 2.0 * cam_dist * tan(deg_to_rad(_cam.fov * 0.5)) / vp.y
+	_cam.h_offset = side_px * 0.5 * 2.0 * dist * tan(deg_to_rad(_cam.fov * 0.5)) / vp.y
+
+
+## How far the camera can stand back from the target that way before a wall, the ceiling or the floor of the Home's
+## room round a keeper's box - or below the desk's (the shelf's) top (the keeper, 2026-10-27: it stops there, not
+## through). INF in the wild mode.
+func _room_reach(dir: Vector3) -> float:
+	if room == null:
+		return INF
+	var w: float = room.W
+	var inside: AABB = room.transform * AABB(Vector3(-w * 0.5, 0.0, -w * 0.5), Vector3(w, room.H, w))
+	inside = inside.grow(-25.0)                        # (4 cm off a wall)
+	inside.position.y = maxf(inside.position.y, _stand_y + 6.0)
+	inside.end.y = maxf(inside.end.y, inside.position.y + 1.0)
+	var t := INF
+	for k in 3:
+		if dir[k] > 1e-5:
+			t = minf(t, (inside.end[k] - target[k]) / dir[k])
+		elif dir[k] < -1e-5:
+			t = minf(t, (inside.position[k] - target[k]) / dir[k])
+	return maxf(t, 8.0)
 
 
 ## Point on the ground under a screen position (INF if the ray misses).

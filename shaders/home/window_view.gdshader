@@ -14,10 +14,11 @@ uniform float wrap = 1.0;
 uniform float y0 = 0.0;          // the cylinder's foot and height, in the world (where the picture's v runs 0..1)
 uniform float height = 10.0;
 varying vec3 wdir;
+uniform mat4 to_room = mat4(1.0);  // the world to the room's own metres (the room drawn round a box in the game, scaled)
 varying vec3 wpos;
 
 void vertex() {
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wpos = (to_room * MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wdir = normalize(wpos - vec3(0.0, 1.5, 0.0));
 }
 

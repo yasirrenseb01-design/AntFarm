@@ -63,6 +63,8 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/duty_test
 Report "duties in the nest: repeatable, counted, run while closed" ($r -match "DUTY TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/save_fuzz_test.gd") 300
 Report "broken or changed saves, settings and port messages: no code run, no hang, no script error" ($r -match "SAVE FUZZ TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/tank_spec_test.gd") 120
+Report "the tank's sizes: one set, the same as the simulation's" ($r -match "TANK SPEC TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/home_test.gd") 120
 Report "the Home's tanks and the wild mode's slots: the keeper's saves kept, hidden ones taken back" ($r -match "HOME TEST PASSED")
 # the keeper's own saves (read only): each still passes the loading checks - else the game would give it up as unreadable

@@ -59,6 +59,8 @@ static func save(slot: int, sim, extra: Dictionary = {}) -> bool:
 	meta.merge(extra, true)
 	meta["saved_unix"] = Time.get_unix_time_from_system()
 	meta["version"] = ProjectSettings.get_setting("application/config/version", "dev")
+	# where the nest's block lies along the box, from its left inside (metres: the Home draws it there on the glass)
+	meta["nest_x0"] = sim.nest_pos.x * 0.0005 - sim.nest.entrance.x * 0.0015
 	f.store_var({"meta": meta, "sim": sim.to_dict()})
 	f.close()
 	if FileAccess.file_exists(_path(slot)):

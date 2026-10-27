@@ -6,6 +6,8 @@ extends Node3D
 ## the box, scenery and shared materials.
 ## Layers: outworld_scene <- outworld_props <- outworld_crowd <- outworld_creatures <- outworld_camera <- outworld_view.
 const Ant := preload("res://scripts/sim/ant.gd")
+const Spec := preload("res://scripts/view/common/tank_spec.gd")
+const NestCard := preload("res://scripts/game/nest_card.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const PropHeights := preload("res://scripts/view/outworld/prop_heights.gd")
@@ -19,9 +21,10 @@ const SceneryDraw := preload("res://scripts/view/outworld/scenery_draw.gd")
 const KeeperRoom := preload("res://scripts/view/outworld/keeper_room.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units
-const ANT_SCALE := 1.1
+const ANT_SCALE := Spec.ANT_SCALE   # (1.1 until v0.11.53: drawn a tenth bigger than they are)
 const GARDEN_MARGIN := 110.0          # how far (units) the garden ground is drawn past the plot outdoors
-const SOIL_BOTTOM := -14.0           # the box's soil, ~2 cm deep, seen through the glass down to its floor (units)
+const M := 1.0 / Spec.VOXEL          # units a metre
+const SOIL_BOTTOM := -Spec.SOIL * M  # the box's soil, as deep as the nest, seen through the glass down to its floor (units)
 const FLUON_BAND := 12.0          # the slippery band painted under the rim (~1.8 cm): climbing ants turn back below it
 const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.6, 0.0))   # in the mandibles of a raised head (shader act 8)
 const THROWN_S := 1.6                # seconds: thrown off an enemy, on its back, righted again
@@ -30,7 +33,12 @@ var side_px := SIDE_PANEL_PX         # ... unless it is folded away (0; the HUD 
 
 var sim
 var wall_h := 42.0                   # the glass above the ground, to its rim (units; the box's own height in _build_box)
-var stand := "desk"                  # where a keeper's box stands in the Home: "desk" or "shelf" (main.gd sets it)
+var room_info := {}                  # a keeper's box: where it stands in the Home (keeper_room.build; main.gd sets it)
+var room                             # the Home's room round it (view/home/home_room.gd), or null (the wild mode)
+var _room_rot := Basis()
+var _stand_y := 0.0                  # the desk's or the shelf's top under the box (units)
+var _soil_mat: ShaderMaterial        # the soil seen through the glass (and its nest)
+var _card_at := 0
 var ground                           # ground_data.gd: textures, pheromone image, scenery and the keeper's tool
 var active := false
 var speed := 1.0
@@ -238,29 +246,34 @@ func _build_box() -> void:
 	glass.metallic_specular = 1.0
 	# (each pane's outer face only, and its inner one from inside: drawn both ways, a side seen through four faces of
 	# glass looked misty)
-	var trim := _mat(Color(0.12, 0.1, 0.09), 0.5)
-	# the glass, from the floor of the box (under its soil) to the rim (the keeper, 2026-10-27: its lower part was missing -
-	# the walls began just under the ground, the soil a thin strip on a wooden tray)
-	# as tall as the Home's tanks (home_kit.TANK, BIG: 20 and 27 cm from the box's floor; the keeper, 2026-10-27 "why is the
-	# tank not tall" - it was 6.6 cm, its glass 6 cm above the ground)
-	var tall := 0.27 if sim.WORLD.x > sim.SMALL_WORLD.x else 0.20
-	var top := SOIL_BOTTOM + tall / 0.0015
+	var trim := _mat(Color(0.07, 0.065, 0.06), 0.45)
+	# the box as the Home draws it (home_kit._tank), to the one set of sizes (tank_spec.gd): glass under it and round
+	# it, its soil as deep as the nest (the keeper, 2026-10-27: "the box is tall but its soil is not - where would the
+	# nest be?"), 20 cm tall from its floor (27 the bigger), a dark rim along its top and bottom edges
+	var gu := Spec.GLASS * M
+	var top := SOIL_BOTTOM + Spec.tall(sim.WORLD.x > sim.SMALL_WORLD.x) * M
+	var bottom := SOIL_BOTTOM - gu
 	wall_h = top + 2.0
-	var gh := top - SOIL_BOTTOM
-	var yh := (top + SOIL_BOTTOM) * 0.5
-	_box(Vector3(w, gh, 0.5), Vector3(w * 0.5, yh, -0.25), glass)
-	_box(Vector3(w, gh, 0.5), Vector3(w * 0.5, yh, d + 0.25), glass)
-	_box(Vector3(0.5, gh, d), Vector3(-0.25, yh, d * 0.5), glass)
-	_box(Vector3(0.5, gh, d), Vector3(w + 0.25, yh, d * 0.5), glass)
-	_box(Vector3(w + 1.0, 0.6, d + 1.0), Vector3(w * 0.5, SOIL_BOTTOM - 0.3, d * 0.5), glass)      # (its floor)
-	# the soil seen through the glass, and a dark rim along the top edge and the bottom one
+	var ow := w + gu * 2.0
+	var od := d + gu * 2.0
+	var gh := top - bottom
+	var yh := (top + bottom) * 0.5
+	_box(Vector3(ow, gh, gu), Vector3(w * 0.5, yh, -gu * 0.5), glass)
+	_box(Vector3(ow, gh, gu), Vector3(w * 0.5, yh, d + gu * 0.5), glass)
+	_box(Vector3(gu, gh, d), Vector3(-gu * 0.5, yh, d * 0.5), glass)
+	_box(Vector3(gu, gh, d), Vector3(w + gu * 0.5, yh, d * 0.5), glass)
+	_box(Vector3(w, gu, d), Vector3(w * 0.5, bottom + gu * 0.5, d * 0.5), glass)      # (its floor)
 	_build_soil_edge(w, d)
-	for y in [top, SOIL_BOTTOM - 0.4]:
-		for e in [[Vector3(w + 3, 1.2, 1.5), Vector3(w * 0.5, y, -0.6)], [Vector3(w + 3, 1.2, 1.5), Vector3(w * 0.5, y, d + 0.6)],
-				[Vector3(1.5, 1.2, d), Vector3(-0.6, y, d * 0.5)], [Vector3(1.5, 1.2, d), Vector3(w + 0.6, y, d * 0.5)]]:
+	var r := Spec.RIM * M
+	for y in [bottom + r * 0.5, top - r * 0.5]:
+		for e in [[Vector3(ow + r, r, r), Vector3(w * 0.5, y, d + gu)], [Vector3(ow + r, r, r), Vector3(w * 0.5, y, -gu)],
+				[Vector3(r, r, od), Vector3(w + gu, y, d * 0.5)], [Vector3(r, r, od), Vector3(-gu, y, d * 0.5)]]:
 			_box(e[0], e[1], trim)
-	# where it stands in the Home: the desk or a shelf, and the room round it (keeper_room.gd)
-	KeeperRoom.build(self, w, d, SOIL_BOTTOM - 1.0, stand)
+	# where it stands in the Home: the Home's own room round it (keeper_room.gd)
+	room = KeeperRoom.build(self, room_info, sim.WORLD.x > sim.SMALL_WORLD.x, bottom, _env)
+	_stand_y = bottom
+	_cam.far = 130000.0                  # (the window's view: mountains 150 m off)
+	_room_rot = room.transform.basis.orthonormalized()
 
 
 ## The soil seen through the glass: a skirt from the uneven ground surface down to the box's floor, facing out (grainy:
@@ -290,24 +303,29 @@ func _build_soil_edge(w: float, d: float) -> void:
 				st.add_vertex(v)
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
-	var grain := NoiseTexture2D.new()
-	grain.width = 256
-	grain.height = 256
-	grain.seamless = true
-	var gn := FastNoiseLite.new()
-	gn.frequency = 0.09
-	gn.fractal_octaves = 3
-	grain.noise = gn
-	var ramp := Gradient.new()
-	ramp.set_color(0, Color(0.42, 0.3, 0.2))
-	ramp.set_color(1, Color(0.78, 0.62, 0.45))
-	grain.color_ramp = ramp
-	var m := _vc_mat(0.95)
-	m.albedo_texture = grain
-	m.uv1_triplanar = true
-	m.uv1_scale = Vector3.ONE * 0.04
-	mi.material_override = m
+	# the Home's tank soil (shaders/common/tank_soil.gdshader): layered, the colony's nest on the long faces where it lies
+	_soil_mat = ShaderMaterial.new()
+	_soil_mat.shader = load("res://shaders/common/tank_soil.gdshader")
+	_soil_mat.set_shader_parameter("mpu", Spec.VOXEL)
+	_soil_mat.set_shader_parameter("soil_top", 0.0)
+	_soil_mat.set_shader_parameter("nest_x0", _nest_xz.x - float(sim.nest.entrance.x))
+	_soil_mat.set_shader_parameter("nest_w", float(sim.nest.nx))
+	_soil_mat.set_shader_parameter("nest_h", float(sim.nest.hy()))
+	_soil_mat.set_shader_parameter("seed", float(sim.WORLD.x))
+	mi.material_override = _soil_mat
 	add_child(mi)
+	_refresh_nest_card(true)
+
+
+## The nest on the soil's faces: its side view again every few seconds (as the ants dig).
+func _refresh_nest_card(now := false) -> void:
+	var t := Time.get_ticks_msec()
+	if _soil_mat == null or (not now and t - _card_at < 5000):
+		return
+	_card_at = t
+	_soil_mat.set_shader_parameter("nest_tex", ImageTexture.create_from_image(NestCard.image(sim.nest)))
+	_soil_mat.set_shader_parameter("nest_h", float(sim.nest.hy()))
+	_soil_mat.set_shader_parameter("has_tex", true)
 
 
 func _box(size: Vector3, pos: Vector3, mat: Material) -> void:

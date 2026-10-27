@@ -15,6 +15,7 @@ const MAX_TEXT := 4096
 const PRICES := {"small": 100.0, "farm": 80.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0}
 const MAX_SHELVES := 4
 
+var dry := false                 # (dev: --home-layout - bought in memory only, home.json left as it was)
 var tanks: Array = []          # slot numbers, in the order the tanks were had
 var wild: Array = []
 var big := 0                   # the bigger tank's slot (0: not bought)
@@ -87,6 +88,8 @@ func _first_time() -> void:
 
 
 func save_layout() -> void:
+	if dry:
+		return
 	DirAccess.make_dir_recursive_absolute(Store.base)
 	var f := FileAccess.open(_path(), FileAccess.WRITE)
 	if f != null:

@@ -11,11 +11,11 @@ const NestCard := preload("res://scripts/game/nest_card.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const W := 4.0                    # the room, x and z
 const H := 2.6
-const DESK := Vector3(0.0, 0.75, -1.62)      # the desk top's centre (its top surface at y 0.75)
-const DESK_SIZE := Vector3(1.5, 0.04, 0.72)
-const TANK := Vector3(0.30, 0.20, 0.15)      # a small tank's glass
-const BIG := Vector3(0.44, 0.27, 0.22)       # the bigger one's (the shop's second tank)
-const FARM := Vector3(0.30, 0.22, 0.035)     # an ant farm: two panes close together, the soil between them
+const Spec := preload("res://scripts/view/common/tank_spec.gd")
+const TankSoil := preload("res://shaders/common/tank_soil.gdshader")
+const DESK := Vector3(0.0, 0.75, -1.58)      # the desk top's centre (its top surface at y 0.75)
+const DESK_SIZE := Vector3(1.9, 0.04, 0.8)   # (1.9 m: the tanks as big as the game's boxes, 60 and 90 cm, side by side -
+                                             # the keeper, 2026-10-27; 1.5 x 0.72 until v0.11.52)
 const DOOR := Vector3(1.98, 0.0, 0.85)       # the door's foot, on the right wall
 const WIN_Z := -0.7                          # the window's centre along the left wall
 const CHAIR := Vector3(0.1, 0.0, -0.87)      # the chair's foot, and its turn
@@ -347,102 +347,114 @@ func _chair() -> void:
 
 # ---------------------------------------------------------------- the tanks
 
-## One tank: a wooden base, glass, a wooden lid with a vent, and, when it has a colony, the soil behind the glass with
-## that colony's nest in it (nest_card.gd, written with the save; until it is saved again, tunnels made up); a card
-## with its number on the base. An ant farm: two panes close together on a wider stand, soil nearly to the top.
-func _tank(parent: Node3D, at: Vector3, sz: Vector3, slot: int, number: int, has_colony: bool) -> void:
-	var farm := sz.z < 0.06
+## One tank, to the one set of sizes (view/common/tank_spec.gd - the same box the game draws): glass on all sides and
+## under it, a dark rim along its top and bottom edges, and, when it has a colony, its soil as deep as the nest with
+## the colony's nest on its long faces where it lies along the box (shaders/common/tank_soil.gdshader; nest_card.gd,
+## written with the save; nest_x0: the nest's block from the box's left inside, metres). A card with its number on
+## the front pane. An ant farm: two panes close together in a wooden frame on a foot, its soil nearly to the top.
+## Returns the tank's node (its origin the middle of its foot).
+func _tank(parent: Node3D, at: Vector3, big: bool, farm: bool, slot: int, number: int, has_colony: bool, nest_x0: float) -> Node3D:
 	var t := Node3D.new()
 	t.position = at
 	parent.add_child(t)
-	var base_m := wood(Color(0.32, 0.2, 0.1), Color(0.46, 0.29, 0.15), 9.0, 9.0, 50.0)
-	var lid_m := base_m.duplicate()
-	var base_d := 0.09 if farm else sz.z + 0.02
-	_box(Vector3(sz.x + 0.02, 0.025, base_d), Vector3(0, 0.0125, 0), base_m, t)
 	var glass := StandardMaterial3D.new()
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	glass.albedo_color = Color(0.85, 0.95, 0.95, 0.1)
+	glass.albedo_color = Color(0.85, 0.95, 0.95, 0.05)
 	glass.roughness = 0.04
 	glass.metallic_specular = 0.9
-	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var g := _box(sz, Vector3(0, 0.025 + sz.y * 0.5, 0), glass, t)
-	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_box(Vector3(sz.x + 0.012, 0.015, sz.z + 0.012), Vector3(0, 0.025 + sz.y + 0.0075, 0), lid_m, t)
-	if farm:
-		for sx in [-1, 1]:              # the frame's sides
-			_box(Vector3(0.012, sz.y, sz.z + 0.012), Vector3(sx * (sz.x * 0.5 + 0.006), 0.025 + sz.y * 0.5, 0), lid_m, t)
-	else:
-		_box(Vector3(0.08, 0.004, 0.05), Vector3(0.07, 0.025 + sz.y + 0.016, 0), flat(Color(0.2, 0.2, 0.2), 0.6, 0.5), t)
+	var g := Spec.GLASS
+	var soil: ShaderMaterial = null
 	if has_colony:
-		var soil := ShaderMaterial.new()
-		soil.shader = _soil_shader()
+		soil = ShaderMaterial.new()
+		soil.shader = TankSoil
 		soil.set_shader_parameter("seed", float(slot) * 3.7)
 		var tex := NestCard.read(Store.base + "saves", slot)
-		var fill := 0.86 if farm else 0.72
-		var ssz := Vector3(sz.x - 0.006, sz.y * fill, sz.z - 0.006)
-		soil.set_shader_parameter("size", ssz)
 		if tex != null:
 			soil.set_shader_parameter("nest_tex", tex)
 			soil.set_shader_parameter("has_tex", true)
-		_box(ssz, Vector3(0, 0.025 + ssz.y * 0.5, 0), soil, t)
-	# the card with its number
-	var cz := base_d * 0.5 + 0.0105
+	var mats: Array = []
+	var o: Vector3
+	var foot_d: float
+	if farm:
+		var f := Spec.FARM
+		o = Vector3(f.x + Spec.FARM_FRAME * 2.0, f.y + Spec.FARM_AIR + Spec.FARM_FRAME, f.z + g * 2.0)
+		foot_d = 0.07
+		var wood_m := wood(Color(0.32, 0.2, 0.1), Color(0.46, 0.29, 0.15), 9.0, 9.0, 50.0)
+		var foot_y := 0.02
+		_box(Vector3(o.x + 0.02, foot_y, foot_d), Vector3(0, foot_y * 0.5, 0), wood_m, t)
+		var y0 := foot_y
+		for sx in [-1, 1]:
+			_box(Vector3(Spec.FARM_FRAME, o.y, o.z), Vector3(sx * (o.x - Spec.FARM_FRAME) * 0.5, y0 + o.y * 0.5, 0), wood_m, t)
+		_box(Vector3(o.x, Spec.FARM_FRAME, o.z), Vector3(0, y0 + o.y - Spec.FARM_FRAME * 0.5, 0), wood_m, t)
+		for sz in [-1, 1]:
+			_box(Vector3(f.x, o.y - Spec.FARM_FRAME, g), Vector3(0, y0 + (o.y - Spec.FARM_FRAME) * 0.5, sz * (f.z + g) * 0.5), glass, t).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if soil != null:
+			_soil_box(t, Vector3(f.x, f.y, f.z), Vector3(0, y0 + f.y * 0.5, 0), soil, -f.x * 0.5, f.x, f.y)
+		mats.append(wood_m)
+		o.y += foot_y
+	else:
+		var f := Spec.floor_of(big)
+		var tall := Spec.tall(big)
+		o = Spec.outside(big)
+		foot_d = o.z
+		var rim := _rim_mat()
+		mats.append(rim)
+		# the panes: under it, front and back, the two ends
+		var panes := [[Vector3(f.x, g, f.y), Vector3(0, g * 0.5, 0)],
+			[Vector3(o.x, o.y, g), Vector3(0, o.y * 0.5, (o.z - g) * 0.5)], [Vector3(o.x, o.y, g), Vector3(0, o.y * 0.5, -(o.z - g) * 0.5)],
+			[Vector3(g, o.y, f.y), Vector3((o.x - g) * 0.5, o.y * 0.5, 0)], [Vector3(g, o.y, f.y), Vector3(-(o.x - g) * 0.5, o.y * 0.5, 0)]]
+		for p in panes:
+			_box(p[0], p[1], glass, t).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var r := Spec.RIM
+		for y in [r * 0.5, o.y - r * 0.5]:
+			_box(Vector3(o.x + r, r, r), Vector3(0, y, o.z * 0.5), rim, t)
+			_box(Vector3(o.x + r, r, r), Vector3(0, y, -o.z * 0.5), rim, t)
+			_box(Vector3(r, r, o.z), Vector3(o.x * 0.5, y, 0), rim, t)
+			_box(Vector3(r, r, o.z), Vector3(-o.x * 0.5, y, 0), rim, t)
+		if soil != null:
+			_soil_box(t, Vector3(f.x, Spec.SOIL, f.y), Vector3(0, g + Spec.SOIL * 0.5, 0), soil, nest_x0 - f.x * 0.5, Spec.NEST.x, Spec.NEST.y)
+		t.set_meta("inside", Vector3(-f.x * 0.5, g, -f.y * 0.5))        # the box's floor, left back corner (keeper_room)
+		assert(tall > Spec.SOIL)
+	if soil != null:
+		mats.append(soil)
+	# the card with its number, low on the front
+	var cz := o.z * 0.5 + 0.0015
+	var cx := -o.x * 0.5 + 0.035
 	var card := Label3D.new()
 	card.text = str(number)
 	card.font_size = 48
 	card.pixel_size = 0.0005
 	card.modulate = Color(0.16, 0.11, 0.07)
 	card.outline_size = 0
-	card.position = Vector3(-sz.x * 0.5 + 0.03, 0.0125, cz)
+	card.position = Vector3(cx, 0.015, cz + 0.0006)
 	card.double_sided = false
 	t.add_child(card)
-	_box(Vector3(0.04, 0.02, 0.001), Vector3(-sz.x * 0.5 + 0.03, 0.0125, cz - 0.0003), flat(Color(0.9, 0.85, 0.72), 0.9), t)
-	items.append({"kind": "tank", "slot": slot, "number": number, "mats": [base_m, lid_m],
-		"box": t.global_transform * AABB(Vector3(-sz.x * 0.5 - 0.01, 0, -base_d * 0.5), Vector3(sz.x + 0.02, sz.y + 0.05, base_d))})
+	_box(Vector3(0.04, 0.02, 0.001), Vector3(cx, 0.015, cz), flat(Color(0.9, 0.85, 0.72), 0.9), t)
+	items.append({"kind": "tank", "slot": slot, "number": number, "mats": mats,
+		"box": t.global_transform * AABB(Vector3(-o.x * 0.5, 0, -maxf(o.z, foot_d) * 0.5), Vector3(o.x, o.y, maxf(o.z, foot_d)))})
+	return t
 
 
-static var _soil: Shader
+## The soil block: its shader told where the ground is and where the nest lies along it (in its own metres).
+func _soil_box(t: Node3D, size: Vector3, centre: Vector3, m: ShaderMaterial, nest_x0: float, nest_w: float, nest_h: float) -> void:
+	m.set_shader_parameter("mpu", 1.0)
+	m.set_shader_parameter("soil_top", size.y * 0.5)
+	m.set_shader_parameter("nest_x0", nest_x0)
+	m.set_shader_parameter("nest_w", nest_w)
+	m.set_shader_parameter("nest_h", nest_h)
+	_box(size, centre, m, t)
 
-static func _soil_shader() -> Shader:
-	if _soil == null:
-		_soil = Shader.new()
-		_soil.code = """
-shader_type spatial;
-// soil in a tank: the front and back show the colony's real nest (nest_tex: its side view, nest_card.gd), the rest is
-// plain soil; without the image, tunnels made up from noise
-uniform float seed = 0.0;
-uniform vec3 size = vec3(0.3, 0.14, 0.14);
-uniform sampler2D nest_tex : filter_linear;
-uniform bool has_tex = false;
-varying vec3 opos;
-varying vec3 onrm;
-float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float vn(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
-void vertex() { opos = VERTEX; onrm = NORMAL; }
-void fragment() {
-	vec2 p = opos.xy * 40.0 + seed;
-	float n = vn(p) * 0.5 + vn(p * 2.3) * 0.3 + vn(p * 7.0) * 0.2;
-	vec3 c = mix(vec3(0.22, 0.14, 0.08), vec3(0.36, 0.25, 0.15), n);
-	c *= 0.85 + 0.3 * h2(floor(opos.xy * 900.0));
-	bool face = abs(onrm.z) > 0.5;
-	if (face && has_tex) {
-		vec2 uv = vec2(opos.x / size.x + 0.5, 0.5 - opos.y / size.y);
-		if (onrm.z < 0.0) { uv.x = 1.0 - uv.x; }
-		vec3 t = texture(nest_tex, uv).rgb;
-		c = t * (0.9 + 0.2 * h2(floor(opos.xy * 700.0)));
-	} else if (face) {
-		float tt = abs(vn(opos.xy * 22.0 + seed * 1.3) - 0.5);
-		float ch = vn(opos.xy * 9.0 + seed * 2.1);
-		float tun = 1.0 - smoothstep(0.018, 0.03 + 0.05 * smoothstep(0.62, 0.8, ch), tt);
-		tun *= smoothstep(size.y * 0.5 - 0.005, size.y * 0.5 - 0.025, opos.y);
-		c = mix(c, vec3(0.06, 0.04, 0.025), tun);
-	}
-	ALBEDO = c;
-	ROUGHNESS = 0.95;
-}
-"""
-	return _soil
+
+static var _rim: Shader
+
+## The dark rim (silicone) along a tank's edges: glowing a little while the hand is on the tank.
+static func _rim_mat() -> ShaderMaterial:
+	if _rim == null:
+		_rim = Shader.new()
+		_rim.code = "shader_type spatial;\nuniform float hilite = 0.0;\nvoid fragment() { ALBEDO = vec3(0.07, 0.065, 0.06); ROUGHNESS = 0.45; EMISSION = vec3(0.9, 0.6, 0.25) * hilite; }"
+	var m := ShaderMaterial.new()
+	m.shader = _rim
+	return m
 
 
 ## The hand on an item (or none): its base glows a little.

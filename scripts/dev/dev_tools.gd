@@ -242,6 +242,10 @@ func _take_shot() -> void:
 			nest_view.snap_camera()
 	if _opts.has("colonies"):
 		hud.open_colonies(String(_opts["colonies"]) if _opts["colonies"] != "1" else "")    # (--colonies=wild|keeper)
+	if _opts.has("home-layout") and home != null:
+		home.dry = true                      # (--home-layout=big,shelf4,small,farm...: bought in memory only, to look at)
+		for it in String(_opts["home-layout"]).split(","):
+			home.buy(it)
 	if _opts.has("home"):
 		home_room.open()                     # (--home [--home-hour=<h>] [--home-at=x,z,yaw,pitch]: the Home, the camera there)
 		if _opts.has("home-at"):

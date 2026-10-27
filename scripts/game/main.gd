@@ -143,7 +143,7 @@ func _ready() -> void:
 	nest_view.setup(sim)
 	outworld = OutworldView.new()
 	add_child(outworld)
-	outworld.stand = String(_opts.get("stand", _stand_of(slot)))     # (--stand=desk|shelf: dev)
+	outworld.room_info = _room_info()
 	outworld.setup(sim)
 	hud = Hud.new()
 	add_child(hud)
@@ -294,14 +294,12 @@ func _process(delta: float) -> void:
 	_pt("hud", t0)
 
 
-## Where this colony's box stands in the Home (the outworld view draws it there): "shelf" for a tank on a shelf, else
-## "desk" (the first small tank and the bigger one; the wild mode's plots draw no room).
-func _stand_of(s: int) -> String:
+## Where this colony's box stands in the Home, for the outworld view to draw the room round it (keeper_room.gd): the
+## Home's places and shelves and this slot - or only the slot (a test, the demo: its box on the desk by itself).
+func _room_info() -> Dictionary:
 	if home != null and _persist and not _opts.has("testsave"):
-		for p in home.places():
-			if int(p.slot) == s and int(p.shelf) >= 0:
-				return "shelf"
-	return "desk"
+		return {"places": home.places(), "shelves": home.shelves, "slot": slot}
+	return {"slot": slot}
 
 
 ## Graphics quality and the frame-rate cap from the settings (game/graphics.gd); the first time, from the graphics card.

@@ -46,7 +46,7 @@ scripts/
                prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader),
                garden_layout.gd (จัดของประดับฉากสวนเป็นกลุ่ม: หินใหญ่นอกมุมแปลง มอส กรวด ใบไม้ ดงหญ้า; v0.11.37),
                scenery_draw.gd (สร้างเมชของประดับจากผังใน ground_data; แยกจาก outworld_scene v0.11.37),
-               keeper_room.gd (โต๊ะหรือชั้นวางและห้องรอบกล่องของรังตู้ หน่วยเมตรใต้โหนดที่ขยาย; v0.11.52)
+               keeper_room.gd (ห้อง Home รอบกล่องของรังตู้ หน่วยเมตรใต้โหนดที่ขยาย; v0.11.52–53)
     nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
     ui/        hud.gd + parts/ (base, colonies, enemies, controls, panel), draw_kit.gd (วาดมด 2 มิติในภาพตัดขวางของแผงข้าง), species_window.gd (เลือกชนิดมดตอนเริ่มรังใหม่), paper.gd (สไตล์สมุดบันทึก: กระดาษคราฟต์ ธีมหน้าต่าง เสียงดินสอ), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()),
                sounds.gd (เสียงเตือน), music.gd (เพลงพื้นหลัง 2 เพลงจากไฟล์ `assets/audio/music/` เล่นสลับกัน)
@@ -122,7 +122,10 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
   ตู้แอนท์ฟาร์ม (v0.11.49): `"farms"` ช่องใหม่เสมอ รังเป็นแบบกระจก (`nest_of`); ภาพรังสำหรับกระจกตู้ `saves/slotN_nest.png` (`game/nest_card.gd`, เขียนทุกครั้งที่เซฟ);
   ห้อง: `view/home/home_kit.gd` (ของ) ← `home_room.gd` (โครง แสงตามเวลา `set_hour`); การควบคุม `game/home.gd`;
   มือ 3 มิติ `view/home/home_hand.gd` (ลูกของกล้อง; ตั้งค่า `home_hand`/`home_cross`);
-  รังตู้ในฉากหาอาหาร: `view/outworld/keeper_room.gd` (โต๊ะ/ชั้นวาง + ห้อง รอบกล่อง; `outworld.stand` จาก `main._stand_of`)
+  รังตู้ในฉากหาอาหาร: `view/outworld/keeper_room.gd` (ห้อง Home ทั้งห้องรอบกล่อง ขยายเป็นหน่วยเกม ไฟห้องตามเวลาในเกม;
+  `outworld.room_info` จาก `main._room_info`); **ขนาดตู้/ดิน/รัง/มด: `view/common/tank_spec.gd` ที่เดียว**
+  (+ `tests/tank_spec_test.gd`); ดินหลังกระจก `shaders/common/tank_soil.gdshader` (Home และในเกม); มือ `assets/models/hand/` จาก `tools/blender/build_hand.py`;
+  `meta.nest_x0` (เมตร จากซ้ายในกล่องถึงบล็อกรัง) เขียนกับเซฟ
   ครั้งแรก: ตู้ 1 = ช่องว่างใหม่, โหมดป่า = ช่องสวนเลขต่ำสุดที่มี (`tests/home_test.gd`); ห้อง 3 มิติ `scripts/view/home/home_room.gd`
 - `scripts/game/save_store.gd`: ช่อง 1–32 (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
 - เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 11)
