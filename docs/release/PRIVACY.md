@@ -6,8 +6,9 @@
 
 - เกมไม่ต่ออินเทอร์เน็ต ไม่มีบัญชี ไม่มีโฆษณา ไม่มีสถิติการใช้งาน ไม่มีการรายงานข้อผิดพลาดอัตโนมัติ
 - ทุกอย่างที่เกมเขียนอยู่ในเครื่องคุณ ในโฟลเดอร์ `%APPDATA%\Godot\app_userdata\AntFarm\`
-  - `saves\` — รังมดของคุณ 3 ช่อง (รวมชื่อมดที่คุณตั้ง) และสำเนาสำรองก่อนอัปเดตรูปแบบเซฟ
-  - `settings.cfg` — การตั้งค่า (ภาษา เสียงเพลง ช่องเซฟที่เล่นอยู่ ฯลฯ)
+  - `saves\` — รังมดของคุณ (ตู้ในบ้านและแปลงในโหมดป่า รวมชื่อมดที่คุณตั้ง) และสำเนาสำรองก่อนอัปเดตรูปแบบเซฟ
+  - `home.json` — ตู้ไหนเป็นรังไหน ของที่ซื้อในร้าน; `harmony.json` — แต้ม Colony Harmony
+  - `settings.cfg` — การตั้งค่า (ภาษา เสียงเพลง รังที่เล่นอยู่ ฯลฯ)
   - `desktop_mode.log` — บันทึกการเข้า/ออกโหมดวอลเปเปอร์ (ขนาดหน้าต่างและชื่อไดรเวอร์การ์ดจอ) ไว้ช่วยหาสาเหตุเมื่อมีปัญหา
   - `logs\` — log ของ Godot (ข้อความที่เกมพิมพ์ระหว่างเล่น)
 - ลบโฟลเดอร์นี้ = ลบทุกอย่างที่เกมเก็บไว้ (รังมดหายด้วย)
@@ -22,8 +23,10 @@
 
 - The game never connects to the internet: no account, no ads, no usage statistics, no automatic crash reports.
 - Everything the game writes stays on your computer, in `%APPDATA%\Godot\app_userdata\AntFarm\`:
-  - `saves\` — your 3 colony slots (including the names you give ants) and backups made before a save-format update
-  - `settings.cfg` — your settings (language, music volume, the slot you play, …)
+  - `saves\` — your colonies (the tanks at home and the wild mode's plots, including the names you give ants) and backups made
+    before a save-format update
+  - `home.json` — which tank holds which colony, what you bought in the shop; `harmony.json` — your Colony Harmony points
+  - `settings.cfg` — your settings (language, music volume, the colony you play, …)
   - `desktop_mode.log` — a note each time the wallpaper mode starts or stops (window size and graphics driver name), to help find problems
   - `logs\` — Godot's log (what the game prints while it runs)
 - Deleting that folder removes everything the game keeps (including your colonies).

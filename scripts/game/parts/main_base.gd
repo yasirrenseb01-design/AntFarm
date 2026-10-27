@@ -56,6 +56,8 @@ func _pt(key: String, t0: int) -> int:
 	fprof[key] = fprof.get(key, 0) + now - t0
 	return now
 var _opts := {}
+## the command-line options the released game keeps (main._ready): the wallpaper restart's own
+const RELEASE_OPTS := ["desktop", "win", "slot", "view", "gpu", "desk-driver", "windowed"]
 
 
 func _set_mode(m: String) -> void:

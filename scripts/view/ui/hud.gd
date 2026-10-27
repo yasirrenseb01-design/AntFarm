@@ -113,7 +113,8 @@ func _tick_banner(delta: float) -> void:
 
 
 func _unhandled_key_input(e: InputEvent) -> void:
-	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F10:
+	# (developer fast-forward speeds - not in the released game: R5)
+	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F10 and not OS.has_feature("template"):
 		for b in _dev_speed_buttons:
 			b.visible = not b.visible            # developer fast-forward speeds
 			if not b.visible and b.button_pressed:

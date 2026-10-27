@@ -39,6 +39,13 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		var kv := a.trim_prefix("--").split("=", true, 1)
 		_opts[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if OS.has_feature("template"):
+		# (PART EA-R R5) the released game takes only what it passes itself when it starts again as the wallpaper and back
+		# (_enter_desktop, desktop_mode.gd) - none of the developer's options: some write files wherever they are told
+		# (--shot, --csv, --nestpng), others change the colony or open a test one
+		for k in _opts.keys():
+			if not k in RELEASE_OPTS:
+				_opts.erase(k)
 	sim = Sim.new()
 	_persist = not (_opts.has("selftest") or _opts.has("shot")) or _opts.has("sandbox")
 	if _opts.has("sandbox"):
