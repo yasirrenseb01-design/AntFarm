@@ -44,6 +44,8 @@ static func prepare(outworld) -> void:
 static func write(dir: String, slot: int, outworld) -> void:
 	if outworld == null or not is_instance_valid(outworld) or not outworld.has_node("OutworldCard"):
 		return
+	if DisplayServer.get_name() == "headless":
+		return                            # (no renderer: nothing to draw - tests, the self-test)
 	var vp: SubViewport = outworld.get_node("OutworldCard")
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	var gm: ShaderMaterial = outworld._ground_mat

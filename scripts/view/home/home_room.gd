@@ -10,7 +10,7 @@ const View := preload("res://shaders/home/window_view.gdshader")
 const Yard := preload("res://scripts/view/home/home_yard.gd")
 const Fridge := preload("res://scripts/view/home/home_fridge.gd")
 const Zodiac := preload("res://scripts/view/home/zodiac_stars.gd")
-const FRIDGE_AT := Vector3(-1.58, 0.0, -1.66)    # the wintering fridge: the corner left of the desk, its door to the room
+const FRIDGE_AT := Vector3(-1.48, 0.0, -1.64)    # the wintering fridge: the corner left of the desk, its door to the room
 const SHELF_D := 0.42                        # a shelf's depth; a column for a small tank (tank_spec), two tiers
 const SHELF_COL := 0.69
 const SHELF_Y := [0.55, 1.08]                # the tops of its boards a tank stands on
@@ -67,9 +67,9 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 		var full: bool = filled.call(s)
 		if full and bool(Store.meta(s).get("fridge", false)):
 			resting.append(int(p.number))
-			if not p.big and not p.get("farm", false) and not free_spots.is_empty():
-				var t2: Node3D = _tank(fr.node, free_spots.pop_front(), false, false, s, int(p.number), true,
-					float(Store.meta(s).get("nest_x0", (Spec.SMALL.x - Spec.NEST.x) * 0.5)))
+			if not p.get("farm", false) and not free_spots.is_empty():
+				var t2: Node3D = _tank(fr.node, free_spots.pop_front(), p.big, false, s, int(p.number), true,
+					float(Store.meta(s).get("nest_x0", (Spec.floor_of(p.big).x - Spec.NEST.x) * 0.5)))
 				tank_nodes[s] = t2
 				if s == hide:
 					t2.visible = false
@@ -165,12 +165,12 @@ func _window() -> void:
 		var m := ShaderMaterial.new()
 		m.shader = View
 		m.set_shader_parameter("near", near)
-		m.set_shader_parameter("wrap", 6.0 if near else 3.0)
+		m.set_shader_parameter("wrap", 24.0 if near else 3.0)
 		m.set_shader_parameter("y0", (3.5 if near else 40.0) - (5.0 if near else 85.0))
 		m.set_shader_parameter("height", 10.0 if near else 170.0)
 		var mi := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
-		cm.top_radius = 26.0 if near else 150.0
+		cm.top_radius = 140.0 if near else 150.0        # (the near ring - the forest's edge - beyond the streets: v0.11.56)
 		cm.bottom_radius = cm.top_radius
 		cm.height = 10.0 if near else 170.0
 		cm.cap_top = not near                     # (the sky's top: no background showing through, looking up)

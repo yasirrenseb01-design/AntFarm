@@ -1,116 +1,159 @@
 extends RefCounted
-## What one sees close by out of the Home's window (the keeper, 2026-10-27, with a photo: "only green grass close to
-## the window - put a house there, a white fence and a few trees in the lawn"): a white picket fence along the edge of
-## the garden, a neighbour's house beyond it - white clapboard, a grey gable roof, windows, a door with a porch, a
-## chimney - two leafy trees and a few shrubs. The meadow, the forest's edge and the mountains stay painted behind them
-## (shaders/home/window_view.gdshader). Built in code; metres; the window looks out along -x from x = -2
-## (home_kit.W), the lawn at y = 0. home_room._window calls build().
+## What one sees out of the Home's window: an American suburb (the keeper, 2026-10-27: "like a neighbourhood in
+## America - open lawns, the street running on as far as one can see, no fence across it"). Our lawn down to a
+## pavement and a street running across the view (left to right, to the edge of sight both ways); across it a row of
+## one-storey clapboard houses facing us on open front lawns, each its own colours; beside the one in front of us a
+## side street running away from the window, houses facing it on both sides; low-poly trees (Blender:
+## tools/blender/build_tree.py) and shrubs on the lawns, street lamps. The forest's edge and the mountains stay painted
+## far behind (shaders/home/window_view.gdshader, its near ring now 140 m off). Built in code; metres; the window looks
+## out along -x from x = -2 (home_kit.W), the ground at y = 0. home_room._window calls build().
 
 const Kit := preload("res://scripts/view/home/home_kit.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
-const ROAD_Z := Vector2(3.6, 9.6)            # the street beside the neighbour's house, running away from the window
-const ROAD_X := Vector2(-8.6, -25.5)         # (to the forest's painted edge, 26 m off)
-const FENCE_X := -8.0                 # the fence, along z
-const FENCE_Z := Vector2(-13.0, 11.0)
-const HOUSE := Vector3(-19.0, 0.0, -3.0)     # the neighbour's house: the middle of its foot
+const FAR := 130.0                           # how far the streets run (short of the painted forest)
+const CROSS_X := Vector2(-13.0, -19.0)       # the street across the view: its two kerbs (x; our front lawn ~9 m)
+const SIDE_Z := Vector2(3.6, 9.6)            # the side street running away from the window: its kerbs (z)
+const ROW_X := -30.0                         # the houses across the street: the middle of their feet (x)
 const HOUSE_SIZE := Vector3(6.5, 3.0, 9.0)   # depth (x), the walls' height, width (z)
+const WALLS := [Color(0.93, 0.93, 0.9), Color(0.78, 0.84, 0.88), Color(0.93, 0.88, 0.72), Color(0.86, 0.8, 0.74),
+	Color(0.74, 0.8, 0.72), Color(0.95, 0.95, 0.95), Color(0.84, 0.74, 0.66)]
+const DOORS := [Color(0.2, 0.32, 0.3), Color(0.55, 0.16, 0.12), Color(0.16, 0.2, 0.35), Color(0.12, 0.12, 0.12),
+	Color(0.45, 0.3, 0.16)]
+const ROOFS := [Color(0.32, 0.33, 0.35), Color(0.24, 0.25, 0.28), Color(0.38, 0.3, 0.26), Color(0.3, 0.27, 0.25)]
 
 
-static func build(room: Node3D) -> void:
-	_fence(room)
-	# the neighbour's house, a street beside it (the keeper, 2026-10-27), a house across the street on the left and
-	# another on the right of the first
-	_house(room, HOUSE, Color(0.93, 0.93, 0.9), Color(0.2, 0.32, 0.3), Color(0.32, 0.33, 0.35))
-	_house(room, Vector3(-19.5, 0.0, 15.2), Color(0.78, 0.84, 0.88), Color(0.55, 0.16, 0.12), Color(0.24, 0.25, 0.28))
-	_house(room, Vector3(-18.5, 0.0, -15.0), Color(0.93, 0.88, 0.72), Color(0.16, 0.2, 0.35), Color(0.38, 0.3, 0.26))
-	_road(room)
-	_tree(room, Vector3(-11.2, 0, 1.4), "tree_a", 0.95, 0.3)
-	_tree(room, Vector3(-14.0, 0, -9.3), "tree_b", 1.1, 2.1)
-	_tree(room, Vector3(-13.0, 0, 12.4), "tree_b", 0.85, 4.0)
-	_tree(room, Vector3(-24.0, 0, -6.5), "tree_a", 1.2, 1.2)
-	for b in [[Vector3(-15.6, 0, 1.0), 0.8], [Vector3(-15.8, 0, -6.6), 0.9], [Vector3(-9.0, 0, -4.0), 0.6],
-			[Vector3(-14.8, 0, 11.5), 0.7], [Vector3(-14.5, 0, -12.2), 0.75]]:
-		_shrub(room, b[0], b[1])
+static func build(parent: Node3D) -> void:
+	var room := Node3D.new()
+	parent.add_child(room)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2026
+	# the street across the view, and the side street off it beside the house in front
+	_street(room, Vector3((CROSS_X.x + CROSS_X.y) * 0.5, 0, 0), absf(CROSS_X.y - CROSS_X.x), FAR * 2.0, true)
+	var side_len := FAR + CROSS_X.y
+	_street(room, Vector3(CROSS_X.y - side_len * 0.5, 0, (SIDE_Z.x + SIDE_Z.y) * 0.5), SIDE_Z.y - SIDE_Z.x, side_len, false)
+	# the row across the street, facing us (+x): a lot every 17 m, the side street's mouth left clear
+	var k := 0
+	var z := -3.0 - 17.0 * 4.0
+	while z < 70.0:
+		if absf(z - (SIDE_Z.x + SIDE_Z.y) * 0.5) > 9.0:
+			_lot(room, Vector3(ROW_X, 0, z), 0.0, k, rng)
+			k += 1
+		z += 17.0
+	# along the side street, facing it from both sides
+	var x := ROW_X - 16.0
+	while x > -100.0:
+		_lot(room, Vector3(x, 0, SIDE_Z.y + 9.5), PI * 0.5, k, rng)          # (facing -z, the street)
+		_lot(room, Vector3(x - 6.0, 0, SIDE_Z.x - 9.5), -PI * 0.5, k + 1, rng)
+		k += 2
+		x -= 17.0
+	# our own lawn: a tree and a shrub by the pavement
+	_tree(room, Vector3(-7.5, 0, -7.5), "tree_b", 1.0, 0.4)
+	_tree(room, Vector3(-10.5, 0, 9.0), "tree_a", 0.9, 2.4)
+	_shrub(room, Vector3(-4.4, 0, 6.5), 0.6)
+	_shrub(room, Vector3(-4.6, 0, -4.0), 0.5)
+	# street lamps along our kerb
+	z = -60.0
+	while z <= 60.0:
+		_lamp(room, Vector3(CROSS_X.x - 0.6, 0, z), -1.0)
+		z += 30.0
+	_bake(room)
 
 
-## The street: asphalt between kerbs, a dashed white line down its middle, a pavement each side, a street lamp.
-static func _road(room: Node3D) -> void:
+## All the plain-coloured pieces merged into one mesh, coloured by vertex (hundreds of boxes, a draw call each, slowed
+## the Home: 35 fps on the Intel UHD) - the clapboard, the trees, the glowing lamps stay as they are.
+static func _bake(root: Node3D) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var any := false
+	var inv := root.global_transform.affine_inverse() if root.is_inside_tree() else Transform3D()
+	for mi in root.find_children("*", "MeshInstance3D", true, false):
+		var m: Material = mi.material_override
+		if not (m is StandardMaterial3D) or (m as StandardMaterial3D).emission_enabled or (m as StandardMaterial3D).transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+			continue
+		if mi.mesh is ArrayMesh:
+			continue                                  # (the trees: their own vertex colours and sway)
+		var xf: Transform3D = _local(mi, root)
+		var col: Color = (m as StandardMaterial3D).albedo_color
+		var arr: Array = mi.mesh.surface_get_arrays(0)
+		var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		var idx = arr[Mesh.ARRAY_INDEX]
+		var nb := xf.basis.inverse().transposed()
+		var order: PackedInt32Array = idx if idx != null and (idx as PackedInt32Array).size() > 0 else PackedInt32Array(range(v.size()))
+		for i in order:
+			st.set_color(col)
+			st.set_normal((nb * n[i]).normalized())
+			st.add_vertex(xf * v[i])
+		any = true
+		mi.queue_free()
+	if not any:
+		return
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.85
+	var out := MeshInstance3D.new()
+	out.mesh = st.commit()
+	out.material_override = mat
+	root.add_child(out)
+
+
+## mi's transform relative to root (the yard is built before the room is in the tree).
+static func _local(n: Node3D, root: Node3D) -> Transform3D:
+	var xf := Transform3D()
+	var at: Node = n
+	while at != null and at != root:
+		xf = (at as Node3D).transform * xf
+		at = at.get_parent()
+	return xf
+
+
+## A house on its lot, turned (0: facing +x, toward the window), with a tree and shrubs on its front lawn.
+static func _lot(room: Node3D, at: Vector3, turn: float, k: int, rng: RandomNumberGenerator) -> void:
+	var lot := Node3D.new()
+	lot.position = at
+	lot.rotation.y = turn
+	room.add_child(lot)
+	_house(lot, Vector3.ZERO, WALLS[k % WALLS.size()], DOORS[(k * 3 + 1) % DOORS.size()], ROOFS[(k * 2) % ROOFS.size()])
+	var front := HOUSE_SIZE.x * 0.5
+	for t in 2:
+		_tree(lot, Vector3(front + rng.randf_range(4.0, 6.5), 0, rng.randf_range(3.5, 7.0) * (1.0 if (k + t) % 2 == 0 else -1.0)),
+			"tree_a" if (k + t) % 3 != 1 else "tree_b", rng.randf_range(0.85, 1.2), rng.randf() * TAU)
+	for i in 2:
+		_shrub(lot, Vector3(front + 0.7, 0, (i * 2 - 1) * rng.randf_range(2.4, 3.6)), rng.randf_range(0.55, 0.8))
+
+
+## A street (asphalt between kerbs, a dashed white line down its middle, a pavement each side), its middle at `c`,
+## `w` across and `l` long, along z (along_z) or along x.
+static func _street(room: Node3D, c: Vector3, w: float, l: float, along_z: bool) -> void:
 	var asphalt := Kit.flat(Color(0.2, 0.2, 0.21), 0.95)
 	var kerb := Kit.flat(Color(0.62, 0.62, 0.6), 0.9)
-	var pave := Kit.flat(Color(0.55, 0.54, 0.52), 0.95)
+	var pave := Kit.flat(Color(0.6, 0.59, 0.56), 0.95)
 	var paint := Kit.flat(Color(0.92, 0.92, 0.88), 0.7)
-	var lx := absf(ROAD_X.y - ROAD_X.x)
-	var cx := (ROAD_X.x + ROAD_X.y) * 0.5
-	var cz := (ROAD_Z.x + ROAD_Z.y) * 0.5
-	var wz := ROAD_Z.y - ROAD_Z.x
-	_box(room, Vector3(lx, 0.04, wz), Vector3(cx, 0.02, cz), asphalt)
-	var x := ROAD_X.x - 0.5
-	while x > ROAD_X.y + 1.5:
-		_box(room, Vector3(1.5, 0.01, 0.1), Vector3(x - 0.75, 0.045, cz), paint)
-		x -= 3.0
+	_box(room, _dims(w, 0.04, l, along_z), c + Vector3(0, 0.02, 0), asphalt)
+	var t := -l * 0.5 + 1.0
+	while t < l * 0.5 - 2.5:
+		_box(room, _dims(0.1, 0.01, 1.5, along_z), c + _dims(0.0, 0.045, t + 0.75, along_z), paint)
+		t += 3.0
 	for side in [-1, 1]:
-		var ez: float = cz + side * (wz * 0.5 + 0.07)
-		_box(room, Vector3(lx, 0.14, 0.14), Vector3(cx, 0.07, ez), kerb)
-		_box(room, Vector3(lx, 0.12, 1.4), Vector3(cx, 0.06, ez + side * 0.77), pave)
-	# the street lamp, on the pavement by the fence
+		_box(room, _dims(0.14, 0.14, l, along_z), c + _dims(side * (w * 0.5 + 0.07), 0.07, 0.0, along_z), kerb)
+		_box(room, _dims(1.5, 0.12, l, along_z), c + _dims(side * (w * 0.5 + 0.9), 0.06, 0.0, along_z), pave)
+
+
+## (across, up, along) as x/y/z for a street along z, or along x.
+static func _dims(across: float, up: float, along: float, along_z: bool) -> Vector3:
+	return Vector3(across, up, along) if along_z else Vector3(along, up, across)
+
+
+## A street lamp: a pole, its arm out over the street (toward `side` along x), its lamp glowing a little.
+static func _lamp(room: Node3D, at: Vector3, side: float) -> void:
 	var pole := Kit.flat(Color(0.18, 0.2, 0.2), 0.5, 0.5)
-	var lamp_at := Vector3(-9.6, 0, ROAD_Z.x - 0.75)
-	_cyl(room, 0.07, 4.6, lamp_at + Vector3(0, 2.3, 0), pole, 0.05)
-	_box(room, Vector3(0.05, 0.05, 1.0), lamp_at + Vector3(0, 4.55, 0.5), pole)
+	_cyl(room, 0.07, 4.6, at + Vector3(0, 2.3, 0), pole, 0.05)
+	_box(room, Vector3(1.0, 0.05, 0.05), at + Vector3(side * 0.5, 4.55, 0), pole)
 	var head := Kit.flat(Color(0.95, 0.9, 0.75), 0.4)
 	head.emission_enabled = true
 	head.emission = Color(1.0, 0.85, 0.6)
 	head.emission_energy_multiplier = 0.6
-	_box(room, Vector3(0.22, 0.12, 0.4), lamp_at + Vector3(0, 4.48, 1.0), head)
-
-
-## Pickets with pointed tops between square posts with caps, on two rails (seen from the house's side: the rails on
-## the far face).
-static func _fence(room: Node3D) -> void:
-	var white := Kit.flat(Color(0.95, 0.95, 0.93), 0.55)
-	var picket := BoxMesh.new()
-	picket.size = Vector3(0.022, 1.0, 0.08)
-	var tip := CylinderMesh.new()                   # (a four-sided point: a pyramid)
-	tip.top_radius = 0.0
-	tip.bottom_radius = 0.057
-	tip.height = 0.08
-	tip.radial_segments = 4
-	tip.rings = 1
-	var n := int((FENCE_Z.y - FENCE_Z.x) / 0.15)
-	for part in [[picket, 0.5, 0.0], [tip, 1.04, PI * 0.25]]:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = part[0]
-		mm.instance_count = n
-		for i in n:
-			var z: float = FENCE_Z.x + i * 0.15
-			var b := Basis(Vector3.UP, float(part[2]))
-			if part[0] == tip:
-				b = b.scaled(Vector3(0.28, 1.0, 1.0))
-			mm.set_instance_transform(i, Transform3D(b, Vector3(FENCE_X, float(part[1]), z)))
-		var mi := MultiMeshInstance3D.new()
-		mi.multimesh = mm
-		mi.material_override = white
-		room.add_child(mi)
-	for y in [0.25, 0.8]:
-		_box(room, Vector3(0.03, 0.08, FENCE_Z.y - FENCE_Z.x), Vector3(FENCE_X - 0.026, y, (FENCE_Z.x + FENCE_Z.y) * 0.5), white)
-	var z := FENCE_Z.x
-	while z <= FENCE_Z.y + 0.01:
-		_box(room, Vector3(0.11, 1.25, 0.11), Vector3(FENCE_X - 0.03, 0.625, z), white)
-		_box(room, Vector3(0.15, 0.04, 0.15), Vector3(FENCE_X - 0.03, 1.27, z), white)
-		var cap := MeshInstance3D.new()
-		var cm := CylinderMesh.new()
-		cm.top_radius = 0.0
-		cm.bottom_radius = 0.1
-		cm.height = 0.07
-		cm.radial_segments = 4
-		cm.rings = 1
-		cap.mesh = cm
-		cap.material_override = white
-		cap.position = Vector3(FENCE_X - 0.03, 1.325, z)
-		cap.rotation.y = PI * 0.25
-		room.add_child(cap)
-		z += 2.4
+	_box(room, Vector3(0.4, 0.12, 0.22), at + Vector3(side * 1.0, 4.48, 0), head)
 
 
 ## A one-storey house in clapboard of that colour, its long side to the window, a door of that colour with a porch.
@@ -179,8 +222,8 @@ void fragment() {
 	_box(room, Vector3(1.3, 0.08, 1.9), Vector3(fx + 0.65, 2.75, dz), trim)                # the porch's little roof
 	for sz in [-1, 1]:
 		_box(room, Vector3(0.08, 2.3, 0.08), Vector3(fx + 1.2, 1.15, dz + sz * 0.85), trim)
-	# a path to the porch (the first house: toward the fence; the others: their own yard)
-	var reach := minf(FENCE_X - fx - 0.4, 3.0)
+	# a path from the porch down the lawn to the pavement
+	var reach := 6.4
 	_box(room, Vector3(reach, 0.02, 1.0), Vector3(fx + reach * 0.5, 0.01, dz), Kit.flat(Color(0.6, 0.6, 0.58), 0.95))
 
 

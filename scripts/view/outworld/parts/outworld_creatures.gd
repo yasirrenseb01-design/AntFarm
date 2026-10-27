@@ -25,7 +25,10 @@ func _light() -> void:
 
 
 func _update_ants(delta: float) -> void:
-	var kp := 1.0 - exp(-20.0 * delta)
+	# (drawn positions catch up with the simulation's faster when the game runs faster: at 2x-5x they fell more than
+	# 20 px behind and were snapped forward - ants seen to vanish and appear again; the keeper, 2026-10-27)
+	var fast := maxf(1.0, speed)
+	var kp := 1.0 - exp(-20.0 * delta * fast)
 	var ka := 1.0 - exp(-10.0 * delta)
 	var adt := delta * minf(speed, 1.0) if speed > 0 else 0.0     # (below 1x, real time, poses play in slow motion)
 	var body: Color = AntModel.body_linear(sim.sp["body_color"])
@@ -55,7 +58,7 @@ func _update_ants(delta: float) -> void:
 			if a.vpos.x != INF:
 				a.vpos += _out_dir(a.pos) * BEYOND_WALK      # back in: it walks in from out there
 		var out_step := _out_dir(a.pos) * BEYOND_WALK * minf(1.0, a.vbeyond / BEYOND_SHOW) if beyond else Vector2.ZERO
-		if a.vpos.x == INF or a.vpos.distance_squared_to(a.pos) > 400.0:
+		if a.vpos.x == INF or a.vpos.distance_squared_to(a.pos) > 400.0 * fast * fast:
 			a.vpos = a.pos
 			a.voff = Vector2.ZERO
 			a.vang = a.ang

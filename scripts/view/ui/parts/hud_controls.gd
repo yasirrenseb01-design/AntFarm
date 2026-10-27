@@ -162,6 +162,22 @@ func _place_tab() -> void:
 		_food_warn.position = _top.position + Vector2((_harmony_tab.size.x + 10.0) if _harmony_tab.visible else 0.0, _top.size.y + 4.0)
 
 
+## The number of the Home's tank resting in the fridge now, if it is another colony's (0: the fridge is free).
+func _fridge_taken() -> int:
+	if home == null:
+		return 0
+	for p in home.places():
+		if int(p.slot) != current_slot and bool(Store.meta(int(p.slot)).get("fridge", false)):
+			return int(p.number)
+	return 0
+
+
+var _food_said := ""                   # the warning shown last (the chime sounds as a new one comes up)
+
+func _testing() -> bool:
+	return Array(OS.get_cmdline_user_args()).any(func(a): return a.begins_with("--selftest"))
+
+
 const FOOD_WARN_DAYS := 2.0            # game days of sugar or protein left: warned (the keeper's choice, 2026-10-27)
 
 ## The keeper's colony about to run out of sugar or protein (sim.food_days: what is in the crops and stored, and the
@@ -183,6 +199,9 @@ func _refresh_food_warn() -> void:
 	if _food_warn == null:
 		return
 	var w := food_warning()
+	if w != "" and _food_said == "" and not _testing():
+		Chime.play(self, float(settings.get("music", 0.6)))        # (once, as it comes up: a sound made in code)
+	_food_said = w
 	_food_warn.visible = w != "" and _top.visible
 	if w != "":
 		var fd: Vector2 = sim.food_days()
@@ -259,6 +278,12 @@ func _build_tools(root: Control) -> void:
 	var cold := _button(tr("fridge"), true)
 	cold.button_pressed = sim.fridge_on
 	cold.toggled.connect(func(on):
+		var other := _fridge_taken() if on else 0
+		if other > 0:
+			# the Home's fridge holds one tank (the keeper, 2026-10-27): another colony is resting in it
+			cold.set_pressed_no_signal(false)
+			call("_named_news", tr("fridge_full") % other)        # (the banner: hud.gd)
+			return
 		sim.fridge_on = on
 		sim._log(T.fridge_in if on else T.fridge_out))
 	cold.visible = sim.scenario == "keeper"      # outdoors winter comes by itself

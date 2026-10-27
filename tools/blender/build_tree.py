@@ -7,7 +7,8 @@
 # out and up, their greens varying, the inner ones darker (shaded in the crown). Metres, Godot axes (y up), foot at the
 # origin; exported as .antmesh (format: ant_model3d.gd load_antmesh), vertex colour sRGB, alpha = how far the wind may
 # move that point (0 at the trunk .. 1 at the leaves' tips). Two of them (seeds) so neighbouring trees differ.
-#   -> assets/models/trees/tree_a.antmesh, tree_b.antmesh
+#   -> assets/models/trees/tree_a.antmesh, tree_b.antmesh  (low-poly by default since v0.11.56; STYLE=leaves for the
+#   leafy one)
 import bpy
 import math
 import os
@@ -110,6 +111,68 @@ def tree(seed):
     return m
 
 
+def ico(sub):
+    """An icosphere (unit), subdivided sub times: its points and faces."""
+    t = (1.0 + 5 ** 0.5) / 2.0
+    pts = [Vector(v).normalized() for v in ((-1, t, 0), (1, t, 0), (-1, -t, 0), (1, -t, 0), (0, -1, t), (0, 1, t), (0, -1, -t),
+        (0, 1, -t), (t, 0, -1), (t, 0, 1), (-t, 0, -1), (-t, 0, 1))]
+    faces = [(0, 11, 5), (0, 5, 1), (0, 1, 7), (0, 7, 10), (0, 10, 11), (1, 5, 9), (5, 11, 4), (11, 10, 2), (10, 7, 6),
+        (7, 1, 8), (3, 9, 4), (3, 4, 2), (3, 2, 6), (3, 6, 8), (3, 8, 9), (4, 9, 5), (2, 4, 11), (6, 2, 10), (8, 6, 7), (9, 8, 1)]
+    for _ in range(sub):
+        mid = {}
+        nf = []
+        def m(a, b):
+            k = (min(a, b), max(a, b))
+            if k not in mid:
+                pts.append(((pts[a] + pts[b]) * 0.5).normalized())
+                mid[k] = len(pts) - 1
+            return mid[k]
+        for a, b, c in faces:
+            ab, bc, ca = m(a, b), m(b, c), m(c, a)
+            nf += [(a, ab, ca), (b, bc, ab), (c, ca, bc), (ab, bc, ca)]
+        faces = nf
+    return pts, faces
+
+
+def flat_tri(m, a, b, c, col, w):
+    n = (b - a).cross(c - a).normalized()
+    base = len(m.v)
+    for p in (a, b, c):
+        m.v.append((p, n, (col[0], col[1], col[2], w)))
+    m.i += [base, base + 2, base + 1]
+
+
+def lowpoly(seed):
+    """The low-poly style (the keeper, 2026-10-27): a six-sided trunk forking into a few limbs, a crown of faceted
+    lumps (icospheres pushed in and out at random, flat-shaded, each face its own shade of green, darker underneath)."""
+    rng = random.Random(seed)
+    m = Mesh()
+    bark = (0.33, 0.24, 0.17)
+    trunk_h = rng.uniform(2.2, 2.6)
+    lean = Vector((rng.uniform(-0.08, 0.08), 1.0, rng.uniform(-0.08, 0.08))).normalized()
+    top = lean * trunk_h
+    m.tube(Vector((0, -0.05, 0)), top, 0.24, 0.15, bark, 0.0, 0.05, 6)
+    lumps = [(top + Vector((0, 1.7, 0)), 1.7)]
+    for k in range(rng.choice((3, 4))):
+        a = k / 4 * math.tau + rng.uniform(-0.4, 0.4)
+        d = Vector((math.cos(a) * 0.75, 1.0, math.sin(a) * 0.75)).normalized()
+        end = top + d * rng.uniform(1.3, 1.7)
+        m.tube(top - lean * 0.2, end, 0.11, 0.05, bark, 0.05, 0.3, 5)
+        lumps.append((end + Vector((0, 0.45, 0)), rng.uniform(1.0, 1.35)))
+    pts, faces = ico(1)
+    for c, r in lumps:
+        bump = [1.0 + rng.uniform(-0.16, 0.16) for _ in pts]
+        sq = Vector((1.0, rng.uniform(0.78, 0.9), 1.0))
+        P = [c + Vector((p.x * sq.x, p.y * sq.y, p.z * sq.z)) * (r * bump[i]) for i, p in enumerate(pts)]
+        for a, b, cc in faces:
+            g = rng.random()
+            col = Vector((0.2 + 0.1 * g, 0.42 + 0.14 * g, 0.14 + 0.05 * g))
+            n = (P[b] - P[a]).cross(P[cc] - P[a]).normalized()
+            col *= 0.72 + 0.28 * max(0.0, n.y * 0.5 + 0.5)          # (a little darker underneath)
+            flat_tri(m, P[a], P[b], P[cc], col, 0.7)
+    return m
+
+
 def export(m, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as fh:
@@ -139,8 +202,9 @@ nt = mat.node_tree
 bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
 attr = next((nd for nd in nt.nodes if nd.type == "VERTEX_COLOR"), None) or nt.nodes.new("ShaderNodeVertexColor")
 nt.links.new(attr.outputs[0], bsdf.inputs[0])
+STYLE = globals().get("STYLE", "lowpoly")          # (STYLE=leaves: the leafy one of v0.11.55)
 for k, (name, seed) in enumerate((("tree_a", 11), ("tree_b", 23))):
-    m = tree(seed)
+    m = lowpoly(seed) if STYLE == "lowpoly" else tree(seed)
     export(m, "%s/%s.antmesh" % (OUT, name))
     me = bpy.data.meshes.new(name)
     me.from_pydata([B(p) for p, n, c in m.v], [], [tuple(m.i[j:j + 3]) for j in range(0, len(m.i), 3)])

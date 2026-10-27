@@ -3,6 +3,7 @@ extends CanvasLayer
 ## nest cross-section, population chart and journal on the right.
 ## HUD, layer 1 of 7: state, colours, the theme and small widget helpers.
 ## Layers: hud_base <- hud_colonies <- hud_enemies <- hud_stars <- hud_controls <- hud_panel <- hud.
+const Chime := preload("res://scripts/view/ui/chime.gd")
 const Ant := preload("res://scripts/sim/ant.gd")
 const Kit := preload("res://scripts/view/ui/draw_kit.gd")
 const Store := preload("res://scripts/game/save_store.gd")

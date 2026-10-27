@@ -13,6 +13,7 @@ const Paper := preload("res://scripts/view/ui/paper.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const Shop := preload("res://scripts/game/home_shop.gd")
 const Hand := preload("res://scripts/view/home/home_hand.gd")
+const Chime := preload("res://scripts/view/ui/chime.gd")
 const EYE := 1.55                 # metres: the keeper's eyes
 const EYE_SEATED := 1.15
 const WALK := 1.3                 # metres a second
@@ -284,6 +285,8 @@ func _check_food() -> void:
 			w = " · ".join(parts)
 		if w != "":
 			lines.append(tr("home_food_low") % [p.number, w])
+	if not lines.is_empty() and not _food.visible:
+		Chime.play(self, float(main._settings.get("music", 0.6)))      # (as the note comes up)
 	_food.text = ("⚠ " + "\n⚠ ".join(lines)) if not lines.is_empty() else ""
 	_food.visible = not lines.is_empty()
 	_food.reset_size()

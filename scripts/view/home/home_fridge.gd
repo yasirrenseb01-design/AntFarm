@@ -6,13 +6,13 @@ extends RefCounted
 ## So: an under-counter beverage cooler - a matt black cabinet, a glass door in a stainless frame with a long bar
 ## handle, a small blue digital thermostat on the door's top rail, wire shelves on runners inside, a cool white light
 ## strip under its top, a vent grille at its foot, levelling feet. Inside it, the tanks whose colony is wintering in it
-## (the "Hibernate in fridge" tool in the colony; the save's meta "fridge"), up to two small ones on its shelves.
+## (the "Hibernate in fridge" tool in the colony; the save's meta "fridge"): one tank, small or the bigger one.
 ## Metres; its foot's middle at the origin, its front toward +z. home_room.gd places it; clicking it says who is in.
 
 const Kit := preload("res://scripts/view/home/home_kit.gd")
-const SIZE := Vector3(0.7, 0.86, 0.6)            # outside
-const INNER := Vector3(0.632, 0.7, 0.5)          # inside (room for a small tank, 60.6 cm, on a shelf)
-const SHELF_Y := [0.1, 0.42]                     # the shelves' tops inside, from the foot
+const SIZE := Vector3(1.0, 0.86, 0.68)           # outside (a wide one: the bigger tank, 90.6 x 56.9 cm, fits - the keeper,
+const INNER := Vector3(0.93, 0.7, 0.6)           # 2026-10-27: "the big tank too, but only one tank")
+const SHELF_Y := [0.06]                          # its shelf's top inside, from the foot (one tank on it)
 const TEMP := "8°C"
 
 
@@ -64,7 +64,7 @@ static func build(parent: Node3D, at: Vector3, turn: float) -> Dictionary:
 		var yy: float = foot + 0.11 + y
 		for sz in [-1, 1]:
 			_box(f, Vector3(INNER.x, 0.006, 0.006), Vector3(0, yy, -0.02 + sz * INNER.z * 0.46), wire)
-		var n := 16
+		var n := 22
 		for i in n + 1:
 			var x := -INNER.x * 0.48 + INNER.x * 0.96 * i / n
 			_box(f, Vector3(0.004, 0.004, INNER.z * 0.92), Vector3(x, yy, -0.02), wire)
