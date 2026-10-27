@@ -368,8 +368,30 @@ static func measure(nv, tally: Dictionary) -> void:
 						tally.dbg_j = int(tally.get("dbg_j", 0)) + 1
 						print("  JUMP mode %d leg %d by %.2f  body moved %.3f  up %s  old %s new %s" % [fm, fs[k][2], jump, (prev[k][3] as Vector3).distance_to(M.origin),
 							upw, prev[k][0], fs[k][0]])
+					var cy: float = mm.get_instance_custom_data(i).g
+					if jump > 0.12 and prev[k][5].act != fs[k][6].act and cy - floorf(cy) > 0.02:
+						# (a change of activity the shader is easing over - the old pose still shows, mixed into the new: on
+						# screen the foot moves over the ease, not in one frame; this measure works out the new pose only)
+						tally["jc_eased"] = int(tally.get("jc_eased", 0)) + 1
+						jump = 0.0
 					if jump > 0.12:
 						var cause := _jump_cause(prev[k][5], fs[k][6], (prev[k][3] as Vector3).distance_to(M.origin))
+						if OS.has_environment("JDBG") and cause.begins_with("the body moved far"):
+							var who2 := "?"
+							for mt in nv._mates:
+								if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+									who2 = "mate role %s act %s script %s t %.2f carry %s over %.2f" % [mt.get("role", "?"), mt.get("act", -1), mt.has("script"), float(mt.get("t", -1)), mt.get("carry", false), float(mt.get("over", 0.0))]
+							for id in nv._dig_vis:
+								var dv: Dictionary = nv._dig_vis[id]
+								if dv.has("xf") and (dv.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+									who2 = "digger t %.2f" % float(dv.t)
+							print("JBODY %s body %.3f" % [who2, (prev[k][3] as Vector3).distance_to(M.origin)])
+						if OS.has_environment("JDBG") and cause.begins_with("set down"):
+							var A: Dictionary = prev[k][5]
+							var Bq: Dictionary = fs[k][6]
+							print("JDBG leg %d u %.3f->%.3f mv %.2f->%.2f tw %.2f fm %d->%d lo moved %.3f jump %.2f body %.3f" % [fs[k][2], float(A.u), float(Bq.u), float(A.mv), float(Bq.mv),
+								float(Bq.tw), int(A.fm), int(Bq.fm), (A.lo as Vector3).distance_to(Bq.lo) if A.lo != Vector3.INF and Bq.lo != Vector3.INF else -1.0, jump,
+								(prev[k][3] as Vector3).distance_to(M.origin)])
 						tally["jc:" + cause] = int(tally.get("jc:" + cause, 0)) + 1
 						if cause.begins_with("stride: the body moved sideways") or cause.begins_with("stride: the body moved backwards"):
 							var who := "not a nestmate (a digger?)"
@@ -728,7 +750,8 @@ static func report(tally: Dictionary) -> String:
 	jc.sort_custom(func(x, y): return x[0] > y[0])
 	for c in jc:
 		s += "
-      jumping: %5.1f%%  %s" % [100.0 * float(c[0]) / maxf(1.0, float(tally.get("jit", 0))), c[1]]
+      jumping: %5.1f%% of the jumps (%.2f%% of the planted feet)  %s" % [100.0 * float(c[0]) / maxf(1.0, float(tally.get("jit", 0))),
+			100.0 * float(c[0]) / maxf(1.0, float(tally.get("jit_n", 0))), c[1]]
 	var un := []
 	for k in tally:
 		if String(k).begins_with("un:"):

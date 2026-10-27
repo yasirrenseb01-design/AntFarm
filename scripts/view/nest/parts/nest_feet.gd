@@ -15,9 +15,15 @@ func _step_gait(v: Dictionary, tr: Transform3D, delta: float, scale: float) -> v
 	v.g_at = tr.origin
 	var walked := 0.0
 	if v.get("walks", false) and d.length() < 0.6:
-		walked = maxf(0.0, d.dot(tr.basis.x.normalized()))
+		# (every way the body goes takes steps - sideways and backwards too, pushed by a nestmate: counting only the
+		# forward share, the feet were left behind and set down again with a jump - 60% of the jumps, 2026-10-28)
+		var fwd := maxf(0.0, d.dot(tr.basis.x.normalized()))
+		walked = fwd + 0.8 * (d - tr.basis.x.normalized() * d.dot(tr.basis.x.normalized())).length() + maxf(0.0, -d.dot(tr.basis.x.normalized()))
 	var sweep := float(v.get("sweep", 0.0))
-	v.gait = fmod(float(v.get("gait", 0.0)) + (walked + absf(sweep)) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, TAU * 64.0)
+	# (at most a fifth of a cycle a frame: a body turned or moved a long way at once ran the gait past a whole swing, and
+	# the feet came down at the other end of the stride with no step between - a jump; left behind, they step again)
+	var adv := minf((walked + absf(sweep)) / (AntModel.stride_len(v.get("stride", 1.0)) * scale) * TAU, 0.2 * TAU)
+	v.gait = fmod(float(v.get("gait", 0.0)) + adv, TAU * 64.0)
 	var tshare := sweep / maxf(absf(sweep) + walked, 0.0001) if float(v.get("mv", 0.0)) > 0.05 else 0.0
 	v.tshare = lerpf(float(v.get("tshare", 0.0)), tshare, minf(1.0, 6.0 * delta))
 	# stopping, it finishes the step it is in: the tripod in the air sets its feet down (its feet are remembered where
@@ -66,6 +72,10 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 		v.f_at = [tr, tr]
 		v.f_p = [Vector3.ZERO, Vector3.ZERO]
 		v.f_u = [-1.0, -1.0]
+		v.f_rs = [-1.0, -1.0]
+	if not v.has("f_rs"):
+		v.f_rs = [-1.0, -1.0]
+	var dt := get_process_delta_time()
 	var sc := tr.basis.x.length()
 	# (left behind: past a stance's own sweep (2 x amp) and a little - a full stride and more let the front feet trail
 	# behind the middle ones, legs crossed: 31% of walking ant-frames, foot_check TWIST, 2026-10-28)
@@ -81,14 +91,17 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 			# (just come on screen: its feet where they would be now)
 			v.f_at[g] = tr
 			v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty) if stance else -amp, tws, fmode)
-		elif stance and (pu >= duty or u < pu - 0.0001 or at.origin.distance_to(tr.origin) > far):
-			v.f_at[g] = tr                                   # (set down: from a swing, or again, left behind)
-		elif stance and _feet_twisted(at, tr, sc):
-			if mv > 0.05:
-				# walking or turning on the spot: the body turned past them faster than its steps came round (front feet
-				# swept round behind the middle ones - foot_check TWIST, 2026-10-28): set down again where they belong
-				v.f_at[g] = tr
-				v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty), tws, fmode)
+		elif stance and (pu >= duty or u < pu - 0.0001):
+			v.f_at[g] = tr                                   # (set down: from a swing)
+			v.f_rs[g] = -1.0
+		elif stance and float(v.f_rs[g]) < 0.0 and mv > 0.05 and (at.origin.distance_to(tr.origin) > far or _feet_twisted(at, tr, sc)):
+			# left behind, or the body turned past them faster than its steps came round (front feet behind the middle
+			# ones - TWIST): those feet step again, lifted and swung to where they belong over RESTEP_S - set down there at
+			# once, they jumped (60% of the planted feet's jumps, --feet at 60 fps, 2026-10-28)
+			v.f_rs[g] = 0.0
+		elif stance and _feet_twisted(at, tr, sc) and float(v.f_rs[g]) < 0.0:
+			if false:
+				pass
 			else:
 				v.twist = true                               # (standing, turned or pushed off its feet: _step_gait)
 				# (its planted feet stay where they are until it steps them: v0.11.60 moved their stride here and they
@@ -98,6 +111,18 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 			# lifted, the front feet swung in behind the middle ones as the body turned past them - TWIST, 2026-10-28)
 			v.f_at[g] = tr
 		v.f_u[g] = u
+		var swing_w := -1.0
+		if float(v.f_rs[g]) >= 0.0:
+			if not stance:
+				v.f_rs[g] = -1.0                           # (its own swing has come: that takes it)
+			else:
+				if float(v.f_rs[g]) >= 1.0:
+					v.f_at[g] = tr                           # (down where the swing took it, the frame after it got there)
+					v.f_p[g] = Vector3(amp, tws, fmode)
+					v.f_rs[g] = -1.0
+				else:
+					v.f_rs[g] = minf(1.0, float(v.f_rs[g]) + dt / RESTEP_S)
+					swing_w = minf(float(v.f_rs[g]), 0.999)
 		var x: Transform3D = v.f_at[g]
 		var p: Vector3 = v.f_p[g]
 		var k := g * 16
@@ -105,8 +130,11 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 		out[k + 4] = x.basis.x.y; out[k + 5] = x.basis.y.y; out[k + 6] = x.basis.z.y; out[k + 7] = x.origin.y
 		out[k + 8] = x.basis.x.z; out[k + 9] = x.basis.y.z; out[k + 10] = x.basis.z.z; out[k + 11] = x.origin.z
 		out[k + 12] = p.x; out[k + 13] = p.y; out[k + 14] = p.z
-		out[k + 15] = 0.0 if stance else 1.0 + (u - duty) / (1.0 - duty)
+		out[k + 15] = (1.0 + swing_w if swing_w >= 0.0 else 0.0) if stance else 1.0 + (u - duty) / (1.0 - duty)
 	return out
+
+
+const RESTEP_S := 0.14          # seconds a foot left behind takes to step again (lifted, swung, set down)
 
 
 ## Planted feet the body has turned, tipped or been pushed sideways away from: their legs crossed and bent backwards
