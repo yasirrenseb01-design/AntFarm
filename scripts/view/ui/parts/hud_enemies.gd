@@ -59,6 +59,9 @@ func _build_enemies(root: Control) -> void:
 		info.add_child(_wrapped(tr(K.ABOUT), 12, INK))
 		row.add_child(info)
 		var go := _button(tr("en_release"), false)
+		go.icon = load("res://assets/ui/harmony.png")
+		go.expand_icon = false
+		go.add_theme_constant_override("icon_max_width", 16)
 		go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var k: String = kind
 		go.pressed.connect(func(): _release_enemy(k))
@@ -105,7 +108,30 @@ func toggle_enemies() -> void:
 		fit_left_panel(_enemies_scroll, ENEMY_W + 16.0)
 
 
+## What letting one in costs in Colony Harmony points (the keeper, 2026-10-27): RELEASE_PRICE for each colony there is
+## with ants in it (the Home's tanks and the wild mode's together, this one counted always) - more colonies earn more.
+## 0 where there is no purse (a test colony, the one shown before the first is started).
+const RELEASE_PRICE := 50.0
+
+func release_price() -> float:
+	if home == null or harmony < 0.0:
+		return 0.0
+	var n := 0
+	for s in home.tanks + home.wild:
+		var m: Dictionary = Store.meta(s)
+		if s == current_slot or (not m.is_empty() and (bool(m.get("queen", true)) or int(m.get("workers", 0)) > 0)):
+			n += 1
+	return RELEASE_PRICE * maxi(1, n)
+
+
 func _release_enemy(kind: String) -> void:
+	var price := release_price()
+	if price > 0.0:
+		if harmony < price:
+			_refresh_enemies()
+			return
+		harmony -= price
+		harmony_spent.emit(price)
 	var id: int = sim.release_enemy(kind)
 	_refresh_enemies()
 	if id != 0:
@@ -117,11 +143,16 @@ func _refresh_enemies() -> void:
 	if _enemies == null or not _enemies.visible:
 		return
 	var full: bool = sim.creatures.size() >= sim.RELEASE_MAX
+	var price := release_price()
+	var short := price > 0.0 and harmony < price
 	for b in _enemy_release:
-		b.disabled = full
+		b.disabled = full or short
+		b.text = tr("en_release_cost") % _thousands(int(price)) if price > 0.0 else tr("en_release")
 	var warn := []
 	if full:
 		warn.append(tr("en_full") % sim.RELEASE_MAX)
+	if short:
+		warn.append(tr("en_need_points") % _thousands(int(price)))
 	if not sim.queen.alive and sim.workers.is_empty():
 		warn.append(tr("en_no_ants"))
 	elif sim.workers.size() < sim.FIGHT_FROM:

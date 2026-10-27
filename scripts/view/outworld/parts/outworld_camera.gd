@@ -39,7 +39,8 @@ func _fit_dist() -> float:
 	var tanh := tan(deg_to_rad(_cam.fov * 0.5))
 	var by_w: float = sim.WORLD.x * U * 1.06 / area_w * vp.y / (2.0 * tanh)
 	var by_h: float = sim.WORLD.y * U * 1.1 * sin(pitch_t) / (2.0 * tanh) + 40.0
-	return maxf(by_w, by_h)
+	# (the box's rim, nearer the camera than the ground, in view too: a keeper's box is 20 cm tall - v0.11.52)
+	return maxf(by_w, by_h) + (wall_h * 1.6 if sim.scenario != "wild" else 0.0)
 
 
 func reset_view() -> void:

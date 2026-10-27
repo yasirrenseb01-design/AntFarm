@@ -143,6 +143,7 @@ func _ready() -> void:
 	nest_view.setup(sim)
 	outworld = OutworldView.new()
 	add_child(outworld)
+	outworld.stand = String(_opts.get("stand", _stand_of(slot)))     # (--stand=desk|shelf: dev)
 	outworld.setup(sim)
 	hud = Hud.new()
 	add_child(hud)
@@ -174,6 +175,9 @@ func _ready() -> void:
 		_apply_graphics())
 	_apply_graphics()
 	hud.save_requested.connect(_save_now)
+	hud.harmony_spent.connect(func(p):
+		harmony.points = maxf(0.0, harmony.points - p)
+		harmony.save_purse())
 	desktop = DesktopMode.new()
 	add_child(desktop)
 	desktop.setup(self)
@@ -288,6 +292,16 @@ func _process(delta: float) -> void:
 	hud.harmony = harmony.points if _persist and not _demo and not _opts.has("testsave") else -1.0
 	hud.refresh(delta)
 	_pt("hud", t0)
+
+
+## Where this colony's box stands in the Home (the outworld view draws it there): "shelf" for a tank on a shelf, else
+## "desk" (the first small tank and the bigger one; the wild mode's plots draw no room).
+func _stand_of(s: int) -> String:
+	if home != null and _persist and not _opts.has("testsave"):
+		for p in home.places():
+			if int(p.slot) == s and int(p.shelf) >= 0:
+				return "shelf"
+	return "desk"
 
 
 ## Graphics quality and the frame-rate cap from the settings (game/graphics.gd); the first time, from the graphics card.

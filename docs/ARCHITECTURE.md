@@ -45,7 +45,8 @@ scripts/
                ground_data.gd (ภาพผิวดิน, ภาพกลิ่นทาง, ของประดับ, แสงฟ้า, เครื่องมือที่เลือก — เดิมอยู่ในมุมบน 2 มิติ ลบ v0.11.5),
                prop_heights.gd (ความสูงของกรวด/มอส/กิ่งไม้/ใบไม้ ให้มดปีนข้าม — ตัวมดและเท้าใน shader),
                garden_layout.gd (จัดของประดับฉากสวนเป็นกลุ่ม: หินใหญ่นอกมุมแปลง มอส กรวด ใบไม้ ดงหญ้า; v0.11.37),
-               scenery_draw.gd (สร้างเมชของประดับจากผังใน ground_data; แยกจาก outworld_scene v0.11.37)
+               scenery_draw.gd (สร้างเมชของประดับจากผังใน ground_data; แยกจาก outworld_scene v0.11.37),
+               keeper_room.gd (โต๊ะหรือชั้นวางและห้องรอบกล่องของรังตู้ หน่วยเมตรใต้โหนดที่ขยาย; v0.11.52)
     nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
     ui/        hud.gd + parts/ (base, colonies, enemies, controls, panel), draw_kit.gd (วาดมด 2 มิติในภาพตัดขวางของแผงข้าง), species_window.gd (เลือกชนิดมดตอนเริ่มรังใหม่), paper.gd (สไตล์สมุดบันทึก: กระดาษคราฟต์ ธีมหน้าต่าง เสียงดินสอ), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()),
                sounds.gd (เสียงเตือน), music.gd (เพลงพื้นหลัง 2 เพลงจากไฟล์ `assets/audio/music/` เล่นสลับกัน)
@@ -119,7 +120,9 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
   + `"big": ช่องของตู้ใหญ่, "shelves": [2,4...]` (v0.11.42 ร้านค้า `home_shop.gd`, ราคา `PRICES`, ที่วาง `places()`);
   ตู้ใหญ่ (v0.11.43): ช่องใหม่เสมอ; รังที่เริ่มในนั้นได้ `sim.WORLD = BIG_WORLD` (90×56 ซม., เซฟใน `"world"`, ไม่มี = เล็ก);
   ตู้แอนท์ฟาร์ม (v0.11.49): `"farms"` ช่องใหม่เสมอ รังเป็นแบบกระจก (`nest_of`); ภาพรังสำหรับกระจกตู้ `saves/slotN_nest.png` (`game/nest_card.gd`, เขียนทุกครั้งที่เซฟ);
-  ห้อง: `view/home/home_kit.gd` (ของ) ← `home_room.gd` (โครง แสงตามเวลา `set_hour`); การควบคุม `game/home.gd`
+  ห้อง: `view/home/home_kit.gd` (ของ) ← `home_room.gd` (โครง แสงตามเวลา `set_hour`); การควบคุม `game/home.gd`;
+  มือ 3 มิติ `view/home/home_hand.gd` (ลูกของกล้อง; ตั้งค่า `home_hand`/`home_cross`);
+  รังตู้ในฉากหาอาหาร: `view/outworld/keeper_room.gd` (โต๊ะ/ชั้นวาง + ห้อง รอบกล่อง; `outworld.stand` จาก `main._stand_of`)
   ครั้งแรก: ตู้ 1 = ช่องว่างใหม่, โหมดป่า = ช่องสวนเลขต่ำสุดที่มี (`tests/home_test.gd`); ห้อง 3 มิติ `scripts/view/home/home_room.gd`
 - `scripts/game/save_store.gd`: ช่อง 1–32 (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
 - เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 11)

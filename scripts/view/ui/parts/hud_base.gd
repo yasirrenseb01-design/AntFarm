@@ -22,6 +22,7 @@ signal save_requested
 signal cam_action(action: String)
 signal desktop_requested               # the keeper wants the nest as the desktop wallpaper (game/desktop_mode.gd)
 signal menu_requested                  # back to the title screen (game/title.gd)
+signal harmony_spent(points: float)     # Colony Harmony points paid for something (main.gd takes them from the purse)
 
 var PANEL_W := 352.0             # the side panel (wider in English: its words are longer; hud.setup)
 const INK := Color("f1e6d6")
@@ -176,6 +177,16 @@ static func _check_icon(on: bool) -> ImageTexture:
 					if q.x >= 0 and q.y >= 0 and q.x < n and q.y < n:
 						img.set_pixel(q.x, q.y, Color(0.12, 0.08, 0.05))
 	return ImageTexture.create_from_image(img)
+
+
+## (moved from hud.gd in v0.11.52: the panels below it use it too) 12345 -> "12,345"
+static func _thousands(n: int) -> String:
+	var t := str(absi(n))
+	var out := ""
+	while t.length() > 3:
+		out = "," + t.substr(t.length() - 3) + out
+		t = t.substr(0, t.length() - 3)
+	return ("-" if n < 0 else "") + t + out
 
 
 ## The Colony Harmony points' icon (the keeper's drop of honey, 2026-10-27: assets/ui/harmony.png) at px high.

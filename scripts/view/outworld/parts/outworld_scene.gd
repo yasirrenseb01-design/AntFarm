@@ -16,11 +16,12 @@ var _sel_shader_mat: ShaderMaterial
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const GroundData := preload("res://scripts/view/outworld/ground_data.gd")
 const SceneryDraw := preload("res://scripts/view/outworld/scenery_draw.gd")
+const KeeperRoom := preload("res://scripts/view/outworld/keeper_room.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units
 const ANT_SCALE := 1.1
-const WALL_H := 42.0
 const GARDEN_MARGIN := 110.0          # how far (units) the garden ground is drawn past the plot outdoors
+const SOIL_BOTTOM := -14.0           # the box's soil, ~2 cm deep, seen through the glass down to its floor (units)
 const FLUON_BAND := 12.0          # the slippery band painted under the rim (~1.8 cm): climbing ants turn back below it
 const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.6, 0.0))   # in the mandibles of a raised head (shader act 8)
 const THROWN_S := 1.6                # seconds: thrown off an enemy, on its back, righted again
@@ -28,6 +29,8 @@ const SIDE_PANEL_PX := 364.0         # the HUD's side panel covers the right of 
 var side_px := SIDE_PANEL_PX         # ... unless it is folded away (0; the HUD sets it)
 
 var sim
+var wall_h := 42.0                   # the glass above the ground, to its rim (units; the box's own height in _build_box)
+var stand := "desk"                  # where a keeper's box stands in the Home: "desk" or "shelf" (main.gd sets it)
 var ground                           # ground_data.gd: textures, pheromone image, scenery and the keeper's tool
 var active := false
 var speed := 1.0
@@ -230,38 +233,42 @@ func _build_box() -> void:
 	var d: float = sim.WORLD.y * U
 	var glass := StandardMaterial3D.new()
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	glass.albedo_color = Color(0.85, 0.93, 1.0, 0.06)
+	glass.albedo_color = Color(0.85, 0.93, 1.0, 0.035)
 	glass.roughness = 0.03
 	glass.metallic_specular = 1.0
-	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var wood := _mat(Color(0.3, 0.19, 0.11), 0.6)
+	# (each pane's outer face only, and its inner one from inside: drawn both ways, a side seen through four faces of
+	# glass looked misty)
 	var trim := _mat(Color(0.12, 0.1, 0.09), 0.5)
-	var yh := WALL_H * 0.5 - 2.0
-	_box(Vector3(w, WALL_H, 0.5), Vector3(w * 0.5, yh, -0.25), glass)
-	_box(Vector3(w, WALL_H, 0.5), Vector3(w * 0.5, yh, d + 0.25), glass)
-	_box(Vector3(0.5, WALL_H, d), Vector3(-0.25, yh, d * 0.5), glass)
-	_box(Vector3(0.5, WALL_H, d), Vector3(w + 0.25, yh, d * 0.5), glass)
-	# soil layer seen through the glass, the base tray and a dark rim along the top edge
+	# the glass, from the floor of the box (under its soil) to the rim (the keeper, 2026-10-27: its lower part was missing -
+	# the walls began just under the ground, the soil a thin strip on a wooden tray)
+	# as tall as the Home's tanks (home_kit.TANK, BIG: 20 and 27 cm from the box's floor; the keeper, 2026-10-27 "why is the
+	# tank not tall" - it was 6.6 cm, its glass 6 cm above the ground)
+	var tall := 0.27 if sim.WORLD.x > sim.SMALL_WORLD.x else 0.20
+	var top := SOIL_BOTTOM + tall / 0.0015
+	wall_h = top + 2.0
+	var gh := top - SOIL_BOTTOM
+	var yh := (top + SOIL_BOTTOM) * 0.5
+	_box(Vector3(w, gh, 0.5), Vector3(w * 0.5, yh, -0.25), glass)
+	_box(Vector3(w, gh, 0.5), Vector3(w * 0.5, yh, d + 0.25), glass)
+	_box(Vector3(0.5, gh, d), Vector3(-0.25, yh, d * 0.5), glass)
+	_box(Vector3(0.5, gh, d), Vector3(w + 0.25, yh, d * 0.5), glass)
+	_box(Vector3(w + 1.0, 0.6, d + 1.0), Vector3(w * 0.5, SOIL_BOTTOM - 0.3, d * 0.5), glass)      # (its floor)
+	# the soil seen through the glass, and a dark rim along the top edge and the bottom one
 	_build_soil_edge(w, d)
-	_box(Vector3(w + 6, 4.0, d + 6), Vector3(w * 0.5, -8.4, d * 0.5), wood)
-	for e in [[Vector3(w + 3, 1.2, 1.5), Vector3(w * 0.5, WALL_H - 2.0, -0.6)], [Vector3(w + 3, 1.2, 1.5), Vector3(w * 0.5, WALL_H - 2.0, d + 0.6)],
-			[Vector3(1.5, 1.2, d), Vector3(-0.6, WALL_H - 2.0, d * 0.5)], [Vector3(1.5, 1.2, d), Vector3(w + 0.6, WALL_H - 2.0, d * 0.5)]]:
-		_box(e[0], e[1], trim)
-	# the keeper's table
-	var table := MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(3000, 3000)
-	table.mesh = pm
-	table.material_override = _mat(Color(0.16, 0.11, 0.075), 0.55)
-	table.position = Vector3(w * 0.5, -10.4, d * 0.5)
-	add_child(table)
+	for y in [top, SOIL_BOTTOM - 0.4]:
+		for e in [[Vector3(w + 3, 1.2, 1.5), Vector3(w * 0.5, y, -0.6)], [Vector3(w + 3, 1.2, 1.5), Vector3(w * 0.5, y, d + 0.6)],
+				[Vector3(1.5, 1.2, d), Vector3(-0.6, y, d * 0.5)], [Vector3(1.5, 1.2, d), Vector3(w + 0.6, y, d * 0.5)]]:
+			_box(e[0], e[1], trim)
+	# where it stands in the Home: the desk or a shelf, and the room round it (keeper_room.gd)
+	KeeperRoom.build(self, w, d, SOIL_BOTTOM - 1.0, stand)
 
 
-## The soil layer seen through the glass: a skirt from the uneven ground surface down to the tray.
+## The soil seen through the glass: a skirt from the uneven ground surface down to the box's floor, facing out (grainy:
+## a noise texture laid on it, darker and damper lower down).
 func _build_soil_edge(w: float, d: float) -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var bottom := -6.4
+	var bottom := SOIL_BOTTOM
 	var edges := [[Vector3(0, 0, 0), Vector3(w, 0, 0)], [Vector3(w, 0, 0), Vector3(w, 0, d)],
 		[Vector3(w, 0, d), Vector3(0, 0, d)], [Vector3(0, 0, d), Vector3(0, 0, 0)]]
 	for e in edges:
@@ -275,14 +282,31 @@ func _build_soil_edge(w: float, d: float) -> void:
 			var t1 := Vector3(p1.x, ground_h(p1.x, p1.z), p1.z)
 			var b0 := Vector3(p0.x, bottom, p0.z)
 			var b1 := Vector3(p1.x, bottom, p1.z)
-			for v in [t0, t1, b0, t1, b1, b0, t0, b0, t1, t1, b0, b1]:
-				var depth := clampf((v.y - bottom) / 7.0, 0.0, 1.0)
-				st.set_color(Color(0.17, 0.11, 0.07).lerp(Color(0.33, 0.23, 0.14), depth))
+			var out := Vector3.UP.cross(b - a).normalized()
+			for v in [t0, b0, t1, t1, b0, b1]:
+				var depth := clampf((v.y - bottom) / (-bottom), 0.0, 1.0)
+				st.set_color(Color(0.3, 0.2, 0.13).lerp(Color(0.62, 0.45, 0.3), depth))
+				st.set_normal(out)
 				st.add_vertex(v)
-	st.generate_normals()
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
-	mi.material_override = _vc_mat(0.95, true)
+	var grain := NoiseTexture2D.new()
+	grain.width = 256
+	grain.height = 256
+	grain.seamless = true
+	var gn := FastNoiseLite.new()
+	gn.frequency = 0.09
+	gn.fractal_octaves = 3
+	grain.noise = gn
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(0.42, 0.3, 0.2))
+	ramp.set_color(1, Color(0.78, 0.62, 0.45))
+	grain.color_ramp = ramp
+	var m := _vc_mat(0.95)
+	m.albedo_texture = grain
+	m.uv1_triplanar = true
+	m.uv1_scale = Vector3.ONE * 0.04
+	mi.material_override = m
 	add_child(mi)
 
 

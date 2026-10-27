@@ -360,6 +360,8 @@ set_care,ผู้ช่วยเติมน้ำและให้อาห�
 set_music,เพลงพื้นหลัง,Music
 off,ปิด,Off
 set_fps,แสดงอัตราเฟรม (FPS) มุมซ้ายบน · ปุ่มลัด F3,Show the frame rate (FPS) top left · shortcut F3
+set_home_hand,บ้าน: มือ 3 มิติ,Home: a hand in 3D
+set_home_cross,บ้าน: จุดเล็งกลางจอ,Home: an aiming point
 set_note,เซฟอัตโนมัติทุก 1 นาทีและตอนปิดเกม · จำลองช่วงที่ปิดเกมได้สูงสุด %d วันในเกม,Saved automatically every minute and when the game closes · up to %d game days are simulated for the time it was closed
 done,เสร็จ,Done
 none,ไม่มี,None
@@ -462,6 +464,8 @@ en_title,ศัตรู · ปล่อยมาดูมดสู้,Enemies �
 en_rate,ศัตรูธรรมชาติมาเองบ่อยแค่ไหน,How often natural enemies come by themselves
 en_how,ปล่อยเอง: ศัตรูเดินเข้ามาจากขอบพื้นที่หาอาหาร ล่าอยู่ราวครึ่งวันในเกมแล้วจากไป ถ้ามดไม่รุมฆ่าหรือไล่ไปก่อน · มดที่เจอจะปล่อยกลิ่นเตือนภัย พวกพ้องกรูมากัดและพ่นกรดฟอร์มิก · ศัตรูที่ตายกลายเป็นอาหารของรัง,"Let one in: it walks in from the edge of the outworld and hunts for about half a game day, then leaves, unless the ants kill it or drive it off first · the ant that meets it gives off alarm pheromone and nestmates rush in to bite and spray formic acid · a dead enemy becomes food for the colony"
 en_release,ปล่อย,Let in
+en_release_cost,ปล่อย · %s,Let in · %s
+en_need_points,ปล่อยศัตรูใช้ %s แต้ม Colony Harmony ต่อตัว (50 ต่อรังที่มีมด) — แต้มยังไม่พอ,Letting an enemy in costs %s Colony Harmony points (50 for each colony with ants) — not enough points yet
 en_now,ในพื้นที่หาอาหารตอนนี้,In the outworld now
 en_remove,เอาศัตรูออกทั้งหมด,Take all enemies out
 en_full,มีศัตรูในพื้นที่ครบ %d ตัวแล้ว,There are already %d enemies in the outworld

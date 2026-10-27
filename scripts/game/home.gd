@@ -12,6 +12,7 @@ const Room := preload("res://scripts/view/home/home_room.gd")
 const Paper := preload("res://scripts/view/ui/paper.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const Shop := preload("res://scripts/game/home_shop.gd")
+const Hand := preload("res://scripts/view/home/home_hand.gd")
 const EYE := 1.55                 # metres: the keeper's eyes
 const EYE_SEATED := 1.15
 const WALK := 1.3                 # metres a second
@@ -37,7 +38,9 @@ var _toast_t := 0.0
 var _purse: Label
 var _help: Label
 var shop                          # game/home_shop.gd: the shop page
-var _hand: TextureRect            # the keeper's hand, in the middle of the view
+var _hand: TextureRect            # the keeper's hand drawn flat, in the middle of the view (with the 3D hand off)
+var _hand3d                       # view/home/home_hand.gd: the keeper's hand in 3D, lower right (settings "home_hand")
+var _cross: ColorRect             # an aiming point in the middle of the view (settings "home_cross")
 var _hand_open: Texture2D
 var _hand_point: Texture2D
 var _free := false                # Tab: the pointer free for the bar and the shop (the view stays still)
@@ -101,6 +104,10 @@ func _build() -> void:
 	_cam.position = Vector3(0.0, EYE, START_Z)
 	if main._opts.has("home-fov"):
 		_cam.fov = float(main._opts["home-fov"])          # (dev: a closer look)
+	_hand3d = null
+	if bool(main._settings.get("home_hand", true)):
+		_hand3d = Hand.new()
+		_cam.add_child(_hand3d)
 	# the room's warm edges darkened a little (a vignette)
 	var vig := ColorRect.new()
 	vig.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -122,6 +129,28 @@ func _build() -> void:
 	_hand.offset_left = -19
 	_hand.offset_top = -3
 	root.add_child(_hand)
+	# the aiming point: a small ring with a dot, wider while it is on something that can be clicked
+	_cross = ColorRect.new()
+	_cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cross.anchor_left = 0.5
+	_cross.anchor_right = 0.5
+	_cross.anchor_top = 0.5
+	_cross.anchor_bottom = 0.5
+	_cross.offset_left = -11
+	_cross.offset_right = 11
+	_cross.offset_top = -11
+	_cross.offset_bottom = 11
+	var cs := Shader.new()
+	cs.code = "shader_type canvas_item;
+uniform float hot = 0.0;
+void fragment() { float d = length(UV - 0.5) * 22.0; float r = mix(5.0, 8.0, hot);
+	float ring = (1.0 - smoothstep(0.6, 1.3, abs(d - r))) * hot; float dot = 1.0 - smoothstep(1.4, 2.2, d);
+	float edge = (1.0 - smoothstep(1.3, 2.4, abs(d - r))) * hot + (1.0 - smoothstep(2.2, 3.2, d));
+	float a = max(ring, dot); COLOR = vec4(vec3(1.0, 0.97, 0.9) * a, max(a * 0.95, edge * 0.45)); }"
+	var cm := ShaderMaterial.new()
+	cm.shader = cs
+	_cross.material = cm
+	root.add_child(_cross)
 	# a bar along the top on paper: back to the title page, the Home, the purse
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel", Paper.page())
@@ -265,7 +294,7 @@ func _aim() -> void:
 ## The pointer: held in the middle (turning the view) unless the keeper freed it (Tab), the shop is open, or a window
 ## (a new colony, a question) is up.
 func _pointer_free() -> bool:
-	return _free or shop.visible or not get_viewport().get_embedded_subwindows().is_empty() or main._opts.has("shot")
+	return _free or shop.visible or not get_viewport().get_embedded_subwindows().is_empty() or (main._opts.has("shot") and not main._opts.has("home-aim"))
 
 
 func _process(delta: float) -> void:
@@ -275,7 +304,8 @@ func _process(delta: float) -> void:
 	var want := Input.MOUSE_MODE_VISIBLE if free else Input.MOUSE_MODE_CAPTURED
 	if Input.mouse_mode != want:
 		Input.mouse_mode = want
-	_hand.visible = not free
+	_hand.visible = not free and _hand3d == null
+	_cross.visible = not free and bool(main._settings.get("home_cross", true))
 	if not free:
 		_point(get_viewport().get_visible_rect().size * 0.5)
 	# sitting down, getting up
@@ -293,6 +323,9 @@ func _process(delta: float) -> void:
 			_stand()
 		else:
 			_walk(mv, delta)
+	if _hand3d != null:
+		_hand3d.point(_hot != null)
+		_hand3d.tick(delta, mv != Vector2.ZERO and not _seated)
 	if _toast.visible:
 		_toast_t -= delta
 		if _toast_t <= 0.0:
@@ -352,6 +385,8 @@ func _stand() -> void:
 
 func _on_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed:
+		if e.button_index == MOUSE_BUTTON_LEFT and _hand3d != null:
+			_hand3d.poke()
 		if e.button_index == MOUSE_BUTTON_LEFT and _hot != null:
 			_click(_hot)
 		elif e.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -385,6 +420,7 @@ func _point(at: Vector2) -> void:
 		_hot = best
 		_room.hover(best)
 		_hand.texture = _hand_open if best == null else _hand_point
+		(_cross.material as ShaderMaterial).set_shader_parameter("hot", 0.0 if best == null else 1.0)
 	_tip.visible = best != null
 	if best != null:
 		_tip.text = _describe(best)

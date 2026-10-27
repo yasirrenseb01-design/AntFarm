@@ -132,16 +132,6 @@ func _unhandled_key_input(e: InputEvent) -> void:
 
 # ---------------------------------------------------------------- refresh
 
-## 12345 -> "12,345"
-static func _thousands(n: int) -> String:
-	var t := str(absi(n))
-	var out := ""
-	while t.length() > 3:
-		out = "," + t.substr(t.length() - 3) + out
-		t = t.substr(0, t.length() - 3)
-	return ("-" if n < 0 else "") + t + out
-
-
 func refresh(delta: float) -> void:
 	_t += delta
 	_tick_banner(delta)

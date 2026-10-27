@@ -201,6 +201,19 @@ func open_settings() -> void:
 			_fps_label.visible = on
 		settings_changed.emit(settings))
 	col.add_child(fps)
+	# the Home: the keeper's hand in 3D, and an aiming point in the middle of the view (the keeper, 2026-10-27)
+	var home_row := HBoxContainer.new()
+	home_row.add_theme_constant_override("separation", 18)
+	for hopt in [["home_hand", "set_home_hand"], ["home_cross", "set_home_cross"]]:
+		var key: String = hopt[0]
+		var cb := CheckBox.new()
+		cb.text = tr(hopt[1])
+		cb.button_pressed = bool(settings.get(key, true))
+		cb.toggled.connect(func(on):
+			settings[key] = on
+			settings_changed.emit(settings))
+		home_row.add_child(cb)
+	col.add_child(home_row)
 	# graphics quality and the frame-rate cap (game/graphics.gd; main applies them as the settings change)
 	var gfx := HBoxContainer.new()
 	gfx.add_theme_constant_override("separation", 8)

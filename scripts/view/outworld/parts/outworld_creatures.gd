@@ -467,7 +467,7 @@ func _on_glass(a: Ant, floor_tr: Transform3D, s: float) -> Array:
 		2: at.z = 0.05
 		3: at.z = d - 0.05
 	var base_y := ground_top(at.x, at.z)
-	var band: float = WALL_H - 2.0 - FLUON_BAND - base_y        # how high it gets before the slippery band
+	var band: float = wall_h - 2.0 - FLUON_BAND - base_y        # how high it gets before the slippery band
 	var act := 0
 	if u < 0.55:
 		# up the glass, head first; the last stretch slipping on the band before it lets go
