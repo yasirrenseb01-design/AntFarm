@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_duties.gd"
-## Nest view, layer 12 of 13: the nestmates walking the real tunnels, their roles and activities,
+## Nest view, layer 13 of 14: the nestmates walking the real tunnels, their roles and activities,
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 

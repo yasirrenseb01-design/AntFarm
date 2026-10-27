@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_feet.gd"
-## Nest view, layer 7 of 13 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves -
+## Nest view, layer 7 of 14 (split from parts/nest_mates.gd in v0.8.5): how a nestmate's body moves -
 ## easing along its voxel path, turning, and bodies keeping out of one another (and the queen),
 ## and (moved from nest_mates.gd in v0.8.16) whether it stands on the brood (where it stops: nest_rest.gd).
 

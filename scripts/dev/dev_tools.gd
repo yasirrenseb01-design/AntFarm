@@ -693,6 +693,8 @@ func _take_shot() -> void:
 			for i in sim.nest.chambers.size():
 				print("  chamber %d depth %.1f cm, %.1f C over the last day%s%s%s" % [i, sim.chamber_depth_cm(i), sim.ch_mean[i] if i < sim.ch_mean.size() else -1000.0,
 					" QUEEN" if i == sim.queen_at else "", " larvae" if i == int(sim.brood_at.larvae) else "", " pupae" if i == int(sim.brood_at.pupae) else ""])
+		if _opts.has("io"):
+			print("io: ", nest_view.io)          # (--io: in and out of the nest, the simulation's and as drawn - nest_rest)
 		if _opts.has("pops") and mode == "nest" and _jit_frames > 0:
 			var secs := _jit_frames / 60.0
 			print("jitter: %d turn flicks, %d bobs in %.0f ant-seconds (%.2f / %.2f per ant-minute)" % [_jit_turns, _jit_bobs, secs,
@@ -706,6 +708,8 @@ func _take_shot() -> void:
 	get_viewport().get_texture().get_image().save_png(path)
 	if hud.ant_tip.visible:
 		print("selected: ", hud.ant_tip._text.text.replace(char(10), " | "))
+	if _opts.has("io"):
+		print("io: ", nest_view.io)
 	_save_now()
 	print("saved ", path, "  fps ", Engine.get_frames_per_second(), "  process ms %.2f" % (Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0))
 	get_tree().quit()

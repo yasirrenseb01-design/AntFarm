@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_lifecycle.gd"
-## Nest view, layer 6 of 13 (split from parts/nest_bodies.gd in v0.11.33): the legs - the gait stepped as far as the
+## Nest view, layer 6 of 14 (split from parts/nest_bodies.gd in v0.11.33): the legs - the gait stepped as far as the
 ## drawn body really goes, the feet's reach, and where each tripod was set down (remembered: sent to the shader as feet_tex).
 
 

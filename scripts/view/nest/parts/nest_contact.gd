@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_soil.gd"
-## Nest view, layer 10 of 13 (new in v0.8.63): bodies meeting - an ant looking ahead and waiting for the one in its
+## Nest view, layer 11 of 14 (new in v0.8.63): bodies meeting - an ant looking ahead and waiting for the one in its
 ## way, climbing over a nestmate's back or onto the brood, worked out from the bodies' real shapes.
 
 

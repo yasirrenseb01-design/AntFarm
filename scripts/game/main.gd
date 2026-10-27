@@ -317,6 +317,14 @@ func _notification(what: int) -> void:
 			desktop.close()             # (as the wallpaper: out of the wallpaper layer first, then it quits)
 
 
+## "Quit" on the title page: saved as when the window is closed, then the game ends. (Until v0.11.44 it only sent the
+## window's close notice round the nodes - the colony was saved, but nothing quits on that notice: the game stayed.)
+func quit_game() -> void:
+	_notification(NOTIFICATION_WM_CLOSE_REQUEST)
+	if desktop == null or not desktop.on:
+		get_tree().quit()
+
+
 ## The nest as the desktop wallpaper (desktop_mode.gd; what went wrong comes back by its `failed` signal). The
 ## wallpaper layer shows only what Direct3D 12 draws (Vulkan presents straight to the screen, past the layer: nothing
 ## showed, tested 2026-10-16), and the game draws with Vulkan (D3D12 lost the device on the Intel UHD here): so it is

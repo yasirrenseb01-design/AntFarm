@@ -86,7 +86,7 @@ func setup(m) -> void:
 	_item(col, tr("title_wild"), func(): h.open_colonies("wild"))
 	_item(col, tr("settings"), func(): h.open_settings())
 	_item(col, tr("wallpaper"), func(): main._enter_desktop())
-	_item(col, tr("title_quit"), func(): main.get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST))
+	_item(col, tr("title_quit"), func(): main.quit_game())
 	var ver: Label = h._label("v%s" % ProjectSettings.get_setting("application/config/version", "dev"), 12, h.MUTED)
 	ver.anchor_top = 1.0
 	ver.anchor_bottom = 1.0
@@ -212,6 +212,10 @@ func open(can_go_on := true) -> void:
 	_next_shot()
 	if main._opts.has("title-hover"):
 		_page.hover(_items[int(main._opts["title-hover"])])         # (dev: as if the pointer were on that word)
+	if main._opts.has("title-click"):
+		# (dev: --title-click=<i>: that word clicked after two seconds, as the keeper would - "Quit" checked so)
+		var b: Button = _items[int(main._opts["title-click"])]
+		get_tree().create_timer(2.0).timeout.connect(func(): b.pressed.emit())
 
 
 ## Clip mode (F8): the camera tour with nothing on screen - no menu, no captions, no HUD - for the keeper to film.

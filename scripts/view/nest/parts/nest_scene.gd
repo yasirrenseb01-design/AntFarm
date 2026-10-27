@@ -1,7 +1,7 @@
 extends Node3D
 ## 3D view of the underground nest: the soil block sliced open by a camera-facing cut plane,
 ## with diggers from the simulation, resting nestmates, brood piles and the queen.
-## Nest view, layer 1 of 13: state and the building blocks of the scene (soil chunks, materials,
+## Nest view, layer 1 of 14: state and the building blocks of the scene (soil chunks, materials,
 ## meshes, the glass case). Layers: nest_scene <- nest_camera <- nest_brood <- nest_lifecycle <- nest_bodies <- nest_mates <- nest_view.
 const Ant := preload("res://scripts/sim/ant.gd")
 const Mesher := preload("res://scripts/view/nest/nest_mesher.gd")

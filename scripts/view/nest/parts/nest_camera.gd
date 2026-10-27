@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_scene.gd"
-## Nest view, layer 2 of 13: the orbit camera, the cut plane, x-ray and focusing on places.
+## Nest view, layer 2 of 14: the orbit camera, the cut plane, x-ray and focusing on places.
 
 
 func snap_camera() -> void:
