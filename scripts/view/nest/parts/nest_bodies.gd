@@ -421,18 +421,14 @@ func pick_ant(sp: Vector2) -> Dictionary:
 			var d := _body_gap(m.xf, sp)
 			if d < 14.0:
 				cands.append([d, eye.distance_to((m.xf as Transform3D).origin), {"kind": "worker", "w": all.get(m.wid), "role": m.role, "act": _shown_act(m)}])
-	# diggers: the colony's diggers are the workers set to dig, lowest id first, one per digger drawn
-	var dig_ws: Array = sim.workers.filter(func(w): return w.task == Ant.TASK_DIG)
-	dig_ws.sort_custom(func(a, b): return a.id < b.id)
-	var ds: Array = nest.diggers.duplicate()
-	ds.sort_custom(func(a, b): return a.id < b.id)
-	for i in ds.size():
-		var v: Dictionary = _dig_vis.get(ds[i].id, {})
-		if v.has("xf"):
+	# diggers: each the body of the worker it is (nest_bind: digger_worker)
+	for dg in nest.diggers:
+		var v: Dictionary = _dig_vis.get(dg.id, {})
+		if v.has("xf") and not v.get("hide", false):
 			var d := _body_gap(v.xf, sp)
 			if d < 14.0:
-				cands.append([d, eye.distance_to((v.xf as Transform3D).origin), {"kind": "digger", "w": dig_ws[i] if i < dig_ws.size() else null,
-					"act": ACT_CARRY if ds[i].carry else ACT_DIG, "dig": ds[i].id}])
+				cands.append([d, eye.distance_to((v.xf as Transform3D).origin), {"kind": "digger", "w": call("digger_worker", dg.id),
+					"act": ACT_CARRY if dg.carry else ACT_DIG, "dig": dg.id}])
 	if _queen_mm.instance_count > 0 and _visible(_queen_xf.origin):
 		var qd := AntModel.screen_gap(_cam, _queen_xf, sp, QUEEN_HEAD + Vector3(0.25, 0, 0), QUEEN_TAIL - Vector3(0.2, 0, 0), 0.32)
 		if qd < 14.0:
@@ -476,13 +472,9 @@ func info_for(kind: String, id: int) -> Dictionary:
 				return {"kind": kind, "item": it}
 		return {}
 	if kind == "digger":
-		var dig_ws: Array = sim.workers.filter(func(w): return w.task == Ant.TASK_DIG)
-		dig_ws.sort_custom(func(a, b): return a.id < b.id)
-		var ds: Array = nest.diggers.duplicate()
-		ds.sort_custom(func(a, b): return a.id < b.id)
-		for i in ds.size():
-			if ds[i].id == id:
-				return {"kind": "digger", "w": dig_ws[i] if i < dig_ws.size() else null, "act": ACT_CARRY if ds[i].carry else ACT_DIG, "dig": id}
+		for dg in nest.diggers:
+			if dg.id == id:
+				return {"kind": "digger", "w": call("digger_worker", id), "act": ACT_CARRY if dg.carry else ACT_DIG, "dig": id}
 		return {}
 	for m in _mates:
 		if int(m.get("wid", -1)) == id:

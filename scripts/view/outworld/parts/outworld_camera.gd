@@ -1,4 +1,4 @@
-extends "res://scripts/view/outworld/parts/outworld_creatures.gd"
+extends "res://scripts/view/outworld/parts/outworld_dumpers.gd"
 ## Outworld view, layer 4 of 5: the orbit camera and picking points on the ground.
 
 

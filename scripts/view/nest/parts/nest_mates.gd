@@ -13,6 +13,9 @@ func _move_mate(m: Dictionary, n: Vector3i) -> void:
 
 ## What an ant does when it reaches the place it was heading for.
 func _arrive(m: Dictionary) -> void:
+	if m.has("fetch"):
+		_pick_corpse(m)                                # an undertaker at the body: up with it, then out (nest_bind)
+		return
 	if m.get("leaving", false):
 		m.gone = true                                  # out through the entrance: the outworld draws it now
 		return
@@ -51,6 +54,9 @@ func _arrive(m: Dictionary) -> void:
 			m.wander = randi_range(2, 5)
 			if randf() < 0.5:
 				m.goal = _random_room()
+		"todig":
+			m.rest = randi_range(300, 600)             # at the dig face, until it takes its digger over (nest_bind)
+			m.wander = 0
 		"giver", "groomer":
 			m.rest = 0                                 # on its way to its partner (nest_duties._duty_pairs steers it)
 		"traffic":
@@ -117,7 +123,7 @@ func _step_mate(m: Dictionary) -> void:
 		if not opts.is_empty():
 			_move_mate(m, opts[randi() % opts.size()])
 		return
-	var field: Dictionary = _fields.get(m.goal, {})
+	var field: Dictionary = _field_of(m.goal)        # (the rooms, the entrance, the dig face, a body to fetch)
 	var here: int = field.get(c, -1)
 	if here == 0:
 		_arrive(m)
@@ -327,6 +333,7 @@ func _update_ants(delta: float) -> void:
 	var shell_loads := []
 	var drops := []
 	var pellet_loads := []
+	var corpse_loads := []
 	# where everyone stood last frame, binned by cell: nestmates keep a body width apart instead of
 	# standing inside one another (the queen, much bigger, keeps a wider berth)
 	var tp := Time.get_ticks_usec()                # (dev --perf: where this function's time goes)
@@ -335,7 +342,7 @@ func _update_ants(delta: float) -> void:
 	_gfit_budget = 3
 	var near := {}
 	for m in _mates + _dig_vis.values():          # the diggers from the simulation have bodies too
-		if m.has("xf"):
+		if m.has("xf") and not m.get("hide", false):
 			var x: Transform3D = m.xf
 			var o: Vector3 = x.origin
 			var f: Vector3 = x.basis.x.normalized() * (0.7 * float(m.size))
@@ -373,7 +380,8 @@ func _update_ants(delta: float) -> void:
 		if not st.is_empty():
 			_mate_cells[st[-1]] = m
 	for v in _dig_vis.values():
-		_mate_cells[Vector3i(roundi(v.to.x), roundi(v.to.y), roundi(v.to.z))] = v
+		if not v.get("hide", false):
+			_mate_cells[Vector3i(roundi(v.to.x), roundi(v.to.y), roundi(v.to.z))] = v
 	_mate_frame += 1
 	for mi in _mates.size():
 		var m: Dictionary = _mates[mi]
@@ -557,7 +565,9 @@ func _update_ants(delta: float) -> void:
 			if sel_kind == "worker" and int(m.get("wid", -1)) == sel_id:
 				sel_at = [tr, cus[-1], xs.size() - 1]
 			if m.carry:
-				if m.get("item", "") == "cocoon":
+				if m.get("item", "") == "corpse":
+					corpse_loads.append(tr)
+				elif m.get("item", "") == "cocoon":
 					cocoon_loads.append(tr * CARRY_OFFSET)
 				elif m.get("item", "") == "shell":
 					shell_loads.append(tr * CARRY_OFFSET * Transform3D(Basis.from_scale(Vector3(0.85, 0.6, 1.1)), Vector3.ZERO))
@@ -599,6 +609,10 @@ func _update_ants(delta: float) -> void:
 			v.still += adt
 		v.t += dt
 		v.anim += adt
+		if not _dig_live.has(id):
+			v.hide = true                     # (no worker's body yet - one is walking to it - or none: not drawn)
+			continue
+		v.erase("hide")
 		if not v.has("size"):
 			v.size = _sample_size()
 		v.cell = cell
@@ -633,7 +647,7 @@ func _update_ants(delta: float) -> void:
 		if _shown(tr):
 			var act := ACT_CARRY if d.carry else (ACT_DIG if v.still > 0.25 else ACT_WALK)
 			xs.append(tr)
-			cols.append(body)
+			cols.append(_mate_color(v, body, young))
 			cus.append(_custom(v, act))
 			fts.append_array(_feet_rec(v, tr, cus[-1]))
 			if sel_kind == "digger" and id == sel_id:
@@ -676,6 +690,7 @@ func _update_ants(delta: float) -> void:
 	drops.append_array(_anim_drops)
 	_fill(_fx_drop_mm, drops)
 	_fill(_carry_pellet_mm, pellet_loads)
+	_draw_corpses(corpse_loads)
 
 	# the queen: rests among her retinue, curls her gaster to lay whenever a new egg appears
 	_queen_anim += adt

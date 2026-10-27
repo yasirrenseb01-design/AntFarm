@@ -151,6 +151,8 @@ func _take_shot() -> void:
 		elif _opts.has("at-ant") and not sim.outside.is_empty():
 			var a = sim.outside[int(_opts["at-ant"]) % sim.outside.size()]
 			outworld.target_t = Vector3(a.pos.x, 0, a.pos.y) * outworld.U
+		elif _opts.has("at-entrance"):
+			outworld.target_t = Vector3(sim.nest_pos.x, 0, sim.nest_pos.y) * outworld.U     # (--at-entrance: the nest's entrance)
 		outworld.crowd = not _opts.has("no-crowd")
 		if _opts.has("at-food"):
 			# drop one of that food beside the nest and look at it (models: --at-food=fly)
@@ -251,6 +253,22 @@ func _take_shot() -> void:
 		if _opts.has("home-point"):
 			var pp: PackedStringArray = String(_opts["home-point"]).split(",")
 			home_room._point(Vector2(float(pp[0]), float(pp[1])))     # (as if the pointer were there)
+	if _opts.has("kill-inside"):
+		# (dev: --kill-inside=<n>: that many nestmates drawn near the middle of the screen die after 2 s - a body in the
+		# nest and an undertaker to watch; --kill-at=<s> another delay)
+		get_tree().create_timer(float(_opts.get("kill-at", "2"))).timeout.connect(func():
+			var n := int(_opts["kill-inside"])
+			var ms: Array = nest_view._mates.filter(func(m): return m.has("xf") and int(m.get("wid", -1)) >= 0 and not m.get("leaving", false))
+			ms.sort_custom(func(a, b): return (a.xf as Transform3D).origin.distance_to(nest_view.target) < (b.xf as Transform3D).origin.distance_to(nest_view.target))
+			if not ms.is_empty():
+				nest_view.aim_at((ms[0].xf as Transform3D).origin, 10.0)      # (the camera on the first body)
+			for m in ms.slice(0, n):
+				for w in sim.workers:
+					if w.id == int(m.wid):
+						sim._kill(w, "old")
+			print("killed %d in the nest" % mini(n, ms.size()))
+			if _opts.has("follow-undertaker"):
+				_follow_undertaker(40))
 	if _opts.has("name-first") and not sim.workers.is_empty():
 		sim.name_ant(sim.workers[0].id, String(_opts["name-first"]))     # (--name-first=<name>: the title tour follows it)
 	if _opts.has("fridge"):
@@ -694,7 +712,7 @@ func _take_shot() -> void:
 				print("  chamber %d depth %.1f cm, %.1f C over the last day%s%s%s" % [i, sim.chamber_depth_cm(i), sim.ch_mean[i] if i < sim.ch_mean.size() else -1000.0,
 					" QUEEN" if i == sim.queen_at else "", " larvae" if i == int(sim.brood_at.larvae) else "", " pupae" if i == int(sim.brood_at.pupae) else ""])
 		if _opts.has("io"):
-			print("io: ", nest_view.io)          # (--io: in and out of the nest, the simulation's and as drawn - nest_rest)
+			print("io: ", nest_view.io, " diggers ", nest_view.nest.diggers.size(), " paired ", nest_view._dig_wid.size(), " live ", nest_view._dig_live.size())          # (--io: in and out of the nest, the simulation's and as drawn - nest_bind)
 		if _opts.has("pops") and mode == "nest" and _jit_frames > 0:
 			var secs := _jit_frames / 60.0
 			print("jitter: %d turn flicks, %d bobs in %.0f ant-seconds (%.2f / %.2f per ant-minute)" % [_jit_turns, _jit_bobs, secs,
@@ -709,7 +727,7 @@ func _take_shot() -> void:
 	if hud.ant_tip.visible:
 		print("selected: ", hud.ant_tip._text.text.replace(char(10), " | "))
 	if _opts.has("io"):
-		print("io: ", nest_view.io)
+		print("io: ", nest_view.io, " diggers ", nest_view.nest.diggers.size(), " paired ", nest_view._dig_wid.size(), " live ", nest_view._dig_live.size())
 	_save_now()
 	print("saved ", path, "  fps ", Engine.get_frames_per_second(), "  process ms %.2f" % (Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0))
 	get_tree().quit()
@@ -1018,3 +1036,16 @@ func _selftest(days: int, autokeep: bool) -> void:
 	for e in sim.log_entries.slice(0, int(_opts.get("logs", "12"))):
 		print("  ", sim.L.stamp(e), "  ", sim.L.entry_text(e))
 	get_tree().quit()
+
+
+
+## (dev --follow-undertaker, with --kill-inside: the camera rides with the nestmate that goes for the body, as soon as
+## there is one)
+func _follow_undertaker(tries: int) -> void:
+	for m in nest_view._mates:
+		if m.has("fetch") or m.get("item", "") == "corpse":
+			nest_view.follow_wid = int(m.wid)
+			print("following undertaker ", m.wid)
+			return
+	if tries > 0:
+		get_tree().create_timer(0.1).timeout.connect(func(): _follow_undertaker(tries - 1))
