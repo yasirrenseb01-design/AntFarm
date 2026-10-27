@@ -338,6 +338,7 @@ static func measure(nv, tally: Dictionary) -> void:
 					print("  M5 over %.2f clr %.2f fgap %.2f freach %.2f role %s up %s" % [float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)), float(mt.get("floor_gap", -1.0)),
 						float(mt.get("freach", 0.0)), mt.get("role", "dig"), M.basis.y.normalized()])
 		var fs := feet(nest, M, mm.get_instance_custom_data(i), _rec(nv, i), dbg)
+		_twist(fs, M, float(mm.get_instance_custom_data(i).a), tally)
 		var upw := M.basis.y.normalized()
 		# jitter: a planted foot stays where it is in the world while the body walks over it - from one frame to the
 		# next it may slide a little with the stride, not jump (only when measured every frame: --seq-every=1)
@@ -612,11 +613,81 @@ static func _open_within(nest, p: Vector3, r: float) -> bool:
 	return false
 
 
+## Twisted legs (the keeper, 2026-10-27/28: legs bent backwards and crossing, on ants standing by the queen): of each
+## ant-frame's legs, those swept round the hip more than SWEEP from where they rest (the foot far behind or ahead,
+## across the body's side), and the ant-frames in which, on one side, the feet are out of order front to back (front
+## behind middle, or middle behind hind: legs crossing). Standing ants (gait weight < 0.1) and walking ones apart.
+const SWEEP := deg_to_rad(45.0)
+const REST_F := [Vector3(0.85 + 1.8, 0.0, 3.15), Vector3(0.2 - 0.1, 0.0, 3.15), Vector3(-0.4 - 2.2, 0.0, 3.15)]
+static func _twist(fs: Array, M: Transform3D, cw: float, tally: Dictionary) -> void:
+	if fs.is_empty():
+		return
+	var mv := cw - floorf(cw)
+	var key := "still" if mv < 0.1 else "walking"
+	var inv := M.affine_inverse()
+	var by := {}
+	var swept := 0
+	for f in fs:
+		var li: int = f[2]
+		var loc: Vector3 = inv * (f[0] as Vector3)
+		var side := 1.0 if loc.z > 0.0 else -1.0
+		var hip := Vector3([0.85, 0.2, -0.4][li] * K, 0.0, 0.42 * side * K)
+		var rest: Vector3 = Vector3(REST_F[li].x, 0.0, REST_F[li].z * side) * K - hip
+		var now := loc - hip
+		var a := absf(Vector2(rest.x, rest.z).angle_to(Vector2(now.x, now.z)))
+		if a > SWEEP:
+			swept += 1
+			var why := "%s leg%d %s %s" % [key, li, "planted" if f[1] else "swinging", "behind" if now.x < rest.x else "ahead"]
+			tally["twc:" + why] = int(tally.get("twc:" + why, 0)) + 1
+		by["%d%d" % [li, side]] = loc.x
+	tally["tw_legs:" + key] = int(tally.get("tw_legs:" + key, 0)) + fs.size()
+	tally["tw_swept:" + key] = int(tally.get("tw_swept:" + key, 0)) + swept
+	var crossed := false
+	for side in [-1, 1]:
+		var f0 = by.get("0%d" % side)
+		var f1 = by.get("1%d" % side)
+		var f2 = by.get("2%d" % side)
+		if f0 != null and f1 != null and f0 < f1:
+			crossed = true
+			tally["twc:%s cross front/middle" % key] = int(tally.get("twc:%s cross front/middle" % key, 0)) + 1
+		if f1 != null and f2 != null and f1 < f2:
+			crossed = true
+			tally["twc:%s cross middle/hind" % key] = int(tally.get("twc:%s cross middle/hind" % key, 0)) + 1
+	tally["tw_ants:" + key] = int(tally.get("tw_ants:" + key, 0)) + 1
+	if OS.has_environment("TWDBG") and int(tally.get("twdbg", 0)) < 12 and key == OS.get_environment("TWDBG"):
+		var ok := true
+		for side in [-1, 1]:
+			var f0 = by.get("0%d" % side)
+			var f1 = by.get("1%d" % side)
+			if (f0 != null and f1 != null and f0 < f1) or (f1 != null and by.get("2%d" % side) != null and f1 < by.get("2%d" % side)):
+				ok = false
+		if not ok:
+			tally.twdbg = int(tally.get("twdbg", 0)) + 1
+			var parts := []
+			for f in fs:
+				var loc: Vector3 = inv * (f[0] as Vector3)
+				var inf: Dictionary = f[6]
+				parts.append("L%d%s x%.2f z%.2f %s u%.2f act%d fm%d" % [f[2], "R" if loc.z > 0 else "L", loc.x / K, loc.z / K, "P" if f[1] else "S", float(inf.u), int(inf.act), int(inf.fm)])
+			print("TWDBG mv %.2f ss %.2f tw %.2f | %s" % [mv, float(fs[0][6].ss), float(fs[0][6].tw), ", ".join(parts)])
+	if crossed:
+		tally["tw_crossed:" + key] = int(tally.get("tw_crossed:" + key, 0)) + 1
+
+
 static func report(tally: Dictionary) -> String:
 	var n := maxf(1.0, float(tally.get("feet", 0)))
 	var s := "planted feet %d: in the air %.2f%% (of them far from any soil %.2f%%), in the soil %.2f%%, in the brood %.2f%%" % [
 		int(tally.get("feet", 0)), 100.0 * float(tally.get("foot_air", 0)) / n, 100.0 * float(tally.get("foot_air_far", 0)) / n,
 		100.0 * float(tally.get("foot_soil", 0)) / n, 100.0 * float(tally.get("foot_brood", 0)) / n]
+	for key in ["still", "walking"]:
+		if int(tally.get("tw_ants:" + key, 0)) > 0:
+			s += "
+    TWIST %s: legs swept >45 deg round the hip %.2f%% of %d, ant-frames with legs crossing %.2f%% of %d" % [key,
+				100.0 * float(tally.get("tw_swept:" + key, 0)) / float(tally["tw_legs:" + key]), int(tally["tw_legs:" + key]),
+				100.0 * float(tally.get("tw_crossed:" + key, 0)) / float(tally["tw_ants:" + key]), int(tally["tw_ants:" + key])]
+	for k in tally:
+		if String(k).begins_with("twc:"):
+			s += "
+      twist: %5d  %s" % [tally[k], String(k).substr(4)]
 	s += "
     planted feet through the soil's surface (in by more than %.2f whichever way): %.2f%%" % [SUNK, 100.0 * float(tally.get("foot_pen", 0)) / n]
 	for k in tally:

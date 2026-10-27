@@ -67,7 +67,9 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 		v.f_p = [Vector3.ZERO, Vector3.ZERO]
 		v.f_u = [-1.0, -1.0]
 	var sc := tr.basis.x.length()
-	var far := AntModel.stride_len(ss) * sc + 0.3
+	# (left behind: past a stance's own sweep (2 x amp) and a little - a full stride and more let the front feet trail
+	# behind the middle ones, legs crossed: 31% of walking ant-frames, foot_check TWIST, 2026-10-28)
+	var far := (2.0 * amp + 0.25) * sc
 	var out := PackedFloat32Array()
 	out.resize(32)
 	for g in 2:
@@ -82,8 +84,18 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 		elif stance and (pu >= duty or u < pu - 0.0001 or at.origin.distance_to(tr.origin) > far):
 			v.f_at[g] = tr                                   # (set down: from a swing, or again, left behind)
 		elif stance and _feet_twisted(at, tr, sc):
-			v.twist = true                                   # (turned or pushed off its feet: it steps them - _step_gait)
+			if mv > 0.05:
+				# walking or turning on the spot: the body turned past them faster than its steps came round (front feet
+				# swept round behind the middle ones - foot_check TWIST, 2026-10-28): set down again where they belong
+				v.f_at[g] = tr
+				v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty), tws, fmode)
+			else:
+				v.twist = true                               # (standing, turned or pushed off its feet: _step_gait)
 			v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty), tws, fmode)
+		elif not stance and (absf(tws) > 0.3 or mv <= 0.05):      # (or stepping its feet again, standing: _step_gait)
+			# in the air while the body turns on the spot: the foot it lifts goes round with the body (left where it was
+			# lifted, the front feet swung in behind the middle ones as the body turned past them - TWIST, 2026-10-28)
+			v.f_at[g] = tr
 		v.f_u[g] = u
 		var x: Transform3D = v.f_at[g]
 		var p: Vector3 = v.f_p[g]
