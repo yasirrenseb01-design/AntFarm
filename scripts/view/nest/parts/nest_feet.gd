@@ -22,7 +22,15 @@ func _step_gait(v: Dictionary, tr: Transform3D, delta: float, scale: float) -> v
 	v.tshare = lerpf(float(v.get("tshare", 0.0)), tshare, minf(1.0, 6.0 * delta))
 	# stopping, it finishes the step it is in: the tripod in the air sets its feet down (its feet are remembered where
 	# they land - see _feet_rec - and one stopped mid-swing hung between two footholds)
+	v.twist_cd = float(v.get("twist_cd", 0.0)) - delta
 	if walked + absf(sweep) < 0.0005:
+		# standing, turned or pushed off its planted feet (by the queen's body, a nestmate): it lifts them and sets them
+		# down again under itself, one tripod then the other - v0.11.58 set them down where they were at once, and a body
+		# pushed a little every frame shook (the keeper, 2026-10-28)
+		if v.get("twist", false) and float(v.twist_cd) <= 0.0 and float(v.get("g_left", -1.0)) <= 0.0:
+			v.g_left = TAU
+			v.twist_cd = 1.2
+		v.twist = false
 		if float(v.get("g_left", -1.0)) < 0.0:
 			var u := fposmod(float(v.gait) / TAU, 1.0)
 			var duty := AntModel.duty(float(v.get("stride", 1.0)))
@@ -71,8 +79,10 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 			# (just come on screen: its feet where they would be now)
 			v.f_at[g] = tr
 			v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty) if stance else -amp, tws, fmode)
-		elif stance and (pu >= duty or u < pu - 0.0001 or at.origin.distance_to(tr.origin) > far or _feet_twisted(at, tr, sc)):
-			v.f_at[g] = tr                                   # (set down: from a swing, or again, left behind or twisted)
+		elif stance and (pu >= duty or u < pu - 0.0001 or at.origin.distance_to(tr.origin) > far):
+			v.f_at[g] = tr                                   # (set down: from a swing, or again, left behind)
+		elif stance and _feet_twisted(at, tr, sc):
+			v.twist = true                                   # (turned or pushed off its feet: it steps them - _step_gait)
 			v.f_p[g] = Vector3(amp * (1.0 - 2.0 * u / duty), tws, fmode)
 		v.f_u[g] = u
 		var x: Transform3D = v.f_at[g]
@@ -88,7 +98,7 @@ func _feet_rec(v: Dictionary, tr: Transform3D, cu: Color) -> PackedFloat32Array:
 
 ## Planted feet the body has turned, tipped or been pushed sideways away from: their legs crossed and bent backwards
 ## (the keeper, 2026-10-27: workers tending the queen, turned and pushed by her body, had twisted legs). Past ~25
-## degrees of turn or tilt, or a third of a body width aside, the tripod steps again.
+## degrees of turn or tilt, or a third of a body width aside, it steps them again (_step_gait: lifted, not snapped).
 static func _feet_twisted(at: Transform3D, tr: Transform3D, sc: float) -> bool:
 	if at.basis.x.normalized().dot(tr.basis.x.normalized()) < 0.9 or at.basis.y.normalized().dot(tr.basis.y.normalized()) < 0.9:
 		return true
@@ -120,6 +130,12 @@ func _custom(v: Dictionary, act: int) -> Color:
 	var gx := AntModel.gait_x(v.get("gait", 0.0), v.get("bend", Vector2.ZERO))       # (and the waist and neck bent to the ground)
 	var cz := AntModel.clock_z(clock, v.get("lat", 0.0))                              # (and bent sideways round a turn)
 	cz += 16384.0 * float(_feet_mode(v))
+	var fill := float(v.get("fill", -1.0))
+	if fill >= 0.0 and fill < 1.0 and int(v.vact.y) == int(v.vact.x):
+		# the crop filling or emptying with the honeydew given (shared mouth to mouth): the swollen gaster eases in as far
+		# as it is full (the keeper, 2026-10-28: it swelled at once)
+		var c := float(int(v.vact.x))
+		return Color(gx, c + 100.0 + 128.0 * c + minf(1.0 - fill, 0.99), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))
 	if v.get("fed", false):
 		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))   # crop full of honeydew
 	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))

@@ -11,6 +11,9 @@ const U := 1.0 / 3.0
 static func build(v) -> void:
 	var ground = v.ground
 	var ph = v._props_h
+	# (dry leaves lay through everything: grass tufts, twigs, stones, the glass - the keeper, 2026-10-28: each one now
+	# keeps clear of them; one that would not is left out)
+	ground.litter = _clear_litter(ground, v.sim)
 	ph.setup(Vector2(v.sim.WORLD) * U)
 	for l in ground.litter:
 		if l.twig:
@@ -150,3 +153,28 @@ static func _add_mesh(v, mesh: Mesh, mat: Material) -> void:
 	mi.mesh = mesh
 	mi.material_override = mat
 	v.add_child(mi)
+
+
+## The litter that lies clear of the grass tufts, the stones, each other (a leaf and a twig not through one another)
+## and - in a keeper's box - the glass.
+static func _clear_litter(ground, sim) -> Array:
+	var keep := []
+	var box: bool = sim.scenario != "wild"
+	for l in ground.litter:
+		var reach: float = float(l.l) * (1.0 if l.twig else 0.55)        # (px: half a leaf's length, a twig's whole one)
+		var p: Vector2 = l.p
+		var ok := true
+		if box and (p.x < reach + 3.0 or p.y < reach + 3.0 or p.x > sim.WORLD.x - reach - 3.0 or p.y > sim.WORLD.y - reach - 3.0):
+			ok = false
+		for t in ground.tufts:
+			if ok and p.distance_to(t.p) < reach + 6.0:
+				ok = false
+		for r in sim.rocks:
+			if ok and p.distance_to(r.pos) < reach + float(r.r) + 2.0:
+				ok = false
+		for k in keep:
+			if ok and p.distance_to(k.p) < reach + float(k.l) * (1.0 if k.twig else 0.55):
+				ok = false
+		if ok:
+			keep.append(l)
+	return keep

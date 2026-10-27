@@ -283,7 +283,9 @@ def weights(p):
         return [(-1, 1.0)]
     out = []
     # across a joint: share with the bone before (t near 0) - the first bone shares with the palm
-    blend = 0.25
+    # (the knuckle: a longer blend into the palm - with the other fingers curled, the skin between them and the
+    # pointing finger was pulled into a crease at its foot: the keeper, 2026-10-28)
+    blend = 0.5 if i == 0 else 0.25
     if t0 < blend:
         k = 0.5 + 0.5 * (t0 / blend)
         prev = b0 - 1 if i > 0 else -1

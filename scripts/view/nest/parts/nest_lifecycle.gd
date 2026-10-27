@@ -666,12 +666,18 @@ func _step_anims(adt: float) -> void:
 					elif u < 0.9:
 						g.script.act = ACT_FEED
 						r.script.act = ACT_TAKE
+						var k := smoothstep(0.12, 0.9, u)
+						g.fill = 1.0 - k                     # (its crop empties into the other's, slowly)
+						r.fill = k
 					else:
 						g.script.act = ACT_ANTENNATE
 						r.script.act = ACT_ANTENNATE
 					if u >= 1.0:
 						a.done = true
 						g.fed = false                       # its crop shared out
+						r.fed = true
+						g.erase("fill")
+						r.erase("fill")
 						g.erase("partner")
 						r.erase("partner")
 						_release(g)

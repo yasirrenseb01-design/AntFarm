@@ -53,6 +53,7 @@ func _ready() -> void:
 		knit.vertex_color_use_as_albedo = true
 		knit.vertex_color_is_srgb = true
 		knit.roughness = 0.95
+		knit.cull_mode = BaseMaterial3D.CULL_DISABLED     # (its inside seen at the cuff: it was see-through from there)
 		var s := MeshInstance3D.new()
 		s.mesh = sleeve
 		s.material_override = knit

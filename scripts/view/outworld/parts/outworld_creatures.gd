@@ -145,7 +145,10 @@ func _update_ants(delta: float) -> void:
 			var path: float = (climb_pose.base - tr.origin).length() + (climb_pose.pos - climb_pose.base).length()
 			var walk: float = sim.sp["walk_speed"] * (0.35 + 0.65 * sim.activity) * 60.0 * U    # units a second at 1x
 			rate = delta * speed * walk * CLIMB_PACE / maxf(path, 0.3)
+		var was_feed: float = a.vfeed
 		a.vfeed = move_toward(a.vfeed, 1.0 if not pose.is_empty() else 0.0, rate)
+		if a.vfeed != was_feed:
+			a.vdown = a.vfeed < was_feed
 		if not pose.is_empty():
 			a.vpose = pose
 			a.vfood = pose.get("fc", Vector2(INF, INF))
@@ -155,16 +158,37 @@ func _update_ants(delta: float) -> void:
 			a.vrim_goal = INF
 			a.vaphid = -1
 		if a.vfeed > 0.0 and a.vpose is Dictionary and not (a.vpose as Dictionary).is_empty():
-			tr = _blend_pose(tr, a.vpose, a.vfeed, s)
+			tr = _blend_pose(tr, a.vpose, a.vfeed, s, a.vdown)
+			if (a.vpose as Dictionary).get("climb", false) and a.vfeed < 1.0:
+				# on the stem its legs step as far as it goes up or down it (they stood still while it slid: the keeper,
+				# 2026-10-28, saw it come down jerkily, as if at a low frame rate)
+				if a.vstem != Vector3.INF:
+					var gone: float = a.vstem.distance_to(tr.origin)
+					a.vgait = fmod(a.vgait + gone / (AntModel.stride_len(stride) * s) * TAU, TAU * 64.0)
+					a.vmv = lerpf(a.vmv, 1.0 if gone > 0.0005 else 0.0, minf(1.0, 10.0 * delta))
+				a.vstem = tr.origin
+			else:
+				a.vstem = Vector3.INF
 			if a.vfeed > 0.95 and act == 9:
 				dews.append(a.vpose.dew)
+		var fill := 1.0
+		if a.carry == Ant.SUGAR and a.busy > 0 and (act == 9 or act == 10):
+			# still drinking: the crop fills as it drinks (the keeper, 2026-10-28: the gaster was full the moment it began)
+			a.vbusy0 = maxi(a.vbusy0, a.busy)
+			fill = 1.0 - float(a.busy) / float(maxi(1, a.vbusy0))
+		else:
+			a.vbusy0 = 0
 		if a.carry == Ant.SUGAR:
 			act += 100                      # a crop full of honeydew swells the gaster
 		xs.append(tr)
 		a.vxf = tr
 		cols.append(body.lerp(young, clampf(1.0 - a.age / 6.0, 0.0, 1.0)))
 		a.vact = AntModel.act_step(a.vact, act, a.anim)                     # poses ease into one another
-		cus.append(Color(a.vgait, AntModel.act_y(a.vact, a.anim), fmod(a.anim, 600.0), AntModel.gait_w(a.vmv, stride)))
+		var ay := AntModel.act_y(a.vact, a.anim)
+		if fill < 1.0 and int(a.vact.y) == int(a.vact.x):
+			var c0 := float(act - 100)
+			ay = c0 + 100.0 + 128.0 * c0 + minf(1.0 - fill, 0.99)       # (eased from empty by how full it is)
+		cus.append(Color(a.vgait, ay, fmod(a.anim, 600.0), AntModel.gait_w(a.vmv, stride)))
 		if sel_kind == "worker" and a.id == sel_id:
 			sel_at = [tr, cus[-1]]
 		if act == 13:
@@ -345,9 +369,22 @@ func _pose_xf(fwd: Vector3, up: Vector3, pos: Vector3, s: float) -> Transform3D:
 	return Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * s), pos)
 
 
-## Blend from the walking pose toward the feeding pose; climbing goes to the stem foot first.
-func _blend_pose(ground: Transform3D, pose: Dictionary, k: float, s: float) -> Transform3D:
+## Blend from the walking pose toward the feeding pose; climbing goes to the stem foot first. down: coming back down
+## the stem - head first, then walking off away from it (it backed down, facing up: the keeper, 2026-10-28).
+func _blend_pose(ground: Transform3D, pose: Dictionary, k: float, s: float, down := false) -> Transform3D:
 	var fe := _pose_xf(pose.fwd, pose.up, pose.pos, s)
+	if pose.get("climb", false) and down and k < 0.999:
+		var fd := _pose_xf(-(pose.fwd as Vector3), pose.up, pose.pos, s)
+		if k >= 0.5:
+			var u3 := (k - 0.5) * 2.0                       # 1 at the aphid .. 0 at the stem's foot
+			var turn := fe.basis.orthonormalized().slerp(fd.basis.orthonormalized(), minf(1.0, (1.0 - u3) * 4.0))
+			return Transform3D(turn.scaled(Vector3.ONE * s), (pose.base as Vector3).lerp(pose.pos, u3))
+		var away := ground.origin - (pose.base as Vector3)
+		away.y = 0.0
+		var off := _pose_xf(away if away.length() > 0.05 else Vector3.RIGHT, Vector3.UP, pose.base, s)
+		var u4 := k * 2.0                                   # 1 at the stem's foot .. 0 on the ground
+		var bb: Basis = off.basis.orthonormalized().slerp(fd.basis.orthonormalized(), smoothstep(0.6, 1.0, u4))
+		return Transform3D(bb.scaled(Vector3.ONE * s), ground.origin.lerp(pose.base, u4))
 	if not pose.get("climb", false):
 		var b: Basis = ground.basis.orthonormalized().slerp(fe.basis.orthonormalized(), k)
 		return Transform3D(b.scaled(Vector3.ONE * s), ground.origin.lerp(fe.origin, k))
