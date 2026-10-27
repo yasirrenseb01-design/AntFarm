@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_soil.gd"
-## Nest view, layer 11 of 14 (new in v0.8.63): bodies meeting - an ant looking ahead and waiting for the one in its
+## Nest view, layer 12 of 15 (new in v0.8.63): bodies meeting - an ant looking ahead and waiting for the one in its
 ## way, climbing over a nestmate's back or onto the brood, worked out from the bodies' real shapes.
 
 
@@ -230,7 +230,17 @@ func _gap_ahead(m: Dictionary, near: Dictionary, dt: float) -> float:
 				m.cross_t = 2.5
 	else:
 		m.blocked_t = 0.0
+	# one on its way out squeezes past what holds it up after OUT_SQUEEZE s (real ants do, in their galleries): held up
+	# head to head with another, or drumming antennae with it, it waited until it was given up on mid-tunnel (the
+	# keeper's colony, 1 min at 5x: 9 of 141, every one held up so)
+	if m.get("leaving", false):
+		m.out_held = float(m.get("out_held", 0.0)) + dt if k < 0.15 else 0.0
+		if float(m.out_held) > OUT_SQUEEZE:
+			return maxf(k, 0.7)
 	return k
+
+
+const OUT_SQUEEZE := 2.0
 
 
 ## The heading (in its floor's plane) in which an ant drawn at `tr` lies clear of the walls - and not with its

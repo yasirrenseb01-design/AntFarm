@@ -69,6 +69,24 @@ func _separate(delta: float) -> void:
 						continue
 					e.push -= n * pen * we / (we + wg)
 					g.push += n * pen * wg / (we + wg)
+	# and not through the dead lying on the ground (the refuse pile, where a spider dropped them): their bodies push the
+	# living aside as a nestmate's does - those busy at something (cutting, carrying one off) are left where they are
+	var ck: float = ANT_SCALE * 0.95 / U                # model units -> px, as the corpses are drawn
+	for c in sim.corpses:
+		var cf := Vector2.from_angle(float(c.ang))
+		var cp: Vector2 = c.pos + cf * CROWD_BACK * ck
+		var cq: Vector2 = c.pos + cf * CROWD_FRONT * ck
+		var cc := Vector2i(floori(c.pos.x / CROWD_CELL), floori(c.pos.y / CROWD_CELL))
+		for dx in range(-1, 2):
+			for dy in range(-1, 2):
+				for g in grid.get(cc + Vector2i(dx, dy), []):
+					if g.fixed or g.a.busy > 0 or g.a.carry == Ant.CORPSE:
+						continue
+					var ab := _seg_closest(g.p, g.q, cp, cq)
+					var d: Vector2 = ab[0] - ab[1]
+					var pen: float = g.r + CROWD_R * ck + CROWD_GAP - d.length()
+					if pen > 0.0:
+						g.push += (d.normalized() if d.length_squared() > 1e-6 else Vector2.from_angle(float(g.a.id))) * pen
 	# and out of a drop of honey: one walking up to it is drawn at its edge, not in it (the simulation only knows it is
 	# within reach of the centre)
 	for f in sim.foods:

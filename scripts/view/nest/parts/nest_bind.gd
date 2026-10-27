@@ -1,5 +1,5 @@
-extends "res://scripts/view/nest/parts/nest_rest.gd"
-## Nest view, layer 9 of 14 (split from parts/nest_rest.gd in v0.11.44): the one drawn nestmate per real worker
+extends "res://scripts/view/nest/parts/nest_dead.gd"
+## Nest view, layer 10 of 15 (split from parts/nest_rest.gd in v0.11.44): the one drawn nestmate per real worker
 ## inside - bound to it by id (`wid`), its role from the worker's, walked in from the entrance when it has just come
 ## in and up to the entrance when it goes out (from near the way out: _leave_from_near).
 
@@ -8,7 +8,6 @@ extends "res://scripts/view/nest/parts/nest_rest.gd"
 ## job: nurses (and the queen's attendants) by the brood and the queen, the reserve resting about, a forager
 ## just back walking in from the entrance, one going out walking up to it first. Diggers are drawn at the dig
 ## face (_dig_vis), and workers still climbing out of their cocoons by their eclosion.
-var io := {}                     # dev (--io): ants in and out of the nest as the nest view drew them, counted
 var _io_was := {}                 # (dev --io: worker id -> in the nest at the last bind)
 
 func _bind_workers() -> void:
@@ -50,6 +49,10 @@ func _bind_workers() -> void:
 		var wid: int = m.get("wid", -1)
 		if m.get("gone", false):
 			io.out_reached = int(io.get("out_reached", 0)) + 1
+			if m.get("hurry", false):
+				io.own_out = str(io.get("own_out", "")) + " %.1fs" % (_t - float(m.get("left_at", _t)))     # (its own body: how long it took)
+			if int(_fields.get(-1, {}).get(m.cell, 0)) > 24:
+				io.out_reached_far = int(io.get("out_reached_far", 0)) + 1       # (gone, but not at the entrance)
 			continue                                   # walked out through the entrance
 		if wid >= 0 and by_id.has(wid) and not m.get("leaving", false):
 			bound[wid] = m
@@ -71,6 +74,8 @@ func _bind_workers() -> void:
 				m.carry = false
 				m.item = ""
 				io.out_started = int(io.get("out_started", 0)) + 1
+				if _own_body(w):
+					m.hurry = true                     # (it walks out from where it is: see LEAVE_HURRY)
 				if _undertaker.has(w.id):
 					# an undertaker: to the body first, then out with it
 					m.fetch = _undertaker[w.id]
@@ -84,6 +89,12 @@ func _bind_workers() -> void:
 				keep.append(m)
 			elif m.get("leaving", false):
 				io.out_dropped = int(io.get("out_dropped", 0)) + 1      # (never got to the entrance: gone mid-tunnel)
+				var why := "hurry" if m.get("hurry", false) else ("fetch" if m.has("fetch") else ("carry" if m.carry else ("stuck%d" % int(m.get("stuck", 0)) if int(m.get("stuck", 0)) > 0 else "other")))
+				io["drop_" + why] = int(io.get("drop_" + why, 0)) + 1
+				if OS.get_cmdline_user_args().has("--io-why"):
+					print("DROP d%d rest%d wander%d fgap%.2f act%d role %s settle%d t%.2f near%s goal%d" % [int(_field_of(m.goal).get(m.cell, -1)), int(m.rest), int(m.wander),
+						float(m.get("fgap", 1.0)), int(m.act), m.role, (m.get("settle", []) as Array).size(), float(m.t), str(m.get("near", -1)), int(m.goal)],
+						" blocked%.1f cross%s cross_t%.1f over%.2f no_climb%.1f" % [float(m.get("blocked_t", 0.0)), m.has("cross_on"), float(m.get("cross_t", 0.0)), float(m.get("over", 0.0)), float(m.get("no_climb_t", 0.0))])
 				io.out_dropped_d = float(io.get("out_dropped_d", 0.0)) + (m.to as Vector3).distance_to(Vector3(nest.entrance))
 		elif wid < 0:
 			free.append(m)                             # a newborn from an eclosion: takes the youngest worker
@@ -115,6 +126,12 @@ func _bind_workers() -> void:
 			io[k] = int(io.get(k, 0)) + 1
 			m = _mates.pop_back()
 			m.fed = walking_in and w.brought == Ant.SUGAR       # back from the aphids: its crop is full
+			if walking_in and w.brought == Ant.PROTEIN:
+				# back with a piece of prey: down to the larvae with it in its mandibles (out there it came in carrying it)
+				m.carry = true
+				m.item = "prey"
+				m.goal = _brood_room(_larva_group)
+				io.prey_in = int(io.get("prey_in", 0)) + 1
 			if not walking_in and not from_dig:
 				_settle(m)
 		m.wid = w.id
@@ -270,14 +287,9 @@ var _dig_live := {}               # digger id -> true: the worker's body is the 
 var _dig_since := {}              # digger id -> _t paired
 var _dug_by := {}                 # worker id -> digger id, for the live ones (drawn as the digger, not as a nestmate)
 var _back_at := {}                # worker id -> the cell its digger was on when it stopped digging
-var _xfields := {}                # more distance fields: -2 the dig face, _corpse_key(id) a body to fetch
 var _xfield_at := {}              # key -> the cell its field was made from
 var _out_from := {}               # worker id -> the cell its digger was on when it was sent out
 var _bound_once := false          # the nestmates have been bound once since the view was set up
-
-
-func _field_of(key: int) -> Dictionary:
-	return _fields.get(key, _xfields.get(key, {}))
 
 
 func _pair_diggers(all: Dictionary) -> void:
@@ -386,106 +398,9 @@ func digger_worker(id: int):
 	return _worker(int(_dig_wid[id])) if _dig_live.has(id) else null
 
 
-# ---------------------------------------------------------------- the dead in the nest (v0.11.45)
+# ---------------------------------------------------------------- v0.11.46
 
-## A nestmate that dies in the nest lies there on its back, legs curled, until an undertaker carries it out (the
-## simulation counts it, corpses_inside, and sends one out with it - before, the body just vanished and the undertaker
-## left empty-handed while outside it came out carrying one). Bodies no one comes for go after CORPSE_KEEP s.
-const CORPSE_KEEP := 120.0
-const CORPSE_CARRY := Transform3D(Basis(Vector3(0.9, 0, 0), Vector3(0, -0.9, 0), Vector3(0, 0, -0.9)), Vector3(2.3, 0.95, 0))      # (turned over, 0.9 big: as in the outworld)
-var _corpses := []                # {"id", "xf", "cell", "t", "taken"}
-var _corpse_n := 0
-var _undertaker := {}             # worker id -> the body it goes for
-var _corpse_mm: MultiMesh
-
-
-func _corpse_key(id: int) -> int:
-	return -10 - id
-
-
-func _lay_corpse(m: Dictionary) -> void:
-	if m.has("xf"):
-		_corpses_add(m.xf)
-
-
-func _corpses_add(xf: Transform3D) -> void:
-	# on its back: turned over along its length, resting on its upper side
-	var tr := Transform3D(xf.basis * Basis(Vector3.RIGHT, PI), xf.origin + xf.basis.y * 0.5)
-	_corpse_n += 1
-	_corpses.append({"id": _corpse_n, "xf": tr, "cell": Vector3i(xf.origin.round()), "t": _t, "taken": false})
-	io.corpse_laid = int(io.get("corpse_laid", 0)) + 1
-
-
-func _corpses_by_id(id: int) -> Dictionary:
-	for c in _corpses:
-		if c.id == id:
-			return c
-	return {}
-
-
-## The nearest body no undertaker has come for yet, to a body at m (-1: none).
-func _free_corpse(m: Dictionary) -> int:
-	var best := -1
-	var bd := INF
-	for c in _corpses:
-		if not c.taken:
-			var d := Vector3(c.cell).distance_to(m.to)
-			if d < bd:
-				bd = d
-				best = c.id
-	return best
-
-
-func _corpse_field(id: int) -> Dictionary:
-	var key := _corpse_key(id)
-	if not _xfields.has(key):
-		var c := _corpses_by_id(id)
-		var at: Vector3i = c.cell
-		for k in 4:
-			if _walkable(at):
-				break
-			at.y -= 1
-		_xfields[key] = _field_from(at)
-	return _xfields[key]
-
-
-## An undertaker that has reached the body picks it up and goes on out with it.
-func _pick_corpse(m: Dictionary) -> void:
-	var id: int = m.fetch
-	m.erase("fetch")
-	_xfields.erase(_corpse_key(id))
-	_corpses = _corpses.filter(func(c): return c.id != id)
-	m.carry = true
-	m.item = "corpse"
-	m.goal = -1
-	io.corpse_taken = int(io.get("corpse_taken", 0)) + 1
-
-
-## The bodies lying in the nest and those being carried out (carried: the carriers' transforms), drawn with the ant
-## model in its dead pose.
-func _draw_corpses(carried: Array) -> void:
-	for c in _corpses:
-		if not c.taken and _t - float(c.t) > CORPSE_KEEP:
-			io.corpse_expired = int(io.get("corpse_expired", 0)) + 1
-	_corpses = _corpses.filter(func(c): return c.taken or _t - float(c.t) <= CORPSE_KEEP)
-	if _corpses.is_empty() and carried.is_empty() and _corpse_mm == null:
-		return
-	if _corpse_mm == null:
-		var mat: ShaderMaterial = _ant_shader_mat.duplicate()
-		mat.set_shader_parameter("feet_on", false)
-		_corpse_mm = _multimesh(_ant_meshes.lo, mat, true)
-		_corpse_mm.use_custom_data = true
-	var xs := []
-	for c in _corpses:
-		if _shown(c.xf):
-			xs.append(c.xf)
-	for tr in carried:
-		xs.append(tr * CORPSE_CARRY)
-	if not carried.is_empty():
-		io.corpse_carried_frames = int(io.get("corpse_carried_frames", 0)) + 1
-	_corpse_mm.instance_count = xs.size()
-	var dead: Color = AntModel.body_linear(sim.sp["body_color"]).lerp(Color(0.05, 0.035, 0.025), 0.4)     # (a little duller than the living)
-	for i in xs.size():
-		_corpse_mm.set_instance_transform(i, xs[i])
-		_corpse_mm.set_instance_color(i, dead)
-		_corpse_mm.set_instance_custom_data(i, Color(0, 11, 0, 0))
+## An ant that keeps its own body going out (selected, followed or named: _own_body) walks out from wherever it is, so
+## it goes at a run: out here it has already left. [Lasius workers do run - 3-4 body lengths a second and more when
+## alarmed or hurrying; the factor is chosen so the deepest chambers take ~5 s at 1x instead of 20-25.]
+const LEAVE_HURRY := 4.0

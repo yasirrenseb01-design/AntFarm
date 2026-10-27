@@ -151,6 +151,8 @@ func _take_shot() -> void:
 		elif _opts.has("at-ant") and not sim.outside.is_empty():
 			var a = sim.outside[int(_opts["at-ant"]) % sim.outside.size()]
 			outworld.target_t = Vector3(a.pos.x, 0, a.pos.y) * outworld.U
+		elif _opts.has("at-midden"):
+			outworld.target_t = Vector3(sim.midden_pos.x, 0, sim.midden_pos.y) * outworld.U     # (--at-midden: the refuse pile)
 		elif _opts.has("at-entrance"):
 			outworld.target_t = Vector3(sim.nest_pos.x, 0, sim.nest_pos.y) * outworld.U     # (--at-entrance: the nest's entrance)
 		outworld.crowd = not _opts.has("no-crowd")
@@ -253,6 +255,24 @@ func _take_shot() -> void:
 		if _opts.has("home-point"):
 			var pp: PackedStringArray = String(_opts["home-point"]).split(",")
 			home_room._point(Vector2(float(pp[0]), float(pp[1])))     # (as if the pointer were there)
+	if _opts.has("follow-prey"):
+		_follow_prey(600)                    # (dev: the camera on the first nestmate carrying prey down, once there is one)
+	if _opts.has("send-deep"):
+		# (dev: --send-deep: after 2 s the nestmate drawn farthest from the entrance is named and sent out to forage -
+		# its own body walks out, at a run; --io prints how long it took: own_out)
+		get_tree().create_timer(2.0).timeout.connect(func():
+			var ef: Dictionary = nest_view._fields.get(-1, {})
+			var best = null
+			for m in nest_view._mates:
+				if int(m.get("wid", -1)) >= 0 and not m.get("leaving", false) and (best == null or int(ef.get(m.cell, 0)) > int(ef.get(best.cell, 0))):
+					best = m
+			if best != null:
+				for w in sim.workers:
+					if w.id == int(best.wid):
+						sim.name_ant(w.id, "Deep")
+						sim._send_out(w, sim.Ant.SEARCH)
+						print("sent out %d from %d steps in" % [w.id, int(ef.get(best.cell, 0))])
+						nest_view.follow_wid = w.id)
 	if _opts.has("kill-inside"):
 		# (dev: --kill-inside=<n>: that many nestmates drawn near the middle of the screen die after 2 s - a body in the
 		# nest and an undertaker to watch; --kill-at=<s> another delay)
@@ -443,6 +463,8 @@ func _take_shot() -> void:
 				await get_tree().process_frame
 				if _opts.has("pops"):
 					_count_pops()
+				if _opts.has("corpse-touch") and mode == "outworld":
+					_count_corpse_touch()
 				if _opts.has("buried") and mode == "nest":
 					BuriedCheck.measure(nest_view, _buried)
 				if _opts.has("feet") and mode == "nest":
@@ -711,6 +733,8 @@ func _take_shot() -> void:
 			for i in sim.nest.chambers.size():
 				print("  chamber %d depth %.1f cm, %.1f C over the last day%s%s%s" % [i, sim.chamber_depth_cm(i), sim.ch_mean[i] if i < sim.ch_mean.size() else -1000.0,
 					" QUEEN" if i == sim.queen_at else "", " larvae" if i == int(sim.brood_at.larvae) else "", " pupae" if i == int(sim.brood_at.pupae) else ""])
+		if _opts.has("corpse-touch"):
+			print("corpse touch: %d ant-frames of %d with a body inside a dead one's" % [_ctouch, _cframes])
 		if _opts.has("io"):
 			print("io: ", nest_view.io, " diggers ", nest_view.nest.diggers.size(), " paired ", nest_view._dig_wid.size(), " live ", nest_view._dig_live.size())          # (--io: in and out of the nest, the simulation's and as drawn - nest_bind)
 		if _opts.has("pops") and mode == "nest" and _jit_frames > 0:
@@ -1049,3 +1073,34 @@ func _follow_undertaker(tries: int) -> void:
 			return
 	if tries > 0:
 		get_tree().create_timer(0.1).timeout.connect(func(): _follow_undertaker(tries - 1))
+
+
+
+var _ctouch := 0
+var _cframes := 0
+
+## (dev --corpse-touch, with --seq in the outworld: foragers drawn with their middle within 2.5 px of a dead one's
+## middle line - through it - counted each frame)
+func _count_corpse_touch() -> void:
+	for a in sim.outside:
+		if not (a.vxf is Transform3D):
+			continue
+		var o: Vector2 = Vector2((a.vxf as Transform3D).origin.x, (a.vxf as Transform3D).origin.z) / outworld.U
+		_cframes += 1
+		for c in sim.corpses:
+			var f := Vector2.from_angle(float(c.ang))
+			var d: Vector2 = o - c.pos
+			if absf(d.dot(f)) < 4.5 and absf(d.cross(f)) < 2.5:
+				_ctouch += 1
+				break
+
+
+
+func _follow_prey(tries: int) -> void:
+	for m in nest_view._mates:
+		if m.get("item", "") == "prey":
+			nest_view.follow_wid = int(m.wid)
+			print("following prey carrier ", m.wid)
+			return
+	if tries > 0:
+		get_tree().create_timer(0.1).timeout.connect(func(): _follow_prey(tries - 1))

@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_duties.gd"
-## Nest view, layer 13 of 14: the nestmates walking the real tunnels, their roles and activities,
+## Nest view, layer 14 of 15: the nestmates walking the real tunnels, their roles and activities,
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 
@@ -18,6 +18,12 @@ func _arrive(m: Dictionary) -> void:
 		return
 	if m.get("leaving", false):
 		m.gone = true                                  # out through the entrance: the outworld draws it now
+		return
+	if m.get("item", "") == "prey":
+		m.carry = false                                # set down by the larvae (the scraps there: nest_piles)
+		m.item = ""
+		m.rest = randi_range(10, 40)
+		m.goal = _random_room()
 		return
 	if m.has("deliver"):
 		m.deliver.done = true                       # cocoon set down, or empty shell taken out
@@ -334,6 +340,7 @@ func _update_ants(delta: float) -> void:
 	var drops := []
 	var pellet_loads := []
 	var corpse_loads := []
+	var prey_loads := []
 	# where everyone stood last frame, binned by cell: nestmates keep a body width apart instead of
 	# standing inside one another (the queen, much bigger, keeps a wider berth)
 	var tp := Time.get_ticks_usec()                # (dev --perf: where this function's time goes)
@@ -365,6 +372,13 @@ func _update_ants(delta: float) -> void:
 			if not near.has(ck):
 				near[ck] = []
 			near[ck].append(cbody)
+	# the dead lying in the nest are bodies too (nest_bind)
+	for cb in _corpse_bodies():
+		var co: Vector3 = (cb.xf as Transform3D).origin
+		var kk := Vector3i(floori(co.x / 3.0), floori(co.y / 3.0), floori(co.z / 3.0))
+		if not near.has(kk):
+			near[kk] = []
+		near[kk].append(cb)
 	_near_bins = near
 	tp = _nprof("ants: bins", tp)
 	var us_step := 0
@@ -379,6 +393,8 @@ func _update_ants(delta: float) -> void:
 		var st: Array = m.get("settle", [])
 		if not st.is_empty():
 			_mate_cells[st[-1]] = m
+	for cb in _corpse_bodies():
+		_mate_cells[Vector3i(((cb.xf as Transform3D).origin).round())] = cb       # (no one settles on a body)
 	for v in _dig_vis.values():
 		if not v.get("hide", false):
 			_mate_cells[Vector3i(roundi(v.to.x), roundi(v.to.y), roundi(v.to.z))] = v
@@ -419,7 +435,7 @@ func _update_ants(delta: float) -> void:
 				us_gap += Time.get_ticks_usec() - tg
 			_update_activity(m, madt)
 			if not m.act in STILL_ACTS:
-				m.t += mdt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0) * float(m.get("fgap", 1.0))
+				m.t += mdt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0) * float(m.get("fgap", 1.0)) * (LEAVE_HURRY if m.get("hurry", false) else 1.0)
 				while m.t >= 1.0 and mdt > 0.0:
 					m.t -= 1.0
 					_step_mate(m)
@@ -567,6 +583,8 @@ func _update_ants(delta: float) -> void:
 			if m.carry:
 				if m.get("item", "") == "corpse":
 					corpse_loads.append(tr)
+				elif m.get("item", "") == "prey":
+					prey_loads.append(tr)
 				elif m.get("item", "") == "cocoon":
 					cocoon_loads.append(tr * CARRY_OFFSET)
 				elif m.get("item", "") == "shell":
@@ -691,6 +709,7 @@ func _update_ants(delta: float) -> void:
 	_fill(_fx_drop_mm, drops)
 	_fill(_carry_pellet_mm, pellet_loads)
 	_draw_corpses(corpse_loads)
+	_draw_prey(prey_loads)
 
 	# the queen: rests among her retinue, curls her gaster to lay whenever a new egg appears
 	_queen_anim += adt
