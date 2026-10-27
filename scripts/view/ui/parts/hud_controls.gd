@@ -28,8 +28,13 @@ func _build_top(root: Control) -> void:
 	_harmony_l = _label("", 12, AMBER)
 	clock.add_child(_clock)
 	clock.add_child(_weather)
-	_harmony_row = with_harmony_icon(_harmony_l, 14)
-	clock.add_child(_harmony_row)
+	# the points: on a small tab hung under the bar's left end, joined to it (the keeper's drawing, 2026-10-27)
+	_harmony_l.add_theme_font_size_override("font_size", 13)
+	_harmony_row = with_harmony_icon(_harmony_l, 18)
+	_harmony_tab = PanelContainer.new()
+	_harmony_tab.add_child(_harmony_row)
+	root.add_child(_harmony_tab)
+	_join_tab.call_deferred()
 	row.add_child(clock)
 
 	var speeds := HBoxContainer.new()
@@ -110,6 +115,38 @@ func _build_top(root: Control) -> void:
 	var mwrap := CenterContainer.new()
 	mwrap.add_child(menu)
 	row.add_child(mwrap)
+
+
+## The bar and the points' tab drawn as one outline: the bar's bottom-left corner square where the tab hangs from it,
+## the tab with no border along its top and its upper corners square.
+func _join_tab() -> void:
+	var sb = _top.get_theme_stylebox("panel")
+	if not sb is StyleBoxFlat:
+		return
+	var bar: StyleBoxFlat = sb.duplicate()
+	bar.corner_radius_bottom_left = 0
+	_top.add_theme_stylebox_override("panel", bar)
+	var tab: StyleBoxFlat = sb.duplicate()
+	tab.corner_radius_top_left = 0
+	tab.corner_radius_top_right = 0
+	tab.border_width_top = 0
+	tab.content_margin_top = 2
+	tab.content_margin_bottom = 6
+	tab.content_margin_left = 14
+	tab.content_margin_right = 16
+	_harmony_tab.add_theme_stylebox_override("panel", tab)
+	_place_tab()
+
+
+func _place_tab() -> void:
+	if _harmony_tab == null or _top == null:
+		return
+	var b: int = 0
+	var sb = _top.get_theme_stylebox("panel")
+	if sb is StyleBoxFlat:
+		b = (sb as StyleBoxFlat).border_width_bottom
+	_harmony_tab.position = _top.position + Vector2(0, _top.size.y - b)
+	_harmony_tab.visible = _top.visible and harmony >= 0.0
 
 
 func _build_tools(root: Control) -> void:

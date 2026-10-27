@@ -110,20 +110,29 @@ func _window() -> void:
 	_box(Vector3(0.1, 1.3, 0.05), Vector3(x - 0.02, 1.5, WIN_Z - 0.625), frame)
 	_box(Vector3(0.1, 1.3, 0.05), Vector3(x - 0.02, 1.5, WIN_Z + 0.625), frame)
 	_box(Vector3(0.06, 1.2, 0.04), Vector3(x - 0.04, 1.5, WIN_Z), frame)     # the middle bar
-	# outside: far - the sky and the mountains; near - the forest's edge; nearest - the meadow
+	# outside: far - the sky and the mountains; near - the forest's edge; nearest - the meadow. Painted on two cylinders
+	# round the house, so that close to the window, looking along it, one never sees past their edge (the keeper,
+	# 2026-10-27, saw the black beyond the flat planes of v0.11.49)
 	for near in [false, true]:
 		var m := ShaderMaterial.new()
 		m.shader = View
 		m.set_shader_parameter("near", near)
+		m.set_shader_parameter("wrap", 6.0 if near else 3.0)
+		m.set_shader_parameter("y0", (3.5 if near else 40.0) - (5.0 if near else 85.0))
+		m.set_shader_parameter("height", 10.0 if near else 170.0)
 		var mi := MeshInstance3D.new()
-		var q := QuadMesh.new()
-		q.size = Vector2(60.0, 10.0) if near else Vector2(90.0, 40.0)
-		mi.mesh = q
+		var cm := CylinderMesh.new()
+		cm.top_radius = 26.0 if near else 150.0
+		cm.bottom_radius = cm.top_radius
+		cm.height = 10.0 if near else 170.0
+		cm.cap_top = not near                     # (the sky's top: no background showing through, looking up)
+		cm.cap_bottom = false
+		cm.radial_segments = 96
+		cm.rings = 1
+		mi.mesh = cm
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.rotation.y = PI * 0.5                                  # (facing into the room, +x)
-		# (the forest's edge ~16 m off, its trees 1-3 m above the window's sill line from there; the hills behind)
-		mi.position = Vector3(x - (16.0 if near else 34.0), 3.5 if near else 8.0, WIN_Z)
+		mi.position = Vector3(0, 3.5 if near else 40.0, 0)
 		add_child(mi)
 		_views.append(m)
 	_lawn = StandardMaterial3D.new()
@@ -138,8 +147,8 @@ func _window() -> void:
 	ramp.set_color(1, Color(0.85, 0.92, 0.72))
 	nt.color_ramp = ramp
 	_lawn.albedo_texture = nt
-	_lawn.uv1_scale = Vector3(6, 6, 6)
-	_box(Vector3(16.0, 0.02, 60.0), Vector3(x - 8.1, -0.02, WIN_Z), _lawn).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_lawn.uv1_scale = Vector3(60, 60, 60)
+	_cyl(160.0, 0.02, Vector3(0, -0.03, 0), _lawn, self, -1.0, 64).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_plant(Vector3(x + 0.05, 0.9, WIN_Z + 0.42))
 
 
@@ -234,11 +243,11 @@ func set_hour(h: float) -> void:
 	_lamp.light_energy = lerpf(1.9, 0.35, day)
 	_spot.light_energy = lerpf(2.4, 1.2, day)
 	if _env != null:
+		_env.background_color = Color(0.015, 0.025, 0.07).lerp(Color(0.32, 0.55, 0.85), day).lerp(Color(0.6, 0.5, 0.62), dusk * 0.5)
 		_env.ambient_light_color = Color(0.36, 0.33, 0.42).lerp(Color(0.86, 0.76, 0.62), day)
 		_env.ambient_light_energy = lerpf(0.2, 0.42, day)
 	for m in _views:
 		m.set_shader_parameter("day", day)
 		m.set_shader_parameter("dusk", dusk)
-		m.set_shader_parameter("sun_u", 0.5 - 0.3 * sin(az))
-		m.set_shader_parameter("sun_v", 0.3 + 0.55 * maxf(elev, 0.0))
+		m.set_shader_parameter("sun_dir", s)
 	_lawn.albedo_color = Color(0.04, 0.06, 0.04).lerp(Color(0.42, 0.56, 0.27), day)

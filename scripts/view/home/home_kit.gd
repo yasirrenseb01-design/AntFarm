@@ -216,62 +216,86 @@ func _plant(at: Vector3) -> void:
 	var pot := flat(Color(0.66, 0.34, 0.2), 0.85)
 	_cyl(0.058, 0.12, at + Vector3(0, 0.06, 0), pot, self, 0.072, 24)
 	_cyl(0.078, 0.022, at + Vector3(0, 0.124, 0), pot, self, 0.078, 24)            # the rim
-	_cyl(0.068, 0.006, at + Vector3(0, 0.127, 0), flat(Color(0.2, 0.13, 0.08), 1.0), self, 0.068, 24)     # the soil
+	# the soil, just below the rim's lip, a few crumbs on it (the rim's top hid it: the keeper, 2026-10-27)
+	var soil := flat(Color(0.17, 0.11, 0.07), 1.0)
+	_cyl(0.07, 0.004, at + Vector3(0, 0.1365, 0), soil, self, 0.07, 28)
+	var crumb := flat(Color(0.24, 0.16, 0.1), 1.0)
+	var rc := RandomNumberGenerator.new()
+	rc.seed = 9
+	for k in 14:
+		var a := rc.randf() * TAU
+		var d := rc.randf_range(0.03, 0.062)
+		_box(Vector3.ONE * rc.randf_range(0.004, 0.008), at + Vector3(cos(a) * d, 0.139, sin(a) * d), crumb)
 	if _leaf_shader == null:
 		_leaf_shader = Shader.new()
 		_leaf_shader.code = """
 shader_type spatial;
 render_mode cull_disabled;
-float h1(float n) { return fract(sin(n * 127.1) * 43758.5453); }
+// a snake plant's leaf: dark green with paler wavy cross bands and a yellow edge; it sways a little in the room's air
+// (more toward the tip), each leaf in its own time
+void vertex() {
+	float k = UV.y * UV.y;
+	float ph = NODE_POSITION_WORLD.x * 37.0 + NODE_POSITION_WORLD.z * 53.0 + float(INSTANCE_ID);
+	VERTEX.x += sin(TIME * 1.1 + ph) * 0.004 * k;
+	VERTEX.z += sin(TIME * 0.8 + ph * 1.7) * 0.003 * k;
+}
 void fragment() {
 	float v = UV.y;
-	float bands = sin(v * 70.0 + sin(UV.x * 9.0) * 1.5) * 0.5 + 0.5;
-	vec3 c = mix(vec3(0.08, 0.2, 0.08), vec3(0.22, 0.38, 0.18), bands * 0.6);
-	float edge = smoothstep(0.38, 0.47, abs(UV.x - 0.5));
-	c = mix(c, vec3(0.78, 0.72, 0.28), edge);
+	float bands = sin(v * 48.0 + sin(UV.x * 7.0 + v * 13.0) * 2.2 + sin(v * 9.0) * 3.0) * 0.5 + 0.5;
+	vec3 c = mix(vec3(0.07, 0.19, 0.08), vec3(0.24, 0.4, 0.19), bands * 0.6);
+	float edge = smoothstep(0.4, 0.48, abs(UV.x - 0.5));
+	c = mix(c, vec3(0.8, 0.74, 0.28), edge);
 	ALBEDO = c;
-	ROUGHNESS = 0.45;
+	ROUGHNESS = 0.4;
 	SPECULAR = 0.6;
-	BACKLIGHT = vec3(0.12, 0.2, 0.05);
+	BACKLIGHT = vec3(0.1, 0.18, 0.04);
 }
 """
 	var mat := ShaderMaterial.new()
 	mat.shader = _leaf_shader
 	var r := RandomNumberGenerator.new()
 	r.seed = 4
-	for i in 9:
-		var a := i * 2.39996 + r.randf() * 0.4
-		var tall := r.randf_range(0.26, 0.42)
+	# seven leaves round the middle, each turned its own way (not one inside another), the inner ones taller and upright
+	var n := 7
+	for i in n:
+		var a := TAU * i / n + r.randf_range(-0.25, 0.25)
+		var tall := r.randf_range(0.24, 0.4)
 		var mi := MeshInstance3D.new()
-		mi.mesh = _sword_leaf(tall, r.randf_range(0.055, 0.075), r.randf_range(0.12, 0.3), r.randf_range(-0.6, 0.6))
+		mi.mesh = _sword_leaf(tall, r.randf_range(0.065, 0.085), r.randf_range(0.18, 0.4) * (0.42 - tall) / 0.18 + 0.06, r.randf_range(-0.5, 0.5))
 		mi.material_override = mat
-		mi.position = at + Vector3(cos(a) * 0.02, 0.125, sin(a) * 0.02)
+		mi.position = at + Vector3(cos(a) * 0.022, 0.134, sin(a) * 0.022)
 		mi.rotation.y = -a
 		add_child(mi)
 
 
-## One leaf: a strip up y, widest a third of the way up, to a point; bent outward (+x) by `bend`, twisted by `twist`.
+## One leaf: a thick, stiff blade up y - its face folded a little along the middle (a shallow channel), widest a third of
+## the way up, to a point; ~3 mm thick at the base; bent outward (+x) by `bend`, twisted by `twist`.
 func _sword_leaf(tall: float, wide: float, bend: float, twist: float) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var n := 12
-	var pts := []
+	var n := 14
+	var rings := []
 	for k in n + 1:
 		var t := float(k) / n
-		var w := wide * 0.5 * pow(sin(PI * minf(1.0, t * 0.9 + 0.1)), 0.7) * (1.0 - t * 0.85)
+		var w := wide * 0.5 * pow(sin(PI * minf(1.0, t * 0.9 + 0.1)), 0.7) * (1.0 - t * 0.9)
+		var th := 0.0016 * (1.0 - t * 0.8)
 		var c := Vector3(bend * t * t * tall, t * tall, 0.0)
 		var side := Vector3(0, 0, 1).rotated(Vector3.UP, twist * t)
-		pts.append([c - side * w, c + side * w, t])
+		var out := Vector3(1, 0, 0).rotated(Vector3.UP, twist * t)
+		var fold := w * 0.18                                    # (the face's channel along the middle)
+		# round the blade: the outer face's edge, middle and other edge, then the inner face back again
+		rings.append([c - side * w, c + out * (th - fold), c + side * w, c + side * w, c - out * (th + fold), c - side * w, t])
+	var us := [0.0, 0.5, 1.0, 1.0, 0.5, 0.0]
 	for k in n:
-		var a0: Vector3 = pts[k][0]
-		var a1: Vector3 = pts[k][1]
-		var b0: Vector3 = pts[k + 1][0]
-		var b1: Vector3 = pts[k + 1][1]
-		var t0: float = pts[k][2]
-		var t1: float = pts[k + 1][2]
-		for v in [[a0, 0.0, t0], [b0, 0.0, t1], [a1, 1.0, t0], [a1, 1.0, t0], [b0, 0.0, t1], [b1, 1.0, t1]]:
-			st.set_uv(Vector2(v[1], v[2]))
-			st.add_vertex(v[0])
+		var a: Array = rings[k]
+		var b: Array = rings[k + 1]
+		for q in 6:
+			var q2 := (q + 1) % 6
+			if q == 2 or q == 5:
+				continue                                        # (an edge: the two faces meet there)
+			for v in [[a[q], us[q], a[6]], [b[q], us[q], b[6]], [a[q2], us[q2], a[6]], [a[q2], us[q2], a[6]], [b[q], us[q], b[6]], [b[q2], us[q2], b[6]]]:
+				st.set_uv(Vector2(v[1], v[2]))
+				st.add_vertex(v[0])
 	st.generate_normals()
 	return st.commit()
 

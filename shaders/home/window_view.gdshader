@@ -1,22 +1,34 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled;
-// What the Home's window looks out on (the keeper, 2026-10-27: mountains and forest), painted in code on two planes
-// outside it: "far" - the sky (its colour by the hour, the sun's glow low over the hills, stars at night) and three
+// What the Home's window looks out on (the keeper, 2026-10-27: mountains and forest), painted in code on two cylinders
+// round the house (v0.11.51: flat planes showed their edges from close to the window): "far" - the sky (its colour by the hour, the sun's glow low over the hills, stars at night) and three
 // ranges of mountains, paler with distance; "near" - a line of forest (conifers and round crowns) in front of a meadow,
-// see-through above the trees. day: 0 night .. 1 full day; dusk: 0 .. 1 the low sun's orange; sun_u: where the sun is
-// across the view (0..1).
+// see-through above the trees. day: 0 night .. 1 full day; dusk: 0 .. 1 the low sun's orange; sun_dir: toward the sun;
+// wrap: how many times the pattern goes round (UV.x once round the cylinder).
 
 uniform bool near = false;
 uniform float day = 1.0;
 uniform float dusk = 0.0;
-uniform float sun_u = 0.5;
-uniform float sun_v = 0.6;
+uniform vec3 sun_dir = vec3(-1.0, 0.5, 0.0);
+uniform float wrap = 1.0;
+uniform float y0 = 0.0;          // the cylinder's foot and height, in the world (where the picture's v runs 0..1)
+uniform float height = 10.0;
+varying vec3 wdir;
+varying vec3 wpos;
+
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wdir = normalize(wpos - vec3(0.0, 1.5, 0.0));
+}
 
 float h1(float n) { return fract(sin(n * 127.1) * 43758.5453); }
 float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n1(float x) { float i = floor(x); float f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(h1(i), h1(i + 1.0), f); }
 float ridge(float x, float seed) {
-	return n1(x * 1.0 + seed) * 0.55 + n1(x * 2.3 + seed * 2.0) * 0.28 + n1(x * 6.1 + seed * 3.0) * 0.12 + n1(x * 15.0 + seed) * 0.05;
+	// (peaks: the noise folded at its middle makes sharp ridges, smooth valleys)
+	float a = 1.0 - abs(n1(x + seed) * 2.0 - 1.0);
+	float b = 1.0 - abs(n1(x * 2.7 + seed * 2.0) * 2.0 - 1.0);
+	return a * 0.6 + b * 0.28 + n1(x * 7.3 + seed * 3.0) * 0.1 + n1(x * 19.0 + seed) * 0.02;
 }
 
 vec3 sky_at(float v) {
@@ -28,22 +40,23 @@ vec3 sky_at(float v) {
 }
 
 void fragment() {
-	vec2 uv = vec2(UV.x, 1.0 - UV.y);           // v up
+	// (from where it is in the world: the cylinder mesh's own UVs do not run 0..1 up its side)
+	vec2 uv = vec2((atan(wpos.z, wpos.x) / 6.2831853 + 0.5) * wrap, (wpos.y - y0) / height);
 	vec3 c;
 	float a = 1.0;
 	if (!near) {
 		c = sky_at(uv.y);
 		// the sun's glow (by day) and stars (at night)
-		float sd = length((uv - vec2(sun_u, sun_v)) * vec2(2.0, 1.0));
+		float sd = acos(clamp(dot(wdir, normalize(sun_dir)), -1.0, 1.0)) * 1.6;
 		c += vec3(1.0, 0.85, 0.6) * (exp(-sd * 9.0) * 0.6 + exp(-sd * 60.0) * 1.5) * smoothstep(0.0, 0.2, day) * (0.4 + dusk);
-		float st = step(0.997, h2(floor(uv * vec2(900.0, 450.0))));
+		float st = step(0.997, h2(floor(uv * vec2(900.0 / wrap * 4.0, 450.0))));
 		c += vec3(st) * (1.0 - smoothstep(0.0, 0.25, day)) * smoothstep(0.45, 0.7, uv.y) * 0.8;
 		// three ranges, nearer ones lower, darker, less hazy
 		for (int i = 0; i < 3; i++) {
 			float fi = float(i);
 			float base = 0.36 - fi * 0.04;
 			float hgt = 0.34 - fi * 0.09;
-			float rx = uv.x * (2.5 + fi * 1.6) + fi * 13.7;
+			float rx = uv.x * (7.0 + fi * 4.0) + fi * 13.7;
 			float top = base + hgt * ridge(rx, fi * 7.1);
 			if (uv.y < top) {
 				vec3 rock = i == 0 ? vec3(0.42, 0.48, 0.6) : (i == 1 ? vec3(0.27, 0.36, 0.38) : vec3(0.15, 0.27, 0.17));
@@ -61,7 +74,7 @@ void fragment() {
 		float ground = 0.22 + 0.05 * n1(uv.x * 3.0);
 		a = 0.0;
 		c = vec3(0.0);
-		float cells = 90.0;
+		float cells = 30.0;
 		for (int k = -1; k <= 1; k++) {
 			float cell = floor(uv.x * cells) + float(k);
 			float id = h1(cell * 3.17);
@@ -83,7 +96,7 @@ void fragment() {
 		}
 		if (uv.y < ground) {
 			c = mix(vec3(0.3, 0.45, 0.18), vec3(0.42, 0.56, 0.24), n1(uv.x * 30.0 + uv.y * 80.0));
-			c *= 0.9 + 0.2 * h2(floor(uv * 300.0));
+			c *= 0.9 + 0.2 * h2(floor(uv * vec2(80.0, 300.0)));
 			a = 1.0;
 		}
 		c *= mix(0.08, 1.0, day);

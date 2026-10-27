@@ -150,7 +150,7 @@ func refresh(delta: float) -> void:
 	_clock.text = tr("clock_line") % [sim.year(), sim.date_text(), sim.season_name(), sim.clock_text()]
 	var sky := tr("sky_rain") if sim.climate.raining() else (tr("sky_night") if sim.sun_height() < -0.05 else tr("sky_clear"))
 	_weather.text = tr("weather_line") % [sim.climate.air, sky, int(sim.activity * 100)]
-	_harmony_row.visible = harmony >= 0.0
+	_place_tab()
 	if harmony >= 0.0:
 		_harmony_l.text = tr("harmony_line") % _thousands(int(harmony))
 	_frame += 1
