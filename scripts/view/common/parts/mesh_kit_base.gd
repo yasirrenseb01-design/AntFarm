@@ -222,11 +222,18 @@ static func leaf(length: float, width: float, col: Color, curl: float) -> ArrayM
 	for i in range(9, 0, -1):
 		var t := i / 10.0
 		outline.append(Vector2((t - 0.5) * length, sin(t * PI) * width * (1.0 - 0.25 * t)))
-	# dry leaves curl up at the edges and lift at the tip
-	k.sheet(outline, Transform3D.IDENTITY, col, func(p: Vector2) -> float:
-		return 0.18 + absf(p.y) * absf(p.y) / maxf(0.1, width) * (0.35 + curl) + maxf(0.0, p.x / length) * 0.6,
-		func(p: Vector2) -> float: return pow(clampf(p.x / length + 0.1, 0.0, 1.0), 2.0) * 0.15)
-	k.seg(Vector3(-length * 0.55, 0.2, 0), Vector3(length * 0.45, 0.22, 0), 0.12, col.darkened(0.3), false)
+	# dry leaves curl up a little at the edges and lift at the tip (the keeper, 2026-10-27: they stood up in a tall
+	# hump, one half lit and the other dark, and the straight midrib stuck out under the lifted tip - now gentler, and
+	# the midrib follows the leaf's own middle, the stalk a little past its foot)
+	var lift := func(p: Vector2) -> float:
+		return 0.18 + absf(p.y) * absf(p.y) / maxf(0.1, width) * (0.12 + curl * 0.3) + maxf(0.0, p.x / length) * 0.35
+	k.sheet(outline, Transform3D.IDENTITY, col, lift,
+		func(p: Vector2) -> float: return pow(clampf(p.x / length + 0.1, 0.0, 1.0), 2.0) * 0.08)
+	var rib := []
+	for i in 7:
+		var x := lerpf(-length * 0.58, length * 0.42, i / 6.0)
+		rib.append(Vector3(x, float(lift.call(Vector2(maxf(x, -length * 0.5), 0.0))) + 0.03, 0))
+	k.chain(rib, 0.1, 0.05, col.darkened(0.3))
 	return k.commit()
 
 

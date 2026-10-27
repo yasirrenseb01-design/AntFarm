@@ -941,7 +941,7 @@ func _add_mate(c: Vector3i, role: String, born: int, size: float) -> void:
 		"traffic": goal = -1
 	_mates.append({"cell": c, "prev": c, "from": Vector3(c), "to": Vector3(c), "t": 1.0, "rest": randi_range(0, 30),
 		"up": _up_at(c), "born": born, "role": role, "goal": goal,
-		"wander": 0, "carry": false, "item": "", "size": size, "act": ACT_WALK, "act_left": 0.0, "cool": randf() * 4.0,
+		"wander": 0, "carry": false, "item": "", "size": size * float(sim.sp.look.worker_scale), "act": ACT_WALK, "act_left": 0.0, "cool": randf() * 4.0,
 		"anim": randf() * 100.0, "fed": false})
 
 

@@ -30,6 +30,7 @@ func step() -> void:
 	if tick % NestVolume.STEP_EVERY == 0:
 		var tn := Time.get_ticks_usec()
 		nest.step(tick, diggers_wanted, target_air(), humidity)
+		_surface()
 		prof.nest = prof.get("nest", 0) + Time.get_ticks_usec() - tn
 	var t1 := Time.get_ticks_usec()
 	_spd = sp["walk_speed"] * (0.35 + 0.65 * activity)
@@ -89,7 +90,7 @@ func to_dict() -> Dictionary:
 		"climate": climate.to_dict(), "nest": nest.to_dict(), "home": home.to_dict(), "food": food.to_dict(), "alarm": alarm.to_dict(), "next_cid": _next_cid,
 		"world": [WORLD.x, WORLD.y], "plot_seed": plot_seed, "nest_pos": nest_pos, "midden_pos": midden_pos, "traits": traits,
 		"brood_at": brood_at, "queen_at": queen_at, "queen_stay": _queen_stay, "ch_mean": ch_mean, "surf_mean": surf_mean,
-		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids,
+		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids, "dumps": _dumps,
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
 		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "water": water, "mold": mold, "heater": heater, "enemies": enemies, "enemy_rate": enemy_rate,
 		"creatures": creatures, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
@@ -176,6 +177,7 @@ func from_dict(d: Dictionary) -> void:
 	for id in d.outside:
 		if by_id.has(id):
 			outside.append(by_id[id])
+	_dumps = d.get("dumps", {})
 	eggs = d.eggs
 	larvae = d.larvae
 	pupae = d.pupae

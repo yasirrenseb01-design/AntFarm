@@ -121,7 +121,7 @@ func _update_ants(delta: float) -> void:
 			act = g[1]
 		elif hauling:
 			act = 19                     # gripping the item, braced, pulling
-		elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
+		elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE or a.carry == Ant.SOIL):
 			act = 8                      # carrying: head up, the load held in the mandibles
 		elif act == 0 and _on_trail(a):
 			act = 16                     # following a trail: antennae low, tapping the ground left and right
@@ -173,6 +173,8 @@ func _update_ants(delta: float) -> void:
 			spray.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.12 + 0.18 * puff)), Vector3(0.35, 0.25, 0.0)))
 		if a.carry == Ant.PROTEIN:
 			loads.append(tr * CARRY_OFFSET)
+		elif a.carry == Ant.SOIL:
+			soil.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * 0.45), CARRY_OFFSET.origin))   # (a digger's pellet)
 		elif a.carry == Ant.NONE and a.state == Ant.SEARCH and a.busy <= 0 and a.id % 3 == 0 and _burying(a.pos):
 			soil.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * 0.38), Vector3(1.4, 0.45, 0)))
 		elif a.carry == Ant.CORPSE:
@@ -547,7 +549,7 @@ func info_for(kind: String, id: int) -> Dictionary:
 				act = 19
 			elif a.state == Ant.DEFEND:
 				act = 13 if a.busy > 0 else 14
-			elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
+			elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE or a.carry == Ant.SOIL):
 				act = 8
 			return {"kind": "worker", "w": a, "act": act}
 	return {}
@@ -575,7 +577,7 @@ func pick_ant(sp: Vector2) -> Dictionary:
 				act = 19
 			elif a.state == Ant.DEFEND:
 				act = 13 if a.busy > 0 else 14
-			elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE):
+			elif act == 0 and (a.carry == Ant.PROTEIN or a.carry == Ant.CORPSE or a.carry == Ant.SOIL):
 				act = 8
 			best = {"kind": "worker", "w": a, "act": act}
 	return best

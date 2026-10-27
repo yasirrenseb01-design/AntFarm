@@ -205,11 +205,31 @@ func _refresh_egg_spots() -> void:
 		var cands := []
 		for sp in _spots.eggs:
 			var d := Vector2(sp.x - _spots.queen.x, sp.z - _spots.queen.z).length()
-			if d > 2.6:
+			# (never where a gallery leaves the chamber, even when a small chamber's floor is mostly ways out: the
+			# keeper, 2026-10-27, saw eggs lying in the passage - the floor's fallback keeps those cells for walking)
+			if d > 2.6 and not _egg_by_exit(sp):
 				cands.append([absf(d - 3.4), sp])
 		cands.sort_custom(func(a, b): return a[0] < b[0])
 		for c in cands:
 			_egg_spots.append(c[1])
+
+
+## Whether a floor spot of the queen's chamber is where a gallery leaves it (cached with the soil: _by_exit is ~75 cells).
+func _egg_by_exit(sp: Vector3) -> bool:
+	var ch_i := int(sim.queen_at)
+	if ch_i < 0 or ch_i >= nest.chambers.size():
+		return false
+	var v := Vector3i(roundi(sp.x), roundi(sp.y + 0.45), roundi(sp.z))
+	var key := "%s %s" % [ch_i, v]
+	if int(_egg_exit.get("gen", -1)) != _soil_gen:
+		_egg_exit.clear()
+		_egg_exit["gen"] = _soil_gen
+	if not _egg_exit.has(key):
+		_egg_exit[key] = _by_exit(v, nest.chambers[ch_i])
+	return _egg_exit[key]
+
+
+var _egg_exit := {}
 
 
 func _room_spots(rooms: Array, fallback: Array) -> Array:

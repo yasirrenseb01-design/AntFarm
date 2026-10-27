@@ -108,6 +108,17 @@ func _near_work() -> Vector3i:
 	return work_at
 
 
+## Back in from carrying its pellet out (sim._surface): down to the dig front it came from.
+func finish_surface(d: Dictionary) -> void:
+	d.surfacing = false
+	d.carry = false
+	d.back = true
+	if work_left > 0 and work_at.x >= 0:
+		d.site = _near_work()
+	d.tries = 0
+	d.dir = Vector3i(0, -1, 0)
+
+
 func _spawn_digger() -> void:
 	var start: Vector3i = Vector3i(chambers[rng.randi() % chambers.size()].c)
 	if not is_open(start):
@@ -140,7 +151,7 @@ func step(now: int, wanted: int, target_air: int, humidity: float) -> void:
 		for i in range(diggers.size() - 1, -1, -1):
 			if diggers.size() <= wanted:
 				break
-			if not diggers[i].carry:
+			if not diggers[i].carry and not diggers[i].get("surfacing", false):
 				diggers.remove_at(i)
 	for d in diggers:
 		_step_digger(d, target_air, humidity)
@@ -148,9 +159,15 @@ func step(now: int, wanted: int, target_air: int, humidity: float) -> void:
 
 func _step_digger(d: Dictionary, target_air: int, humidity: float) -> void:
 	var c: Vector3i = d.cell
+	if d.get("surfacing", false):
+		return                     # out of the entrance with its pellet (its worker: sim._dumps); finish_surface brings it back
 	if d.carry:
-		# climb the tunnels toward the entrance and drop the pellet on the mound
+		# climb the tunnels toward the entrance, and out: its worker carries the pellet to the crater (the keeper,
+		# 2026-10-27: the soil carriers outside were only drawn - now they are the diggers themselves; sim._surface)
 		var here := dist[idx(c)]
+		if (c == entrance or here <= 0) and int(d.get("wid", -1)) >= 0:
+			d.surfacing = true
+			return
 		if c == entrance or here <= 0:
 			d.carry = false
 			d.back = true          # head back down to the dig front it came from

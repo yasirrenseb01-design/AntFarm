@@ -128,6 +128,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
   `meta.nest_x0` (เมตร จากซ้ายในกล่องถึงบล็อกรัง) เขียนกับเซฟ; ภาพกล่องจากมุมบน `saves/slotN_outworld.png` (`game/outworld_card.gd`,
   กล้องเตรียมไว้ตอนเปิดรัง ถ่ายตอนเซฟ); นอกหน้าต่าง `view/home/home_yard.gd` (รั้ว บ้าน 3 หลัง ถนน ต้นไม้ `assets/models/trees/` จาก
   `tools/blender/build_tree.py`); ตู้เย็นจำศีล `view/home/home_fridge.gd`; ดาว `view/home/zodiac_stars.gd`;
+  มดขุด = มดงานในการจำลอง (`nest.diggers[i].wid`, `sim._surface`, `Ant.DUMP`/`Ant.SOIL`, `sim._dumps`); **คู่มือสายพันธุ์ `docs/SPECIES.md`**;
   **สายพันธุ์: `scripts/sim/species/registry.gd`** (เพิ่มพันธุ์ใหม่ = ไฟล์ใหม่ในโฟลเดอร์นั้น + ใส่ใน `ALL`; ค่าภาพอยู่ใน `DATA.look`;
   `tests/species_test.gd`); เตือนอาหาร `sim.food_days()` → `hud_controls.food_warning()` / `home._check_food()` (meta `sugar_days`, `protein_days`)
   ครั้งแรก: ตู้ 1 = ช่องว่างใหม่, โหมดป่า = ช่องสวนเลขต่ำสุดที่มี (`tests/home_test.gd`); ห้อง 3 มิติ `scripts/view/home/home_room.gd`

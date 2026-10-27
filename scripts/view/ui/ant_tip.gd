@@ -228,6 +228,8 @@ func _job(w, info: Dictionary) -> String:
 			return tr("job_defend")
 		Ant.DRAG:
 			return tr("job_drag")
+		Ant.DUMP:
+			return tr("job_dump")
 	match w.task:
 		Ant.TASK_CALLOW:
 			return tr("job_callow")

@@ -142,7 +142,7 @@ func _bind_workers() -> void:
 	for wid in bound:
 		var m: Dictionary = bound[wid]
 		var w = by_id[wid]
-		m.size = w.size
+		m.size = w.size * float(sim.sp.look.worker_scale)       # (the species' size: docs/SPECIES.md)
 		m.born = sim.tick - int(w.age * sim.TPD)
 		if m.carry or m.has("script") or m.has("deliver") or m.role == "carry":
 			continue
@@ -298,8 +298,10 @@ func _pair_diggers(all: Dictionary) -> void:
 		ds[d.id] = d
 	for id in _dig_wid.keys():
 		var w = all.get(_dig_wid[id])
-		var keep: bool = ds.has(id) and w != null and not w.dead and w.state == Ant.IN_NEST \
-			and (w.task == Ant.TASK_DIG or ds[id].carry)          # (taken off: it still carries its last pellet out)
+		var keep: bool = ds.has(id) and w != null and not w.dead and ((w.state == Ant.IN_NEST \
+			and (w.task == Ant.TASK_DIG or ds[id].carry)) or w.state == Ant.DUMP)   # (taken off: it still carries its
+		# last pellet out; out with it - v0.11.57, sim._surface - still this digger's, drawn outside, back here after:
+		# no new pairing, no body walking in from the entrance each trip)
 		if keep:
 			continue
 		var v: Dictionary = _dig_vis.get(id, {})
@@ -325,7 +327,16 @@ func _pair_diggers(all: Dictionary) -> void:
 			break
 		if _dig_wid.has(id):
 			continue
+		# the simulation's own pairing (v0.11.57: nest.diggers[i].wid - sim._surface), else the lowest free id
+		var want := int(ds[id].get("wid", -1))
 		var w = free_ws.pop_front()
+		for x in free_ws + [w]:
+			if x.id == want:
+				free_ws.erase(x)
+				if x != w:
+					free_ws.push_front(w)
+				w = x
+				break
 		_dig_wid[id] = w.id
 		_dig_since[id] = _t
 		# the nest view just opened (no bodies yet): it is the digger straight away; else its body (or the one it gets
@@ -357,12 +368,16 @@ func _meet_diggers(bound: Dictionary, all: Dictionary) -> void:
 		by_dig[d.id] = d
 	var drop := {}
 	for id in _dig_wid:
-		if _dig_live.has(id) or not by_dig.has(id):
-			continue
+		if _dig_live.has(id) or not by_dig.has(id) or by_dig[id].get("surfacing", false):
+			continue                    # (out at the entrance with its pellet: its cell, up out of the soil, is no
+			                            # place to meet - _on_soil searched far for one, seconds a frame: v0.11.57)
 		var wid: int = _dig_wid[id]
 		var m = bound.get(wid)
 		var cell := Vector3(call("_on_soil", by_dig[id].cell))      # (nest_mates)
-		var late: bool = _t - float(_dig_since.get(id, _t)) > DIG_WAIT
+		# (the soil goes only where a digger is drawn: one already biting at the face, or bringing a pellet up, is drawn
+		# there now, whether or not its worker's body got there first - the keeper, 2026-10-27, saw soil vanish with no
+		# ant at it)
+		var late: bool = _t - float(_dig_since.get(id, _t)) > DIG_WAIT or int(by_dig[id].get("biting", 0)) > 0 			or bool(by_dig[id].carry)
 		var here: Vector3 = (m.from as Vector3).lerp(m.to, clampf(float(m.t), 0.0, 1.0)) if m != null else cell
 		if m == null or here.distance_to(cell) <= DIG_MEET or late:
 			var k := "dig_late" if late else "dig_meet"
@@ -382,7 +397,7 @@ func _meet_diggers(bound: Dictionary, all: Dictionary) -> void:
 		var v: Dictionary = _dig_vis.get(id, {})
 		var w = all.get(int(_dig_wid[id]))
 		if not v.is_empty() and w != null:
-			v.size = w.size
+			v.size = w.size * float(sim.sp.look.worker_scale)
 			v.born = sim.tick - int(w.age * sim.TPD)
 
 

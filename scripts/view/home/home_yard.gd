@@ -28,9 +28,13 @@ static func build(parent: Node3D) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2026
 	# the street across the view, and the side street off it beside the house in front
-	_street(room, Vector3((CROSS_X.x + CROSS_X.y) * 0.5, 0, 0), absf(CROSS_X.y - CROSS_X.x), FAR * 2.0, true)
+	# (a T-junction - the keeper, 2026-10-27: they did not join: the far kerb and pavement of the street across ran on
+	# over the side street's mouth; now they stop at its corners, and the side street's start at the far kerb)
+	var mouth := Vector2(SIDE_Z.x - 0.14, SIDE_Z.y + 0.14)
+	_street(room, Vector3((CROSS_X.x + CROSS_X.y) * 0.5, 0, 0), absf(CROSS_X.y - CROSS_X.x), FAR * 2.0, true, mouth)
 	var side_len := FAR + CROSS_X.y
-	_street(room, Vector3(CROSS_X.y - side_len * 0.5, 0, (SIDE_Z.x + SIDE_Z.y) * 0.5), SIDE_Z.y - SIDE_Z.x, side_len, false)
+	_street(room, Vector3(CROSS_X.y - side_len * 0.5, 0, (SIDE_Z.x + SIDE_Z.y) * 0.5), SIDE_Z.y - SIDE_Z.x, side_len, false,
+		Vector2.ZERO, 1.64)
 	# the row across the street, facing us (+x): a lot every 17 m, the side street's mouth left clear
 	var k := 0
 	var z := -3.0 - 17.0 * 4.0
@@ -123,8 +127,10 @@ static func _lot(room: Node3D, at: Vector3, turn: float, k: int, rng: RandomNumb
 
 
 ## A street (asphalt between kerbs, a dashed white line down its middle, a pavement each side), its middle at `c`,
-## `w` across and `l` long, along z (along_z) or along x.
-static func _street(room: Node3D, c: Vector3, w: float, l: float, along_z: bool) -> void:
+## `w` across and `l` long, along z (along_z) or along x. gap: where (along it) its far side's kerb and pavement stop
+## for a side street (zero: none); start_in: how far its kerbs and pavements start past its near end (where it meets a
+## street across, under that one's pavement).
+static func _street(room: Node3D, c: Vector3, w: float, l: float, along_z: bool, gap := Vector2.ZERO, start_in := 0.0) -> void:
 	var asphalt := Kit.flat(Color(0.2, 0.2, 0.21), 0.95)
 	var kerb := Kit.flat(Color(0.62, 0.62, 0.6), 0.9)
 	var pave := Kit.flat(Color(0.6, 0.59, 0.56), 0.95)
@@ -135,8 +141,20 @@ static func _street(room: Node3D, c: Vector3, w: float, l: float, along_z: bool)
 		_box(room, _dims(0.1, 0.01, 1.5, along_z), c + _dims(0.0, 0.045, t + 0.75, along_z), paint)
 		t += 3.0
 	for side in [-1, 1]:
-		_box(room, _dims(0.14, 0.14, l, along_z), c + _dims(side * (w * 0.5 + 0.07), 0.07, 0.0, along_z), kerb)
-		_box(room, _dims(1.5, 0.12, l, along_z), c + _dims(side * (w * 0.5 + 0.9), 0.06, 0.0, along_z), pave)
+		# the stretches it runs along: whole, or both sides of the gap (a gap on the far side, -1); its near end
+		# (+l/2 for a street along x running off to -x) moved in by start_in
+		var runs: Array = [Vector2(-l * 0.5, l * 0.5 - start_in)]
+		if side == -1 and gap != Vector2.ZERO:
+			var g0 := gap.x - c.z - 1.64
+			var g1 := gap.y - c.z + 1.64
+			runs = [Vector2(-l * 0.5, g0), Vector2(g1, l * 0.5)]
+		for r in runs:
+			var ln: float = r.y - r.x
+			var mid: float = (r.x + r.y) * 0.5
+			if ln <= 0.0:
+				continue
+			_box(room, _dims(0.14, 0.14, ln, along_z), c + _dims(side * (w * 0.5 + 0.07), 0.07, mid, along_z), kerb)
+			_box(room, _dims(1.5, 0.12, ln, along_z), c + _dims(side * (w * 0.5 + 0.9), 0.06, mid, along_z), pave)
 
 
 ## (across, up, along) as x/y/z for a street along z, or along x.

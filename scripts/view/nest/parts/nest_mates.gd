@@ -611,6 +611,9 @@ func _update_ants(delta: float) -> void:
 	for d in nest.diggers:
 		var id: int = d.id
 		seen[id] = true
+		if d.get("surfacing", false) and _dig_vis.has(id):
+			_dig_vis[id].hide = true           # (out of the entrance with its pellet, drawn outside: not here)
+			continue
 		var cell: Vector3i = _on_soil(d.cell)
 		var c := Vector3(cell)
 		var v: Dictionary = _dig_vis.get(id, {})
@@ -627,9 +630,9 @@ func _update_ants(delta: float) -> void:
 			v.still += adt
 		v.t += dt
 		v.anim += adt
-		if not _dig_live.has(id):
-			v.hide = true                     # (no worker's body yet - one is walking to it - or none: not drawn)
-			continue
+		if not _dig_live.has(id) or d.get("surfacing", false):
+			v.hide = true                     # (no worker's body yet - one is walking to it - or none; or out of the
+			continue                          # entrance with its pellet, drawn outside: not drawn)
 		v.erase("hide")
 		if not v.has("size"):
 			v.size = _sample_size()

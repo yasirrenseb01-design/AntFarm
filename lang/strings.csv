@@ -281,6 +281,7 @@ job_home,เดินกลับรัง,Heading home
 job_undertaker,ขนศพไปกองขยะ,Carrying the dead to the midden
 job_defend,ป้องกันรัง,Defending the colony
 job_drag,ช่วยกันลากเหยื่อกลับรัง,Hauling prey home with nestmates
+job_dump,"ขนดินที่ขุดออกมาทิ้งรอบปากรัง","Carrying dug soil out to the crater"
 job_callow,มดใหม่ (ตัวยังซีด เพิ่งออกจากรังไหม),"Callow (still pale, just out of the cocoon)"
 job_nurse,พี่เลี้ยง (เลี้ยงไข่ ตัวอ่อน รังไหม),"Nurse (tends eggs, larvae and cocoons)"
 job_just_back,เพิ่งกลับจากข้างนอก,Just back from outside

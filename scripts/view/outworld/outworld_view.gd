@@ -7,6 +7,7 @@ extends "res://scripts/view/outworld/parts/outworld_camera.gd"
 
 func setup(s) -> void:
 	sim = s
+	ANT_SCALE = Spec.ANT_SCALE * float(sim.sp.look.worker_scale)      # (the species' size: docs/SPECIES.md)
 	ground = GroundData.new()
 	ground.setup(sim)
 	_nest_xz = sim.nest_pos * U

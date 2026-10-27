@@ -91,7 +91,7 @@ func _colony(dt: float) -> void:
 		if a.state != Ant.IN_NEST:
 			out_count += 1
 			outside.append(a)
-			a.task = Ant.TASK_OUT
+			a.task = Ant.TASK_DIG if a.state == Ant.DUMP else Ant.TASK_OUT      # (a digger out with its pellet)
 			continue
 		if a.age < sp["callow_days"]:
 			callow += 1

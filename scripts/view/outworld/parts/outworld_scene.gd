@@ -21,7 +21,7 @@ const SceneryDraw := preload("res://scripts/view/outworld/scenery_draw.gd")
 const KeeperRoom := preload("res://scripts/view/outworld/keeper_room.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units
-const ANT_SCALE := Spec.ANT_SCALE   # (1.1 until v0.11.53: drawn a tenth bigger than they are)
+var ANT_SCALE := Spec.ANT_SCALE     # x the species' worker_scale (outworld_view.setup); 1.1 until v0.11.53
 const GARDEN_MARGIN := 110.0          # how far (units) the garden ground is drawn past the plot outdoors
 const M := 1.0 / Spec.VOXEL          # units a metre
 const SOIL_BOTTOM := -Spec.SOIL * M  # the box's soil, as deep as the nest, seen through the glass down to its floor (units)

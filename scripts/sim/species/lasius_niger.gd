@@ -92,6 +92,8 @@ const DATA := {
 	# a near-black queen, as in reference/ photos).
 	"look": {
 		"models": "",
+		"worker_scale": 1.0,          # its workers' length / 4.2 mm (the models' size): every body, stride, gap kept
+		                              # between ants and headroom in the views scales with it (docs/SPECIES.md)
 		"queen_scale": 1.75,
 		"worker_limbs": Vector3(1.7, 1.45, 1.25),
 		"queen_limbs": Vector3(5.6, 3.6, 1.8),

@@ -241,6 +241,8 @@ func _floor_y(p: Vector3) -> float:
 ## Dev (--perf): adds the time since t0 to fprof[key]; returns now.
 func _nprof(key: String, t0: int) -> int:
 	var now := Time.get_ticks_usec()
+	if now - t0 > 60000 and OS.get_cmdline_user_args().has("--spikes"):
+		print("SPIKE ", key, " ", (now - t0) / 1000)        # (dev: which part of a frame took over 60 ms)
 	fprof[key] = fprof.get(key, 0) + now - t0
 	return now
 

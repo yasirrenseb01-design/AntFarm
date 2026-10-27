@@ -139,6 +139,7 @@ var traits := {}
 const UNTENDED_LAYING := 0.9             # a queen nobody attended lays this much (the keeper's choice: no evidence either way)
 var queen_tended := true                 # someone attended the queen this half hour (none: she lays UNTENDED_LAYING)
 var _carry_due := 0                      # brood to carry since the last duty round (eggs laid, larvae pupating, workers out)
+var _dumps := {}                         # worker id -> {"to": where it sets its pellet down, "dig": the digger, "dropped"}
 var _unloaded: Array = []                # foragers (ids) who brought honeydew home since the last duty round
 
 

@@ -8,6 +8,7 @@ const HOME := 3
 const UNDERTAKER := 4
 const DEFEND := 5          # answering the alarm: running at an enemy or clinging to it
 const DRAG := 6            # holding a whole small prey with nestmates and hauling it home (foe = the food's seed)
+const DUMP := 7            # a digger out of the entrance with a pellet of soil, to the crater's ring and back (sim._dumps)
 
 # castes: workers now; winged gynes (new queens) and males come with the nuptial flight (PART 10)
 const WORKER := 0
@@ -45,6 +46,7 @@ const NONE := 0
 const SUGAR := 1
 const PROTEIN := 2
 const CORPSE := 3
+const SOIL := 4            # a pellet of excavated soil (Ant.DUMP)
 
 var id := 0
 var caste := WORKER
