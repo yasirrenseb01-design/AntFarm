@@ -8,6 +8,7 @@ extends "res://scripts/sim/parts/sim_foragers.gd"
 ## formic acid into the bite. Clinging ants slow the enemy until it is pinned; it bites back
 ## (killing or maiming) and shakes ants off; badly hurt it flees, and if it dies it becomes food.
 
+const Grip := preload("res://scripts/sim/enemies/grip_spots.gd")
 const ENEMY_KINDS := {
 	"wolf_spider": preload("res://scripts/sim/enemies/wolf_spider.gd"),
 	"centipede": preload("res://scripts/sim/enemies/centipede.gd"),
@@ -18,6 +19,9 @@ const ACT_ATTACK := 13      # view: biting and spraying (gaster curled forward)
 const ACT_ALARM := 14       # view: running in alarmed, mandibles open
 const FIGHT_FROM := 20      # a colony smaller than this hides from big enemies instead of mobbing them
 const RELEASE_MAX := 3      # enemies in the box at once when the keeper lets them in (the HUD's enemy panel)
+const CROWD_SHARE := 0.0   # what an ant beyond an enemy's "hold" adds to biting and pinning it (in each other's way)
+
+var _taken := {}            # creature id -> {spot index: ant id}: c.spots turned round (not saved: made again from it)
 
 
 const NIGHT_SHARE := 0.33   # of a summer day dark enough for the night hunters (enemy_days: an estimate for the keeper)
@@ -65,15 +69,50 @@ func release_enemy(kind: String) -> int:
 	return creatures[-1].id
 
 
-## Where on the enemy this ant holds on: round its body (spider) or along its sides (centipede).
-func _grip(a: Ant, c: Dictionary, S: Dictionary) -> Vector2:
-	if S.get("shape", "round") == "long":
-		var along := float((a.id * 7) % 13) / 12.0 - 0.5
-		var side := 1.0 if a.id % 2 == 0 else -1.0
-		var fwd := Vector2.from_angle(c.ang)
-		return c.pos + fwd * along * S.length * 0.9 + fwd.orthogonal() * side * S.width
-	var grip := float(a.id % 16) / 16.0 * TAU
-	return c.pos + Vector2.from_angle(c.ang + grip) * S.r
+## Where on the enemy this ant holds on: its spot (c.spots, see enemies/grip_spots.gd) - a leg, a side, its back.
+func _grip(a: Ant, c: Dictionary) -> Vector2:
+	var i := int(c.spots.get(a.id, -1))
+	return Grip.at(c, ENEMY_KINDS[c.kind], i) if i >= 0 else c.pos
+
+
+## The spots held on this enemy (spot index -> ant id), made again from c.spots after a load.
+func _taken_on(c: Dictionary) -> Dictionary:
+	if not c.get("spots") is Dictionary:
+		c["spots"] = {}                      # (an enemy from before v0.11.68, or a save changed by hand)
+	if not _taken.has(c.id):
+		var t := {}
+		for id in c.spots.keys():
+			var i = c.spots[id]
+			if (id is int) and (i is int) and i >= 0 and not t.has(i):
+				t[i] = id
+			else:
+				c.spots.erase(id)
+		_taken[c.id] = t
+	return _taken[c.id]
+
+
+## Keep the spots of the ants still holding on (thrown off, bitten, dead: theirs are free again); one holding on without
+## a spot (an older save) gets the nearest free one, or lets go.
+func _hold_spots(c: Dictionary, clinging: Array) -> void:
+	var old: Dictionary = c.spots if c.get("spots") is Dictionary else {}
+	var kept := {}
+	var taken := {}
+	for a in clinging:
+		var v = old.get(a.id, -1)
+		var i: int = v if v is int else -1
+		if i >= 0 and not taken.has(i):
+			kept[a.id] = i
+			taken[i] = a.id
+	for a in clinging:
+		if not kept.has(a.id):
+			var i := Grip.free_spot(c, ENEMY_KINDS[c.kind], taken, a.pos, Grip.layers(workers.size()))
+			if i >= 0:
+				kept[a.id] = i
+				taken[i] = a.id
+			else:
+				a.busy = 0
+	c.spots = kept
+	_taken[c.id] = taken
 
 
 func _spawn_creature(kind: String) -> void:
@@ -83,6 +122,7 @@ func _spawn_creature(kind: String) -> void:
 	_next_cid += 1
 	c["hp"] = ENEMY_KINDS[kind].STATS.hp
 	c["held"] = 0
+	c["spots"] = {}                          # ant id -> spot it holds (enemies/grip_spots.gd)
 	creatures.append(c)
 	stats["enemies_came"] = int(stats.get("enemies_came", 0)) + 1
 
@@ -117,8 +157,13 @@ func _step_creatures() -> void:
 	var gone := []
 	for c in creatures:
 		var clinging := _clinging(c)
+		_hold_spots(c, clinging)
+		clinging = clinging.filter(func(a): return a.busy > 0)
 		c.held = clinging.size()
 		var K = ENEMY_KINDS[c.kind]
+		# biting and pinning: the first "hold" ants in full, the rest a little each (they hold on to it and to each other)
+		var hold: float = K.STATS.hold
+		c["load"] = minf(c.held, hold) + CROWD_SHARE * maxf(0.0, c.held - hold)
 		if c.hp <= 0.0:
 			_creature_dies(c, clinging)
 			gone.append(c)
@@ -127,6 +172,7 @@ func _step_creatures() -> void:
 			gone.append(c)
 	for c in gone:
 		creatures.erase(c)
+		_taken.erase(c.id)
 
 
 ## The ants have killed it: the body stays where it fell as food for the colony.
@@ -185,12 +231,14 @@ func _step_defender(a: Ant) -> void:
 			return
 		a.foe = c.id
 	var S: Dictionary = ENEMY_KINDS[c.kind].STATS
+	var taken := _taken_on(c)
 	if a.busy > 0:
-		# clinging on: ride with the enemy at its grip point, biting and spraying formic acid
-		a.pos = _grip(a, c, S)
-		a.ang = (c.pos - a.pos).angle() if S.get("shape", "round") != "long" else (c.pos - a.pos).angle() + 0.6 * (1.0 if a.id % 2 == 0 else -1.0)
+		# clinging on: ride with the enemy at its spot, biting and spraying formic acid
+		a.pos = _grip(a, c)
+		var i := int(c.spots.get(a.id, -1))
+		a.ang = Grip.pose(c, ENEMY_KINDS[c.kind], i)[2] if i >= 0 else (c.pos - a.pos).angle()
 		a.act = ACT_ATTACK
-		c.hp -= ACID * n * (1.0 - S.armor)
+		c.hp -= ACID * n * (1.0 - S.armor) * float(c.get("load", 1.0)) / maxf(1.0, float(c.held))
 		if ((tick + a.id) % 6) < n:
 			alarm.deposit(a.pos.x, a.pos.y, 1.5)
 		return
@@ -198,12 +246,20 @@ func _step_defender(a: Ant) -> void:
 	a.trip += n
 	var spd := _spd * 1.3 * (1.0 - 0.35 * a.hurt)
 	a.phase += spd * 0.95
-	var to: Vector2 = _grip(a, c, S) - a.pos
-	if to.length() < 3.0 + spd:
-		if c.held < S.hold:
-			c.held += 1
-			a.busy = 1
-			return
+	# close by: make for the nearest free spot on it (its legs, its sides, its back; on a nestmate holding one when the
+	# colony is big enough to pile up - enemies/grip_spots.gd)
+	var spot := -1
+	if a.pos.distance_squared_to(c.pos) < pow(S.r + Grip.SEEK_PX, 2):
+		spot = Grip.free_spot(c, ENEMY_KINDS[c.kind], taken, a.pos, Grip.layers(workers.size()))
+	var to: Vector2 = (Grip.at(c, ENEMY_KINDS[c.kind], spot) if spot >= 0 else c.pos) - a.pos
+	if spot >= 0 and to.length() < 3.0 + spd:
+		c.spots[a.id] = spot
+		taken[spot] = a.id
+		c.held += 1
+		a.busy = 1
+		a.pos += to
+		return
+	if spot < 0 and to.length() < S.r + 8.0:
 		a.ang = to.angle() + PI * 0.5 * a.slide       # no room on it: circle round, snapping
 	else:
 		a.ang = to.angle() + rng.randf_range(-0.25, 0.25) * _noise_k

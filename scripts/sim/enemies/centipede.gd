@@ -16,11 +16,15 @@ const CHASED := T.centipede_chased
 const STATS := {
 	"hp": 0.9,          # a little tougher than a spider of its size
 	"armor": 0.2,       # thin, flexible plates
-	"shape": "long",    # the ants grip along its body, not round a centre
 	"length": 50.0,     # px (about 25 mm)
 	"width": 4.0,       # px from the midline to where its legs are seized
 	"r": 8.0,           # px: ants within this of their grip point latch on
-	"hold": 10,         # 15 pairs of legs to grab
+	"hold": 10,         # 15 pairs of legs to grab; more ants get in each other's way (a quarter each)
+	# where ants hold on (grip_spots.gd): its legs along both sides, on its flat back (1.1 mm high), the antennae, the
+	# long last legs, its head
+	"spots": [[18.0, 8.0, 0.0, 0.3], [12.0, 8.0, 0.0, 0.3], [6.0, 8.0, 0.0, 0.3], [0.0, 8.0, 0.0, 0.3], [-6.0, 8.0, 0.0, 0.3],
+		[-12.0, 8.0, 0.0, 0.3], [-18.0, 8.0, 0.0, 0.3], [15.0, 1.8, 1.2, 0.0], [5.0, 1.8, 1.2, 0.0], [-5.0, 1.8, 1.2, 0.0],
+		[-15.0, 1.8, 1.2, 0.0], [32.0, 6.0, 0.0, 0.4], [-30.0, 6.0, 0.0, 0.3], [24.0, 0.0, 1.2, 0.0]],
 	"pin": 6,
 	"flee_at": 0.5,     # runs as soon as it is badly mobbed
 	"speed": 1.15,      # px per tick: one of the fastest things in the leaf litter
@@ -49,7 +53,7 @@ static func spawn(sim) -> Dictionary:
 static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.life -= 1
 	var held := clinging.size()
-	var free := clampf(1.0 - float(held) / STATS.pin, 0.0, 1.0)
+	var free := clampf(1.0 - float(c.get("load", held)) / STATS.pin, 0.0, 1.0)
 	c.phase += 0.45 * maxf(free, 0.3)
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true

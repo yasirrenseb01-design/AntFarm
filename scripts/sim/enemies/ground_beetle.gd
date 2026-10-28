@@ -16,14 +16,21 @@ const STATS := {
 	"hp": 1.4,
 	"armor": 0.7,       # thick, smooth cuticle: little purchase for mandibles or acid
 	"r": 10.0,          # px: ants grab its legs and antennae round its body
-	"hold": 7,
+	"hold": 7,          # ants holding on that bite and pin it in full; more get in each other's way (a quarter each)
+	# where ants hold on (grip_spots.gd): its legs and antennae from the ground, up the sides of elytra and pronotum, on its
+	# back (tools/blender/props/beetle.py: elytra 7 mm high, pronotum 6 mm), the head and the tip of the abdomen
+	"spots": [[18.0, 13.0, 0.0, 0.5], [25.0, 15.0, 0.0, 0.3], [0.0, 17.0, 0.0, 0.5], [-6.0, 23.0, 0.0, 0.3],
+		[-12.0, 15.0, 0.0, 0.5], [-22.0, 20.0, 0.0, 0.3], [40.0, 16.0, 0.5, 0.6],
+		[-16.0, 10.5, 3.0, 0.9], [-6.0, 11.0, 3.2, 0.9], [4.0, 9.5, 3.0, 0.9], [12.0, 8.0, 3.5, 0.9],
+		[-16.0, 4.0, 6.6, 0.0], [-6.0, 4.5, 7.0, 0.0], [4.0, 3.5, 6.6, 0.1], [12.0, 3.0, 5.9, 0.1],
+		[21.0, 0.0, 5.0, 0.2], [-25.0, 0.0, 3.0, 0.6]],
 	"pin": 16,          # strong: a full load of 7 ants only halves its pace (8: they held it, and killed 5 of 8, v0.11.1)
 	"flee_at": 0.8,     # harried by a mob it soon gives up and leaves
 	"speed": 1.0,       # px per tick: a fast runner
 	"bite": 0.015,
 	"lethal": 0.6,      # crushing mandibles
 	"shake": 0.0012,
-	"spray": 0.005,     # chance per tick, with ants on it, of a defensive spray that drops them all
+	"spray": 0.012,     # chance per tick, with ants on it, of a defensive spray that drops them all (v0.11.68: 0.005 - now that the ants really get on it, a big colony killed it 4 times in 8)
 	"carcass": "ground_beetle_dead",
 	"night": true,
 	"rate": 0.05,       # chance per day of one turning up (counted over the night only; v0.11.2: was 0.18)
@@ -46,7 +53,7 @@ static func spawn(sim) -> Dictionary:
 static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.life -= 1
 	var held := clinging.size()
-	var free := clampf(1.0 - float(held) / STATS.pin, 0.0, 1.0)
+	var free := clampf(1.0 - float(c.get("load", held)) / STATS.pin, 0.0, 1.0)
 	c.phase += 0.35 * maxf(free, 0.3)
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true

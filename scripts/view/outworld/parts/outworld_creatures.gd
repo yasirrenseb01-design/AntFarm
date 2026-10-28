@@ -2,6 +2,9 @@ extends "res://scripts/view/outworld/parts/outworld_crowd.gd"
 ## Outworld view, layer 4 of 6: foragers (and how they stand on the food they handle), corpses,
 ## the spider, rain, the day/night light and the tool ring.
 
+const Grip := preload("res://scripts/sim/enemies/grip_spots.gd")
+const MM_PER_UNIT := 1.5           # a model unit out here (3 px at 0.5 mm a px)
+
 
 func _light() -> void:
 	if room != null:
@@ -73,6 +76,10 @@ func _update_ants(delta: float) -> void:
 			a.vright = maxf(0.0, a.vright - adt)
 			flung = 1.0 - a.vright / THROWN_S
 		var step: Vector2 = a.pos + out_step - a.vpos
+		var foe = _held_foe(a)                            # holding on to an enemy: glued to it where it is drawn
+		if foe != null and _creature_vis.has(a.foe):
+			var cv: Dictionary = _creature_vis[a.foe]
+			step = cv.p + (a.pos - foe.pos).rotated(float(cv.a) - foe.ang) - a.vpos
 		var down_stem: bool = a.vfeed > 0.0 and a.vpose is Dictionary and (a.vpose as Dictionary).get("climb", false) 			and not (a.busy > 0 and a.act == 9)
 		if down_stem:
 			step = Vector2.ZERO               # coming down the stem: it walks on from the foot of it once down
@@ -129,6 +136,11 @@ func _update_ants(delta: float) -> void:
 			act = 13 if a.busy > 0 else 14          # clinging and spraying / running in alarmed
 			if a.busy > 0 and _creature_vis.has(a.foe):
 				tr.origin += _writhe_offset(_creature_vis[a.foe], tr.origin)    # carried with the writhing body
+			if foe != null and foe.spots.has(a.id):
+				# where it holds on: rearing up at a leg, up its side, on its back, or on a nestmate holding on under it
+				var gp: Array = Grip.pose(foe, sim.ENEMY_KINDS[foe.kind], int(foe.spots[a.id]))
+				var side_ax: Vector3 = tr.basis.z.normalized()
+				tr = Transform3D(Basis(side_ax, float(gp[1])) * tr.basis, tr.origin + up * float(gp[0]) / MM_PER_UNIT)
 		if flung > 0.0:
 			# thrown clear: over onto its back in the air, legs flailing where it lands, then a roll back upright
 			var roll := PI * smoothstep(0.0, 0.25, flung) + PI * smoothstep(0.7, 0.92, flung)
@@ -571,6 +583,16 @@ func _on_trail(a) -> bool:
 		return true
 	var i: int = int(a.pos.y * sim.INV_CELL) * sim.gw + int(a.pos.x * sim.INV_CELL)
 	return i >= 0 and i < sim.food_cell.size() and sim.food.read_i(i) > 0.4
+
+
+## The enemy this ant holds on to (its spot in c.spots), or null.
+func _held_foe(a: Ant):
+	if a.state != Ant.DEFEND or a.busy <= 0 or a.foe == 0:
+		return null
+	for c in sim.creatures:
+		if c.id == a.foe:
+			return c if c.get("spots") is Dictionary and c.spots.get(a.id) is int else null
+	return null
 
 
 ## The selected forager as it is now (ui/ant_tip.gd), or {} if it is not out here.

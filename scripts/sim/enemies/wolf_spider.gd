@@ -17,10 +17,25 @@ const STATS := {
 	"hp": 1.0,          # health; formic acid and bites wear it down
 	"armor": 0.15,      # share of the ants' damage its body shrugs off
 	"r": 16.0,          # px from its centre where ants grab on (its legs)
-	"hold": 8,          # most ants that can cling to it at once
+	"hold": 8,          # ants holding on that bite and pin it in full; more get in each other's way (a quarter each)
+	# where ants hold on (scripts/sim/enemies/grip_spots.gd): its legs (from the ground, rearing up), up its sides, on its
+	# carapace and abdomen (the model, x0.85: carapace up to 4.6 mm high, abdomen 5.5 mm), the spinnerets
+	"spots": [[12.4, 8.5, 0.0, 0.5], [4.7, 14.2, 0.0, 0.5], [-4.8, 14.2, 0.0, 0.5], [-12.4, 8.3, 0.0, 0.5],
+		[18.2, 12.4, 0.0, 0.3], [6.9, 20.9, 0.0, 0.3], [-7.1, 20.8, 0.0, 0.3], [-18.2, 12.2, 0.0, 0.3],
+		[4.0, 6.0, 1.8, 0.9], [-5.0, 7.0, 2.0, 0.9], [-12.0, 6.0, 2.0, 0.9],
+		[5.0, 2.2, 4.4, 0.1], [-5.0, 2.8, 5.3, 0.0], [-12.0, 2.0, 4.8, -0.1], [-17.0, 0.0, 2.5, 0.7]],
 	"pin": 5,           # this many ants stop it moving (spread-eagling)
 	"flee_at": 0.45,    # below this health it runs for the edge
-	"speed": 0.55,      # px per tick
+	# pace, px per tick (1 px = 0.5 mm, 60 ticks a second at 1x) at full warmth: wolf spiders sprint at 20-50 cm/s
+	# (Pardosa valens, Brown & Formanowicz 2012) and hunt in short rushes. Slower here so the keeper can follow it:
+	# (v0.11.68, the keeper: "far slower than a real one - faster, but not that fast"; it was 0.55, 1.7 cm/s, slower than
+	# the ants answering the alarm at 2.7 cm/s)
+	"speed": 1.0,       # prowling: 3 cm/s
+	"dash": 2.6,        # a rush at an ant within dash_at: 7.8 cm/s for dash_ticks
+	"dash_at": 30.0,    # px (15 mm)
+	"dash_ticks": 24,   # 0.4 s
+	"dash_rest": 90,    # ticks before it rushes again
+	"flee": 2.0,        # running for the edge when badly hurt: 6 cm/s
 	"bite": 0.02,       # chance per tick to bite an ant within reach (less while pinned)
 	"shake": 0.0016,    # chance per tick, per clinging ant, to throw one off
 	"carcass": "wolf_spider_dead",
@@ -47,8 +62,7 @@ static func spawn(sim) -> Dictionary:
 static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	s.life -= 1
 	var held := clinging.size()
-	var free := clampf(1.0 - float(held) / STATS.pin, 0.0, 1.0)      # pinned by the ants holding its legs
-	s.phase += 0.3 * maxf(free, 0.25)                                  # pinned: legs still thrash
+	var free := clampf(1.0 - float(s.get("load", held)) / STATS.pin, 0.0, 1.0)      # pinned by the ants holding on
 	if s.hp < STATS.flee_at and not s.get("fleeing", false):
 		s.fleeing = true
 		sim._log(T.enemy_flees, "ok", [L.k(NAME)])
@@ -66,8 +80,19 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 		target_ang = (s.exit - s.pos).angle()
 	elif best != null:
 		target_ang = (best.pos - s.pos).angle()
-	s.ang += wrapf(target_ang - s.ang, -PI, PI) * 0.08
-	var np: Vector2 = s.pos + Vector2.from_angle(s.ang) * STATS.speed * free * (1.5 if s.get("fleeing", false) else 1.0)
+	# a rush at an ant close by (not while ants hold it, or on its way out)
+	s.dash_cd = maxi(0, int(s.get("dash_cd", 0)) - 1)
+	if not leaving and held == 0 and best != null and bd < STATS.dash_at and s.dash_cd == 0:
+		s.dash = STATS.dash_ticks
+		s.dash_cd = STATS.dash_rest
+	var dashing: bool = int(s.get("dash", 0)) > 0
+	s.dash = maxi(0, int(s.get("dash", 0)) - 1)
+	s.ang += wrapf(target_ang - s.ang, -PI, PI) * (0.25 if dashing else 0.08)
+	# a cold spider is slower, as the ants are (Pardosa ran 4x faster at 30 than at 7 °C: Villaseñor-Amador et al., Animal Behaviour 2023)
+	var warm: float = 0.25 + 0.75 * sim.activity
+	var pace: float = STATS.flee if s.get("fleeing", false) else (STATS.dash if dashing else STATS.speed)
+	var np: Vector2 = s.pos + Vector2.from_angle(s.ang) * pace * warm * free
+	s.phase += 0.55 * maxf(pace * warm * free, 0.14)                    # legs step with the ground covered; pinned, they thrash
 	var world: Vector2 = sim.WORLD
 	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band
 	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
