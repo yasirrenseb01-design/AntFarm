@@ -668,6 +668,30 @@ func _update_ants(delta: float) -> void:
 			v.dclr = _soil_clearance(tr, float(v.size), v.bend, v.still > 0.25).x
 		v.clr = move_toward(float(v.get("clr", 0.0)), float(v.dclr), (2.0 if float(v.dclr) > float(v.get("clr", 0.0)) else 0.3) * delta)
 		tr.origin += tr.basis.y.normalized() * float(v.clr)
+		if float(v.still) <= 0.25:
+			# walking (not biting at its face): out of the walls of a bend as a nestmate is (nest_soil) - a digger's head
+			# or gaster cut into the tunnel wall, 5.6% of digger-frames (--bodies, 2026-10-28)
+			tr = _soil_push(v, tr, delta)
+		# down onto the floor under it: the simulation's digger walks the open cells, a tunnel's middle as well as its
+		# floor, and drawn on such a cell its feet hung in the air (the keeper, 2026-10-28); eased, and never down into
+		# the soil (its body's clearance above is kept)
+		var gap := _gap_under(tr)
+		var want_drop := gap if gap < 1.5 else 0.0
+		v.drop = move_toward(float(v.get("drop", 0.0)), want_drop, 3.0 * delta)
+		if float(v.drop) > 0.0:
+			var down := Transform3D(tr.basis, tr.origin - tr.basis.y.normalized() * float(v.drop))
+			var dc := _soil_clearance(down, float(v.size), v.bend, v.still > 0.25)
+			if dc.y == 0 and dc.x <= 0.05:
+				tr = down
+			else:
+				# (as far down as its body stays clear: halves of the drop, tried in turn)
+				for k in 3:
+					v.drop = float(v.drop) * 0.5
+					down = Transform3D(tr.basis, tr.origin - tr.basis.y.normalized() * float(v.drop))
+					dc = _soil_clearance(down, float(v.size), v.bend, v.still > 0.25)
+					if dc.y == 0 and dc.x <= 0.05:
+						tr = down
+						break
 		v.xf = tr
 		_step_gait(v, tr, delta, v.size)
 		if _shown(tr):

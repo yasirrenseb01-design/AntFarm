@@ -211,15 +211,42 @@ static func measure(nv, tally: Dictionary) -> void:
 	# diggers drawn in the air: no soil next to the cell their body is in (the simulation lets them cut across a
 	# tunnel's middle on the way to planned work)
 	for v in nv._dig_vis.values():
-		if v.has("xf"):
+		# (only those drawn: a digger with no body yet, or out of the entrance with its pellet, keeps its last place -
+		# counted until v0.11.63, it was most of the "diggers in the air")
+		if v.has("xf") and not v.get("hide", false) and nv._shown(v.xf):
 			var o: Vector3 = (v.xf as Transform3D).origin
+			# in the soil: the middle of its thorax or gaster in it, or its head unless it is biting at the face
+			var dsp := _ant_spheres(v.xf, v.get("bend", Vector2.ZERO))
+			var biting: bool = float(v.get("still", 0.0)) > 0.25
+			var sunk := ""
+			for k in [0, 1, 3]:
+				if k == 0 and biting:
+					continue
+				if nv._density_at(dsp[k][0]) >= 0.5:
+					sunk += "HT_G"[k]
+			if sunk != "":
+				tally.dig_soil = int(tally.get("dig_soil", 0)) + 1
+				tally["dig in soil: %s %s" % ["biting" if biting else "walking", sunk]] = int(tally.get("dig in soil: %s %s" % ["biting" if biting else "walking", sunk], 0)) + 1
 			tally.dig_frames = int(tally.get("dig_frames", 0)) + 1
 			if float(v.get("still", 0.0)) > 0.25:
 				tally.dig_at_face = int(tally.get("dig_at_face", 0)) + 1      # (drawn biting at the face: ACT_DIG)
 			var u: Vector3 = (v.xf as Transform3D).basis.y.normalized()
 			var lo: Vector3 = o - u * 0.7             # (its feet: the body is drawn ~0.4 above the surface)
-			if not nv._walkable(Vector3i(roundi(o.x), roundi(o.y), roundi(o.z))) and not nv._walkable(Vector3i(roundi(lo.x), roundi(lo.y), roundi(lo.z))):
+			# in the air: its feet cannot reach the floor under it (more than 0.5 down its up, as the shader's feet see it -
+			# until v0.11.63 a test of the cells, which counted a digger on a wall or a shaft's slope as in the air)
+			# in the air: as for the nestmates (_feet_free) - both front feet, or more than two, with no ground under them
+			# (until v0.11.63 a test of the cells, which counted a digger on a wall or a shaft's slope as in the air)
+			var gap: float = nv._gap_under(v.xf)
+			if _feet_free(nv, v.xf, v):
 				tally.dig_air = int(tally.get("dig_air", 0)) + 1
+				var ky := "dig in air: %s gap %s" % ["biting" if biting else "walking", "<0.5" if gap < 0.5 else ("<1.5" if gap < 1.5 else "far")]
+				tally[ky] = int(tally.get(ky, 0)) + 1
+	# (the same measure for the nestmates walking, to compare: how often their feet cannot reach the floor either)
+	for m in ants:
+		if float(m.get("mv", 0.0)) > 0.3 and not m.has("script") and float(m.get("over", 0.0)) < 0.05:
+			tally.mate_frames = int(tally.get("mate_frames", 0)) + 1
+			if _feet_free(nv, m.xf, m):
+				tally.mate_air = int(tally.get("mate_air", 0)) + 1
 	var sph := []
 	for m in ants:
 		sph.append(_ant_spheres(m.xf, m.get("bend", Vector2.ZERO), _lat(m)))
@@ -399,6 +426,25 @@ static func measure(nv, tally: Dictionary) -> void:
 			tally.feet_air = int(tally.get("feet_air", 0)) + 1
 
 
+## Both front feet, or more than two, with no ground under them (as "feet in the air" below).
+static func _feet_free(nv, x: Transform3D, m: Dictionary) -> bool:
+	var up := x.basis.y.normalized()
+	var free := 0
+	var front := 0
+	for k in FEET.size():
+		var f: Vector3 = x * (FEET[k] as Vector3)
+		var ground := false
+		for h in [0.05, 0.2, 0.35, 0.5]:
+			if nv._density_at(f - up * h) >= 0.5:
+				ground = true
+				break
+		if not ground and not _on_body(nv, f, up, m):
+			free += 1
+			if k < 2:
+				front += 1
+	return front == 2 or free > 2
+
+
 ## Why an ant is where it is drawn (dev): its pace allowed by what is ahead, how long it has been held up, how far
 ## it is pushed off its path, its drawn body behind its path point, stepping or not.
 static func _why(m: Dictionary) -> String:
@@ -452,6 +498,8 @@ static func report(tally: Dictionary) -> String:
 		_groups(tally),
 		"  brood in brood %.2f pairs per 100 brood-frames, brood in the queen %.2f per 100" % [100.0 * float(tally.get("brood_brood", 0)) / maxf(1.0, float(tally.get("brood_items", 0))), 100.0 * float(tally.get("brood_queen", 0)) / maxf(1.0, float(tally.get("brood_items", 0)))],
 		"  brood in the way (in a gallery or shaft, or where one leaves a chamber) %.2f%% of brood-frames" % [100.0 * float(tally.get("brood_way", 0)) / maxf(1.0, float(tally.get("brood_items", 0)))],
+		"  walking nestmates in the air %.2f%% of %d" % [100.0 * float(tally.get("mate_air", 0)) / maxf(1.0, float(tally.get("mate_frames", 0))), int(tally.get("mate_frames", 0))],
+		"  diggers in the soil %.2f%% of digger-frames" % [100.0 * float(tally.get("dig_soil", 0)) / maxf(1.0, float(tally.get("dig_frames", 0)))],
 		"  diggers in the air %.2f%% of %d digger-frames, at the face digging %.1f%%" % [100.0 * float(tally.get("dig_air", 0)) / maxf(1.0, float(tally.get("dig_frames", 0))), int(tally.get("dig_frames", 0)),
 			100.0 * float(tally.get("dig_at_face", 0)) / maxf(1.0, float(tally.get("dig_frames", 0)))]]
 	for k in tally.keys():

@@ -337,6 +337,7 @@ static func measure(nv, tally: Dictionary) -> void:
 				if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
 					print("  M5 over %.2f clr %.2f fgap %.2f freach %.2f role %s up %s" % [float(mt.get("over", 0.0)), float(mt.get("clr", 0.0)), float(mt.get("floor_gap", -1.0)),
 						float(mt.get("freach", 0.0)), mt.get("role", "dig"), M.basis.y.normalized()])
+		_close_ant(tally)
 		var fs := feet(nest, M, mm.get_instance_custom_data(i), _rec(nv, i), dbg)
 		_twist(fs, M, float(mm.get_instance_custom_data(i).a), tally)
 		var upw := M.basis.y.normalized()
@@ -438,6 +439,15 @@ static func measure(nv, tally: Dictionary) -> void:
 							mt.get("narrow", false), (Vector3(mt.cell) - M.origin).length()])
 		var where := "over the brood" if near_brood and body_gap < -0.7 else ("up on something" if body_gap < -0.7 else (
 			"by the brood" if near_brood else ("floor" if upw.y > 0.9 else ("slope" if upw.y > 0.3 else "wall/ceiling"))))
+		# (diggers apart: the keeper, 2026-10-28 - diggers drawn in the air; an ant-frame with two planted feet or more
+		# in the air counts)
+		var is_dig := false
+		for dv in nv._dig_vis.values():
+			if dv.has("xf") and (dv.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+				is_dig = true
+		var air0 := int(tally.get("foot_air", 0))
+		var soil0 := int(tally.get("foot_soil", 0))
+		tally["_cur"] = ["dig" if is_dig else "mate", air0, soil0]
 		for f in fs:
 			if not f[1]:
 				continue
@@ -553,6 +563,21 @@ static func measure(nv, tally: Dictionary) -> void:
 					_note(tally, "air", tip)
 					if gd <= -1.35:
 						tally.foot_air_far = int(tally.get("foot_air_far", 0)) + 1      # (no soil within reach at all)
+
+
+## The ant just measured (tally._cur: digger or nestmate, the feet counts before it): an ant-frame with two planted feet
+## or more in the air, or in the soil.
+static func _close_ant(tally: Dictionary) -> void:
+	var cur = tally.get("_cur")
+	if cur == null:
+		return
+	tally.erase("_cur")
+	var who: String = cur[0]
+	tally["af_n:" + who] = int(tally.get("af_n:" + who, 0)) + 1
+	if int(tally.get("foot_air", 0)) - int(cur[1]) >= 2:
+		tally["af_air:" + who] = int(tally.get("af_air:" + who, 0)) + 1
+	if int(tally.get("foot_soil", 0)) - int(cur[2]) >= 2:
+		tally["af_soil:" + who] = int(tally.get("af_soil:" + who, 0)) + 1
 
 
 ## Why a planted foot jumped from one frame to the next (a, b: feet()'s info for it then and now): first what changed
@@ -697,7 +722,15 @@ static func _twist(fs: Array, M: Transform3D, cw: float, tally: Dictionary) -> v
 
 static func report(tally: Dictionary) -> String:
 	var n := maxf(1.0, float(tally.get("feet", 0)))
-	var s := "planted feet %d: in the air %.2f%% (of them far from any soil %.2f%%), in the soil %.2f%%, in the brood %.2f%%" % [
+	_close_ant(tally)
+	var head := ""
+	for who in ["dig", "mate"]:
+		var an := float(tally.get("af_n:" + who, 0))
+		if an > 0:
+			head += "%s-frames with 2+ planted feet in the air %.2f%%, in the soil %.2f%% of %d
+" % ["DIGGER" if who == "dig" else "NESTMATE",
+				100.0 * float(tally.get("af_air:" + who, 0)) / an, 100.0 * float(tally.get("af_soil:" + who, 0)) / an, int(an)]
+	var s := head + "planted feet %d: in the air %.2f%% (of them far from any soil %.2f%%), in the soil %.2f%%, in the brood %.2f%%" % [
 		int(tally.get("feet", 0)), 100.0 * float(tally.get("foot_air", 0)) / n, 100.0 * float(tally.get("foot_air_far", 0)) / n,
 		100.0 * float(tally.get("foot_soil", 0)) / n, 100.0 * float(tally.get("foot_brood", 0)) / n]
 	for key in ["still", "walking"]:
