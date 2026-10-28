@@ -8,6 +8,59 @@ const WeedMesh := preload("res://scripts/view/common/weed_mesh.gd")
 const U := 1.0 / 3.0
 
 
+## A fallen birch leaf laid over the ground under it, point by point (it was one flat piece at the height of its middle:
+## on the ground's swells its ends went into the soil - the keeper, 2026-10-29); UV holds where on the leaf each point is
+## (x from the stalk to the tip 0..1, y across -1..1) for the veins drawn in shaders/plants/sway.gdshader.
+static func _leaf_drape(st: SurfaceTool, v, l: Dictionary) -> void:
+	var length: float = l.l * U
+	var width: float = l.w * U
+	var rot := Basis(Vector3.UP, -float(l.a))
+	var c: Vector3 = v._on_ground(l.p, 0.0)
+	var col: Color = l.c
+	var nt := 16
+	var ns := 6
+	var pts := []
+	for i in nt + 1:
+		var t := float(i) / nt
+		var half := pow(sin(t * PI), 0.75) * (1.2 - 0.85 * t) * (1.0 + 0.07 * sin(t * 46.0) * sin(t * PI))
+		var row := []
+		for j in ns + 1:
+			var s := -1.0 + 2.0 * j / ns
+			var lp := Vector2((t - 0.5) * length, s * half * width)
+			# (as Props.leaf: the edges curl up a little, the tip lifts - and as prop_heights.stamp_leaf, which ants walk on)
+			var lift := 0.18 + lp.y * lp.y / maxf(0.1, width) * (0.12 + float(l.curl) * 0.3) + maxf(0.0, lp.x / length) * 0.35
+			var w: Vector3 = c + rot * Vector3(lp.x, 0.0, lp.y)
+			w.y = v.ground_h(w.x, w.z) + lift + 0.05
+			row.append([w, Vector2(t, s)])
+		pts.append(row)
+	for i in nt:
+		for j in ns:
+			for k in [[i, j], [i + 1, j], [i + 1, j + 1], [i, j], [i + 1, j + 1], [i, j + 1]]:
+				var e: Array = pts[k[0]][k[1]]
+				st.set_color(Color(col.r, col.g, col.b, pow(clampf((e[1] as Vector2).x + 0.1, 0.0, 1.0), 2.0) * 0.08))
+				st.set_uv(e[1])
+				st.add_vertex(e[0])
+
+
+## A mesh placed at xf, each point raised or lowered with the ground under it against the ground under xf's middle
+## (a long twig on the ground's swells sank at its ends).
+static func _append_draped(st: SurfaceTool, mesh: Mesh, xf: Transform3D, v) -> void:
+	var arr: Array = mesh.surface_get_arrays(0)
+	var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var ns: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var cs: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+	var idx = arr[Mesh.ARRAY_INDEX]
+	var order: PackedInt32Array = idx if idx != null and (idx as PackedInt32Array).size() > 0 else PackedInt32Array(range(vs.size()))
+	var g0: float = v.ground_h(xf.origin.x, xf.origin.z)
+	for i in order:
+		var w: Vector3 = xf * vs[i]
+		w.y += v.ground_h(w.x, w.z) - g0
+		st.set_normal((xf.basis * ns[i]).normalized())
+		if cs.size() > i:
+			st.set_color(cs[i])
+		st.add_vertex(w)
+
+
 static func build(v) -> void:
 	var ground = v.ground
 	var ph = v._props_h
@@ -39,12 +92,13 @@ static func build(v) -> void:
 	for l in ground.litter:
 		var xf := Transform3D(Basis(Vector3.UP, -l.a), v._on_ground(l.p, 0.05))
 		if l.twig:
-			twigs.append_from(Props.twig(l.l * 2.0 * U, int(l.p.x * 7 + l.p.y)), 0, xf)
+			_append_draped(twigs, Props.twig(l.l * 2.0 * U, int(l.p.x * 7 + l.p.y)), xf, v)
 			n_twigs += 1
 		else:
-			leaves.append_from(Props.leaf(l.l * U, l.w * U, l.c, l.curl), 0, xf)
+			_leaf_drape(leaves, v, l)
 			n_leaves += 1
 	if n_leaves > 0:
+		leaves.generate_normals()
 		_add_mesh(v, leaves.commit(), v._litter_mat)
 	if n_twigs > 0:
 		_add_mesh(v, twigs.commit(), v._prop_mat)
@@ -101,7 +155,7 @@ static func build(v) -> void:
 		var spread: float = t.get("s", 2.2)
 		for k in n:
 			var yaw := gr.randf() * TAU
-			var h := gr.randf_range(6.0, 17.0) * (1.25 if k < 3 else 1.0) * tall
+			var h := gr.randf_range(6.0, 17.0) * (1.25 if k < 3 else 1.0) * tall * 1.4     # (x1.4 since v0.11.72: 1.3-3.6 cm)
 			var lean := gr.randf_range(0.05, 0.5)
 			var at: Vector2 = t.p + Vector2(gr.randfn(0.0, spread), gr.randfn(0.0, spread))
 			var dry := gr.randf() < 0.14

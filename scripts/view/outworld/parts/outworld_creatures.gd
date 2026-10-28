@@ -48,6 +48,7 @@ func _update_ants(delta: float) -> void:
 	var spray := []
 	var sel_at := []                  # the selected ant's transform and pose, for its outline
 	_separate(delta)
+	_brush_ants()
 	_frame_n += 1
 	for a in sim.outside:
 		if a.state == Ant.IN_NEST or a.dead:
@@ -596,6 +597,40 @@ func _on_trail(a) -> bool:
 		return true
 	var i: int = int(a.pos.y * sim.INV_CELL) * sim.gw + int(a.pos.x * sim.INV_CELL)
 	return i >= 0 and i < sim.food_cell.size() and sim.food.read_i(i) > 0.4
+
+
+## The ants drawn nearest the camera, for the plants and litter they brush aside (shaders/plants/brush.gdshaderinc).
+const BRUSH_N := 32                 # (300 workers on the Intel UHD: 76-78 fps without, 70-74 with; 64 cost twice that)
+var _brush := PackedVector4Array()
+var brush_test := Vector3.INF          # (dev --brush-test: one more "ant" standing there, a tuft of grass)
+
+func _brush_ants() -> void:
+	var near := []
+	var eye := _cam.global_position                       # (the nearest the camera: the ones big on the screen)
+	var tp := Vector2(eye.x, eye.z)
+	for a in sim.outside:
+		if a.state == Ant.IN_NEST or a.dead or not (a.vxf is Transform3D):
+			continue
+		var o: Vector3 = (a.vxf as Transform3D).origin
+		near.append([Vector2(o.x, o.z).distance_squared_to(tp), o, a.size])
+	if near.size() > BRUSH_N:
+		near.sort_custom(func(p, q): return p[0] < q[0])
+	_brush.resize(BRUSH_N)
+	if brush_test != Vector3.INF:
+		near.clear()
+		for t in ground.tufts:                                     # (dev: an "ant" standing in each tuft of grass)
+			var q: Vector3 = _on_ground(t.p, 0.4)
+			near.append([Vector2(q.x, q.z).distance_squared_to(tp), q, 1.0])
+		near.sort_custom(func(p, q): return p[0] < q[0])
+	var n := mini(near.size(), BRUSH_N)
+	for i in n:
+		var o: Vector3 = near[i][1]
+		var r := 1.6 * ANT_SCALE * float(near[i][2])                 # (its legs reach ~1.6 units out)
+		_brush[i] = Vector4(o.x, o.y + 0.4, o.z, r)
+	for m in [_grass_mat, _litter_mat, _plant_mat, _weed_mat]:
+		if m != null:
+			m.set_shader_parameter("ants", _brush)
+			m.set_shader_parameter("ant_n", n)
 
 
 ## The enemy this ant holds on to (its spot in c.spots), or null.

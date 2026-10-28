@@ -91,6 +91,13 @@ func _take_shot() -> void:
 		if _opts.has("target"):
 			var tp: PackedStringArray = String(_opts["target"]).split(",")
 			outworld.target_t = Vector3(float(tp[0]), float(tp[1]), float(tp[2]))
+		if _opts.has("brush-test") and not outworld.ground.tufts.is_empty():
+			# (dev: --brush-test[=off]: the camera on the garden's first tuft of grass; unless off, an ant's push stands in
+			# each tuft - outworld_creatures._brush_ants)
+			var tq: Vector2 = outworld.ground.tufts[0].p
+			outworld.target_t = outworld._on_ground(tq, 0.0)
+			if _opts["brush-test"] != "off":
+				outworld.brush_test = outworld._on_ground(tq, 0.4)
 		if _opts.get("at-ant", "") == "act9" or _opts.get("at-ant", "") == "act10" or _opts.get("at-ant", "") == "act2":
 			# run on until some forager is busy at that kind of food, then look at it
 			var want := int(String(_opts["at-ant"]).trim_prefix("act"))

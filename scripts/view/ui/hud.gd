@@ -113,8 +113,10 @@ func _tick_banner(delta: float) -> void:
 
 
 func _unhandled_key_input(e: InputEvent) -> void:
-	# (developer fast-forward speeds - not in the released game: R5)
-	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F10 and not OS.has_feature("template"):
+	# (developer fast-forward speeds - not in the released game: R5; except on a machine with the file
+	# user://fast_speeds next to the saves - the keeper's own, for filming: 2026-10-29. Only whether it is there is read)
+	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F10 \
+			and (not OS.has_feature("template") or FileAccess.file_exists("user://fast_speeds")):
 		for b in _dev_speed_buttons:
 			b.visible = not b.visible            # developer fast-forward speeds
 			if not b.visible and b.button_pressed:

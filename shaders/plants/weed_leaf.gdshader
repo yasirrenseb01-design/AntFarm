@@ -10,6 +10,7 @@ uniform float wind = 0.4;
 uniform float wither = 0.0;          // 0 green .. 1 winter-dead straw
 uniform float frost = 0.0;
 uniform vec3 backlight = vec3(0.1, 0.16, 0.04);
+#include "res://shaders/plants/brush.gdshaderinc"
 
 void vertex() {
 	float f = COLOR.a;
@@ -19,6 +20,7 @@ void vertex() {
 	vec3 off = vec3(sin(ph), 0.3 * sin(ph * 2.3 + 1.0), 0.55 * cos(ph * 0.8 + wp.z * 0.04)) * wind * gust * f;
 	off.y -= wither * f * f * 1.2;
 	VERTEX += inverse(mat3(MODEL_MATRIX)) * off * (1.0 - 0.5 * wither);
+	VERTEX += inverse(mat3(MODEL_MATRIX)) * brushed(wp, max(f, 0.25));      // (an ant walking over the rosette)
 }
 
 float hash(vec2 p) {

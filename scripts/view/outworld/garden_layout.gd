@@ -177,7 +177,8 @@ static func _tuft(r: RandomNumberGenerator, p: Vector2, big: float) -> Dictionar
 
 ## A low broad-leaved weed (a plantain-like rosette): `n` leaves from one point, lifted a little.
 static func _rosette(r: RandomNumberGenerator, p: Vector2, big: float) -> Dictionary:
-	return {"p": p, "n": r.randi_range(5, 8), "l": r.randf_range(16.0, 28.0) * big, "w": r.randf_range(4.5, 7.5) * big,
+	# (x1.8 since v0.11.72, leaves 1.4-2.5 cm: the keeper, "the plants a little bigger" - real ones are bigger still)
+	return {"p": p, "n": r.randi_range(5, 8), "l": r.randf_range(16.0, 28.0) * big * 1.8, "w": r.randf_range(4.5, 7.5) * big * 1.8,
 		"a": r.randf() * TAU, "tilt": r.randf_range(0.35, 0.8),
 		"c": Color(0.2, 0.36, 0.11).lerp(Color(0.36, 0.5, 0.17), r.randf())}
 
@@ -195,9 +196,9 @@ static func _drift(g, r: RandomNumberGenerator, c: Vector2, n: int, wind: Vector
 static func _leaf(r: RandomNumberGenerator, p: Vector2, ang: float) -> Dictionary:
 	var base := Color(LEAF_COLS[r.randi() % LEAF_COLS.size()])
 	# fallen birch leaves (Betula pendula, a common garden tree: the blade 3-7 cm long, 2-5 cm wide - docs/BIOLOGY.md);
-	# 3-5.5 cm here, half width ~0.35 of the length. (The keeper, 2026-10-29: "what leaves are these, why so small" - they
+	# 4-7 cm here, half width ~0.35 of the length. (The keeper, 2026-10-29: "what leaves are these, why so small" - they
 	# were 1.2-2.6 cm, no tree's in particular)
-	var l := r.randf_range(60.0, 110.0)
+	var l := r.randf_range(80.0, 140.0)                # (4-7 cm since v0.11.72 - the keeper: "a little bigger")
 	return {"p": p, "a": ang, "l": l, "w": l * (0.3 + 0.08 * r.randf()),
 		"c": base.lerp(Color("3d2a1b"), r.randf() * 0.35), "twig": false, "curl": r.randf_range(-0.2, 0.3)}
 

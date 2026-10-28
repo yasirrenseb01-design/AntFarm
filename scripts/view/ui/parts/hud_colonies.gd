@@ -352,6 +352,8 @@ func _open_new_colony(slot: int, occupied: bool, scen := "", nest := "", species
 	var picked := {}
 	var rates := EnemyRate.new(self, 0.0 if scen == "keeper" else 1.0, "keeper" if scen == "keeper" else "wild", true)
 	var groups: Array = [["start", "new_start", NEW_STARTS]]
+	if nest == "" and scen == "wild":
+		nest = "soil"              # (a garden plot is the ground itself: no ant farm to pick - the keeper, 2026-10-29)
 	if nest == "":
 		groups.push_front(["nest", "new_nest", NEW_NESTS])
 	else:

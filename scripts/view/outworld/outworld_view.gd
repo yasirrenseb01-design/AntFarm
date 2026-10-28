@@ -43,6 +43,7 @@ func setup(s) -> void:
 
 	_plant_mat = _sway_mat(true, Color(0.05, 0.07, 0.02), 0.7)
 	_litter_mat = _sway_mat(true, Color(0.08, 0.05, 0.02), 0.8)
+	_litter_mat.set_shader_parameter("leaf_veins", true)
 	_grass_mat = _sway_mat(false, Color(0.05, 0.07, 0.02), 0.65)
 	_weed_mat = ShaderMaterial.new()
 	_weed_mat.shader = load("res://shaders/plants/weed_leaf.gdshader")
