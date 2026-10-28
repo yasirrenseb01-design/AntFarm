@@ -22,9 +22,19 @@ const DOORS := [Color(0.2, 0.32, 0.3), Color(0.55, 0.16, 0.12), Color(0.16, 0.2,
 const ROOFS := [Color(0.32, 0.33, 0.35), Color(0.24, 0.25, 0.28), Color(0.38, 0.3, 0.26), Color(0.3, 0.27, 0.25)]
 
 
+static var _made: Node3D             # the yard built once (it is the same every time: rng seed 2026), copied after
+
+
+## (The yard was built anew each time the room was - every time the Home opened and every colony opened: ~2 s, the
+## keeper, 2026-10-28: "Esc back to the Home hangs". Built once now and copied: the copies share its meshes.)
 static func build(parent: Node3D) -> void:
+	if _made == null:
+		_made = _make()
+	parent.add_child(_made.duplicate())
+
+
+static func _make() -> Node3D:
 	var room := Node3D.new()
-	parent.add_child(room)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2026
 	# the street across the view, and the side street off it beside the house in front
@@ -61,6 +71,7 @@ static func build(parent: Node3D) -> void:
 		_lamp(room, Vector3(CROSS_X.x - 0.6, 0, z), -1.0)
 		z += 30.0
 	_bake(room)
+	return room
 
 
 ## All the plain-coloured pieces merged into one mesh, coloured by vertex (hundreds of boxes, a draw call each, slowed
@@ -248,8 +259,12 @@ void fragment() {
 ## A leafy tree modelled in Blender (tools/blender/build_tree.py -> assets/models/trees/: forking limbs, a spray of
 ## leaves at each twig; until v0.11.55 a trunk under a heap of green balls, the keeper: "it does not look real"),
 ## turned and scaled so that no two look alike; its leaves sway a little in the wind (the vertex colour's alpha).
+static var _trees := {}              # which -> its mesh, read once
+
 static func _tree(room: Node3D, at: Vector3, which: String, scale: float, turn: float) -> void:
-	var m := AntModel.load_antmesh("res://assets/models/trees/%s.antmesh" % which)
+	if not _trees.has(which):
+		_trees[which] = AntModel.load_antmesh("res://assets/models/trees/%s.antmesh" % which)
+	var m: Mesh = _trees[which]
 	if m == null:
 		return
 	var mi := MeshInstance3D.new()

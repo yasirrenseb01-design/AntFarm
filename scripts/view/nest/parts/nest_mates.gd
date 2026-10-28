@@ -106,7 +106,7 @@ func _step_mate(m: Dictionary) -> void:
 	var path: Array = m.get("settle", [])
 	if not path.is_empty():
 		var n: Vector3i = path.pop_front()          # stepping to the free spot it chose
-		if _walkable(n) and not _queen_cells.has(n):
+		if _walkable(n) and not _queen_cells.has(n) and not _queen_near.has(n):
 			_move_mate(m, n)
 		else:
 			m.settle = []
@@ -120,7 +120,7 @@ func _step_mate(m: Dictionary) -> void:
 		var opts: Array[Vector3i] = []
 		var clear: Array[Vector3i] = []
 		for d in DIRS:
-			if c + d != m.prev and _walkable(c + d) and not _queen_cells.has(c + d):
+			if c + d != m.prev and _walkable(c + d) and not _queen_cells.has(c + d) and not _queen_near.has(c + d):
 				opts.append(c + d)
 				if _cell_free(m, c + d):
 					clear.append(c + d)
@@ -170,9 +170,9 @@ func _step_mate(m: Dictionary) -> void:
 	for d in DIRS:
 		var n := c + d
 		var fn: int = field.get(n, 1 << 20)
-		if _queen_cells.has(n):
+		if _queen_cells.has(n) or _queen_near.has(n) and not _queen_near.has(c):
 			by_queen = by_queen or fn < here
-			continue                    # the queen lies there: walk round her
+			continue                    # the queen lies there (or so close its body would be in hers): walk round her
 		if fn < here:
 			if _walkable(n):
 				best.append(n)

@@ -487,7 +487,8 @@ en_mobbed,มดรุมอยู่,being mobbed
 en_hunting,กำลังล่า,hunting
 en_row,%s · %s · พลังเหลือ %d%% · มดเกาะ %d · จับมดได้ %d,%s · %s · %d%% strength left · ants holding on: %d · ants caught: %d
 # top bar,,
-clock_line,ปีที่ %d · %s · %s  %s,Year %d · %s · %s  %s
+clock_line,วันที่ %d  %s,Day %d  %s
+date_line,ปีที่ %d · %s · %s,Year %d · %s · %s
 sky_rain,ฝนตก,rain
 sky_night,กลางคืน,night
 sky_clear,แจ่มใส,clear

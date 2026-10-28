@@ -23,10 +23,18 @@ func _build_top(root: Control) -> void:
 
 	var clock := VBoxContainer.new()
 	clock.add_theme_constant_override("separation", 0)
+	# the days since the colony began, big, and the time; the year, date and season small beside them (the keeper,
+	# 2026-10-28: "show how many days I have kept them")
+	var day_row := HBoxContainer.new()
+	day_row.add_theme_constant_override("separation", 10)
 	_clock = _label("", 20, INK, _mono)
+	_date = _label("", 13, MUTED)
+	_date.size_flags_vertical = Control.SIZE_SHRINK_END
+	day_row.add_child(_clock)
+	day_row.add_child(_date)
 	_weather = _label("", 12, MUTED)
 	_harmony_l = _label("", 12, AMBER)
-	clock.add_child(_clock)
+	clock.add_child(day_row)
 	clock.add_child(_weather)
 	# the points: on a small tab hung under the bar's left end, joined to it (the keeper's drawing, 2026-10-27)
 	_harmony_l.add_theme_font_size_override("font_size", 13)

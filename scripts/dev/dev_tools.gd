@@ -255,6 +255,28 @@ func _take_shot() -> void:
 		home.dry = true                      # (--home-layout=big,shelf4,small,farm...: bought in memory only, to look at)
 		for it in String(_opts["home-layout"]).split(","):
 			home.buy(it)
+	if _opts.has("home-time"):
+		# (dev: --home-time [with --shot]: a second in the colony, then as Esc does - the title page, then the Home - timed,
+		# and the frames after it: the keeper, 2026-10-28, "Esc back to the Home hangs")
+		for i in 60:
+			await get_tree().process_frame
+		var t0 := Time.get_ticks_usec()
+		title.open()
+		var t1 := Time.get_ticks_usec()
+		home_room.open()
+		var t2 := Time.get_ticks_usec()
+		var frames := []
+		var last := t2
+		for i in 40:
+			await get_tree().process_frame
+			var now := Time.get_ticks_usec()
+			frames.append((now - last) / 1000.0)
+			last = now
+		var sum := 0.0
+		for f in frames.slice(0, 5):
+			sum += f
+		print("home-time: title %.0f ms, home open %.0f ms, first 5 frames %.0f ms (worst %.0f ms), frames %s" % [
+			(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, sum, frames.max(), str(frames.slice(0, 8).map(func(x): return int(x)))])
 	if _opts.has("home"):
 		home_room.open()                     # (--home [--home-hour=<h>] [--home-at=x,z,yaw,pitch]: the Home, the camera there)
 		if _opts.has("home-at"):

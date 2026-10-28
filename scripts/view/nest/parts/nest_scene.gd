@@ -144,6 +144,7 @@ var _vnext := 0
 var _meshing := {}               # chunk -> {"task", "out"}: meshes being made on worker threads
 var _mate_cells := {}           # cell -> the nestmate standing (or about to stand) there, this frame
 var _queen_cells := {}           # voxel cells the queen's body fills: nestmates walk round them
+var _queen_near := {}            # cells beside her, where a nestmate's body would be in hers or her legs: not walked through
 # the queen's body as a capsule, in her model's units (scaled by her transform)
 const QUEEN_HEAD := Vector3(1.25, 0.5, 0.0)
 const QUEEN_TAIL := Vector3(-1.45, 0.5, 0.0)

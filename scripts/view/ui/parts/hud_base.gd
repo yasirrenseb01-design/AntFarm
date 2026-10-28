@@ -43,6 +43,7 @@ var _nest: Control
 var _chart: Control
 var _clock: Label
 var _weather: Label
+var _date: Label                   # the year, the date and the season, small beside the days kept
 var _mono: SystemFont
 var _display: SystemFont
 var _t := 0.0

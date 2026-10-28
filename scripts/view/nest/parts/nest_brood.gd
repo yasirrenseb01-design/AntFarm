@@ -387,6 +387,7 @@ func _queen_pose() -> void:
 		_queen_mm.set_instance_transform(0, _queen_xf)
 		_queen_mm.set_instance_color(0, AntModel.body_linear(Color(0.07, 0.055, 0.047)))
 		_queen_cells.clear()
+		_queen_near.clear()
 	elif show:
 		# her heavy gaster hangs below her feet: stand her up on her legs so it rests on the floor, not in it;
 		# and stand on the floor where she is - off her spot (stepping to the brood) a chamber floor curves up
@@ -431,6 +432,7 @@ func _queen_pose() -> void:
 		_queen_mm.set_instance_color(0, AntModel.body_linear(Color(0.07, 0.055, 0.047)))     # glossy black-brown, darker than her workers
 		# the cells under her body, for the nestmates' routes
 		_queen_cells.clear()
+		_queen_near.clear()
 		var qa: Vector3 = _queen_xf * QUEEN_HEAD
 		var qb: Vector3 = _queen_xf * QUEEN_TAIL
 		for x in range(int(qp.x) - 5, int(qp.x) + 6):
@@ -438,8 +440,13 @@ func _queen_pose() -> void:
 				for z in range(int(qp.z) - 5, int(qp.z) + 6):
 					var c := Vector3(x, y, z)
 					var t := clampf((c - qa).dot(qb - qa) / maxf((qb - qa).length_squared(), 0.001), 0.0, 1.0)
-					if c.distance_to(qa.lerp(qb, t)) < 1.1:
+					var dq := c.distance_to(qa.lerp(qb, t))
+					if dq < 1.1:
 						_queen_cells[Vector3i(x, y, z)] = true
+					elif dq < QUEEN_R + 0.75:
+						# (an ant standing here is in her: its body ~0.55 wide - worker #14 walked to and fro under her
+						# thorax, pushed out and led back by its way: the keeper, 2026-10-28)
+						_queen_near[Vector3i(x, y, z)] = true
 
 
 ## Her up on her way: straight up where there is floor under her (in a low gallery the floor and the roof cancel in

@@ -339,6 +339,24 @@ static func measure(nv, tally: Dictionary) -> void:
 				tally.q_in = int(tally.get("q_in", 0)) + 1
 				if d > DEEP:
 					tally.q_deep = int(tally.get("q_deep", 0)) + 1
+				if OS.has_environment("QINDBG"):
+					var wid := int(m.get("wid", -1))
+					var runs: Dictionary = tally.get("q_run", {})
+					runs[wid] = int(runs.get(wid, 0)) + 1
+					tally.q_run = runs
+					if int(runs[wid]) % 60 == 1:
+						print("  in queen: wid %d depth %.2f %s rest %s mv %.2f settle %d path %d push %s qstep %s qmode %d frames %d" % [wid, d, who,
+							str(m.get("rest", "-")), float(m.get("mv", 0.0)), (m.get("settle", []) as Array).size(), (m.get("path", []) as Array).size(),
+							str(m.get("push", "-")), str(nv._queen_step), nv._queen_mode, int(runs[wid])])
+						if int(runs[wid]) > 30:
+							var keys := []
+							for k in m.keys():
+								var v = m[k]
+								if v is int or v is float or v is bool or v is Vector3 or v is Vector3i or v is String:
+									keys.append("%s=%s" % [k, str(v)])
+							print("    fields: " + " ".join(keys))
+							if m.has("cell"):
+								print("    its cell's gap to her %.2f, in her cells %s" % [nv._queen_gap(Vector3(m.cell)), str(nv._queen_cells.has(Vector3i(m.cell)))])
 	# ants in the brood
 	for i in ants.size():
 		var m: Dictionary = ants[i]
