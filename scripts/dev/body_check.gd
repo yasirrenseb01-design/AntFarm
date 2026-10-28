@@ -147,6 +147,35 @@ static func measure(nv, tally: Dictionary) -> void:
 	for m in nv._mates:
 		if m.has("xf") and nv._shown(m.xf):
 			ants.append(m)
+	# walking on the spot (the keeper, 2026-10-28: a digger treading for a while where it stood): its legs stepping (the
+	# gait moving on) while its body stays where it was, frame after frame - nestmates and diggers
+	var walkers: Array = ants.duplicate()
+	for id in nv._dig_vis:
+		var dv: Dictionary = nv._dig_vis[id]
+		if dv.has("xf") and not dv.get("hide", false) and nv._shown(dv.xf):
+			dv["_dig"] = true
+			walkers.append(dv)
+	for m in walkers:
+		var o: Vector3 = (m.xf as Transform3D).origin
+		var g := float(m.get("gait", 0.0))
+		if m.has("_bc_o"):
+			var dg := absf(g - float(m._bc_g))
+			var moved := o.distance_to(m._bc_o)
+			var who := "digger" if m.get("_dig", false) else _kind(nv, m)
+			tally["tr_n:" + who] = int(tally.get("tr_n:" + who, 0)) + 1
+			var turned := (m.xf as Transform3D).basis.x.normalized().angle_to((m._bc_x as Vector3))
+			# (turning on the spot steps its feet round: that is no treading; nor the step it finishes as it stops -
+			# g_left, a few frames)
+			if dg > 0.02 and dg < 3.0 and moved < 0.0005 and turned < 0.005 and float(m.get("g_left", -1.0)) <= 0.0:
+				tally["tr:" + who] = int(tally.get("tr:" + who, 0)) + 1
+				if OS.has_environment("TRDBG") and who == "walking" and int(tally.get("trdbg", 0)) < 15:
+					tally.trdbg = int(tally.get("trdbg", 0)) + 1
+					print("TRDBG dg %.3f moved %.4f mv %.2f act %s role %s rest %s t %.2f fgap %.2f g_at %.4f sweep %.3f restep %s twist %s hurry %s" % [dg, moved,
+						float(m.get("mv", 0.0)), m.get("act"), m.get("role"), m.get("rest"), float(m.get("t", -1.0)), float(m.get("fgap", 1.0)),
+						(m.get("g_at", o) as Vector3).distance_to(o), float(m.get("sweep", 0.0)), str(m.get("f_rs")), m.get("twist"), m.get("hurry")])
+		m._bc_o = o
+		m._bc_g = g
+		m._bc_x = (m.xf as Transform3D).basis.x.normalized()
 	# brood in brood (two cocoons, a cocoon in a larva ...), and brood in the queen's body
 	tally.brood_items = int(tally.get("brood_items", 0)) + brood.size()
 	for b in brood:
@@ -303,6 +332,11 @@ static func measure(nv, tally: Dictionary) -> void:
 				deep = true
 		if deep:
 			tally["g_deep:" + grp] = int(tally.get("g_deep:" + grp, 0)) + 1
+			if OS.has_environment("DEEPDBG") and grp != "walking" and int(tally.get("deepdbg", 0)) < 20:
+				tally.deepdbg = int(tally.get("deepdbg", 0)) + 1
+				var X2: Transform3D = m.xf
+				print("DEEPDBG %s kind %s act %s role %s up.y %.2f narrow %s clr %.2f dclr %.2f over %.2f script %s rest %s fgap %.2f" % [grp, _kind(nv, m), m.get("act"), m.get("role"),
+					X2.basis.y.normalized().y, m.get("narrow", false), float(m.get("clr", 0.0)), float(m.get("dclr", -9.0)), float(m.get("over", 0.0)), m.has("script"), m.get("rest"), float(m.get("fgap", 1.0))])
 		var buried := ""
 		for k in [0, 1, 3]:
 			if nv._density_at(sph[i][k][0]) >= 0.5:
@@ -420,7 +454,12 @@ static func report(tally: Dictionary) -> String:
 		"  brood in the way (in a gallery or shaft, or where one leaves a chamber) %.2f%% of brood-frames" % [100.0 * float(tally.get("brood_way", 0)) / maxf(1.0, float(tally.get("brood_items", 0)))],
 		"  diggers in the air %.2f%% of %d digger-frames, at the face digging %.1f%%" % [100.0 * float(tally.get("dig_air", 0)) / maxf(1.0, float(tally.get("dig_frames", 0))), int(tally.get("dig_frames", 0)),
 			100.0 * float(tally.get("dig_at_face", 0)) / maxf(1.0, float(tally.get("dig_frames", 0)))]]
-	var keys := tally.keys().filter(func(k): return String(k).contains(":"))
+	for k in tally.keys():
+		if String(k).begins_with("tr_n:"):
+			var who := String(k).substr(5)
+			lines.append("  TREAD %s: legs stepping while the body stays put %.2f%% of %d frames" % [who,
+				100.0 * float(tally.get("tr:" + who, 0)) / maxf(1.0, float(tally[k])), int(tally[k])])
+	var keys := tally.keys().filter(func(k): return String(k).contains(":") and not String(k).begins_with("tr"))
 	keys.sort_custom(func(a, b): return int(tally[a]) > int(tally[b]))
 	for k in keys:
 		lines.append("    %5d  %s" % [int(tally[k]), k])

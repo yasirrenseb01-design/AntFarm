@@ -501,7 +501,12 @@ func _update_ants(delta: float) -> void:
 				m.rest_dir = _free_heading(m, tr, 0.0)
 				# no way round lies clear here (its head or gaster in the soil whichever way it faces):
 				# it gets up and finds another spot to rest
-				if cl.y > 0 and m.rest_dir == Vector3.ZERO and m.rest > 0 and not m.carry:
+				# (or it has stood turning toward a way that should be clear for a while and is still in the soil: on a
+				# sloping floor or a shaft's wall its turning never cleared it - resting there half in the floor, 2.4% of
+				# resting ant-frames, --bodies 2026-10-28)
+				m.stuck_t = float(m.get("stuck_t", 0.0)) + 0.5 if cl.y > 0 else 0.0
+				if cl.y > 0 and (m.rest_dir == Vector3.ZERO or float(m.stuck_t) > 1.5) and m.rest > 0 and not m.carry:
+					m.stuck_t = 0.0
 					m.wall_n = int(m.get("wall_n", 0)) + 1
 					if int(m.wall_n) >= 1:
 						m.wall_n = 0
