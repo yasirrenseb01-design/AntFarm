@@ -547,6 +547,23 @@ func _take_shot() -> void:
 							nest_view.target_t = an.p
 							nest_view.target = nest_view.target_t
 							break
+				if _opts.has("follow-wid") and mode == "nest":
+					# (--follow-wid=<n>: worker #n, as the ant's box names it - the camera on it, and every half second
+					# what it does and how deep its head, thorax and gaster are in the soil)
+					for m in nest_view._mates:
+						if int(m.get("wid", -1)) == int(_opts["follow-wid"]) and m.has("xf"):
+							var fx: Transform3D = m.xf
+							nest_view.target_t = fx.origin
+							nest_view.target = nest_view.target_t
+							if Engine.get_process_frames() % 30 == 0:
+								var dens := []
+								for q in [Vector3(0.85, 0.4, 0), Vector3(0.2, 0.38, 0), Vector3(-0.95, 0.45, 0)]:
+									dens.append(snappedf(nest_view._density_at(fx * q), 0.01))
+								print("WID %d act %d role %s rest %s at %s up %s soil(head,thorax,gaster) %s clr %.2f clr_own %.2f settle %d rest_dir %s narrow %s" % [
+									int(m.wid), int(m.act), m.get("role", "?"), str(m.get("rest", "-")), fx.origin.snapped(Vector3.ONE * 0.01),
+									fx.basis.y.normalized().snapped(Vector3.ONE * 0.01), dens, float(m.get("clr", 0.0)), float(m.get("clr_own", 0.0)),
+									(m.get("settle", []) as Array).size(), m.get("rest_dir", Vector3.ZERO) != Vector3.ZERO, m.get("narrow", false)])
+							break
 				if _opts.has("follow-carry") and mode == "nest":
 					# (--follow-carry: the first nestmate carrying a cocoon, the camera on its head)
 					for m in nest_view._mates:

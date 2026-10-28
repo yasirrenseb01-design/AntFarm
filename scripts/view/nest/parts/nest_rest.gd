@@ -243,15 +243,25 @@ const NECK := Vector2(0.46, 0.39)            # the head's and the gaster's joint
 const WAIST := Vector2(-0.31, 0.36)
 const GASTER_CURL := 0.1                    # the gaster's resting curl (tip down) in shaders/ants/ant_core.gdshaderinc
 const BODY_PTS := [Vector3(0.9, 0.2, 0), Vector3(0, 0.2, 0), Vector3(-1.0, 0.2, 0), Vector3(0, 0.2, 0.3), Vector3(0, 0.2, -0.3)]
+const UPPER_PTS := [Vector3(1.25, 0.45, 0), Vector3(0.9, 0.7, 0), Vector3(0.15, 0.7, 0), Vector3(-0.9, 0.85, 0), Vector3(-1.5, 0.45, 0)]
 
 
 ## For an ant drawn at `tr`: how far it must rise along its up for its body to clear a curving floor (x), and
 ## how many of its points are in soil that rising does not clear (y: its head or gaster in a wall - lifting
 ## would only float it; a resting ant turns away from the wall instead, see _free_heading).
-func _soil_clearance(tr: Transform3D, s: float, bend := Vector2.ZERO, head_free := false) -> Vector2:
+func _soil_clearance(tr: Transform3D, s: float, bend := Vector2.ZERO, head_free := false, upper := false) -> Vector2:
 	var up := tr.basis.y.normalized()
 	var need := 0.0
 	var stuck := 0
+	if upper:
+		# (standing or resting: its back and the front of its head, its gaster's top and tip too - checked at belly
+		# height only, one resting under an overhanging wall lay with its head and back in it, its legs through it:
+		# body surface in the soil in 12% of resting ant-frames in the keeper's colony, 2026-10-28. Rising never
+		# clears these: they count as stuck, and it turns away or settles elsewhere)
+		for q in UPPER_PTS:
+			var w := tr * (q as Vector3)
+			if _density_at(w) >= 0.5:
+				stuck += 1
 	for i in BODY_PTS.size():
 		if i == 0 and head_free:
 			continue                       # (a digger's head is at the face it bites)

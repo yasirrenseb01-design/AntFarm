@@ -257,7 +257,7 @@ func _free_heading(m: Dictionary, tr: Transform3D, lift: float) -> Vector3:
 		var a := (k + 1) / 2 * (1 if k % 2 == 1 else -1) * TAU / 8.0     # 0, +45, -45, +90, -90 ... degrees
 		var h := f.rotated(up, a)
 		var t := Transform3D(Basis(h, up, h.cross(up)).scaled(Vector3.ONE * sc), o)
-		var c := _soil_clearance(t, sc)
+		var c := _soil_clearance(t, sc, Vector2.ZERO, false, true)     # (its back and head's front clear too)
 		var drop := _feet_over_drop(t)
 		var score := c.y * 10.0 + c.x + absf(a) * 0.05 + drop * 6.0
 		for e in [o + h * (1.2 * sc), o - h * (1.2 * sc)]:     # its two ends: a nestmate there?

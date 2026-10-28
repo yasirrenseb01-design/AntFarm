@@ -527,6 +527,9 @@ func _update_ants(delta: float) -> void:
 			# still, it turns away from the wall or the drop, stepping round on the spot
 			var still: bool = not m.has("script") and (m.rest > 0 and (m.get("settle", []) as Array).is_empty() or m.act in STILL_ACTS) \
 					and (m.get("face", Vector3.INF) as Vector3) == Vector3.INF
+			var body_stuck := cl.y
+			if still:
+				cl.y = _soil_clearance(tr, float(m.size), m.bend, false, true).y     # (its back and head's front too)
 			if still and clr_budget > 2 and (cl.y > 0 or cl.x > CLR_MAX or float(m.get("over", 0.0)) < 0.05 and _feet_over_drop(tr) >= 4):
 				clr_budget -= 3
 				m.rest_dir = _free_heading(m, tr, 0.0)
@@ -535,8 +538,12 @@ func _update_ants(delta: float) -> void:
 				# (or it has stood turning toward a way that should be clear for a while and is still in the soil: on a
 				# sloping floor or a shaft's wall its turning never cleared it - resting there half in the floor, 2.4% of
 				# resting ant-frames, --bodies 2026-10-28)
+				# (only its back or head's front in an overhang: it turns away from it, and gets up only if that has not
+				# cleared it for longer - getting up as soon, the nestmates rested a third less and walked over the
+				# brood more: 2+ feet in the air 3.8% -> 6%, 2026-10-28)
 				m.stuck_t = float(m.get("stuck_t", 0.0)) + 0.5 if cl.y > 0 else 0.0
-				if cl.y > 0 and (m.rest_dir == Vector3.ZERO or float(m.stuck_t) > 1.5) and m.rest > 0 and not m.carry:
+				var give_up := 1.5 if body_stuck > 0 else 5.0
+				if cl.y > 0 and (body_stuck > 0 and m.rest_dir == Vector3.ZERO or float(m.stuck_t) > give_up) and m.rest > 0 and not m.carry:
 					m.stuck_t = 0.0
 					m.wall_n = int(m.get("wall_n", 0)) + 1
 					if int(m.wall_n) >= 1:
