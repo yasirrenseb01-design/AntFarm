@@ -93,7 +93,10 @@ static func build(g, sim, r: RandomNumberGenerator) -> void:
 			Vector2(r.randf_range(lo.x, hi.x), r.randf_range(lo.y, hi.y)), 0.35)
 		_drift(g, r, c, r.randi_range(4, 10), wind, 1.0)
 	for i in 24:
-		g.litter.append(_leaf(r, Vector2(r.randf_range(lo.x, hi.x), r.randf_range(lo.y, hi.y)), r.randf() * TAU))
+		var sl := _leaf(r, Vector2(r.randf_range(lo.x, hi.x), r.randf_range(lo.y, hi.y)), r.randf() * TAU)
+		if i % 2 == 0:
+			g.litter.append(sl)               # (as many drawn as before - the rest of the garden stays where it was -
+			                                  # half of them kept: they are bigger now)
 	for i in r.randi_range(6, 10):
 		var l := _leaf(r, Vector2(r.randf_range(lo.x, hi.x), r.randf_range(lo.y, hi.y)), r.randf() * TAU)
 		l.twig = true
@@ -185,12 +188,17 @@ static func _drift(g, r: RandomNumberGenerator, c: Vector2, n: int, wind: Vector
 		var o := Vector2(r.randfn(0.0, 20.0), r.randfn(0.0, 10.0)) * spread
 		var l := _leaf(r, c + o.rotated(wind.angle()), wind.angle() + r.randfn(0.0, 1.2))
 		l.twig = r.randf() < 0.08
-		g.litter.append(l)
+		if l.twig or i % 2 == 0:
+			g.litter.append(l)
 
 
 static func _leaf(r: RandomNumberGenerator, p: Vector2, ang: float) -> Dictionary:
 	var base := Color(LEAF_COLS[r.randi() % LEAF_COLS.size()])
-	return {"p": p, "a": ang, "l": r.randf_range(24.0, 52.0), "w": r.randf_range(7.0, 15.0),
+	# fallen birch leaves (Betula pendula, a common garden tree: the blade 3-7 cm long, 2-5 cm wide - docs/BIOLOGY.md);
+	# 3-5.5 cm here, half width ~0.35 of the length. (The keeper, 2026-10-29: "what leaves are these, why so small" - they
+	# were 1.2-2.6 cm, no tree's in particular)
+	var l := r.randf_range(60.0, 110.0)
+	return {"p": p, "a": ang, "l": l, "w": l * (0.3 + 0.08 * r.randf()),
 		"c": base.lerp(Color("3d2a1b"), r.randf() * 0.35), "twig": false, "curl": r.randf_range(-0.2, 0.3)}
 
 

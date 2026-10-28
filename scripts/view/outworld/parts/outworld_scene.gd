@@ -103,7 +103,9 @@ var _splash: Array = []             # [position, age]
 # ---------------------------------------------------------------- ground shape (matches the shader)
 
 func ground_h(x: float, z: float) -> float:
-	var h := 0.8 * sin(x * 0.021 + 1.3) * cos(z * 0.027 + 0.4) + 0.45 * sin(x * 0.057 + z * 0.043 + 2.0)
+	# (as in shaders/terrain/ground_h.gdshaderinc, v0.11.71: broad swells up to ~1 cm, smaller rises and dips between)
+	var h := 3.6 * sin(x * 0.017 + 1.3) * cos(z * 0.023 + 0.4) + 1.6 * sin(x * 0.049 + z * 0.037 + 2.0)
+	h += 0.6 * sin(x * 0.13 + 0.7) * sin(z * 0.11 + 1.9)
 	var d := Vector2(x - _nest_xz.x, z - _nest_xz.y).length()
 	var k := (d - _mound_r) / (_mound_r * 0.6)
 	var mh := maxf(_mound, 0.0)

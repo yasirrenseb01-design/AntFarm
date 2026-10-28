@@ -5,7 +5,10 @@ uniform float mound_h = 0.5;
 uniform float mound_r = 4.0;
 
 float ground_h(vec2 p) {
-	float h = 0.8 * sin(p.x * 0.021 + 1.3) * cos(p.y * 0.027 + 0.4) + 0.45 * sin(p.x * 0.057 + p.y * 0.043 + 2.0);
+	// (v0.11.71, the keeper: "a little more up and down" - broad swells up to ~1 cm, smaller rises and dips between;
+	// it was +-2 mm)
+	float h = 3.6 * sin(p.x * 0.017 + 1.3) * cos(p.y * 0.023 + 0.4) + 1.6 * sin(p.x * 0.049 + p.y * 0.037 + 2.0)
+		+ 0.6 * sin(p.x * 0.13 + 0.7) * sin(p.y * 0.11 + 1.9);
 	float d = length(p - nest_xz);
 	float k = (d - mound_r) / (mound_r * 0.6);
 	h += mound_h * exp(-k * k) + mound_h * 0.5 * (1.0 - smoothstep(0.0, mound_r, d));

@@ -226,13 +226,16 @@ static func rock(outline: PackedVector2Array, r: float, tone: float, seed_value:
 
 static func leaf(length: float, width: float, col: Color, curl: float) -> ArrayMesh:
 	var k = _new()
+	# a birch leaf (v0.11.71): broadest near its foot, drawn out to a point, the edge toothed (double-serrate)
 	var outline := PackedVector2Array()
-	for i in 11:
-		var t := i / 10.0
-		outline.append(Vector2((t - 0.5) * length, -sin(t * PI) * width * (1.0 - 0.25 * t)))
-	for i in range(9, 0, -1):
-		var t := i / 10.0
-		outline.append(Vector2((t - 0.5) * length, sin(t * PI) * width * (1.0 - 0.25 * t)))
+	var half := func(t: float) -> float:
+		return pow(sin(t * PI), 0.75) * (1.2 - 0.85 * t) * (1.0 + 0.07 * sin(t * 46.0) * sin(t * PI))
+	for i in 31:
+		var t := i / 30.0
+		outline.append(Vector2((t - 0.5) * length, -float(half.call(t)) * width))
+	for i in range(29, 0, -1):
+		var t := i / 30.0
+		outline.append(Vector2((t - 0.5) * length, float(half.call(t)) * width))
 	# dry leaves curl up a little at the edges and lift at the tip (the keeper, 2026-10-27: they stood up in a tall
 	# hump, one half lit and the other dark, and the straight midrib stuck out under the lifted tip - now gentler, and
 	# the midrib follows the leaf's own middle, the stalk a little past its foot)

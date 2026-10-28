@@ -1,5 +1,5 @@
 extends Node3D
-## The Home room, layer 1 of 2 (split from home_room.gd in v0.11.49): its measures, materials, and the pieces in it made
+## The Home room, layer 1 of 3 (split from home_room.gd in v0.11.49): its measures, materials, and the pieces in it made
 ## in some detail (the keeper, 2026-10-27: the door handle, the drawer, the pencil, the notebook, the plant on the sill,
 ## the rug; the door's panels set in, not standing out) - the chair one sits on, the tanks (a formicarium, the bigger
 ## one, a flat ant farm) with the colony's real nest seen through the glass. Metres; y up; the desk wall at -z.

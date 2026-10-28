@@ -132,6 +132,12 @@ func _ease_camera(delta: float) -> void:
 		zoom_by(1.0 + 1.6 * delta)
 	var hi := Vector3(sim.WORLD.x * U + 30.0, 0, sim.WORLD.y * U + 30.0)
 	target_t = target_t.clamp(Vector3(-30, 0, -30), hi)
+	if room != null:
+		# and inside the room: a box standing 3 cm from the wall, the point looked at went out through it and the camera
+		# with it - the room seen from outside (the keeper, 2026-10-29)
+		var inside := _room_inside().grow(-15.0)          # (some room left to stand back toward the wall, from above)
+		target_t.x = clampf(target_t.x, inside.position.x, inside.end.x)
+		target_t.z = clampf(target_t.z, inside.position.z, inside.end.z)
 	target_t.y = clampf(ground_h(target_t.x, target_t.z), -2.0, 3.0)
 	var k := 1.0 - exp(-10.0 * delta)
 	yaw = lerp_angle(yaw, yaw_t, k)
@@ -151,8 +157,15 @@ func _forward() -> Vector3:
 func _update_camera() -> void:
 	var dir := Vector3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw))
 	var dist := minf(cam_dist, _room_reach(dir))
+	# turned toward a wall close behind the box there is no room to stand back: look down from higher instead (it
+	# came right up to the glass, the soil filling the view)
+	var p2 := pitch
+	while dist < minf(cam_dist, 60.0) and p2 < 1.45:
+		p2 += 0.1
+		dir = Vector3(cos(p2) * sin(yaw), sin(p2), cos(p2) * cos(yaw))
+		dist = minf(cam_dist, _room_reach(dir))
 	_cam.position = target + dir * dist
-	_cam.look_at(target, Vector3.UP if pitch < 1.55 else _forward())
+	_cam.look_at(target, Vector3.UP if p2 < 1.55 else _forward())
 	# keep the point of interest in the middle of the area left of the side panel
 	var vp := get_viewport().get_visible_rect().size
 	_cam.h_offset = side_px * 0.5 * 2.0 * dist * tan(deg_to_rad(_cam.fov * 0.5)) / vp.y
@@ -164,9 +177,7 @@ func _update_camera() -> void:
 func _room_reach(dir: Vector3) -> float:
 	if room == null:
 		return INF
-	var w: float = room.W
-	var inside: AABB = room.transform * AABB(Vector3(-w * 0.5, 0.0, -w * 0.5), Vector3(w, room.H, w))
-	inside = inside.grow(-25.0)                        # (4 cm off a wall)
+	var inside := _room_inside()
 	inside.position.y = maxf(inside.position.y, _stand_y + 6.0)
 	inside.end.y = maxf(inside.end.y, inside.position.y + 1.0)
 	var t := INF
@@ -175,7 +186,14 @@ func _room_reach(dir: Vector3) -> float:
 			t = minf(t, (inside.end[k] - target[k]) / dir[k])
 		elif dir[k] < -1e-5:
 			t = minf(t, (inside.position[k] - target[k]) / dir[k])
-	return maxf(t, 8.0)
+	return maxf(t, 1.0)                                # (closer than that the box's glass fills the view; not through the wall)
+
+
+## The Home's room round the box, 4 cm in from its walls (view units).
+func _room_inside() -> AABB:
+	var w: float = room.W
+	var inside: AABB = room.transform * AABB(Vector3(-w * 0.5, 0.0, -w * 0.5), Vector3(w, room.H, w))
+	return inside.grow(-25.0)
 
 
 ## Point on the ground under a screen position (INF if the ray misses).

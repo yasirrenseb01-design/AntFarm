@@ -1,5 +1,5 @@
-extends "res://scripts/view/home/home_kit.gd"
-## The Home room, layer 2 of 2 (the keeper, 2026-10-26; in two layers from v0.11.49): a small room 4 x 4 m and 2.6 m high
+extends "res://scripts/view/home/home_tools.gd"
+## The Home room, layer 3 of 3 (the keeper, 2026-10-26; in two layers from v0.11.49): a small room 4 x 4 m and 2.6 m high
 ## - a desk against the far wall with the tanks on it, a chair, a window on the left wall looking out on a meadow, a
 ## forest and mountains (painted in code: shaders/home/window_view.gdshader), a door on the right (not open yet), a rug,
 ## a ceiling lamp and a desk lamp, the shelves bought. The light follows the computer's clock (set_hour): the sun comes
@@ -266,6 +266,7 @@ func _desk() -> void:
 	var y := DESK.y + DESK_SIZE.y * 0.5
 	_notebook(Vector3(DESK.x - 0.72, y, DESK.z + 0.22), 0.2)
 	_pencil(Vector3(DESK.x - 0.52, y, DESK.z + 0.3), 0.5)
+	_keeper_tools(y)                         # (the keeper's kit along the front: home_tools.gd)
 
 
 func _lights() -> void:
