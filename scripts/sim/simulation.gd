@@ -204,7 +204,8 @@ func from_dict(d: Dictionary) -> void:
 	egg_acc = d.egg_acc
 	stats = d.stats
 	history = d.history
-	log_entries = d.log
+	# (the dead fly and cricket being found are no longer logged: clutter, the keeper 2026-10-28)
+	log_entries = d.log.filter(func(e): return not (e is Dictionary and e.get("key", "") in [T.found_fly, T.found_cricket]))
 	_warned = d.warned
 	_next_id = d.next_id
 	_cannibal_cd = d.cannibal_cd

@@ -206,6 +206,24 @@ static func measure(nv, tally: Dictionary) -> void:
 				var key := "brood in the queen: %s" % b[2]
 				tally[key] = int(tally.get(key, 0)) + 1
 				tally.brood_queen = int(tally.get("brood_queen", 0)) + 1
+	# ECLOSE: a callow pulled out of its cocoon drawn up off the floor (over brood beside it), and cocoons opened where
+	# they lie on other brood or against a wall rather than on clear, level floor (the keeper, 2026-10-28)
+	for a in nv._anims:
+		if a.k != "eclose":
+			continue
+		if a.has("from") and int(a.mv) < 2:
+			tally.ecl_moving = int(tally.get("ecl_moving", 0)) + 1
+			continue
+		tally.ecl_frames = int(tally.get("ecl_frames", 0)) + 1
+		if not nv._clear_floor(a.p, float(a.s), a.p):
+			tally.ecl_unclear = int(tally.get("ecl_unclear", 0)) + 1
+		var u: float = nv._ecl_u(float(a.t) / float(a.d))
+		if u >= 0.5:
+			var o: Vector3 = (nv._eclose_parts(a, u).callow as Transform3D).origin
+			var roll := lerpf(1.3, 0.0, clampf((u - 0.85) / 0.13, 0.0, 1.0))
+			tally.ecl_out = int(tally.get("ecl_out", 0)) + 1
+			if o.y - nv._floor_cached(o) - (0.15 + 0.25 * roll) > 0.2:
+				tally.ecl_raised = int(tally.get("ecl_raised", 0)) + 1
 	tally.frames = int(tally.get("frames", 0)) + 1
 	tally.ant_frames = int(tally.get("ant_frames", 0)) + ants.size()
 	# diggers drawn in the air: no soil next to the cell their body is in (the simulation lets them cut across a
@@ -250,6 +268,50 @@ static func measure(nv, tally: Dictionary) -> void:
 	var sph := []
 	for m in ants:
 		sph.append(_ant_spheres(m.xf, m.get("bend", Vector2.ZERO), _lat(m)))
+	# LICK: licking, feeding a larva or grooming a nestmate with nothing at its mouth (the keeper, 2026-10-28: an
+	# attendant licking the bare floor beside the queen) - the gap from its bowed mouth to the nearest brood, the queen or
+	# another ant's body, more than half a head
+	var qsph := []
+	if nv._queen_mm.instance_count > 0:
+		for k in 7:
+			qsph.append([nv._queen_xf * nv.QUEEN_HEAD.lerp(nv.QUEEN_TAIL, float(k) / 6.0), nv.QUEEN_R * 0.75])
+	for i in ants.size():
+		var m: Dictionary = ants[i]
+		var act := int(m.get("act", 0)) % 128
+		if not act in [nv.ACT_TEND, nv.ACT_FEED, 22, nv.ACT_ANTENNATE, nv.ACT_TAKE]:
+			continue
+		var s := (m.xf as Transform3D).basis.x.length()
+		var mouth: Vector3 = (m.xf as Transform3D) * Vector3(1.2, 0.2, 0.0)
+		var gap := INF
+		var near := "nothing"
+		for b in brood:
+			if mouth.distance_squared_to(b[1]) < 16.0:
+				for q in b[0]:
+					var g := mouth.distance_to(q[0]) - float(q[1])
+					if g < gap:
+						gap = g
+						near = b[2]
+		for q in qsph:
+			var g := mouth.distance_to(q[0]) - float(q[1])
+			if g < gap:
+				gap = g
+				near = "queen"
+		for j in ants.size():
+			if j != i:
+				for q in sph[j]:
+					var g := mouth.distance_to(q[0]) - float(q[1])
+					if g < gap:
+						gap = g
+						near = "ant"
+		var what := "%s %s" % [{6: "feeding", 7: "licking", 22: "grooming", 3: "antennating", 21: "taking a drop"}[act], m.get("role", "")]
+		tally["lk_n:" + what] = int(tally.get("lk_n:" + what, 0)) + 1
+		tally.lick_n = int(tally.get("lick_n", 0)) + 1
+		if OS.has_environment("LKDBG") and gap > 0.5 * s and act != nv.ACT_ANTENNATE and int(tally.get("lkdbg", 0)) < 30:
+			tally.lkdbg = int(tally.get("lkdbg", 0)) + 1
+			print("LKDBG %s gap %.2f s %.2f near %s face %s mouth %s org %s script %s vact %s" % [what, gap, s, near, str(m.get("face")), mouth, (m.xf as Transform3D).origin, str(m.get("script", {}).get("k", "-")), str(m.get("vact"))])
+		if gap > (1.0 if act == nv.ACT_ANTENNATE else 0.5) * s:     # (its antennae reach about a body's length)
+			tally["lk:" + what] = int(tally.get("lk:" + what, 0)) + 1
+			tally.lick_none = int(tally.get("lick_none", 0)) + 1
 	# ants in the brood
 	for i in ants.size():
 		var m: Dictionary = ants[i]
@@ -502,12 +564,21 @@ static func report(tally: Dictionary) -> String:
 		"  diggers in the soil %.2f%% of digger-frames" % [100.0 * float(tally.get("dig_soil", 0)) / maxf(1.0, float(tally.get("dig_frames", 0)))],
 		"  diggers in the air %.2f%% of %d digger-frames, at the face digging %.1f%%" % [100.0 * float(tally.get("dig_air", 0)) / maxf(1.0, float(tally.get("dig_frames", 0))), int(tally.get("dig_frames", 0)),
 			100.0 * float(tally.get("dig_at_face", 0)) / maxf(1.0, float(tally.get("dig_frames", 0)))]]
+	lines.append("  ECLOSE: opened off clear floor %.2f%% of %d eclosion-frames, callow raised off the floor %.2f%% of %d pulled-out frames, %d frames carried to clear floor" % [
+		100.0 * float(tally.get("ecl_unclear", 0)) / maxf(1.0, float(tally.get("ecl_frames", 0))), int(tally.get("ecl_frames", 0)),
+		100.0 * float(tally.get("ecl_raised", 0)) / maxf(1.0, float(tally.get("ecl_out", 0))), int(tally.get("ecl_out", 0)), int(tally.get("ecl_moving", 0))])
+	lines.append("  LICK with nothing at its mouth %.2f%% of %d ant-frames licking, feeding or grooming another" % [
+		100.0 * float(tally.get("lick_none", 0)) / maxf(1.0, float(tally.get("lick_n", 0))), int(tally.get("lick_n", 0))])
+	for k in tally.keys():
+		if String(k).begins_with("lk_n:"):
+			var who := String(k).substr(5)
+			lines.append("    LICK %s: nothing at its mouth %.2f%% of %d" % [who, 100.0 * float(tally.get("lk:" + who, 0)) / maxf(1.0, float(tally[k])), int(tally[k])])
 	for k in tally.keys():
 		if String(k).begins_with("tr_n:"):
 			var who := String(k).substr(5)
 			lines.append("  TREAD %s: legs stepping while the body stays put %.2f%% of %d frames" % [who,
 				100.0 * float(tally.get("tr:" + who, 0)) / maxf(1.0, float(tally[k])), int(tally[k])])
-	var keys := tally.keys().filter(func(k): return String(k).contains(":") and not String(k).begins_with("tr"))
+	var keys := tally.keys().filter(func(k): return String(k).contains(":") and not String(k).begins_with("tr") and not String(k).begins_with("lk"))
 	keys.sort_custom(func(a, b): return int(tally[a]) > int(tally[b]))
 	for k in keys:
 		lines.append("    %5d  %s" % [int(tally[k]), k])

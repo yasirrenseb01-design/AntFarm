@@ -199,6 +199,51 @@ func _start_groom(g: Dictionary, r: Dictionary) -> bool:
 	return true
 
 
+## A nurse or the queen's attendant licks what it tends - a larva (feeding it a droplet in turns), the queen, the egg
+## packet - only with its mouth on it: it steps up until its mandibles touch it (the tending pose drawn a body away,
+## its head bowed over the bare floor - the keeper, 2026-10-28). False if there is no open floor to stand on there.
+func _start_lick(m: Dictionary, at: Vector3, r: float, feeds: bool, queen := false) -> bool:
+	if m.has("script") or not m.has("vp") or (m.vu as Vector3).y < 0.85:
+		return false
+	var vp: Vector3 = m.vp
+	var to := (at - vp) * Vector3(1, 0, 1)
+	if to.length() < 0.01:
+		return false
+	var reach := r + MOUTH.x * float(m.size) - 0.15          # its middle from the thing's: the thing's own size, its mouth (bowed: a little in)
+	var base := atan2(-to.z, to.x) + PI                    # (from the thing toward the ant)
+	for k in 7:
+		var ang := base + (k / 2) * 0.45 * (1.0 if k % 2 == 0 else -1.0) * (1.0 if k > 0 else 0.0)
+		var spot: Vector3 = at + Basis(Vector3.UP, ang).x * reach
+		var fl := _floor_cached(spot)
+		spot.y = fl + 0.45
+		if vp.distance_to(spot) > 3.0 or absf(spot.y - vp.y) > 0.6 or _density_at(spot) > 0.35 or not _floor_solid(spot):
+			continue
+		# its body behind its head clear of the brood (a nurse leaning over the pile used to stand in it)
+		var back: Vector3 = Vector3(spot.x, fl, spot.z) + Basis(Vector3.UP, ang).x * 0.6 * float(m.size)
+		if not _brood_free(back, 0.35 * float(m.size)) or not _open_walk(vp, spot) or not _brood_free_way(vp, spot, 0.35 * float(m.size)):
+			continue
+		var a := {"k": "lick", "t": 0.0, "d": randf_range(4.0, 9.0) * _anim_k(), "m": m, "spot": spot, "at": at, "p": at,
+			"feeds": feeds, "queen": queen, "r": r}
+		_hire(m, vp - Vector3(0, 0.45, 0), at, ACT_WALK)
+		m.script.k = "lick"
+		m.script.pos = vp
+		m.script.goal = spot
+		_anims.append(a)
+		return true
+	return false
+
+
+## Whether the straight way from a to b (where a hired ant walks: straight, at floor height) is clear of the brood: it
+## walked through the larvae on its way to the one it licks (feet in the soil under them, 2026-10-28).
+func _brood_free_way(a: Vector3, b: Vector3, r: float) -> bool:
+	var n := maxi(1, int(a.distance_to(b) / 0.4))
+	for k in range(1, n + 1):
+		var q := a.lerp(b, float(k) / n)
+		if not _brood_free(Vector3(q.x, _floor_cached(q), q.z), r):
+			return false
+	return true
+
+
 ## Dev (--duty-log): where each giver and groomer is with its partner.
 func duty_trace() -> String:
 	var out := []

@@ -206,6 +206,87 @@ func _open_run(p: Vector3, yaw: float, s: float) -> int:
 	return 13
 
 
+## A cocoon on top of the pile or against a wall is first carried to clear, level floor near by and opened there:
+## pulled out over its neighbours, the callow was drawn up in the air (the keeper, 2026-10-28). (The keeper's idea; that
+## nurses move a cocoon about to open is not documented for Lasius - the brood is sorted by stage, cocoons toward the
+## pile's edge, Franks & Sendova-Franks 1992 in Leptothorax.) Planned once its first nurse is there, before it is opened.
+func _plan_cocoon_move(a: Dictionary) -> void:
+	if a.has("mv") or a.helpers.is_empty() or a.t > 0.16 * a.d:
+		return
+	a.mv = 2
+	var p: Vector3 = a.p
+	if _clear_floor(p, a.s, p):
+		return
+	var spot := _clear_floor_spot(p, a.s)
+	if spot.is_empty():
+		return
+	a.from = p
+	a.yaw0 = a.yaw
+	a.p = spot[0]
+	a.yaw = spot[1]
+	a.mv = 0
+	a.t = 0.0
+	_hire(a.helpers[0], _beside(p, a.helpers[0], 1.3 * a.s), p, ACT_TEND)
+
+
+## Whether a cocoon at floor point q lies on clear, level floor: no other brood within a body of it (`self_at`, the
+## cocoon itself, left out), the floor level round it, open above, not in a gallery, and a heading with 3 bodies of open
+## floor for the callow to be pulled out along. Gives that heading (or NAN).
+func _clear_heading(q: Vector3, s: float, self_at: Vector3) -> float:
+	if not _floor_solid(q) or _brood_in_way(q) or _density_at(q + Vector3(0, 1.4 * s + 0.3, 0)) >= 0.5:
+		return NAN
+	for o in [Vector3(s, 0, 0), Vector3(-s, 0, 0), Vector3(0, 0, s), Vector3(0, 0, -s)]:
+		if absf(_floor_cached(q + o) - q.y) > 0.45 * s:
+			return NAN
+	for o in _brood_near(q):
+		if (o[0] as Vector3).distance_to(self_at) < 0.6 * s:
+			continue
+		var d := _brood_offset(q, o)
+		if Vector2(d.x, d.z).length() < float(o[3] if o.size() > 3 else o[1]) + 1.4 * s and absf(d.y) < 2.0 * s:
+			return NAN
+	for k in 8:
+		var yaw := TAU * k / 8.0
+		if _open_run(q, yaw, s) >= 13:
+			return yaw
+	return NAN
+
+
+func _clear_floor(q: Vector3, s: float, self_at: Vector3) -> bool:
+	var fq := Vector3(q.x, _floor_cached(q), q.z)
+	return absf(fq.y - q.y) < 0.3 * s and not is_nan(_clear_heading(fq, s, self_at))
+
+
+## The nearest clear, level floor to cocoon p on the floor level of its chamber (within ~7 units, reached over open
+## floor): [point, heading] or [].
+func _clear_floor_spot(p: Vector3, s: float) -> Array:
+	var fl := _floor_cached(p)
+	for r in [2.0, 3.0, 4.0, 5.0, 6.0, 7.0]:
+		for k in 16:
+			var th := TAU * (k + 0.5 * fmod(r, 2.0)) / 16.0
+			var q: Vector3 = p + Vector3(cos(th), 0, sin(th)) * r * s
+			q.y = _floor_cached(q)
+			if absf(q.y - fl) > 1.0 or not _open_walk(Vector3(p.x, fl, p.z), q):     # (a chamber floor is a shallow bowl, the pile in its middle)
+				continue
+			var yaw := _clear_heading(q, s, p)
+			if not is_nan(yaw):
+				return [q, yaw]
+	return []
+
+
+## Where an attendant licks the queen nearest p: a point on the line from her head to her gaster's end, at her head or
+## her gaster (not her middle), and how far her body's surface is out from that line.
+func _queen_touch(p: Vector3) -> Array:
+	var h: Vector3 = _queen_xf * QUEEN_HEAD
+	var tail: Vector3 = _queen_xf * QUEEN_TAIL
+	var ax := tail - h
+	var t := clampf((p - h).dot(ax) / maxf(ax.length_squared(), 0.0001), 0.0, 1.0)
+	# (her head or her gaster: along the middle of her body her legs keep everyone off - nest_bodies._keep_apart - and an
+	# attendant stepping up there was pushed back, licking the air a body away from her)
+	if t > 0.05 and t < 0.8:
+		t = 0.05 if t < 0.45 else 0.8
+	return [h + ax * t, QUEEN_R * 0.75]
+
+
 ## The eclosion's progress on its own timeline: the opening and pulling out take the first 70% of the time,
 ## and the end - the newcomer peeled, rolling upright, licked clean and given its first meal - the last 30%
 ## (it used to be over in two seconds).
@@ -426,8 +507,7 @@ func _start_eclose(s: float) -> void:
 	for m in _helpers(p, 2, 3.5):
 		a.helpers.append(m)
 		_hire(m, _beside(p, m, 1.6 + 0.3 * a.helpers.size()), p, ACT_TEND)
-	if a.helpers.is_empty() and sim.queen.alive and _spots.queen != Vector3.ZERO and _spots.queen.distance_to(p) < 8.0:
-		a.queen = true           # a founding queen opens her first cocoons herself
+	_plan_cocoon_move(a)                 # (on clear floor first)
 	_anims.append(a)
 
 
@@ -573,9 +653,12 @@ func _step_anims(adt: float) -> void:
 					if h != null:
 						_release(h)
 			"eclose":
-				u = _ecl_u(u)
 				var hs: Array = a.helpers.filter(func(m): return _mates.has(m))
 				a.helpers = hs
+				_plan_cocoon_move(a)
+				if a.has("from") and int(a.mv) < 2 and _move_cocoon(a, hs, adt):
+					continue
+				u = _ecl_u(a.t / a.d)
 				if hs.is_empty() and not a.queen and float(a.get("wait", 0.0)) < 90.0:     # (a callow cannot get out alone)
 					a.wait = float(a.get("wait", 0.0)) + adt
 					_call_nurse(a)
@@ -685,6 +768,25 @@ func _step_anims(adt: float) -> void:
 						r.cool = randf_range(8.0, 14.0)
 						g.cool = randf_range(8.0, 14.0)
 						a.p = rp
+			"lick":
+				# a nurse at a larva, the queen's attendant at her (nest_duties._start_lick): steps up, licks with its mouth on
+				# it (a larva: a droplet given in turns), then rests a while
+				var lm = a.m
+				var at: Vector3 = a.at
+				if a.queen and lm.has("script"):
+					at = _queen_touch(lm.script.pos)[0]
+				if not _mates.has(lm) or not lm.has("script") or u >= 1.0 or at.distance_to(a.at) > 0.8:
+					a.done = true
+					if _mates.has(lm):
+						_release(lm)
+						lm.cool = randf_range(3.0, 8.0)
+				else:
+					lm.script.goal = a.spot
+					lm.script.face = at
+					# (there with its mouth on it, as drawn: it came up walking backwards at times, or was pushed aside by a
+					# nestmate or the queen's legs, and licked the air - the keeper, 2026-10-28)
+					var there: bool = (lm.script.pos as Vector3).distance_to(a.spot) < 0.08 and lm.has("xf") 							and ((lm.xf as Transform3D) * MOUTH).distance_to(at) < float(a.r) + 0.3 * float(lm.size)
+					lm.script.act = ACT_WALK if not there else (ACT_FEED if a.feeds and fmod(a.t, 5.0) < 2.0 else ACT_TEND)
 			"groom":
 				# a nestmate licked clean (nest_duties._start_groom): the groomer steps up beside it, licks along its body
 				# (the tending pose, its head turning from thorax to gaster), the other stands still
@@ -824,6 +926,56 @@ func _queen_busy() -> bool:
 	return false
 
 
+## Before an eclosion: its first nurse walks to the cocoon, picks it up and carries it to the clear floor (a.p), the
+## other nurses going there too; the eclosion's own timeline waits. True while the cocoon is still on its way.
+func _move_cocoon(a: Dictionary, hs: Array, adt: float) -> bool:
+	a.t = 0.0
+	var h = hs[0] if not hs.is_empty() else null
+	if h == null or not h.has("script") or float(a.get("mv_t", 0.0)) > 20.0:
+		# no nurse left to carry it (or stuck): it opens where it lies, or where it was set down
+		if h != null and int(a.mv) == 1:
+			h.carry = false
+			h.item = ""
+		if int(a.mv) == 0:
+			a.p = a.from
+			a.yaw = a.yaw0
+		a.mv = 2
+		return false
+	a.mv_t = float(a.get("mv_t", 0.0)) + adt
+	var to: Vector3 = a.p
+	var dir: Vector3 = (to - (a.from as Vector3)) * Vector3(1, 0, 1)
+	dir = dir.normalized() if dir.length_squared() > 0.0001 else Vector3.RIGHT
+	var at: Vector3 = (h.script.pos as Vector3) - Vector3(0, 0.45, 0)
+	if int(a.mv) == 0:
+		h.script.face = a.from
+		h.script.act = ACT_TEND
+		if _flat_d(at, h.script.goal) < 0.3:
+			a.grip = float(a.get("grip", 0.0)) + adt     # (a moment at it, mandibles round the silk, before it lifts it)
+		if float(a.get("grip", 0.0)) > 0.7:
+			a.mv = 1                                     # picked up: in its mandibles (drawn with its load)
+			h.carry = true
+			h.item = "cocoon"
+			h.script.goal = to - dir * 1.35 * a.s + Vector3(0, 0.45, 0)
+	else:
+		h.script.face = to + dir * 3.0
+		h.script.act = ACT_CARRY
+		if _flat_d(at, h.script.goal) < 0.3:
+			a.mv = 2                                     # set down on the clear floor: the eclosion begins
+			h.carry = false
+			h.item = ""
+			return false
+	for i in range(1, hs.size()):
+		hs[i].script.goal = _beside(to, hs[i], 1.6 + 0.3 * i) + Vector3(0, 0.45, 0)
+		hs[i].script.face = to
+	return true
+
+
+## How far apart two points are seen from above (a goal's height is that of the floor where it was set, the walker's
+## that of the floor under it).
+static func _flat_d(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+
 ## Ants still being born are drawn here: pulled head first out of the cocoon still wrapped in the
 ## pupal skin, legs folded; once the skin is peeled off it rolls upright and unfolds, then joins _mates.
 func _emerging(xs: Array, cols: Array, cus: Array, young: Color) -> void:
@@ -912,6 +1064,10 @@ func _draw_anims() -> void:
 					var hs3: Vector3 = Vector3(0.92, 0.78, 1.0) * a.s
 					cocoons.append([Transform3D(hb.scaled(hs3), a.p + Vector3(0, 0.6 * a.s * 0.78, 0)), Color(0.95, 0.95, 0.95)])
 			"eclose":
+				if a.has("from") and int(a.mv) < 2:
+					if int(a.mv) == 0 and _visible(a.from):        # (then in the nurse's mandibles)
+						cocoons.append([Transform3D(Basis(Vector3.UP, a.yaw0).scaled(Vector3.ONE * a.s), a.from + Vector3(0, 0.6 * a.s, 0)), Color.WHITE])
+					continue
 				if not _visible(a.p):
 					continue
 				u = _ecl_u(u)

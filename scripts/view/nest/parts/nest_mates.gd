@@ -236,11 +236,17 @@ func _meetings() -> void:
 			var o = by_cell.get(m.cell + d)
 			if o == null or is_same(o, m) or o.cool > 0.0 or o.act in STILL_ACTS or o.carry:
 				continue
+			# near enough as drawn for their antennae to reach each other, on the same surface (not one on the floor and
+			# the other on the ceiling above it, drumming at the air - the keeper, 2026-10-28)
+			if not m.has("vp") or not o.has("vp") or (m.vu as Vector3).dot(o.vu) < 0.7 					or (m.vp as Vector3).distance_to(o.vp) > 1.5 * (float(m.size) + float(o.size)) 					or absf(((o.vp as Vector3) - (m.vp as Vector3)).dot(m.vu)) > 0.6:
+				continue
 			# (who gives whom a drop is the simulation's: nest_duties walks the giver to its partner; met by chance,
 			# two ants only drum antennae)
 			var secs := randf_range(1.0, 2.2)
-			_begin(m, ACT_ANTENNATE, secs, o.vp if o.has("vp") else o.to)
-			_begin(o, ACT_ANTENNATE, secs, m.vp if m.has("vp") else m.to)
+			_begin(m, ACT_ANTENNATE, secs, o.vp)
+			_begin(o, ACT_ANTENNATE, secs, m.vp)
+			m.ant_with = int(o.get("wid", -1))       # (its id: the dictionaries themselves would hold each other)
+			o.ant_with = int(m.get("wid", -1))
 			m.cool = randf_range(5.0, 10.0)
 			o.cool = randf_range(5.0, 10.0)
 			break
@@ -249,6 +255,13 @@ func _meetings() -> void:
 ## Choose what a mate is doing this frame from its role and situation.
 func _update_activity(m: Dictionary, delta: float) -> void:
 	m.cool = maxf(0.0, m.cool - delta)
+	if m.act == ACT_ANTENNATE and m.act_left > 0.0 and m.has("ant_with"):
+		# drumming the other's antennae while it is there: facing it as it shifts, over once it has moved on
+		var o = _mate_of(int(m.ant_with))
+		if o == null or not o.has("vp") or not m.has("vp") or (o.vp as Vector3).distance_to(m.vp) > 1.8 * (float(m.size) + float(o.size)):
+			m.act_left = 0.0
+		else:
+			m.face = o.vp
 	if m.act_left > 0.0:
 		m.act_left -= delta
 		if m.act_left > 0.0:
@@ -260,23 +273,28 @@ func _update_activity(m: Dictionary, delta: float) -> void:
 		m.act = ACT_WALK
 	elif m.rest > 0:
 		if m.role == "nurse" and _rooms.size() > 0:
-			# nurses at the brood pile lick the larvae and regurgitate food to them - only a larva within reach
-			# of its mouth (else it rests): the droplet is given to a real larva
+			# nurses at the brood pile lick the larvae and regurgitate food to them: a larva near it, stepped up to until its
+			# mouth is on it (nest_duties._start_lick), now and then; resting in between
+			m.act = ACT_REST
 			m.larva_chk = float(m.get("larva_chk", 0.0)) - delta
-			if m.larva_chk <= 0.0:
+			if m.larva_chk <= 0.0 and m.cool <= 0.0:
 				m.larva_chk = 1.5
-				m.larva_at = _larva_within((m.vp as Vector3) if m.has("vp") else Vector3(m.to), 2.6 * float(m.size))
-			var lv: Vector3 = m.get("larva_at", Vector3.INF)
-			if lv != Vector3.INF:
-				m.act = ACT_FEED if fmod(m.anim + m.cool * 3.0, 11.0) < 4.0 else ACT_TEND
-				m.face = lv
-			else:
-				m.act = ACT_REST
+				var lv := _larva_within((m.vp as Vector3) if m.has("vp") else Vector3(m.to), 3.5 * float(m.size))
+				if lv != Vector3.INF:
+					_start_lick(m, lv + Vector3(0, 0.3, 0), 0.45, true)
 		elif m.role == "attend":
-			m.act = ACT_TEND
+			# the queen's retinue: licking her (or the egg packet beside her) with its mouth on her, resting in between
+			m.act = ACT_REST
 			m.face = _spots.queen
-			if fmod(m.anim, 16.0) > 9.0 and not sim.eggs.is_empty() and not _spots.eggs.is_empty():
-				m.face = _egg_xf(0).origin            # licking the egg packet clean
+			m.larva_chk = float(m.get("larva_chk", 0.0)) - delta
+			if m.larva_chk <= 0.0 and m.cool <= 0.0 and sim.queen.alive and m.has("vp"):
+				m.larva_chk = 1.5
+				if randf() < 0.3 and not sim.eggs.is_empty() and not _spots.eggs.is_empty():
+					_start_lick(m, _egg_xf(0).origin, 0.35, false)
+				else:
+					var qt: Array = _queen_touch(m.vp)
+					if (qt[0] as Vector3).distance_to(m.vp) < float(qt[1]) + 3.5 * float(m.size):
+						_start_lick(m, qt[0], qt[1], false, true)
 		elif int(m.get("vd", -1)) == Ant.D_GROOM and randf() < 0.5 * delta:
 			_begin(m, ACT_GROOM, randf_range(3.0, 6.0))     # its duty: cleaning itself (in bouts)
 		elif int(m.get("vd", -1)) != Ant.D_REST and randf() < 0.04 * delta:

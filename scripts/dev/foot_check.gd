@@ -12,6 +12,7 @@ const BodyCheck := preload("res://scripts/dev/body_check.gd")
 const SwayCheck := preload("res://scripts/dev/sway_check.gd")
 const K := 0.34              # model design units -> mesh units (the shader's K)
 const STRIDE_A := 1.3
+const FOOT_REACH_X := 0.25    # (the shader's: the feet reach that much further down than the 0.5 a leg rests at)
 const AIR_GAP := 0.15        # world units (~0.2 mm)
 const SUNK := 0.12
 
@@ -102,7 +103,7 @@ static func _stride_t(F: Vector3, dx: float, tws: float, fmode: float) -> Vector
 ## The shader's set_down(): [T set down on the soil, where it was found (0 under it, 1-3 nearer the body, 10 + j the
 ## brood search), T before its height was set, how far it was raised or lowered (world units)].
 static func _set_down(nest, T: Vector3, M: Transform3D, H: Vector3, C: Vector3, dAF: Vector3, lmax: float, fmode: float) -> Array:
-	var reach := 0.5 + 0.1 * (fmode - 1.0) if fmode > 1.5 else 0.5
+	var reach := (0.5 + 0.1 * (fmode - 1.0) if fmode > 1.5 else 0.5) + FOOT_REACH_X
 	var upw := M.basis.y.normalized()
 	var sc := M.basis.y.length()
 	var br := 0
@@ -445,9 +446,16 @@ static func measure(nv, tally: Dictionary) -> void:
 		for dv in nv._dig_vis.values():
 			if dv.has("xf") and (dv.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
 				is_dig = true
+		var doing := "digger" if is_dig else "?"
+		if not is_dig:
+			for mt in nv._mates:
+				if mt.has("xf") and (mt.xf as Transform3D).origin.distance_to(M.origin) < 0.01:
+					doing = BodyCheck._kind(nv, mt)
+					if mt.has("script"):
+						doing += " " + String(mt.script.get("k", "?")) + " act %d" % int(mt.script.act)
 		var air0 := int(tally.get("foot_air", 0))
 		var soil0 := int(tally.get("foot_soil", 0))
-		tally["_cur"] = ["dig" if is_dig else "mate", air0, soil0]
+		tally["_cur"] = ["dig" if is_dig else "mate", air0, soil0, "%s, %s" % [where, doing]]
 		for f in fs:
 			if not f[1]:
 				continue
@@ -576,8 +584,11 @@ static func _close_ant(tally: Dictionary) -> void:
 	tally["af_n:" + who] = int(tally.get("af_n:" + who, 0)) + 1
 	if int(tally.get("foot_air", 0)) - int(cur[1]) >= 2:
 		tally["af_air:" + who] = int(tally.get("af_air:" + who, 0)) + 1
+		tally["afw:%s in the air: %s" % [who, cur[3]]] = int(tally.get("afw:%s in the air: %s" % [who, cur[3]], 0)) + 1
 	if int(tally.get("foot_soil", 0)) - int(cur[2]) >= 2:
 		tally["af_soil:" + who] = int(tally.get("af_soil:" + who, 0)) + 1
+		tally["afw:%s in the soil: %s" % [who, cur[3]]] = int(tally.get("afw:%s in the soil: %s" % [who, cur[3]], 0)) + 1
+	tally["afn:%s" % cur[3]] = int(tally.get("afn:%s" % cur[3], 0)) + 1
 
 
 ## Why a planted foot jumped from one frame to the next (a, b: feet()'s info for it then and now): first what changed
@@ -730,6 +741,12 @@ static func report(tally: Dictionary) -> String:
 			head += "%s-frames with 2+ planted feet in the air %.2f%%, in the soil %.2f%% of %d
 " % ["DIGGER" if who == "dig" else "NESTMATE",
 				100.0 * float(tally.get("af_air:" + who, 0)) / an, 100.0 * float(tally.get("af_soil:" + who, 0)) / an, int(an)]
+	var aw := tally.keys().filter(func(k): return String(k).begins_with("afw:"))
+	aw.sort_custom(func(x, y): return int(tally[x]) > int(tally[y]))
+	for k in aw.slice(0, 14):
+		var w := String(k).substr(String(k).find(": ") + 2)
+		head += "  AF %5d of %6d  %s
+" % [int(tally[k]), int(tally.get("afn:" + w, 0)), String(k).substr(4)]
 	var s := head + "planted feet %d: in the air %.2f%% (of them far from any soil %.2f%%), in the soil %.2f%%, in the brood %.2f%%" % [
 		int(tally.get("feet", 0)), 100.0 * float(tally.get("foot_air", 0)) / n, 100.0 * float(tally.get("foot_air_far", 0)) / n,
 		100.0 * float(tally.get("foot_soil", 0)) / n, 100.0 * float(tally.get("foot_brood", 0)) / n]

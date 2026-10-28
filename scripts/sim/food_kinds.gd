@@ -25,10 +25,10 @@ const KINDS := {
 	"honey": {"type": Ant.SUGAR, "amt": 25.0, "cap": 25.0, "regen": 0.0, "r": 8.0, "handling": [1380, 3060, 10],
 		"found": T.found_honey, "dries": 0.78, "tool": "tool_honey", "feed_pose": "rim"},
 	"cricket": {"type": Ant.PROTEIN, "amt": 30.0, "cap": 30.0, "regen": 0.0, "r": 12.0, "handling": [90, 200, 2],
-		"found": T.found_cricket, "rots_after": 6.0, "tool": "tool_cricket", "feed_pose": "carcass",
+		"rots_after": 6.0, "tool": "tool_cricket", "feed_pose": "carcass",
 		"carcass": [6.4, 2.4], "buried": true, "big": true},
 	"fly": {"type": Ant.PROTEIN, "amt": 6.0, "cap": 6.0, "regen": 0.0, "r": 5.0, "handling": [50, 110, 2],
-		"found": T.found_fly, "rots_after": 6.0, "feed_pose": "carcass", "carcass": [2.2, 1.3], "buried": true},
+		"rots_after": 6.0, "feed_pose": "carcass", "carcass": [2.2, 1.3], "buried": true},
 	# ("drag": n would have n workers haul it home whole - not used for L. niger: group prey retrieval is only
 	# documented in its relative L. neoniger, so the ants cut prey up where it lies; see docs/BIOLOGY.md)
 	# enemies the ants killed (never placed by the keeper)

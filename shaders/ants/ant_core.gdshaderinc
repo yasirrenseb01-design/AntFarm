@@ -170,11 +170,15 @@ vec3 stride_t(vec3 F, float dx, float tws, float fmode) {
 	return T;
 }
 
+const float FOOT_REACH_X = 0.25;
+
 // The foot at T (model units) set down on the real ground under it (rough nest floors, the slope outside), the body
 // at M. (Its body lifted - the brood, the soil clearance: 0.6-1.1. A leg spread wide reaches ~0.75 down, one drawn in
 // under the body ~1.05: beyond what it reaches where it is, the foot steps nearer the body.)
 vec3 set_down(vec3 T, mat4 M, vec3 H, vec3 C, vec3 dAF, float lmax, float fmode) {
-	float reach = fmode > 1.5 ? 0.5 + 0.1 * (fmode - 1.0) : 0.5;
+	// (0.25 further than the 0.5 the leg rests at: on a slope or the brood's edge the downhill feet hung - 2+ planted feet in
+	// the air in 7.7% of nestmate-frames, the keeper's target 2%, 2026-10-28; the leg's own length still bounds it: r0)
+	float reach = (fmode > 1.5 ? 0.5 + 0.1 * (fmode - 1.0) : 0.5) + FOOT_REACH_X;
 	vec3 upw = normalize(M[1].xyz);
 	float sc = length(M[1].xyz);
 	vec3 fw = (M * vec4(T, 1.0)).xyz;

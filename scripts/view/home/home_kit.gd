@@ -103,6 +103,9 @@ func _door() -> void:
 	var face := x - 0.035                        # the frame's face (the room side)
 	# the panels' sheet, set back
 	var d := _box(Vector3(0.025, 2.03, 0.86), Vector3(x - 0.008, 1.015, DOOR.z), panel)
+	# the opening behind it filled the wall's thickness through: close by the door, the slits between the leaf and the
+	# casing showed the yard through the wall (the keeper, 2026-10-28)
+	_box(Vector3(0.1, 2.05, 0.9), Vector3(x + 0.055, 1.025, DOOR.z), panel)
 	# stiles (up the sides) and rails (across), standing in front of it
 	var t := 0.022
 	for sz in [-1, 1]:
