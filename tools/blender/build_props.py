@@ -1,6 +1,6 @@
 # Blender-side builder for the outworld props: black bean aphids, the house cricket carcass and
 # broad bean shoots.  Run inside Blender:  python tools/blender/bl.py tools/blender/build_props.py WHAT=aphid
-# (WHAT = aphid | cricket | plant | spider | centipede | beetle | fly, optional SHOT=<png>).  Units are game units (1 = 1.5 mm), x forward,
+# (WHAT = aphid | cricket | plant [VARIANT=k STAGE=g] | spider | centipede | beetle | fly, optional SHOT=<png>).  Units are game units (1 = 1.5 mm), x forward,
 # y up, z to the right (Godot axes); exported as .antmesh files (see ant_model3d.gd load_antmesh) whose
 # vertex colour is sRGB and alpha is how far the wind may bend that point (plants) or 0.
 import bpy
@@ -321,13 +321,14 @@ elif WHAT == "cricket":
         render(SHOT, Vector((-1.0, 0, 1.5)), 30.0, view)
 elif WHAT == "plant":
     k = int(globals().get("VARIANT", "0"))
-    stem = plant(k)
-    flex_export("%s/plants/plant%d.antmesh" % (OUT, k), stem)
-    with open("%s/plants/plant%d.json" % (OUT, k), "w") as fh:
-        json.dump({"stem": stem, "radius": 0.55}, fh)
+    g = int(globals().get("STAGE", "3"))            # growth stage 0-3 (props/plant.py)
+    stem = plant(k, g)
+    flex_export("%s/plants/plant%d_%d.antmesh" % (OUT, k, g), stem)
+    with open("%s/plants/plant%d_%d.json" % (OUT, k, g), "w") as fh:
+        json.dump({"stem": stem, "radius": 0.55 * PL_STAGE_R[g]}, fh)
     if SHOT:
         preview_material()
-        render(SHOT, Vector((0, 0, 12.0)), 48.0, Vector((0.8, -1.0, 0.35)))
+        render(SHOT, Vector((0, 0, 13.0)), 75.0, Vector((0.8, -1.0, 0.35)))
 elif WHAT == "spider":
     wolf_spider()
     export(OUT + "/creatures/wolf_spider.antmesh")

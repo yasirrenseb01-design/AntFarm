@@ -510,7 +510,12 @@ func _click(it) -> void:
 		toast(tr("home_soon"), _tip.position + Vector2(0, 40))
 		return
 	if it.kind == "fridge":
-		return
+		# into the colony resting in it, as a tank on the desk is clicked (the keeper chose so, 2026-10-28): its box is drawn
+		# on the fridge's shelf, the cold light on it; "Hibernate in fridge" in the colony takes it out
+		var rs: Array = it.get("slots", [])
+		if rs.is_empty():
+			return
+		it = {"kind": "tank", "slot": int(rs[0])}
 	if it.kind == "lamp":
 		# its switch (kept in the settings: the lamp round a box in the game is the same lamp - keeper_room.gd)
 		_room.lamp_on = not _room.lamp_on

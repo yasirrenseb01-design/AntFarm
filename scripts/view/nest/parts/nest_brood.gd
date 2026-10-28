@@ -401,6 +401,27 @@ func _queen_pose() -> void:
 		var fb := _floor_cached(at - fwd * 1.6)
 		var want_dy := clampf(fc - f0, -0.6, 0.8) if _queen_step.length() > 0.05 else 0.0
 		var want_pitch := clampf(atan2(ff - fb, 3.2), -0.3, 0.35) if _queen_step.length() > 0.05 else 0.0
+		# where she stands still too: the floor under her gaster and her head, not only under her spot - resting at her
+		# place on a floor that rises behind her, her gaster went into it (the keeper, 2026-10-28, in her winter rest)
+		var lean := Transform3D(Basis(Vector3.UP, _queen_turn).scaled(Vector3.ONE * queen_scale), at + Vector3.UP * want_dy)
+		var need_t := -INF
+		for lp in QUEEN_UNDER_TAIL:
+			var w: Vector3 = lean * lp
+			need_t = maxf(need_t, _floor_cached(w) + 0.04 - w.y)
+		var hw: Vector3 = lean * QUEEN_UNDER_HEAD
+		var need_h := _floor_cached(hw) + 0.04 - hw.y
+		if need_t > 0.0 or need_h > 0.0:
+			# up so far as the lower end needs, then tipped so the other clears too (nose down: the gaster is the heavier)
+			want_dy += clampf(minf(maxf(need_t, 0.0), maxf(need_h, 0.0)) + 0.5 * absf(maxf(need_t, 0.0) - maxf(need_h, 0.0)), 0.0, 1.2)
+			want_pitch = clampf(want_pitch - atan2(maxf(need_t, 0.0) - maxf(need_h, 0.0), QUEEN_SPAN * queen_scale), -0.35, 0.35)
+			# (tipped about her feet, not her middle: what is still in the floor once tipped, she rises by)
+			var tipped := Transform3D((Basis(Vector3.UP, _queen_turn) * Basis(Vector3.BACK, want_pitch)).scaled(Vector3.ONE * queen_scale),
+				at + Vector3.UP * want_dy)
+			var more := 0.0
+			for lp in QUEEN_UNDER_TAIL + [QUEEN_UNDER_HEAD]:
+				var w: Vector3 = tipped * lp
+				more = maxf(more, _floor_cached(w) + 0.04 - w.y)
+			want_dy += minf(more, 0.6)
 		var k := minf(1.0, 4.0 * get_process_delta_time())
 		_queen_dy = lerpf(_queen_dy, want_dy, k)
 		_queen_pitch = lerpf(_queen_pitch, want_pitch, k)

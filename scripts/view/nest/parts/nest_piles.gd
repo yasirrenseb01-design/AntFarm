@@ -174,7 +174,14 @@ func _pile_places(spots: Array, centre: Vector3) -> Array:
 		for o in [Vector3(0.45, 0, 0), Vector3(-0.45, 0, 0), Vector3(0, 0, 0.45), Vector3(0, 0, -0.45)]:
 			out.append(s + o)
 	out.sort_custom(func(a, b): return a.distance_squared_to(centre) < b.distance_squared_to(centre))
-	return out
+	# one floor level: a heap lies on the floor round its middle; places up or down a ramp or a shaft from there (their
+	# level more than ~half a cocoon off) are not used - brood laid down a steep ramp into a gallery lay one over the
+	# next like a column, 4-5 cocoons (the keeper, 2026-10-28); a pile with almost nothing at its level keeps them all
+	if out.is_empty():
+		return out
+	var level: float = _floor_cached(out[0])
+	var kept := out.filter(func(p): return absf(_floor_cached(p) - level) <= 0.9)
+	return kept if kept.size() >= 4 else out
 
 
 ## Lay one item of brood down like a real object: on the floor at the first free place (nothing overlapping

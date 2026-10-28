@@ -169,6 +169,17 @@ static func asset(name: String) -> Mesh:
 
 
 const PLANT_VARIANTS := 3
+const PLANT_STAGE_DAYS := [10.0, 25.0, 45.0]   # a plant's age (game days) at growth stages 1, 2, 3 (in flower)
+
+
+## The growth stage (0 a young shoot ... 3 grown, in flower: tools/blender/props/plant.py) of a plant this many days
+## old. [Inference: a broad bean flowers some weeks after it comes up - no study found for how many; v0.11.69]
+static func plant_stage(age_days: float) -> int:
+	var g := 0
+	for d in PLANT_STAGE_DAYS:
+		if age_days >= d:
+			g += 1
+	return g
 
 
 ## A field stone: a lumpy dome whose footprint follows the simulation's outline (in units, around 0).
@@ -283,9 +294,9 @@ static func blade() -> ArrayMesh:
 
 ## Broad bean shoot (Vicia faba), a favourite host of the black bean aphid. Returns the stem line
 ## (local points, base at the origin) shared by the mesh, the aphids and the ants that climb it.
-static func plant_stem(seed_value: int) -> Array:
-	# the Blender shoots carry their own stem line
-	var path := "res://assets/models/plants/plant%d.json" % (absi(seed_value) % PLANT_VARIANTS)
+static func plant_stem(seed_value: int, stage := 3) -> Array:
+	# the Blender shoots carry their own stem line, one per growth stage
+	var path := "res://assets/models/plants/plant%d_%d.json" % [absi(seed_value) % PLANT_VARIANTS, clampi(stage, 0, 3)]
 	if FileAccess.file_exists(path):
 		var d = JSON.parse_string(FileAccess.get_file_as_string(path))
 		if d is Dictionary:
@@ -316,8 +327,8 @@ static func stem_at(pts: Array, y: float) -> Vector3:
 const STEM_R := 0.55
 
 
-static func aphid_plant(seed_value: int) -> Mesh:
-	var m := asset("plants/plant%d" % (absi(seed_value) % PLANT_VARIANTS))
+static func aphid_plant(seed_value: int, stage := 3) -> Mesh:
+	var m := asset("plants/plant%d_%d" % [absi(seed_value) % PLANT_VARIANTS, clampi(stage, 0, 3)])
 	if m != null:
 		return m
 	var k = _new()
@@ -364,22 +375,37 @@ static func aphid_plant(seed_value: int) -> Mesh:
 
 ## Where the colony sits: black bean aphids pack the stem, head down
 ## with their mouthparts in the stem. Each entry: [local transform, kind (0 adult, 1 nymph, 2 winged)].
-static func aphid_spots(seed_value: int) -> Array:
+static func aphid_spots(seed_value: int, stage := 3) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value + 99
-	var pts := plant_stem(seed_value)
+	var pts := plant_stem(seed_value, stage)
 	var h: float = pts[-1].y
+	var stem_r: float = STEM_R * [0.62, 0.78, 0.92, 1.0][clampi(stage, 0, 3)]    # (plant.py PL_STAGE_R)
 	var out := []
-	for i in 34:
+	var placed := []                  # [centre, size]: side by side on the stem, never one inside another
+	for i in 140:
+		if out.size() >= 34:
+			break
 		# most of the colony packs the lower stem (where the ants tend it), the rest the growing tip
-		var y := rng.randf_range(1.6, 9.0) if rng.randf() < 0.7 else h * rng.randf_range(0.6, 0.97)
+		var y := rng.randf_range(1.6, minf(9.0, h * 0.55)) if rng.randf() < 0.7 else h * rng.randf_range(0.6, 0.97)
 		var a := rng.randf() * TAU
 		var kind := 0 if rng.randf() < 0.55 else 1
 		if rng.randf() < 0.06:
 			kind = 2
 		var s := rng.randf_range(0.9, 1.1) if kind != 1 else rng.randf_range(0.45, 0.75)
 		var outward := Vector3(cos(a), 0, sin(a))
-		var p := stem_at(pts, y) + outward * (STEM_R + 0.38 * s)
+		var p := stem_at(pts, y) + outward * (stem_r * (1.0 - 0.3 * y / maxf(h, 1.0)) * 0.95 + 0.03 * s)   # (feet on the tapering stem)
+		var clear := true
+		for q in placed:
+			# (an adult is ~1.35 long and ~0.75 wide, lying head down along the stem)
+			var d: Vector3 = p - q[0]
+			var k: float = (s + float(q[1])) * 0.5
+			if pow(d.y / (1.25 * k), 2.0) + (d.x * d.x + d.z * d.z) / pow(0.72 * k, 2.0) < 1.0:
+				clear = false
+				break
+		if not clear:
+			continue
+		placed.append([p, s])
 		var down := Vector3(0, -1, 0).rotated(outward.cross(Vector3.UP).normalized(), rng.randf_range(-0.35, 0.35))
 		var x := down
 		var yv := outward

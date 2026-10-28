@@ -167,6 +167,8 @@ func _take_shot() -> void:
 			# drop one of that food beside the nest and look at it (models: --at-food=fly)
 			var fp: Vector2 = sim.nest_pos + Vector2(70, 30)
 			sim.place_food(String(_opts["at-food"]), fp)
+			if _opts.has("food-age") and not sim.foods.is_empty():
+				sim.foods[-1].age = float(_opts["food-age"])       # (a plant with aphids that old: its growth stage)
 			outworld.target_t = Vector3(fp.x, 0, fp.y) * outworld.U
 		outworld.snap_camera()
 	if _opts.has("heater"):
@@ -522,6 +524,12 @@ func _take_shot() -> void:
 						nest_view.target_t = _bodies_at
 						nest_view.target = _bodies_at
 						print("  follow %s: %.2f %s at %s" % [_opts["follow-bodies"], fw[0], fw[2], fw[1]])
+				if _opts.has("queen-soil") and mode == "nest":
+					QueenCheck.measure(nest_view, _queen_soil)
+				if _opts.has("stacks") and mode == "nest":
+					StackCheck.measure(nest_view, _stacks)
+				if _opts.has("turns") and mode == "outworld":
+					TurnCheck.measure(outworld, sim, _turns)
 				if _watch_food != null and mode == "outworld" and sim.foods.has(_watch_food):
 					var fp2: Vector2 = _watch_food.pos
 					outworld.target_t = Vector3(fp2.x, 0, fp2.y) * outworld.U
@@ -781,6 +789,12 @@ func _take_shot() -> void:
 				get_viewport().get_texture().get_image().save_png(path.get_basename() + "_o%d.png" % j)
 		if _opts.has("bodies"):
 			print(BodyCheck.report(_bodies))
+		if _opts.has("turns"):
+			print(TurnCheck.report(_turns))
+		if _opts.has("stacks"):
+			print(StackCheck.report(_stacks))
+		if _opts.has("queen-soil"):
+			print(QueenCheck.report(_queen_soil))
 		if _opts.has("feet"):
 			print(FootCheck.report(_feet))
 		if _opts.has("buried"):
@@ -815,6 +829,12 @@ func _take_shot() -> void:
 
 
 const BodyCheck := preload("res://scripts/dev/body_check.gd")
+const TurnCheck := preload("res://scripts/dev/turn_check.gd")
+const StackCheck := preload("res://scripts/dev/stack_check.gd")
+const QueenCheck := preload("res://scripts/dev/queen_check.gd")
+var _queen_soil := {}             # (--queen-soil: the queen's gaster in the soil, see queen_check.gd)
+var _stacks := {}                 # (--stacks: how high the brood is heaped, see stack_check.gd)
+var _turns := {}                  # (--turns: foragers' heading swings and body tilts, see turn_check.gd)
 const FootCheck := preload("res://scripts/dev/foot_check.gd")
 const BuriedCheck := preload("res://scripts/dev/buried_check.gd")
 var _buried := {}                 # (--buried: nestmates drawn whole inside the soil, see buried_check.gd)

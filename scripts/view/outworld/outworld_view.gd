@@ -108,7 +108,7 @@ func setup(s) -> void:
 	sm.vertex_color_use_as_albedo = true
 	sm.albedo_color = Color(0.85, 0.9, 1.0)
 	_splash_mm = _multimesh(ring, sm, true)
-	_dew_mm = _multimesh(_blob_mesh(Vector3(0.15, 0.14, 0.15)), _honey_mat(), false)
+	_dew_mm = _multimesh(_blob_mesh(Vector3(0.15, 0.14, 0.15)), _dew_mat(), false)
 	var mist := StandardMaterial3D.new()
 	mist.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mist.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -160,6 +160,7 @@ func refresh(delta: float) -> void:
 		_sync_rocks()
 		_sync_foods()
 		_update_mound()
+		_check_room_fridge()
 	_ease_foods(delta)
 	_ground_mat.set_shader_parameter("pher_on", 1.0 if ground.show_pheromones else 0.0)
 	var raining: bool = sim.climate.raining()

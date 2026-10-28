@@ -198,7 +198,7 @@ home_purse,Colony Harmony %s,Colony Harmony %s
 home_door,ประตู,The door
 home_lamp_off,"โคมไฟ · คลิก: ปิด","The lamp · click: switch it off"
 home_lamp_on,"โคมไฟ · คลิก: เปิด","The lamp · click: switch it on"
-home_fridge,"ตู้เย็นจำศีล 4–12°C · ตู้ที่จำศีลอยู่: %s","The wintering fridge, 4-12°C · tanks resting in it: %s"
+home_fridge,"ตู้เย็นจำศีล 4–12°C · ตู้ที่จำศีลอยู่: %s · คลิกเพื่อเข้าไปดูรัง","The wintering fridge, 4-12°C · tanks resting in it: %s · click to look in on the colony"
 home_fridge_none,"ตู้เย็นจำศีล 4–12°C · ยังไม่มีตู้ไหนจำศีล (กด จำศีลในตู้เย็น ในรัง)","The wintering fridge, 4-12°C · no tank resting in it (Hibernate in fridge, in the colony)"
 fridge_full,"ตู้เย็นมีตู้ %s จำศีลอยู่แล้ว (ใส่ได้ทีละตู้) — นำตู้นั้นออกก่อน","Tank %s is already resting in the fridge (one at a time) - take it out first"
 home_shop,ร้านค้า,Shop

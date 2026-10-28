@@ -366,7 +366,8 @@ func _meet_diggers(bound: Dictionary, all: Dictionary) -> void:
 	var by_dig := {}
 	for d in nest.diggers:
 		by_dig[d.id] = d
-	var drop := {}
+	var drop := []               # (the mates themselves, by identity: a mate as a Dictionary key is hashed whole, and mates
+	                             # refer to one another - "Max recursion reached" every frame, seconds a frame: v0.11.69)
 	for id in _dig_wid:
 		if _dig_live.has(id) or not by_dig.has(id) or by_dig[id].get("surfacing", false):
 			continue                    # (out at the entrance with its pellet: its cell, up out of the soil, is no
@@ -386,9 +387,9 @@ func _meet_diggers(bound: Dictionary, all: Dictionary) -> void:
 			_dig_vis[id] = {"from": here, "to": cell, "t": 0.0, "up": _up_at(Vector3i(cell)), "still": 0.0,
 				"anim": float(m.anim) if m != null else 0.0}
 			if m != null:
-				drop[m] = true
+				drop.append(m)
 	if not drop.is_empty():
-		_mates = _mates.filter(func(x): return not drop.has(x))
+		_mates = _mates.filter(func(x): return not drop.any(func(d): return is_same(d, x)))
 	_dug_by.clear()
 	for id in _dig_live:
 		_dug_by[_dig_wid[id]] = id

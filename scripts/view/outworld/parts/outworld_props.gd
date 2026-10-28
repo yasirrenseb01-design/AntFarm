@@ -47,7 +47,7 @@ func _sync_foods() -> void:
 		var key: int = f.seed
 		seen[key] = true
 		var left: float = _left(f)
-		var sig := "%s:%d:%s:%d" % [f.kind, int(left * 10.0), f.rotten, int(_cover(f) * 20.0)]
+		var sig := "%s:%d:%s:%d:%d" % [f.kind, int(left * 10.0), f.rotten, int(_cover(f) * 20.0), _plant_stage(f)]
 		var e: Dictionary = _foods.get(key, {})
 		if not e.is_empty() and e.sig == sig:
 			continue
@@ -57,7 +57,7 @@ func _sync_foods() -> void:
 		_food_root.add_child(node)
 		var low := []
 		if FoodKinds.info(f.kind).get("feed_pose", "") == "climb":
-			for s in Props.aphid_spots(f.seed):
+			for s in Props.aphid_spots(f.seed, _plant_stage(f)):
 				if s[1] != 2 and (s[0] as Transform3D).origin.y < 10.0:
 					low.append(s[0])
 		_foods[key] = {"node": node, "sig": sig, "low": low, "at": f.pos}
@@ -116,13 +116,19 @@ func _make_food(f: Dictionary, left: float) -> Node3D:
 	return root
 
 
+## How grown a plant with aphids is (0 a young shoot ... 3 in flower) by its age: the view only (the keeper,
+## 2026-10-28: "let the bean plants grow over time").
+func _plant_stage(f: Dictionary) -> int:
+	return Props.plant_stage(float(f.get("age", 99.0))) if f.kind == "aphids" else 0
+
+
 ## One builder per food kind (named _food_<kind>), called by _make_food().
 func _food_aphids(root: Node3D, f: Dictionary, left: float) -> void:
 	var plant := MeshInstance3D.new()
-	plant.mesh = Props.aphid_plant(f.seed)
+	plant.mesh = Props.aphid_plant(f.seed, _plant_stage(f))
 	plant.material_override = _plant_mat
 	root.add_child(plant)
-	var spots: Array = Props.aphid_spots(f.seed)
+	var spots: Array = Props.aphid_spots(f.seed, _plant_stage(f))
 	for kind in 3:
 		var xs := []
 		for s in spots:
@@ -141,15 +147,17 @@ func _food_aphids(root: Node3D, f: Dictionary, left: float) -> void:
 			mi.multimesh = mm
 			mi.material_override = _prop_mat if layer != _aphid_wings else _wing_mat()
 			root.add_child(mi)
-	# honeydew waiting on the aphids: as many drops as the colony has to give right now
+	# honeydew waiting on the aphids: as many drops as the colony has to give right now, each held at an aphid's tail -
+	# clear and about 0.45 mm across (30-40 drops a day and 40-150 ug an hour from an adult: Banks & Macaulay 1964,
+	# docs/BIOLOGY.md); it was a 0.7 mm orange bead (the keeper, 2026-10-28: "far too big")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = f.seed
 	for i in int(round(left * 8.0)):
 		var s: Array = spots[rng.randi() % spots.size()]
 		var drop := MeshInstance3D.new()
-		drop.mesh = _blob_mesh(Vector3(0.24, 0.22, 0.24))
-		drop.material_override = _honey_mat()
-		drop.position = (s[0] as Transform3D) * Vector3(-0.95, 0.4, 0)
+		drop.mesh = _blob_mesh(Vector3(0.15, 0.14, 0.15))
+		drop.material_override = _dew_mat()
+		drop.position = (s[0] as Transform3D) * Vector3(-0.98, 0.34, 0)
 		root.add_child(drop)
 
 

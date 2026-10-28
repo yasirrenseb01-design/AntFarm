@@ -40,7 +40,7 @@ var _lawn: StandardMaterial3D
 ## places: home_store.places() (where each tank stands); shelves: how many tanks each shelf bought holds; hour: the
 ## clock's; env: the room's environment (its ambient light follows the hour); hide: a slot whose tank is not drawn (the
 ## colony open in the game, its box drawn there by the foraging view instead).
-func build(places: Array, shelves: Array, filled: Callable, hour: float, env: Environment, hide := 0) -> void:
+func build(places: Array, shelves: Array, filled: Callable, hour: float, env: Environment, hide := 0, hide_cold := -1) -> void:
 	_env = env
 	_room()
 	_window()
@@ -63,14 +63,18 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 	var fs: Vector3 = Fridge.SIZE
 	blocks.append(Rect2(FRIDGE_AT.x - fs.x * 0.5, FRIDGE_AT.z - fs.z * 0.5, fs.x, fs.z + 0.05))
 	var resting := []
+	var resting_slots := []
 	var free_spots: Array = fr.spots.duplicate()
 	# on the desk, against the wall: the small one left of the middle, the bigger one right of it
 	var top := DESK.y + DESK_SIZE.y * 0.5
 	for p in places:
 		var s := int(p.slot)
 		var full: bool = filled.call(s)
-		if full and bool(Store.meta(s).get("fridge", false)):
+		# (hide_cold: the hidden tank's colony is open now - in the fridge or not as it is now, not as last saved)
+		var cold: bool = (hide_cold == 1) if s == hide and hide_cold >= 0 else bool(Store.meta(s).get("fridge", false))
+		if full and cold:
 			resting.append(int(p.number))
+			resting_slots.append(s)
 			if not p.get("farm", false) and not free_spots.is_empty():
 				var t2: Node3D = _tank(fr.node, free_spots.pop_front(), p.big, false, s, int(p.number), true,
 					float(Store.meta(s).get("nest_x0", (Spec.floor_of(p.big).x - Spec.NEST.x) * 0.5)))
@@ -98,7 +102,7 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 			if s == hide:
 				t.visible = false
 				items.pop_back()
-	items.append({"kind": "fridge", "mats": [], "resting": resting,
+	items.append({"kind": "fridge", "mats": [], "resting": resting, "slots": resting_slots,
 		"box": AABB(FRIDGE_AT - Vector3(fs.x * 0.5, 0, fs.z * 0.5), fs + Vector3(0, 0, 0.06))})
 	set_hour(hour)
 

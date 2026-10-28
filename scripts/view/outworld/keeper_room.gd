@@ -25,7 +25,10 @@ static func build(view: Node3D, info: Dictionary, big: bool, soil_bottom: float,
 	var room = HomeRoom.new()
 	room.lamp_on = bool(info.get("lamp", true))
 	view.add_child(room)
-	room.build(places, info.get("shelves", []), func(s): return Store.exists(s), 12.0, env, slot)
+	# (this colony in the fridge or not as it is now: the keeper may have just put it in - v0.11.69)
+	var cold := int(bool(info.fridge)) if info.has("fridge") else -1
+	room.build(places, info.get("shelves", []), func(s): return Store.exists(s) or s == slot, 12.0, env, slot, cold)
+	room.set_meta("fridge", info.get("fridge", null))
 	var t: Node3D = room.tank_nodes.get(slot)
 	var at := Transform3D()
 	if t != null:

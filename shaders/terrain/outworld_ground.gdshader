@@ -16,6 +16,15 @@ uniform float frost = 0.0;           // white hoarfrost on the soil on freezing 
 
 varying vec2 wp;
 varying float gh;
+varying vec3 wn;           // the ground's normal (world), before the crumbs' relief
+
+// garden soil is crumbly: clods of a few mm, grains under a mm, cracks between them (the keeper, 2026-10-28: "the soil
+// in the box looks too smooth"). A relief in the shading only - ground_h(), where the ants walk, is unchanged.
+float crumbs(vec2 p) {
+	float clod = texture(detail, p / 2.6).r;          // clods ~3-4 mm
+	float grain = texture(detail, p / 0.7 + 0.37).r;   // grains ~1 mm
+	return clod * 0.65 + grain * 0.35;
+}
 
 #include "res://shaders/terrain/ground_h.gdshaderinc"
 
@@ -27,6 +36,7 @@ void vertex() {
 	float hx = ground_h(wp + vec2(e, 0.0)) - ground_h(wp - vec2(e, 0.0));
 	float hz = ground_h(wp + vec2(0.0, e)) - ground_h(wp - vec2(0.0, e));
 	NORMAL = normalize(vec3(-hx, 2.0 * e, -hz));
+	wn = NORMAL;
 }
 
 void fragment() {
@@ -61,6 +71,15 @@ void fragment() {
 	// frost settles first on the grains and ridges, never in the warm mouth of the nest
 	float fr = frost * smoothstep(0.2, 0.9, det * 0.8 + 0.2 * fine + 0.25 * frost) * smoothstep(1.5, 4.0, dn);
 	c = mix(c, vec3(0.72, 0.74, 0.76), fr * 0.7);
+	// crumbs: tilt the normal by the relief's slope and darken the cracks between them (fading out far away, where
+	// they would only shimmer; flat under puddles and in the nest's mouth)
+	float rel = (1.0 - smoothstep(60.0, 160.0, length(VERTEX))) * (1.0 - puddle) * smoothstep(1.2, 2.5, dn);
+	float k = 0.08;
+	float h0 = crumbs(wp);
+	vec2 slope = vec2(crumbs(wp + vec2(k, 0.0)) - crumbs(wp - vec2(k, 0.0)), crumbs(wp + vec2(0.0, k)) - crumbs(wp - vec2(0.0, k))) / (2.0 * k);
+	vec3 n = normalize(wn + vec3(-slope.x, 0.0, -slope.y) * 0.42 * rel);
+	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+	c *= mix(1.0, 0.62 + 0.5 * smoothstep(0.1, 0.55, h0), rel * (1.0 - fr));
 	ALBEDO = c;
 	ROUGHNESS = mix(mix(0.95, 0.35, wet), 0.03, puddle);
 	SPECULAR = mix(mix(0.25, 0.6, wet), 0.95, puddle);

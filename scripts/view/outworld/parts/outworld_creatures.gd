@@ -4,6 +4,8 @@ extends "res://scripts/view/outworld/parts/outworld_crowd.gd"
 
 const Grip := preload("res://scripts/sim/enemies/grip_spots.gd")
 const MM_PER_UNIT := 1.5           # a model unit out here (3 px at 0.5 mm a px)
+const DIR_RATE := 4.0              # 1/s: how fast a walker's smoothed way of travel follows its steps (~0.25 s)
+const UP_RATE := 9.0               # 1/s: how fast its body tips onto the slope under it (~0.1 s)
 
 
 func _light() -> void:
@@ -65,6 +67,8 @@ func _update_ants(delta: float) -> void:
 			a.vpos = a.pos
 			a.voff = Vector2.ZERO
 			a.vang = a.ang
+			a.vdir = Vector2.ZERO
+			a.vup = Vector3.ZERO
 			a.anim = randf() * 50.0
 			a.vgait = randf() * TAU
 		if a.vflung:
@@ -92,10 +96,14 @@ func _update_ants(delta: float) -> void:
 		var moving := step.length_squared() > 0.01
 		var was_ang: float = a.vang
 		var hauling: bool = a.state == Ant.DRAG
+		# the way it is going, smoothed: the simulation wobbles each step's heading a little (its search), and facing
+		# every step turned the body left and right ~3 times a second (the keeper, 2026-10-28: "they turn too much")
+		if moving:
+			a.vdir = a.vdir.lerp(step.normalized(), 1.0 - exp(-DIR_RATE * delta * fast))
 		if hauling:
 			a.vang = lerp_angle(a.vang, a.ang + PI, ka)      # facing the item it holds, whichever way it goes
 		elif moving:
-			a.vang = lerp_angle(a.vang, step.angle(), ka)
+			a.vang = lerp_angle(a.vang, a.vdir.angle() if a.vdir.length_squared() > 0.04 else step.angle(), ka)
 		elif a.busy > 0:
 			a.vang = lerp_angle(a.vang, a.ang, ka)
 		var turned := absf(wrapf(a.vang - was_ang, -PI, PI))    # turning on the spot takes steps too
@@ -105,6 +113,11 @@ func _update_ants(delta: float) -> void:
 		a.anim += adt
 		var p: Vector2 = (a.vpos + a.voff) * U
 		var up := ground_top_n(p.x, p.y)                # over pebbles, twigs and leaves as well as the ground
+		# the body tips onto a pebble's or twig's slope over a moment, as its legs reach it, not in one frame
+		if a.vup == Vector3.ZERO:
+			a.vup = up
+		a.vup = a.vup.slerp(up, 1.0 - exp(-UP_RATE * delta * fast)).normalized()
+		up = a.vup
 		var f := Vector3(cos(a.vang), 0, sin(a.vang))
 		f = (f - up * f.dot(up)).normalized()
 		var s: float = ANT_SCALE * a.size

@@ -149,6 +149,10 @@ const QUEEN_HEAD := Vector3(1.25, 0.5, 0.0)
 const QUEEN_TAIL := Vector3(-1.45, 0.5, 0.0)
 const QUEEN_R := 1.05
 const QUEEN_LIFT := 0.38      # her model reaches 0.24 below her feet (gaster) x queen_scale
+const QUEEN_UNDER_TAIL := [Vector3(-0.7, -0.12, 0.0), Vector3(-1.2, -0.24, 0.0), Vector3(-1.7, -0.18, 0.0), Vector3(-2.15, 0.05, 0.0),
+	Vector3(-1.2, -0.12, 0.45), Vector3(-1.2, -0.12, -0.45)]   # her gaster's underside and tip (model units; dev/queen_check.gd)
+const QUEEN_UNDER_HEAD := Vector3(1.1, -0.02, 0.0)            # under her head
+const QUEEN_SPAN := 2.6                                       # from that head point to the gaster's lowest (model units)
 var queen_scale := 1.75       # her model's scale: the species' look (Lasius niger: ~9 mm long; set in nest_view.setup)
 var _queen_turn := 0.0
 var _queen_turn_t := 0.0

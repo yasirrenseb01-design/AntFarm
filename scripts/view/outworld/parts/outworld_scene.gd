@@ -270,9 +270,24 @@ func _build_box() -> void:
 				[Vector3(r, r, od), Vector3(w + gu, y, d * 0.5)], [Vector3(r, r, od), Vector3(-gu, y, d * 0.5)]]:
 			_box(e[0], e[1], trim)
 	# where it stands in the Home: the Home's own room round it (keeper_room.gd)
+	room_info["fridge"] = sim.fridge_on
 	room = KeeperRoom.build(self, room_info, sim.WORLD.x > sim.SMALL_WORLD.x, bottom, _env)
 	_stand_y = bottom
 	_cam.far = 130000.0                  # (the window's view: mountains 150 m off)
+	_room_rot = room.transform.basis.orthonormalized()
+
+
+## The keeper put this colony in the fridge or took it out ("Hibernate in fridge"): the room built again, the box on the
+## fridge's shelf or back on the desk (the keeper, 2026-10-28: in the fridge in the Home, on the desk in the game - the
+## room was built once, when the colony was opened).
+func _check_room_fridge() -> void:
+	if room == null or room.get_meta("fridge", null) == null or bool(room.get_meta("fridge")) == sim.fridge_on:
+		return
+	for l in [room._sun, room._moon, room._lamp, room._spot, room.fridge_light]:
+		l.queue_free()                         # (moved out from under the room: keeper_room.gd)
+	room.queue_free()
+	room_info["fridge"] = sim.fridge_on
+	room = KeeperRoom.build(self, room_info, sim.WORLD.x > sim.SMALL_WORLD.x, _stand_y, _env)
 	_room_rot = room.transform.basis.orthonormalized()
 
 
@@ -408,6 +423,22 @@ func _fly_wing_mat() -> StandardMaterial3D:
 		_fly_wings.rim_tint = 0.2
 		_fly_wings.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return _fly_wings
+
+
+## Aphid honeydew: a clear, glistening droplet (sugary water; the keeper's honey drops are _honey_mat).
+func _dew_mat() -> StandardMaterial3D:
+	if _dew == null:
+		_dew = StandardMaterial3D.new()
+		_dew.albedo_color = Color(0.92, 0.9, 0.78, 0.45)
+		_dew.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_dew.roughness = 0.03
+		_dew.metallic_specular = 1.0
+		_dew.rim_enabled = true
+		_dew.rim = 0.6
+	return _dew
+
+
+var _dew: StandardMaterial3D
 
 
 func _honey_mat() -> StandardMaterial3D:
