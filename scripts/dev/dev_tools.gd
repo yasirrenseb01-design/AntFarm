@@ -447,6 +447,7 @@ func _take_shot() -> void:
 					print("   missed at %s: got %s; own gap %.1f" % [q, got.get("kind", "nothing"), nest_view._body_gap(m.xf, sp)])
 		print("pick check: %d of %d clicks on a nestmate's head / middle / gaster picked that nestmate (%d behind another body)" % [ok, tried, hidden])
 	if _opts.has("perf") and frame_ms.size() > 20:
+		print("first frames (ms): ", frame_ms.slice(0, 12).map(func(x): return snappedf(x, 1.0)))
 		# frame times: the average and the worst ones (stutter is what the eye notices)
 		var s := frame_ms.slice(10)
 		s.sort()
@@ -544,6 +545,13 @@ func _take_shot() -> void:
 							break
 						if an.k == _opts["follow-anim"] and an.has("p"):
 							nest_view.target_t = an.p
+							nest_view.target = nest_view.target_t
+							break
+				if _opts.has("follow-carry") and mode == "nest":
+					# (--follow-carry: the first nestmate carrying a cocoon, the camera on its head)
+					for m in nest_view._mates:
+						if m.get("carry", false) and m.get("item", "") == "cocoon" and m.has("xf"):
+							nest_view.target_t = (m.xf as Transform3D) * Vector3(1.5, 0.5, 0)
 							nest_view.target = nest_view.target_t
 							break
 				if _opts.has("follow-fit") and mode == "nest":

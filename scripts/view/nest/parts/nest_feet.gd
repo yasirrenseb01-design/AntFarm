@@ -139,11 +139,13 @@ const RESTEP_S := 0.14          # seconds a foot left behind takes to step again
 
 ## Planted feet the body has turned, tipped or been pushed sideways away from: their legs crossed and bent backwards
 ## (the keeper, 2026-10-27: workers tending the queen, turned and pushed by her body, had twisted legs). Past ~25
-## degrees of turn or tilt, or a third of a body width aside, it steps them again (_step_gait: lifted, not snapped).
+## degrees of turn or tilt, or a third of a body width off them, it steps them again (_step_gait: lifted, not snapped).
 static func _feet_twisted(at: Transform3D, tr: Transform3D, sc: float) -> bool:
 	if at.basis.x.normalized().dot(tr.basis.x.normalized()) < 0.9 or at.basis.y.normalized().dot(tr.basis.y.normalized()) < 0.9:
 		return true
-	return absf((tr.origin - at.origin).dot(at.basis.z.normalized())) > 0.35 * sc
+	# (or gone off them any way along the floor - a standing body creeping forward left its feet behind it)
+	var off := tr.origin - at.origin
+	return (off - at.basis.y.normalized() * off.dot(at.basis.y.normalized())).length() > 0.35 * sc
 
 
 ## The feet records of this frame's drawn ants (_feet_rec, in instance order; those with none: -1) up to the shader.

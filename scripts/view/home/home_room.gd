@@ -290,16 +290,18 @@ func _lights() -> void:
 	_moon.shadow_enabled = true
 	_moon.rotation = Vector3(-0.7, -PI * 0.5 + 0.3, 0)
 	add_child(_moon)
-	# the desk lamp's light on the tanks
+	# the desk lamp's light on the tanks: from the mouth of its shade, along it (below), its edge fading out smoothly
+	# (the keeper, 2026-10-28: a hard-edged ellipse on the wall - a real lamp's light grazes the wall in a soft cone.
+	# The light stood outside the shade, aimed past it; and Godot's own fall-off, 1 - rim^a, still reaches nothing with
+	# a slope the eye sees as an edge: the fade is a projected radial gradient, the angle's own fall-off left out)
 	_spot = SpotLight3D.new()
-	_spot.position = Vector3(DESK.x - 0.7, DESK.y + 0.6, DESK.z)
-	_spot.look_at_from_position(_spot.position, Vector3(DESK.x, DESK.y, DESK.z - 0.15), Vector3.UP)
 	_spot.light_color = Color(1.0, 0.82, 0.58)
-	_spot.spot_range = 1.7
-	_spot.spot_angle = 58.0                 # (a soft-edged pool: 42 at 1.6 drew a hard circle on the wall)
-	_spot.spot_angle_attenuation = 0.7
+	_spot.spot_range = 2.2
+	_spot.spot_angle = 62.0
+	_spot.spot_angle_attenuation = 0.05     # (flat across the cone: the projector fades it)
+	_spot.light_projector = _soft_cone()
 	_spot.shadow_enabled = true
-	add_child(_spot)
+	_spot.shadow_blur = 2.0
 	# the lamp itself: a weighted round base with a rocker switch, a hinge at its foot, the arm, a hinge under the shade
 	# (the keeper, 2026-10-27: more like a real one - with its cord and a plug in a socket)
 	var metal := flat(Color(0.15, 0.17, 0.16), 0.4, 0.6)
@@ -331,6 +333,32 @@ func _lights() -> void:
 	bulb.emission_energy_multiplier = 3.0
 	var b := _cyl(0.06, 0.004, Vector3(0, 0, -0.105), bulb, piv)
 	b.rotation.x = PI * 0.5
+	_spot.position = Vector3(0, 0, -0.115)  # (just past the bulb: the shade behind it casts no shadow of its rim)
+	piv.add_child(_spot)
+
+
+## The desk lamp's light across its cone: bright in the middle, falling off as (1 - r^2)^2 - flat where it reaches
+## nothing, so no edge is drawn where it ends.
+static func _soft_cone() -> GradientTexture2D:
+	var offs := PackedFloat32Array()
+	var cols := PackedColorArray()
+	for i in 9:
+		var r := i / 8.0
+		var v := pow(1.0 - r * r, 2.0)
+		offs.append(r)
+		cols.append(Color(v, v, v))
+	var g := Gradient.new()
+	g.offsets = offs
+	g.colors = cols
+	g.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CUBIC
+	var t := GradientTexture2D.new()
+	t.gradient = g
+	t.fill = GradientTexture2D.FILL_RADIAL
+	t.fill_from = Vector2(0.5, 0.5)
+	t.fill_to = Vector2(1.0, 0.5)
+	t.width = 128
+	t.height = 128
+	return t
 
 
 ## The lamp's cord: out of the back of its base, along the desk to its back edge, down behind it, along the floor by

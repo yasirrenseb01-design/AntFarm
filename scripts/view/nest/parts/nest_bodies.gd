@@ -28,6 +28,13 @@ func _turn_to(a: Vector3, want: Vector3, k: float) -> Vector3:
 	return u.slerp(want, k)
 
 
+# (a body creeping slower - eased into its resting place, nudged apart from a nestmate - stands on its planted feet and
+# steps only once it has gone off them: nest_feet._feet_twisted. Counted as walking, resting ants staying put trod on
+# the spot, a foot lifted 11 times a second - the keeper saw them shake, 2026-10-28)
+const MOVE_START := 0.6         # units a second the drawn body must go to start walking (its legs stepping)
+const MOVE_STOP := 0.3          # and below which it stops
+
+
 ## Eases the drawn ant along its voxel path: position, heading and body tilt follow the hops
 ## smoothly instead of snapping at each cell; distance walked drives the leg gait (radians) and
 ## `mv` (0..1) tells the shader how much the legs should be stepping. If `face` is set the ant
@@ -49,7 +56,11 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 	v.vp1 = (v.get("vp1", path_pos) as Vector3).lerp(path_pos, k)
 	var np: Vector3 = v.vp.lerp(v.vp1, k)
 	var step: Vector3 = np - v.vp
-	var moving := step.length() > 0.12 * delta
+	# (with some hold-off: easing to a stop the body's speed hung about the one threshold and it flicked between walking
+	# and standing every few frames - mv 1 -> 0.75 -> 1, the stride of its lifted feet with it, to and fro: resting ants
+	# staying put had a foot going to and fro in 35% of their seconds - the keeper saw them shake, 2026-10-28)
+	var moving := step.length() > (MOVE_STOP if v.get("mov_on", false) else MOVE_START) * delta
+	v.mov_on = moving
 	# it heads the way it has been going over the last fraction of a second, not the way its last step went
 	v.vel = (v.get("vel", Vector3.ZERO) as Vector3).lerp(step / maxf(delta, 0.0001), 1.0 - exp(-5.0 * delta))
 	var vel: Vector3 = v.vel
@@ -116,7 +127,10 @@ func _smooth(v: Dictionary, path_pos: Vector3, up: Vector3, delta: float, scale:
 			moving = true                          # (its legs step as it turns)
 		if (v.vf as Vector3).dot(want) > 0.995:
 			v.rest_dir = Vector3.ZERO
-	v.mv = lerpf(v.mv, 1.0 if moving else 0.0, minf(1.0, 8.0 * delta))
+	# (stepping aside - nest_rest._step_aside - eases it in too: set at once with each new push, every third frame, mv
+	# went 1 -> 0.75 -> 1 and its lifted feet's stride with it, to and fro - the keeper saw resting ants shake, 2026-10-28)
+	var mv_to := 1.0 if moving else (float(v.get("smv", 0.0)) if float(v.get("sgr", 0.0)) > 0.0 else 0.0)
+	v.mv = lerpf(v.mv, mv_to, minf(1.0, 8.0 * delta))
 	v.sweep = sweep
 	v.walks = moving and not backing and flat.length() > 0.12
 	v.lat = lerpf(float(v.get("lat", 0.0)), lat, minf(1.0, 6.0 * delta))

@@ -638,6 +638,7 @@ func _step_anims(adt: float) -> void:
 					h.deliver = a
 					h.carry = true
 					h.item = "cocoon"
+					h.load_s = a.s
 					h.goal = _upper[0] if not _upper.is_empty() else _queen_room()
 					h.rest = 0
 					h.wander = 0
@@ -742,8 +743,11 @@ func _step_anims(adt: float) -> void:
 					r.script.face = g.script.pos
 					var met: bool = (g.script.pos as Vector3).distance_to(g.script.goal) < 0.08
 					if u < 0.12 or not met:
-						g.script.act = ACT_ANTENNATE
-						r.script.act = ACT_ANTENNATE
+						# (drumming once their heads are near; the giver walks up to it first - antennating all the way
+						# there, its mouth was a body's length from anything: --bodies LICK, 2026-10-28)
+						var near := _heads_meet(g, r, 1.45, 180.0)
+						g.script.act = ACT_ANTENNATE if near else ACT_WALK
+						r.script.act = ACT_ANTENNATE if near else ACT_WALK
 						if not met:
 							a.t = minf(a.t, 0.12 * a.d)    # (the exchange starts once they are face to face)
 					elif u < 0.9:
@@ -955,6 +959,7 @@ func _move_cocoon(a: Dictionary, hs: Array, adt: float) -> bool:
 			a.mv = 1                                     # picked up: in its mandibles (drawn with its load)
 			h.carry = true
 			h.item = "cocoon"
+			h.load_s = a.s
 			h.script.goal = to - dir * 1.35 * a.s + Vector3(0, 0.45, 0)
 	else:
 		h.script.face = to + dir * 3.0
@@ -1117,3 +1122,21 @@ func _add_mate(c: Vector3i, role: String, born: int, size: float) -> void:
 func _mate_color(m: Dictionary, body: Color, young: Color) -> Color:
 	var days: float = float(sim.tick - int(m.get("born", -1000000000))) / sim.TPD
 	return young.lerp(body, clampf(days / float(sim.sp["callow_days"]), 0.0, 1.0))
+
+
+## Their heads near enough as drawn for the antennae to touch: mouth to mouth within `r` body scales, each facing the
+## other's head within `deg` (met side by side or one behind the other, the mouth was over a body's length from
+## anything and they drummed the air: 43-52% of chance antennating, --bodies LICK, the keeper 2026-10-28).
+func _heads_meet(m: Dictionary, o: Dictionary, r: float, deg: float) -> bool:
+	if not m.has("xf") or not o.has("xf"):
+		return false
+	var a: Transform3D = m.xf
+	var b: Transform3D = o.xf
+	var ma := a * MOUTH
+	var mb := b * MOUTH
+	if ma.distance_to(mb) > r * 0.5 * (a.basis.x.length() + b.basis.x.length()):
+		return false
+	if deg >= 180.0:
+		return true
+	var c := cos(deg_to_rad(deg))
+	return a.basis.x.normalized().dot((mb - a.origin).normalized()) >= c and b.basis.x.normalized().dot((ma - b.origin).normalized()) >= c

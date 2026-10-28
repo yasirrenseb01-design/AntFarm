@@ -95,6 +95,8 @@ func _arrive(m: Dictionary) -> void:
 			else:
 				m.carry = true                          # picks one up from the old pile
 				m.item = "cocoon" if cocoon else ""
+				if cocoon:
+					m.load_s = float(sim.pupae[mini(_moved_p, sim.pupae.size() - 1)].get("s", 0.88))
 				m.goal = _brood_room(_larva_group if larva else _pupa_group)
 				m.rest = 3
 
@@ -238,7 +240,7 @@ func _meetings() -> void:
 				continue
 			# near enough as drawn for their antennae to reach each other, on the same surface (not one on the floor and
 			# the other on the ceiling above it, drumming at the air - the keeper, 2026-10-28)
-			if not m.has("vp") or not o.has("vp") or (m.vu as Vector3).dot(o.vu) < 0.7 					or (m.vp as Vector3).distance_to(o.vp) > 1.5 * (float(m.size) + float(o.size)) 					or absf(((o.vp as Vector3) - (m.vp as Vector3)).dot(m.vu)) > 0.6:
+			if not m.has("vp") or not o.has("vp") or (m.vu as Vector3).dot(o.vu) < 0.7 					or (m.vp as Vector3).distance_to(o.vp) > 1.5 * (float(m.size) + float(o.size)) 					or absf(((o.vp as Vector3) - (m.vp as Vector3)).dot(m.vu)) > 0.6 or not _heads_meet(m, o, 1.0, 75.0):
 				continue
 			# (who gives whom a drop is the simulation's: nest_duties walks the giver to its partner; met by chance,
 			# two ants only drum antennae)
@@ -252,13 +254,20 @@ func _meetings() -> void:
 			break
 
 
+## A cocoon in the mandibles as big as it lies on the pile (k: its size over the carrier's): held by its near end, the
+## rest out in front under the raised head and clear of the floor (CARRY_OFFSET's 0.55 drew it about half the size,
+## and it grew as it was set down - the keeper, 2026-10-28).
+static func _cocoon_hold(k: float) -> Transform3D:
+	return Transform3D(Basis.from_scale(Vector3.ONE * k), Vector3(1.0 + 1.35 * k * 0.75, 0.15 + 0.62 * k, 0.0))
+
+
 ## Choose what a mate is doing this frame from its role and situation.
 func _update_activity(m: Dictionary, delta: float) -> void:
 	m.cool = maxf(0.0, m.cool - delta)
 	if m.act == ACT_ANTENNATE and m.act_left > 0.0 and m.has("ant_with"):
 		# drumming the other's antennae while it is there: facing it as it shifts, over once it has moved on
 		var o = _mate_of(int(m.ant_with))
-		if o == null or not o.has("vp") or not m.has("vp") or (o.vp as Vector3).distance_to(m.vp) > 1.8 * (float(m.size) + float(o.size)):
+		if o == null or not o.has("vp") or not m.has("vp") or (o.vp as Vector3).distance_to(m.vp) > 1.8 * (float(m.size) + float(o.size)) 				or not _heads_meet(m, o, 1.15, 180.0):
 			m.act_left = 0.0
 		else:
 			m.face = o.vp
@@ -468,6 +477,7 @@ func _update_ants(delta: float) -> void:
 			if m.has("partner"):
 				m.sep = (m.get("sep", Vector3.ZERO) as Vector3).move_toward(Vector3.ZERO, 3.0 * md)   # (feeding: stands where it stepped to)
 				tr.origin += m.sep
+				m.sep_d = m.sep
 			else:
 				# worked out for a third of the ants each frame, each on its own turn (with the time since its
 				# last turn); between, it keeps the shift it has (eased slowly anyway) - the costliest part of
@@ -475,12 +485,15 @@ func _update_ants(delta: float) -> void:
 				m.ka_t = float(m.get("ka_t", 0.0)) + md
 				if (_mate_frame + mi) % 3 == 0 or not m.has("sep"):
 					m.narrow = _cell_narrow(m.cell)
-					tr.origin += _keep_apart(m, tr.origin, near, minf(m.ka_t, 0.25))
+					_keep_apart(m, tr.origin, near, minf(m.ka_t, 0.25))
 					_step_aside(m, m.ka_t)
 					_make_room(m, m.ka_t)
 					m.ka_t = 0.0
-				else:
-					tr.origin += m.sep
+				# (drawn easing toward its shift every frame: set every third frame, the body moved in jerks, and its
+				# lifted feet - drawn from the body - went to and fro: the keeper saw resting ants shake, 2026-10-28)
+				var sep_now: Vector3 = m.get("sep", Vector3.ZERO)
+				m.sep_d = (m.get("sep_d", sep_now) as Vector3).lerp(sep_now, 1.0 - exp(-20.0 * md))
+				tr.origin += m.sep_d
 		# (crossing the brood pile, or brushing a larva: up on top of it - see nest_contact._climb, last of all below)
 		# lying on the real surface under it: where a chamber floor or wall curves (or drops away) the cell it
 		# walks on is not where the ground is - its body is tipped to the slope under its feet, raised or lowered
@@ -557,8 +570,7 @@ func _update_ants(delta: float) -> void:
 		var sgr: float = m.get("sgr", 0.0)
 		if sgr > 0.0:
 			# stepping aside (see _step_aside): its legs keep pace with the shift every frame
-			m.gait = fmod(float(m.gait) + sgr * md, TAU * 64.0)
-			m.mv = maxf(float(m.mv), float(m.smv))
+			m.gait = fmod(float(m.gait) + sgr * md, TAU * 64.0)      # (and its mv eases toward smv: nest_bodies._smooth)
 		# up on a nestmate's back passing it (see _keep_apart), or on the brood (see nest_contact._climb): last, on the
 		# body as it lies on the ground - what is under it is drawn so (raised before, the ground fit then lowered it
 		# into them)
@@ -609,7 +621,7 @@ func _update_ants(delta: float) -> void:
 				elif m.get("item", "") == "prey":
 					prey_loads.append(tr)
 				elif m.get("item", "") == "cocoon":
-					cocoon_loads.append(tr * CARRY_OFFSET)
+					cocoon_loads.append(tr * _cocoon_hold(float(m.get("load_s", 0.88)) / tr.basis.x.length()))
 				elif m.get("item", "") == "shell":
 					shell_loads.append(tr * CARRY_OFFSET * Transform3D(Basis.from_scale(Vector3(0.85, 0.6, 1.1)), Vector3.ZERO))
 				else:

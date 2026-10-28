@@ -199,14 +199,30 @@ def blob(c, r):
         v.co = B(Vector((c.x + g.x * r.x, c.y + g.y * r.y, c.z + g.z * r.z)))
 
 
+def blob_on(c, m3, r):
+    """An ellipsoid turned by m3 (its z along m3's z), centre and semi-axes in Godot axes."""
+    m = bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=12, radius=1.0)
+    for v in m["verts"]:
+        g = GV(v.co)
+        v.co = B(c + m3 @ Vector((g.x * r.x, g.y * r.y, g.z * r.z)))
+
+
 rest = chains("open")
 for name, (pts, rots, r) in rest.items():
     # from inside the palm to the tip; a little wider at the joints
+    # (a finger's root sunk in the palm, narrower: its rounded end stood up out of the back of the hand 2 cm behind the
+    # knuckle, a bump ~3 mm high - what the keeper saw as the knuckles' lumps, 2026-10-28)
     base = pts[0] + (rots[0].to_3x3() @ Vector((0, 0, 1))) * (0.02 if name != "thumb" else 0.006)
-    radii = [r * 1.08, r * 1.04, r * 0.97, r * 0.9, r * 0.8]
+    if name != "thumb":
+        base += Vector((0, -0.006, 0))
+    radii = [r * (0.7 if name != "thumb" else 1.08), r * 1.04, r * 0.97, r * 0.9, r * 0.8]
     tube([base] + pts, radii)
     if name != "thumb":
-        blob(pts[0] + Vector((0, r * 0.15, 0.004)), Vector((r * 0.95, r * 0.75, r * 1.2)))     # the knuckle
+        # the knuckle: a long low swell laid along the finger's first bone, from the back of the hand down onto the
+        # finger (a round blob stood up as a lump with a dip behind it: the keeper, 2026-10-28)
+        m3 = rots[0].to_3x3()
+        d = m3 @ Vector((0, 0, -1))
+        blob_on(pts[0] - d * 0.004 + Vector((0, r * 0.02, 0)), m3, Vector((r * 1.05, r * 0.78, 0.027)))
 # the palm: rounded, a little arched across, thicker at the heel and at the thumb's ball (long ellipsoids, much overlapped:
 # a stack of short ones left ridges)
 blob(Vector((0.0, 0.0, -0.05)), Vector((0.039, 0.0135, 0.052)))

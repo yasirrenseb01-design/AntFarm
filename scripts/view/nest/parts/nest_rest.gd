@@ -25,8 +25,12 @@ func _step_aside(m: Dictionary, dt: float) -> void:
 	ds -= up * ds.dot(up)
 	var sv_avg: Vector3 = (m.get("sepv", Vector3.ZERO) as Vector3).lerp(ds / dt, 1.0 - exp(-4.0 * dt))
 	m.sepv = sv_avg
-	var speed := ds.length() / dt
-	if speed < 0.02:
+	# (by the push as it goes over a quarter of a second, not frame by frame: the keep-apart push wobbles to and fro a
+	# little every frame, and stepping by each wobble a resting ant trod on the spot - a foot lifted ~11 times a second,
+	# landing with jumps of 0.3-0.5: the keeper saw them shake, 2026-10-28. Nudged slower than STEP_ASIDE_MIN, it
+	# stands on its planted feet - and steps once it has gone off them: nest_feet._feet_twisted)
+	var speed := sv_avg.length()
+	if speed < STEP_ASIDE_MIN:
 		m.sgr = 0.0
 		return
 	m.sgr = speed / (AntModel.stride_len(float(m.get("stride", 1.0))) * float(m.size)) * TAU
@@ -35,6 +39,9 @@ func _step_aside(m: Dictionary, dt: float) -> void:
 		var w := sv_avg.normalized()
 		if (m.vf as Vector3).dot(w) > -0.3:
 			m.vf = _turn_to(m.vf, w, minf(1.0, 2.5 * dt))
+
+
+const STEP_ASIDE_MIN := 0.15    # units a second a push must shift it by before its legs step with it
 
 
 ## A resting ant pushed well off its spot (its neighbours or the queen are in the way) gets up after a moment

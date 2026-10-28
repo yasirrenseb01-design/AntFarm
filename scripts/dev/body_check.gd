@@ -304,14 +304,41 @@ static func measure(nv, tally: Dictionary) -> void:
 						gap = g
 						near = "ant"
 		var what := "%s %s" % [{6: "feeding", 7: "licking", 22: "grooming", 3: "antennating", 21: "taking a drop"}[act], m.get("role", "")]
+		if act == nv.ACT_ANTENNATE:
+			# (why: a pair sharing a drop - the giver stepping up to the other - or two met by chance, or neither)
+			what = "antennating, %s" % ("sharing a drop (%s)" % ("giver" if m.get("fed", false) else "taker") if m.has("partner")
+				else ("met by chance" if m.has("ant_with") else ("scripted %s" % str(m.get("script", {}).get("k", "?")) if m.has("script") else "neither")))
 		tally["lk_n:" + what] = int(tally.get("lk_n:" + what, 0)) + 1
 		tally.lick_n = int(tally.get("lick_n", 0)) + 1
 		if OS.has_environment("LKDBG") and gap > 0.5 * s and act != nv.ACT_ANTENNATE and int(tally.get("lkdbg", 0)) < 30:
 			tally.lkdbg = int(tally.get("lkdbg", 0)) + 1
 			print("LKDBG %s gap %.2f s %.2f near %s face %s mouth %s org %s script %s vact %s" % [what, gap, s, near, str(m.get("face")), mouth, (m.xf as Transform3D).origin, str(m.get("script", {}).get("k", "-")), str(m.get("vact"))])
+		if OS.has_environment("AKDBG") and act == nv.ACT_ANTENNATE and m.has("ant_with") and int(tally.get("akdbg", 0)) < 60:
+			var o = nv._mate_of(int(m.ant_with))
+			if o != null and o.has("xf"):
+				tally.akdbg = int(tally.get("akdbg", 0)) + 1
+				var to: Vector3 = (o.xf as Transform3D).origin - (m.xf as Transform3D).origin
+				print("AKDBG gap %.2f s %.2f dist %.2f off %d deg  other's off %d  left %.2f" % [gap, s, to.length(),
+					rad_to_deg((m.xf as Transform3D).basis.x.normalized().angle_to(to)), rad_to_deg((o.xf as Transform3D).basis.x.normalized().angle_to(-to)), float(m.act_left)])
 		if gap > (1.0 if act == nv.ACT_ANTENNATE else 0.5) * s:     # (its antennae reach about a body's length)
 			tally["lk:" + what] = int(tally.get("lk:" + what, 0)) + 1
 			tally.lick_none = int(tally.get("lick_none", 0)) + 1
+	# QUEEN: nestmates drawn into the queen's body (the keeper, 2026-10-27: attendants over the edge of her) - by what
+	# they are doing, of the ant-frames within reach of her
+	if not qsph.is_empty():
+		for i in ants.size():
+			var m: Dictionary = ants[i]
+			if (m.xf as Transform3D).origin.distance_to(nv._queen_xf.origin) > 7.0:
+				continue
+			var who := "%s, act %d" % [m.get("role", "?"), int(m.get("act", 0)) % 128]
+			tally["qn:" + who] = int(tally.get("qn:" + who, 0)) + 1
+			tally.q_n = int(tally.get("q_n", 0)) + 1
+			var d := _depth(sph[i], qsph)
+			if d > BITE:
+				tally["qi:" + who] = int(tally.get("qi:" + who, 0)) + 1
+				tally.q_in = int(tally.get("q_in", 0)) + 1
+				if d > DEEP:
+					tally.q_deep = int(tally.get("q_deep", 0)) + 1
 	# ants in the brood
 	for i in ants.size():
 		var m: Dictionary = ants[i]
@@ -567,6 +594,11 @@ static func report(tally: Dictionary) -> String:
 	lines.append("  ECLOSE: opened off clear floor %.2f%% of %d eclosion-frames, callow raised off the floor %.2f%% of %d pulled-out frames, %d frames carried to clear floor" % [
 		100.0 * float(tally.get("ecl_unclear", 0)) / maxf(1.0, float(tally.get("ecl_frames", 0))), int(tally.get("ecl_frames", 0)),
 		100.0 * float(tally.get("ecl_raised", 0)) / maxf(1.0, float(tally.get("ecl_out", 0))), int(tally.get("ecl_out", 0)), int(tally.get("ecl_moving", 0))])
+	lines.append("  QUEEN: nestmates in her body %.2f%% (deep %.2f%%) of %d ant-frames near her" % [100.0 * float(tally.get("q_in", 0)) / maxf(1.0, float(tally.get("q_n", 0))),
+		100.0 * float(tally.get("q_deep", 0)) / maxf(1.0, float(tally.get("q_n", 0))), int(tally.get("q_n", 0))])
+	for k in tally:
+		if String(k).begins_with("qi:"):
+			lines.append("    QUEEN %s: in her %.2f%% of %d" % [String(k).substr(3), 100.0 * float(tally[k]) / maxf(1.0, float(tally.get("qn:" + String(k).substr(3), 0))), int(tally.get("qn:" + String(k).substr(3), 0))])
 	lines.append("  LICK with nothing at its mouth %.2f%% of %d ant-frames licking, feeding or grooming another" % [
 		100.0 * float(tally.get("lick_none", 0)) / maxf(1.0, float(tally.get("lick_n", 0))), int(tally.get("lick_n", 0))])
 	for k in tally.keys():

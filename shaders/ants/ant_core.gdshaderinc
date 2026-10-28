@@ -171,6 +171,9 @@ vec3 stride_t(vec3 F, float dx, float tws, float fmode) {
 }
 
 const float FOOT_REACH_X = 0.25;
+// How far a planted leg straightens, hip to ankle over its two segments, reaching down for a foothold: it stays a little
+// bent (0.97 drew legs straight as stilts as the body went over an edge - the keeper, 2026-10-28)
+const float LEG_EASE = 0.92;
 
 // The foot at T (model units) set down on the real ground under it (rough nest floors, the slope outside), the body
 // at M. (Its body lifted - the brood, the soil clearance: 0.6-1.1. A leg spread wide reaches ~0.75 down, one drawn in
@@ -247,8 +250,12 @@ vec3 set_down(vec3 T, mat4 M, vec3 H, vec3 C, vec3 dAF, float lmax, float fmode)
 	// (on a wall or the ceiling with no soil under the foot - the glass of a glass nest - it stays put;
 	// on a floor it reaches down for the ground as far as the leg goes; up a steep chamber edge the foot climbs with it,
 	// and with its body sunk in the floor - squeezed down a tunnel - up onto the floor, as far as a leg folds: 1.0)
+	// (down no further than the leg reaches from where the foot is now - it was let down the whole reach, and a leg
+	// set out wide stood out straight as a stilt to a foothold it could not bend to: the keeper, 2026-10-28)
 	if (gd > -1.35 || abs(M[1].y) > 0.5 * sc) {
-		T.y += clamp(gd / sc, -reach, 1.0);
+		float hd = length((T + dAF - C).xz);
+		float rr = min(reach, sqrt(max(lmax * lmax - hd * hd, 0.0)) + dAF.y - C.y);
+		T.y += clamp(gd / sc, -max(rr, 0.0), 1.0);
 	}
 	return T;
 }
@@ -390,7 +397,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			float amp = STRIDE_A * K * sscale * mv;
 			float tws = tw * tdir;
 			// how far down this leg can set its foot at T: its ankle can be at most femur + tibia from the coxa
-			float lmax = 0.97 * (length(N - C) + length(A - N));
+			float lmax = LEG_EASE * (length(N - C) + length(A - N));
 			vec3 dAF = A - F;
 			bool ground = ground_mode != 0 && probe;           // (not for shadows)
 			bool on_nm = fmode > 0.5 && fmode < 1.5;            // (up on a nestmate's back: not looking for the soil)

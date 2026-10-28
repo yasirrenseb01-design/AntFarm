@@ -10,9 +10,11 @@ extends RefCounted
 
 const BodyCheck := preload("res://scripts/dev/body_check.gd")
 const SwayCheck := preload("res://scripts/dev/sway_check.gd")
+const StillCheck := preload("res://scripts/dev/still_check.gd")
 const K := 0.34              # model design units -> mesh units (the shader's K)
 const STRIDE_A := 1.3
 const FOOT_REACH_X := 0.25    # (the shader's: the feet reach that much further down than the 0.5 a leg rests at)
+const LEG_EASE := 0.92        # (the shader's: how far a planted leg straightens reaching down)
 const AIR_GAP := 0.15        # world units (~0.2 mm)
 const SUNK := 0.12
 
@@ -163,7 +165,9 @@ static func _set_down(nest, T: Vector3, M: Transform3D, H: Vector3, C: Vector3, 
 	var Ts := T
 	var hy := 0.0
 	if gd > -1.35 or absf(M.basis.y.y) > 0.5 * sc:
-		hy = clampf(gd / sc, -reach, 1.0)
+		var hd := Vector2((T + dAF - C).x, (T + dAF - C).z).length()
+		var rr := minf(reach, sqrt(maxf(lmax * lmax - hd * hd, 0.0)) + dAF.y - C.y)
+		hy = clampf(gd / sc, -maxf(rr, 0.0), 1.0)
 		T.y += hy
 	return [T, br, Ts, hy * sc]
 
@@ -222,7 +226,7 @@ static func feet(nest, M: Transform3D, cus: Color, rec := PackedFloat32Array(), 
 		var duty := lerpf(0.55, 0.42, clampf((sscale - 1.0) / 0.5, 0.0, 1.0))
 		var u := fposmod((gait + grp) / TAU, 1.0)
 		var amp := STRIDE_A * K * sscale * mv
-		var lmax := 0.97 * ((N - C).length() + (A - N).length())
+		var lmax := LEG_EASE * ((N - C).length() + (A - N).length())
 		var dAF := A - F
 		var up := 0.0
 		var planted := false
@@ -300,7 +304,8 @@ static func feet(nest, M: Transform3D, cus: Color, rec := PackedFloat32Array(), 
 			print("    leg %d%s planted %s upy %.2f fmode %d reach %.2f  T %s  tipErr %.3f  gd_tip %.2f" % [li, "R" if side > 0 else "L", planted, M.basis.y.y / sc, fmode, reach,
 				M * T, (A2 - TA).length(), _ground_dy(nest, M * tip, upw)])
 		var info := {"u": u, "mv": mv, "ss": sscale, "tw": tw * tdir, "fm": fmode, "act": act, "br": br, "tb": tb, "ts": ts,
-			"hy": hy, "err": M.basis * (tip - T), "M": M, "tl": T0, "lo": lo, "lu": lu}
+			"hy": hy, "err": M.basis * (tip - T), "M": M, "tl": T0, "lo": lo, "lu": lu,
+			"ext": (A2 - Cy).length() / ((Ny - Cy).length() + (Ay - Ny).length())}     # (1: the leg straight, hip to ankle)
 		out.append([M * tip, planted, int(li), (tip - T).length(), M * T, M * Cy, info])
 	return out
 
@@ -341,6 +346,7 @@ static func measure(nv, tally: Dictionary) -> void:
 		_close_ant(tally)
 		var fs := feet(nest, M, mm.get_instance_custom_data(i), _rec(nv, i), dbg)
 		_twist(fs, M, float(mm.get_instance_custom_data(i).a), tally)
+		StillCheck.track(i, M, fs, tally)     # (legs shifting under a body standing still, legs stretched: dev/still_check.gd)
 		var upw := M.basis.y.normalized()
 		# jitter: a planted foot stays where it is in the world while the body walks over it - from one frame to the
 		# next it may slide a little with the stride, not jump (only when measured every frame: --seq-every=1)
@@ -777,6 +783,7 @@ static func report(tally: Dictionary) -> String:
     ants staying put for a second, %s: %d - heading swinging to and fro %.1f%%, head/gaster nodding %.1f%%, bending sideways to and fro %.1f%%" % [
 				"beside a wall" if key == "wall" else "in the open", int(nst), 100.0 * float(tally.get("st_turn:" + key, 0)) / nst,
 				100.0 * float(tally.get("st_bend:" + key, 0)) / nst, 100.0 * float(tally.get("st_lat:" + key, 0)) / nst]
+	s += StillCheck.report(tally)
 	s += "
     ants standing (nearly) still swaying - turned one way then back the next frame: %.2f%% of %d" % [100.0 * float(tally.get("sway", 0)) / maxf(1.0, float(tally.get("sway_n", 0))), int(tally.get("sway_n", 0))]
 	s += "
