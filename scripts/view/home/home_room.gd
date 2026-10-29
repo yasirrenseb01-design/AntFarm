@@ -39,8 +39,10 @@ var _lawn: StandardMaterial3D
 
 ## places: home_store.places() (where each tank stands); shelves: how many tanks each shelf bought holds; hour: the
 ## clock's; env: the room's environment (its ambient light follows the hour); hide: a slot whose tank is not drawn (the
-## colony open in the game, its box drawn there by the foraging view instead).
-func build(places: Array, shelves: Array, filled: Callable, hour: float, env: Environment, hide := 0, hide_cold := -1) -> void:
+## colony open in the game, its box drawn there by the foraging view instead); live, live_cold: the colony played last and
+## whether it is in the fridge now (1) or not (0).
+func build(places: Array, shelves: Array, filled: Callable, hour: float, env: Environment, hide := 0, hide_cold := -1,
+		live := 0, live_cold := -1) -> void:
 	_env = env
 	_room()
 	_window()
@@ -70,8 +72,14 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 	for p in places:
 		var s := int(p.slot)
 		var full: bool = filled.call(s)
-		# (hide_cold: the hidden tank's colony is open now - in the fridge or not as it is now, not as last saved)
-		var cold: bool = (hide_cold == 1) if s == hide and hide_cold >= 0 else bool(Store.meta(s).get("fridge", false))
+		# (hide_cold: the hidden tank's colony is open now - in the fridge or not as it is now, not as last saved; live: the
+		# colony just left for the Home, the same - put in or taken out of the fridge, its tank stayed where the last save
+		# had it until the game was opened again: the keeper, 2026-10-29)
+		var cold: bool = bool(Store.meta(s).get("fridge", false))
+		if s == hide and hide_cold >= 0:
+			cold = hide_cold == 1
+		elif s == live and live_cold >= 0:
+			cold = live_cold == 1
 		if full and cold:
 			resting.append(int(p.number))
 			resting_slots.append(s)

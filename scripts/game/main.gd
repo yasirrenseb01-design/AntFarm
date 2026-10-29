@@ -240,9 +240,7 @@ func _ready() -> void:
 	if _opts.has("quit-after") and not _opts.has("shot"):
 		# (dev: close as the keeper would after that many seconds - desktop mode checked on the real desktop)
 		get_tree().create_timer(float(_opts["quit-after"])).timeout.connect(func():
-			_notification(NOTIFICATION_WM_CLOSE_REQUEST)
-			if not desktop.on:
-				get_tree().quit())
+			quit_game())
 
 
 func _process(delta: float) -> void:
@@ -336,17 +334,29 @@ func _notification(what: int) -> void:
 		if desktop != null and not desktop.on and outworld != null and not _opts.has("shot"):
 			Engine.max_fps = _fps_cap if _window_in_use else mini(Graphics.FPS_IDLE, _fps_cap if _fps_cap > 0 else 999)
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if _closing:
+			return                      # (saved once: the window's close and Quit both came here, and it saved twice)
+		_closing = true
 		_save_now()
-		if desktop != null:
-			desktop.close()             # (as the wallpaper: out of the wallpaper layer first, then it quits)
+		if desktop != null and desktop.close():
+			return                      # (as the wallpaper: out of the wallpaper layer first, then it quits)
+		# the views freed here, before the engine's own shutdown: left to it, quitting from the Home took ~4 s, the window
+		# standing there (the keeper, 2026-10-29: 5-8 s) - freed first, it is gone in ~0.5 s
+		get_tree().auto_accept_quit = false
+		_finish_quit.call_deferred()
+
+
+
+func _finish_quit() -> void:
+	for c in get_children():
+		c.free()
+	get_tree().quit()
 
 
 ## "Quit" on the title page: saved as when the window is closed, then the game ends. (Until v0.11.44 it only sent the
 ## window's close notice round the nodes - the colony was saved, but nothing quits on that notice: the game stayed.)
 func quit_game() -> void:
 	_notification(NOTIFICATION_WM_CLOSE_REQUEST)
-	if desktop == null or not desktop.on:
-		get_tree().quit()
 
 
 ## The nest as the desktop wallpaper (desktop_mode.gd; what went wrong comes back by its `failed` signal). The

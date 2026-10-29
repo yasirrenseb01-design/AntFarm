@@ -69,12 +69,23 @@ func _set_mode(m: String) -> void:
 
 # ---------------------------------------------------------------- saving and time away
 
+var _closing := false           # (the window closing: saved once - main.gd _notification)
+var _card_ms := -1000000         # (when the box from above was last drawn for the Home)
+
+
 func _save_now() -> void:
 	if _persist and sim != null and not _demo and not _opts.has("testsave"):        # (a grown test colony stays as it was)
+		var t0 := Time.get_ticks_msec()
 		Store.save(slot, sim)
-		if sim.scenario != "wild" and outworld != null:
-			OutworldCard.write(Store.base + "saves", slot, outworld)     # (the box from above, for the Home's tank)
+		var t1 := Time.get_ticks_msec()
+		# (the box from above, for the Home's tank - drawn with the whole scene, 0.2-2.5 s: closing, not again if drawn in
+		# the last minute and a half - the autosave draws it every minute anyway)
+		if sim.scenario != "wild" and outworld != null and not (_closing and Time.get_ticks_msec() - _card_ms < 90000):
+			OutworldCard.write(Store.base + "saves", slot, outworld)
+			_card_ms = Time.get_ticks_msec()
 		harmony.save_purse()
+		if OS.has_environment("QUITDBG"):
+			print("QUITDBG save %d ms, card+purse %d ms at %.3f" % [t1 - t0, Time.get_ticks_msec() - t1, Time.get_unix_time_from_system()])
 		_autosave_t = 0.0
 
 
