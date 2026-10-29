@@ -4,7 +4,7 @@ AntFarm: Legion of the Unseen - Credits
 [ภาษาไทยอยู่ด้านล่าง / Thai below]
 
 Made by
-  ______________________________   (design, code, art direction)
+  Yasir renseb   (design, code, art direction)
 
 Engine
   Godot Engine 4.7 - https://godotengine.org
@@ -76,7 +76,7 @@ Research the ants are based on
 ภาษาไทย
 -------
 ผู้สร้าง
-  ______________________________   (ออกแบบ เขียนโค้ด กำกับภาพ)
+  Yasir renseb   (ออกแบบ เขียนโค้ด กำกับภาพ)
 
 เอนจิน
   Godot Engine 4.7 - https://godotengine.org — สัญญาอนุญาต MIT
