@@ -191,8 +191,6 @@ wild_colonies,โหมดป่า: รังในแปลงสวน,Wild m
 tank_colonies,ตู้เลี้ยงในบ้าน,The tanks at home
 new_title_wild,เริ่มรังใหม่ในแปลงสวน %d,New colony in garden plot %d
 new_title_tank,เริ่มรังใหม่ในตู้ %d,New colony in tank %d
-home_back,← หน้าแรก,← Title page
-home_title,บ้าน,Home
 home_help,"เดิน: W A S D · มองรอบ: ขยับเมาส์ · คลิก: ตู้ เก้าอี้ ประตู · Tab: ปล่อยเมาส์ไว้กดปุ่ม/ร้านค้า · ซูม: ลูกกลิ้ง · Esc กลับหน้าแรก","Walk: W A S D · look round: move the mouse · click: a tank, the chair, the door · Tab: free the pointer for the buttons and the shop · zoom: wheel · Esc: title page"
 home_purse,Colony Harmony %s,Colony Harmony %s
 home_door,ประตู,The door

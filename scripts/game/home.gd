@@ -171,23 +171,34 @@ void fragment() { float d = length(UV - 0.5) * 22.0; float r = mix(5.0, 8.0, hot
 	cm.shader = cs
 	_cross.material = cm
 	root.add_child(_cross)
-	# a bar along the top on paper: back to the title page, the Home, the purse
-	var bar := PanelContainer.new()
-	bar.add_theme_stylebox_override("panel", Paper.page())
-	bar.anchor_right = 1.0
-	bar.offset_bottom = 46
-	bar.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.add_child(bar)
+	# a tab hanging from the top edge on the right, its bottom corners rounded: the purse and the shop (the keeper,
+	# 2026-10-29: the bar along the top taken away - back to the title page is Esc, as the line at the foot says)
+	var tab := PanelContainer.new()
+	var tsb := StyleBoxFlat.new()
+	tsb.bg_color = Color(0.8, 0.67, 0.5)                   # (the paper's tone: paper.gd texture)
+	tsb.border_color = Color(0.55, 0.42, 0.28)
+	tsb.border_width_left = 1
+	tsb.border_width_right = 1
+	tsb.border_width_bottom = 1
+	tsb.corner_radius_bottom_left = 12
+	tsb.corner_radius_bottom_right = 12
+	tsb.content_margin_left = 16
+	tsb.content_margin_right = 12
+	tsb.content_margin_top = 6
+	tsb.content_margin_bottom = 8
+	tsb.shadow_color = Color(0, 0, 0, 0.25)
+	tsb.shadow_size = 4
+	tsb.shadow_offset = Vector2(0, 2)
+	tab.add_theme_stylebox_override("panel", tsb)
+	tab.anchor_left = 1.0
+	tab.anchor_right = 1.0
+	tab.offset_right = -24
+	tab.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	tab.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.add_child(tab)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	bar.add_child(row)
-	var back: Button = h._button(tr("home_back"), false)
-	back.pressed.connect(close)
-	row.add_child(back)
-	var title: Label = h._label(tr("home_title"), 18, Paper.ACCENT)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	row.add_child(title)
+	row.add_theme_constant_override("separation", 14)
+	tab.add_child(row)
 	_purse = h._label("", 14, Paper.INK)
 	row.add_child(h.with_harmony_icon(_purse, 22))
 	var shop_b: Button = h._button(tr("home_shop"), false)
@@ -209,7 +220,7 @@ void fragment() { float d = length(UV - 0.5) * 22.0; float r = mix(5.0, 8.0, hot
 	_toast = _note(root, h)
 	_food = _note(root, h)                       # (the tanks whose sugar or protein is running out: _check_food)
 	_food.add_theme_color_override("font_color", Color(0.75, 0.33, 0.05))
-	_food.position = Vector2(20, 56)
+	_food.position = Vector2(20, 16)
 	_set_clock()
 
 
