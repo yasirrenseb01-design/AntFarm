@@ -103,6 +103,24 @@ func _arrive(m: Dictionary) -> void:
 
 func _step_mate(m: Dictionary) -> void:
 	var c: Vector3i = m.cell
+	if (_queen_near.has(c) or _queen_cells.has(c)) and not m.has("script"):
+		# standing where its body is in hers (she stepped up to it, or it rested there before she came): out first, to the
+		# next cell farthest from her - every way round was barred to it, and it stayed in her, walking on the spot
+		# (worker #14 and #6 under her thorax: the keeper, 2026-10-28/29)
+		var best := c
+		var bg := _queen_gap(Vector3(c))
+		for d in DIRS:
+			var n := c + d
+			if _walkable(n) and not _queen_cells.has(n):
+				var g := _queen_gap(Vector3(n))
+				if g > bg:
+					bg = g
+					best = n
+		if best != c:
+			m.rest = 0
+			m.settle = []
+			_move_mate(m, best)
+			return
 	var path: Array = m.get("settle", [])
 	if not path.is_empty():
 		var n: Vector3i = path.pop_front()          # stepping to the free spot it chose
@@ -461,6 +479,13 @@ func _update_ants(delta: float) -> void:
 					m.fgap = 1.0
 				us_gap += Time.get_ticks_usec() - tg
 			_update_activity(m, madt)
+			if not m.has("script") and (_queen_near.has(m.cell) or _queen_cells.has(m.cell)) \
+					and (m.act in STILL_ACTS or int(m.rest) > 0 or float(m.get("fgap", 1.0)) < 1.0):
+				m.rest = 0                        # (resting where the queen now is: it gets up and steps out - _step_mate)
+				m.fgap = 1.0
+				m.act = 0
+				m.act_left = 0.0
+				m.t = maxf(float(m.t), 1.0)
 			if not m.act in STILL_ACTS:
 				m.t += mdt * (0.25 if sim.tick < int(m.get("weak_until", 0)) else 1.0) * float(m.get("fgap", 1.0)) * (LEAVE_HURRY if m.get("hurry", false) else 1.0)
 				while m.t >= 1.0 and mdt > 0.0:

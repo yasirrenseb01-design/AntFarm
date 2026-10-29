@@ -46,25 +46,47 @@ func _stick(a: Vector3, b: Vector3, r: float, mat: Material, parent: Node3D) -> 
 	c.basis = Basis(x, y, x.cross(y))
 
 
-## The kit along the desk's front edge; y: the desk top.
+## The kit put away in a wooden tray with three compartments, at the desk's front right (the keeper, 2026-10-29: "laid
+## out loose it looks untidy - put them in a box"): the long tools side by side, the tubes in their cradle, the dish,
+## the aspirator with its hose coiled and the bottle; y: the desk top.
+const TRAY := Vector3(0.56, 0.035, 0.2)         # outside: long, the walls' height, deep
+
 func _keeper_tools(y: float) -> void:
-	var z := DESK.z + DESK_SIZE.z * 0.5 - 0.11               # 11 cm in from the front edge
-	_petri(Vector3(DESK.x - 0.36, y, z + 0.01))
-	_syringe(Vector3(DESK.x - 0.22, y, z - 0.01), 0.35)
-	_brush(Vector3(DESK.x - 0.06, y, z + 0.02), -0.4)
-	_forceps(Vector3(DESK.x - 0.05, y, z - 0.04), -0.25)
-	_lens(Vector3(DESK.x + 0.12, y, z))
-	_aspirator(Vector3(DESK.x + 0.3, y, z - 0.02))
-	_tubes(Vector3(DESK.x + 0.52, y, z))
-	_fluon(Vector3(DESK.x + 0.74, y, z - 0.03))
+	var c := Vector3(DESK.x + 0.48, y, DESK.z + DESK_SIZE.z * 0.5 - 0.115)      # (its front 1.5 cm in from the desk's edge)
+	_tray(c)
+	var f := c.y + 0.006                                    # the tray's floor
+	_brush(Vector3(c.x - 0.18, f, c.z - 0.07), 0.0)
+	_forceps(Vector3(c.x - 0.185, f, c.z - 0.035), 0.0)
+	_syringe(Vector3(c.x - 0.18, f, c.z + 0.0), 0.0)
+	_lens(Vector3(c.x - 0.225, f, c.z + 0.055), 0.0)
+	_tubes(Vector3(c.x + 0.0, f, c.z), PI * 0.5)
+	_aspirator(Vector3(c.x + 0.13, f, c.z - 0.05), true)
+	_petri(Vector3(c.x + 0.135, f, c.z + 0.048), true)
+	_fluon(Vector3(c.x + 0.225, f, c.z - 0.055))
+
+
+## The tray: a floor, four walls, two dividers; wood a little paler than the desk's.
+func _tray(c: Vector3) -> void:
+	var g := Node3D.new()
+	g.position = c
+	add_child(g)
+	var m := wood(Color(0.66, 0.5, 0.32), Color(0.78, 0.62, 0.42), 9.0, 9.0, 60.0)
+	var t := 0.01
+	_box(Vector3(TRAY.x, 0.006, TRAY.z), Vector3(0, 0.003, 0), m, g)
+	for sz in [-1.0, 1.0]:
+		_box(Vector3(TRAY.x, TRAY.y, t), Vector3(0, TRAY.y * 0.5, sz * (TRAY.z - t) * 0.5), m, g)
+	for sx in [-1.0, 1.0]:
+		_box(Vector3(t, TRAY.y, TRAY.z - 2.0 * t), Vector3(sx * (TRAY.x - t) * 0.5, TRAY.y * 0.5, 0), m, g)
+	for dx in [-0.09, 0.08]:
+		_box(Vector3(0.006, TRAY.y * 0.8, TRAY.z - 2.0 * t), Vector3(dx, TRAY.y * 0.4, 0), m, g)
 
 
 ## Two founding tubes lying in a little wooden cradle: water at the closed end behind a cotton plug, a cotton plug
 ## closing the open end, a queen in the first one (8-9 mm, Lasius niger).
-func _tubes(at: Vector3) -> void:
+func _tubes(at: Vector3, turn := 0.08) -> void:
 	var g := Node3D.new()
 	g.position = at
-	g.rotation.y = 0.08
+	g.rotation.y = turn
 	add_child(g)
 	var wood_m := wood(Color(0.62, 0.45, 0.28), Color(0.74, 0.56, 0.36), 9.0, 9.0, 60.0)
 	for sx in [-0.06, 0.06]:
@@ -102,7 +124,7 @@ func _tubes(at: Vector3) -> void:
 
 ## An aspirator ("pooter"): a clear vial standing on its foot, a rubber stopper, a short glass pipe out of it to suck
 ## an ant in, and a hose from the stopper to a mouthpiece, lying in a loose curve on the desk.
-func _aspirator(at: Vector3) -> void:
+func _aspirator(at: Vector3, coiled := false) -> void:
 	var g := Node3D.new()
 	g.position = at
 	add_child(g)
@@ -114,8 +136,28 @@ func _aspirator(at: Vector3) -> void:
 	_stick(Vector3(0.004, 0.06, 0.0), Vector3(0.03, 0.098, 0.004), 0.0026, pipe, g)    # the intake, angled out
 	_stick(Vector3(-0.004, 0.07, 0.0), Vector3(-0.006, 0.09, 0.0), 0.0026, pipe, g)
 	_blob(Vector3(0.0028, 0.0006, 0.0028), Vector3(-0.004, 0.055, 0.0), flat(Color(0.9, 0.9, 0.9), 0.9), g)   # gauze
-	# the hose: clear-ish orange tubing in a loose curve down to the desk and a mouthpiece
 	var hose := flat(Color(0.85, 0.55, 0.3), 0.45)
+	if coiled:
+		# put away: the hose down from the stopper and coiled beside the vial, the mouthpiece in the coil
+		_stick(Vector3(-0.006, 0.09, 0), Vector3(0.03, 0.06, 0.03), 0.0032, hose, g)
+		_stick(Vector3(0.03, 0.06, 0.03), Vector3(0.06, 0.006, 0.07), 0.0032, hose, g)
+		var coil := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.022
+		tm.outer_radius = 0.0284
+		tm.rings = 24
+		tm.ring_segments = 8
+		coil.mesh = tm
+		coil.material_override = hose
+		coil.position = Vector3(0.085, 0.0035, 0.095)
+		g.add_child(coil)
+		var coil2: MeshInstance3D = coil.duplicate()
+		coil2.position.y += 0.0062
+		coil2.scale = Vector3.ONE * 0.92
+		g.add_child(coil2)
+		_cyl(0.004, 0.025, Vector3(0.085, 0.006, 0.095), flat(Color(0.15, 0.15, 0.16), 0.5), g).rotation.z = PI * 0.5
+		return
+	# the hose: clear-ish orange tubing in a loose curve down to the desk and a mouthpiece
 	var pts := [Vector3(-0.006, 0.09, 0), Vector3(-0.02, 0.1, 0.005), Vector3(-0.045, 0.07, 0.015), Vector3(-0.06, 0.02, 0.03),
 		Vector3(-0.07, 0.004, 0.06), Vector3(-0.05, 0.004, 0.09), Vector3(-0.015, 0.004, 0.1)]
 	for i in pts.size() - 1:
@@ -178,7 +220,7 @@ func _syringe(at: Vector3, turn: float) -> void:
 
 
 ## A petri dish as the feeding dish, its lid leaning against it: a drop of honey and a dead cricket's leg in it.
-func _petri(at: Vector3) -> void:
+func _petri(at: Vector3, lid_on := false) -> void:
 	var g := Node3D.new()
 	g.position = at
 	add_child(g)
@@ -194,15 +236,18 @@ func _petri(at: Vector3) -> void:
 	var leg := flat(Color(0.55, 0.38, 0.2), 0.6)
 	_stick(Vector3(0.008, 0.0025, -0.01), Vector3(0.024, 0.0045, -0.016), 0.0012, leg, g)
 	_stick(Vector3(0.024, 0.0045, -0.016), Vector3(0.033, 0.0022, -0.004), 0.0008, leg, g)
-	var lid := _cyl(0.047, 0.01, Vector3(0.06, 0.03, 0.0), glass, g, -1.0, 32)
-	lid.rotation.z = 1.2                                                           # (stood on its edge, leaning)
+	if lid_on:
+		_cyl(0.047, 0.01, Vector3(0, 0.0115, 0), glass, g, -1.0, 32)                 # (its lid on, put away)
+	else:
+		var lid := _cyl(0.047, 0.01, Vector3(0.06, 0.03, 0.0), glass, g, -1.0, 32)
+		lid.rotation.z = 1.2                                                       # (stood on its edge, leaning)
 
 
 ## A hand lens: a glass disc in a black rim on a handle, lying flat.
-func _lens(at: Vector3) -> void:
+func _lens(at: Vector3, turn := -0.5) -> void:
 	var g := Node3D.new()
 	g.position = at
-	g.rotation.y = -0.5
+	g.rotation.y = turn
 	add_child(g)
 	var black := flat(Color(0.06, 0.06, 0.07), 0.35)
 	var rim := MeshInstance3D.new()

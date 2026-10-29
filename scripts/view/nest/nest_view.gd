@@ -95,8 +95,9 @@ func setup(s) -> void:
 	add_child(_ghost)
 	_upload_volume()
 
-	# the shelf the block sits on
+	# the shelf the block sits on (under the soil held: lowered with it as the garden's soil is taken in deeper)
 	var shelf := MeshInstance3D.new()
+	_shelf = shelf
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(900, 900)
 	shelf.mesh = pm
@@ -104,7 +105,7 @@ func setup(s) -> void:
 	sm.albedo_color = Color(0.07, 0.06, 0.06)
 	sm.roughness = 0.7
 	shelf.material_override = sm
-	shelf.position = Vector3(nest.nx / 2.0, -1.0, nest.nz / 2.0)
+	shelf.position = Vector3(nest.nx / 2.0, nest.y_lo - 1.0, nest.nz / 2.0)
 	add_child(shelf)
 
 	# Lasius niger: glossy dark body with a fine pubescence that gives the gaster a dull sheen

@@ -367,12 +367,17 @@ func _set_vol_shape() -> void:
 			m.set_shader_parameter("vol_org", org)
 	if _xray_mat != null:
 		_xray_mat.set_shader_parameter("box_min_y", float(nest.y_lo))
+	if _shelf != null:
+		# (it stayed at the first block's foot: chambers dug below it were hidden under it, seen only from below - the
+		# keeper, 2026-10-29)
+		_shelf.position.y = nest.y_lo - 1.0
 	if _ghost != null:
 		(_ghost.mesh as BoxMesh).size = size
 		_ghost.position = Vector3(nest.nx / 2.0 - 0.5, nest.y_lo + nest.hy() / 2.0 - 0.5, nest.nz / 2.0 - 0.5)
 
 
 var _resized_seen := 0             # nest.resized when the volumes were last laid out
+var _shelf: MeshInstance3D          # the dark shelf under the soil block (nest_view)
 var _vol_mats: Array = []          # the ants' materials reading the feet's volume (nest_view setup)
 
 
