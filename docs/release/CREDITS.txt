@@ -1,0 +1,96 @@
+AntFarm: Legion of the Unseen - Credits
+======================================
+
+[ภาษาไทยอยู่ด้านล่าง / Thai below]
+
+Made by
+  ______________________________   (design, code, art direction)
+
+Engine
+  Godot Engine 4.7 - https://godotengine.org
+  MIT licence. (c) 2014-present Godot Engine contributors; (c) 2007-2014 Juan Linietsky, Ariel Manzur.
+  The full licence text and the licences of the engine's own components are in THIRD_PARTY_LICENSES.txt.
+
+Music (AI-generated content)
+  "Where the Tall Trees Lean" and "Under the Canopy" - generated with Google Gemini.
+
+Tools
+  3D models made with Blender (https://www.blender.org).
+
+Thanks
+  Everyone who plays the Early Access and reports what they find on Discord: https://discord.gg/ReXz7AFgrG
+
+Research the ants are based on
+  The game's biology is modelled on these published works (the full list, with links and what each one is used for, is
+  kept with the game's source). Where the research does not say, the game's values are its own estimates.
+
+  Walking and climbing
+  - Zollikofer C.P.E. (1994) Stepping patterns in ants I-III. J Exp Biol 192:95-127
+  - Reinhardt L., Blickhan R. (2014) Level locomotion in wood ants: evidence for grounded running. J Exp Biol 217:2358-2370
+  - Wahl V. et al. (2015) Walking and running in the desert ant Cataglyphis fortis. J Comp Physiol A 201
+  - Endlein T., Federle W. (2015) On heels and toes: how ants climb with adhesive pads and tarsal friction hair arrays.
+    PLoS ONE 10(11)
+
+  The nest and digging
+  - Rasse P., Deneubourg J.-L. (2001) Dynamics of nest excavation and nest size regulation of Lasius niger.
+    J Insect Behav 14:433-449
+  - Buhl J. et al. (2004) Self-organized digging activity in ant colonies
+  - Khuong A. et al. (2016) Stigmergic construction and topochemical information shape ant nest architecture.
+    PNAS 113(5):1303-1308
+  - Wang D., McSweeney K., Lowery B., Norman J.M. (1995) Nest structure of ant Lasius neoniger Emery and its implications
+    to soil modification. Geoderma 66
+  - Franks N.R., Sendova-Franks A.B. (1992) Brood sorting by ants: distributing the workload over the work-surface.
+    Behav Ecol Sociobiol 30:109-123
+
+  Food, sharing and work in the colony
+  - Buffin A., Mailleux A.-C., Detrain C., Deneubourg J.-L. (2011) Trophallaxis in Lasius niger: a variable frequency and
+    constant duration for three food types. Insectes Soc 58:177-183
+  - Quque M. et al. (2019) A spatiotemporal analysis of the food dissemination process and the trophallactic network in the
+    ant Lasius niger. Sci Rep
+  - Quque M. et al. (2021) Hierarchical networks of food exchange in the black garden ant Lasius niger. Insect Sci
+  - Mailleux A.-C., Deneubourg J.-L., Detrain C. (2009) Food transport in ants: do Lasius niger foragers maximize their
+    individual load? C R Biol 332:500-506
+  - Traniello J.F.A. (1983) Social organization and foraging success in Lasius neoniger: behavioral and ecological aspects
+    of recruitment communication. Oecologia 59:94-100
+  - Charbonneau D., Dornhaus A. et al. (2015) Workers 'specialized' on inactivity. Behav Ecol Sociobiol
+  - Charbonneau D., Hillis N., Dornhaus A. (2015) 'Lazy' in nature: ant colony time budgets show high 'inactivity' in the
+    field as well as in the lab. Insectes Soc
+  - Mersch D.P., Crespi A., Keller L. (2013) Tracking individuals shows spatial fidelity is a key regulator of ant social
+    organization. Science 340:1090-1093
+
+  The queen
+  - Fjerdingstad E.J., Keller L. (2004) Relationships between phenotype, mating behavior, and fitness of queens in the ant
+    Lasius niger. Evolution 58
+  - Holman L. et al. (2010) Identification of an ant queen pheromone regulating worker sterility
+
+  Predators and defence
+  - Brown C.A., Formanowicz D.R. (2012) The effect of leg autotomy on terrestrial and aquatic locomotion in the wolf spider
+    Pardosa valens. J Arachnol 40:234-239
+  - Villaseñor-Amador D. et al. (2023) Locomotor behaviour of tropical wolf spiders is affected by external temperature and
+    body size, not load bearing. Animal Behaviour
+  - Dejean A. et al. (2010) Arboreal ants use the "Velcro principle" to capture very large prey. PLoS ONE 5:e11331
+
+  Reference photos sent by the maker, and the experience of ant keepers' guides and forums, filled in the rest.
+
+
+ภาษาไทย
+-------
+ผู้สร้าง
+  ______________________________   (ออกแบบ เขียนโค้ด กำกับภาพ)
+
+เอนจิน
+  Godot Engine 4.7 - https://godotengine.org — สัญญาอนุญาต MIT
+  ข้อความสัญญาอนุญาตเต็มและของส่วนประกอบในเอนจินอยู่ใน THIRD_PARTY_LICENSES.txt
+
+เพลง (เนื้อหาที่สร้างด้วย AI)
+  "Where the Tall Trees Lean" และ "Under the Canopy" — สร้างด้วย Google Gemini
+
+เครื่องมือ
+  โมเดล 3 มิติทำด้วย Blender (https://www.blender.org)
+
+ขอบคุณ
+  ทุกคนที่เล่น Early Access และแจ้งสิ่งที่เจอใน Discord: https://discord.gg/ReXz7AFgrG
+
+งานวิจัยที่ใช้
+  ชีววิทยาในเกมจำลองตามงานที่ตีพิมพ์ในรายการภาษาอังกฤษด้านบน (รายการเต็มพร้อมลิงก์และว่าใช้ทำอะไร เก็บไว้กับซอร์สของเกม)
+  ส่วนที่งานวิจัยไม่ได้บอก ค่าในเกมเป็นค่าประมาณของผู้สร้างเอง

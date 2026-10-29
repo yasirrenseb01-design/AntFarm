@@ -1,6 +1,7 @@
 # The release zip (PART EA-R R5): the archived build of this version, AntDesk.exe (the wallpaper helper), README,
-# PRIVACY and the engine's licence notices, zipped as build\release\AntFarm-v<version>-windows.zip with its SHA-256 in
-# a .sha256 file beside it (and printed) - the keeper puts both on the store page. Build first (tools/dev/release.sh).
+# PRIVACY, CREDITS (R6) and the engine's licence notices, zipped as build\release\AntFarm-v<version>-windows.zip with
+# its SHA-256 in a .sha256 file beside it (and printed) - the keeper puts both on the store page. Build first
+# (tools/dev/release.sh).
 #   powershell -ExecutionPolicy Bypass -File tools/package.ps1
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
@@ -18,6 +19,7 @@ Copy-Item $exe "$stage\AntFarm.exe"
 Copy-Item $desk "$stage\AntDesk.exe"
 Copy-Item "$root\docs\release\README.txt" "$stage\README.txt"
 Copy-Item "$root\docs\release\PRIVACY.md" "$stage\PRIVACY.txt"
+Copy-Item "$root\docs\release\CREDITS.txt" "$stage\CREDITS.txt"
 & $godot --headless --path $root --script res://tools/dev/license_text.gd -- "$stage\THIRD_PARTY_LICENSES.txt" | Out-Null
 if (-not (Test-Path "$stage\THIRD_PARTY_LICENSES.txt")) { throw "licence notices not written" }
 $zip = "$out\AntFarm-v$version-windows.zip"
