@@ -37,11 +37,15 @@ func _new_day() -> void:
 			_log(T.chamber_grown)
 	nest.work_left = nest.count_work_left()
 	history.append(_snapshot())
-	if history.size() > 365:
+	if history.size() > HISTORY_DAYS:
 		history.pop_front()
+	# rain: outdoors only - a formicarium in the Home's room has none (it rained in the tanks until v0.11.77: the keeper,
+	# 2026-11-03). The draws are made either way, so a colony's other chances come out as before.
 	if rng.randf() < 0.14:
-		climate.rain_ticks = int(TPD * rng.randf_range(0.15, 0.4))
-		_log(T.rain_start)
+		var ticks := int(TPD * rng.randf_range(0.15, 0.4))
+		if scenario == "wild":
+			climate.rain_ticks = ticks
+			_log(T.rain_start)
 
 
 # ---------------------------------------------------------------- colony physiology
@@ -250,6 +254,7 @@ func _metabolism(dt: float) -> void:
 	_warn("dry", dry, T.warn_dry)
 
 
+const HISTORY_DAYS := 1095     # the colony's day-by-day record kept: three years (one until v0.11.77)
 const TANK_DAYS := 25.0          # a full water tank lasts about this many days at room temperature
 
 

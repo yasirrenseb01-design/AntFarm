@@ -1,48 +1,62 @@
 extends "res://scripts/view/ui/parts/hud_stars.gd"
-## HUD, layer 5 of 7: the top bar (clock, speed, views), the tool bar and the camera pad.
+## HUD, layer 5 of 7: the colony's bar on the left (clock, speed, views), the tool bar and the camera pad.
 
 
 # ---------------------------------------------------------------- layout
 
+## The colony's bar on the left, top to bottom (the keeper, 2026-11-03: "the top bar to the left, a tab to fold it - folded,
+## a Post-it with the day and the season"; along the top until v0.11.77): the species and the box, the days kept, the
+## time, the date and the weather, the points, the speeds, the two views, then the panels and the menu. Folded away, a
+## sticky note is left in its corner (_postit), the day and the season on it: a click opens the bar again.
+const BAR_W := 236.0
+
 func _build_top(root: Control) -> void:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(14, 12)
+	panel.custom_minimum_size.x = BAR_W
 	root.add_child(panel)
 	_top = panel
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
-	panel.add_child(row)
-	_top_row = row
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	panel.add_child(col)
+	_top_row = col
 
 	var title := VBoxContainer.new()
 	title.add_theme_constant_override("separation", 0)
-	title.add_child(_label(tr(sim.sp["name_th"]), 22, INK, _display))
-	title.add_child(_label(tr("top_subtitle") % [sim.sp["name"], tr("top_plot") if sim.scenario == "wild" else tr("top_box"), ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED))
-	row.add_child(title)
+	var name_row := HBoxContainer.new()
+	var name_l := _label(tr(sim.sp["name_th"]), 22, INK, _display)
+	name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_row.add_child(name_l)
+	var fold := _button("‹", false)
+	fold.tooltip_text = tr("bar_fold_tip")
+	fold.pressed.connect(func(): set_bar_open(false))
+	name_row.add_child(fold)
+	title.add_child(name_row)
+	var sub := _label(tr("top_subtitle") % [sim.sp["name"], tr("top_plot") if sim.scenario == "wild" else tr("top_box"),
+		"%d×%d" % [int(sim.WORLD.x * 0.05), int(sim.WORLD.y * 0.05)], ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED)
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub.custom_minimum_size.x = BAR_W - 28.0
+	title.add_child(sub)
+	col.add_child(title)
 	_top_title = title
 
+	# the days since the colony began, big, and the time; the year, date and season under them (the keeper,
+	# 2026-10-28: "show how many days I have kept them")
 	var clock := VBoxContainer.new()
 	clock.add_theme_constant_override("separation", 0)
-	# the days since the colony began, big, and the time; the year, date and season small beside them (the keeper,
-	# 2026-10-28: "show how many days I have kept them")
-	var day_row := HBoxContainer.new()
-	day_row.add_theme_constant_override("separation", 10)
 	_clock = _label("", 20, INK, _mono)
 	_date = _label("", 13, MUTED)
-	_date.size_flags_vertical = Control.SIZE_SHRINK_END
-	day_row.add_child(_clock)
-	day_row.add_child(_date)
+	_date.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_weather = _label("", 12, MUTED)
-	_harmony_l = _label("", 12, AMBER)
-	clock.add_child(day_row)
+	_weather.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	clock.add_child(_clock)
+	clock.add_child(_date)
 	clock.add_child(_weather)
-	# the points: on a small tab hung under the bar's left end, joined to it (the keeper's drawing, 2026-10-27)
-	_harmony_l.add_theme_font_size_override("font_size", 13)
+	col.add_child(clock)
+	# the points, in the bar (on a tab hung under the top bar until v0.11.77)
+	_harmony_l = _label("", 13, AMBER)
 	_harmony_row = with_harmony_icon(_harmony_l, 18)
-	_harmony_tab = PanelContainer.new()
-	_harmony_tab.add_child(_harmony_row)
-	root.add_child(_harmony_tab)
-	_join_tab.call_deferred()
+	col.add_child(_harmony_row)
 	# the food warning, on paper under the bar (the keeper, 2026-10-27: sugar or protein about to run out - food_warning)
 	_food_warn = _label("", 13, Color(0.75, 0.33, 0.05))
 	var fsb: StyleBox = Paper.page()
@@ -51,35 +65,38 @@ func _build_top(root: Control) -> void:
 	fsb.content_margin_top = 4
 	fsb.content_margin_bottom = 5
 	_food_warn.add_theme_stylebox_override("normal", fsb)
+	_food_warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_food_warn.custom_minimum_size.x = BAR_W
 	_food_warn.visible = false
 	_food_warn.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_food_warn)
-	row.add_child(clock)
 
-	var speeds := HBoxContainer.new()
+	col.add_child(HSeparator.new())
+	var speeds := GridContainer.new()
+	speeds.columns = 3
+	speeds.add_theme_constant_override("h_separation", 4)
+	speeds.add_theme_constant_override("v_separation", 4)
 	guide_targets["speeds"] = speeds
-	speeds.add_theme_constant_override("separation", 4)
-	speeds.alignment = BoxContainer.ALIGNMENT_CENTER
 	var g := ButtonGroup.new()
 	# a calm pace for watching (0.5× is where a new game starts); longer stretches pass while the game is closed
 	for pair in [[tr("speed_pause"), 0.0], ["0.2×", 0.2], ["0.5×", 0.5], ["1×", 1.0], ["2×", 2.0], ["5×", 5.0]]:
 		var b := _button(pair[0], true, g)
 		b.button_pressed = pair[1] == 0.5
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var v: float = pair[1]
 		b.pressed.connect(func(): speed_changed.emit(v))
 		speeds.add_child(b)
 	# developer speeds (F10 shows / hides them): fast-forward for testing, not for watching
 	for pair in [["20×", 20.0], ["50×", 50.0], ["100×", 100.0]]:
 		var b := _button(pair[0], true, g)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var v: float = pair[1]
 		b.pressed.connect(func(): speed_changed.emit(v))
 		b.visible = false
 		b.tooltip_text = tr("speed_dev")
 		speeds.add_child(b)
 		_dev_speed_buttons.append(b)
-	var wrap := CenterContainer.new()
-	wrap.add_child(speeds)
-	row.add_child(wrap)
+	col.add_child(speeds)
 
 	var views := HBoxContainer.new()
 	guide_targets["views"] = views
@@ -88,86 +105,111 @@ func _build_top(root: Control) -> void:
 	for pair in [[tr("view_outworld"), "outworld"], [tr("view_nest"), "nest"]]:
 		var b := _button(pair[0], true, vg)
 		b.button_pressed = pair[1] == "outworld"
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_view_btns[pair[1]] = b
 		var m: String = pair[1]
 		b.pressed.connect(func():
 			_apply_mode(m)
 			view_changed.emit(m))
 		views.add_child(b)
-	var vwrap := CenterContainer.new()
-	vwrap.add_child(views)
-	row.add_child(vwrap)
+	col.add_child(views)
 
+	col.add_child(HSeparator.new())
+	var more := GridContainer.new()
+	more.columns = 2
+	more.add_theme_constant_override("h_separation", 4)
+	more.add_theme_constant_override("v_separation", 4)
+	col.add_child(more)
 	var foes := _button(tr("enemies"), false)
 	foes.tooltip_text = tr("enemies_tip")
 	foes.pressed.connect(toggle_enemies)
-	var ewrap := CenterContainer.new()
-	ewrap.add_child(foes)
-	row.add_child(ewrap)
-
 	var stars := _button(tr("stars"), false)
 	guide_targets["stars"] = stars
 	stars.tooltip_text = tr("stars_tip")
 	stars.pressed.connect(toggle_stars)
-	var swrap := CenterContainer.new()
-	swrap.add_child(stars)
-	row.add_child(swrap)
-
 	var mine := _button(tr("my_colonies"), false)
 	mine.pressed.connect(func(): open_colonies())
-	var fwrap := CenterContainer.new()
-	fwrap.add_child(mine)
-	row.add_child(fwrap)
-
 	# the nest as the desktop wallpaper, behind the icons (back: the ant icon in the system tray)
 	var desk := _button(tr("wallpaper"), false)
 	desk.tooltip_text = tr("wallpaper_tip")
 	desk.pressed.connect(func(): desktop_requested.emit())
-	var dwrap := CenterContainer.new()
-	dwrap.add_child(desk)
-	row.add_child(dwrap)
-
 	var menu := _button(tr("menu"), false)
 	guide_targets["menu"] = menu
 	menu.tooltip_text = tr("menu_tip")
 	menu.pressed.connect(func(): menu_requested.emit())
-	var mwrap := CenterContainer.new()
-	mwrap.add_child(menu)
-	row.add_child(mwrap)
+	for b in [foes, stars, mine, desk, menu]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		more.add_child(b)
+
+	_postit = _make_postit()
+	root.add_child(_postit)
 
 
-## The bar and the points' tab drawn as one outline: the bar's bottom-left corner square where the tab hangs from it,
-## the tab with no border along its top and its upper corners square.
-func _join_tab() -> void:
-	var sb = _top.get_theme_stylebox("panel")
-	if not sb is StyleBoxFlat:
-		return
-	var bar: StyleBoxFlat = sb.duplicate()
-	bar.corner_radius_bottom_left = 0
-	_top.add_theme_stylebox_override("panel", bar)
-	var tab: StyleBoxFlat = sb.duplicate()
-	tab.corner_radius_top_left = 0
-	tab.corner_radius_top_right = 0
-	tab.border_width_top = 0
-	tab.content_margin_top = 2
-	tab.content_margin_bottom = 6
-	tab.content_margin_left = 14
-	tab.content_margin_right = 16
-	_harmony_tab.add_theme_stylebox_override("panel", tab)
+## The folded bar: a yellow sticky note, a little askew, the day and the season pencilled on it (the keeper's sketch,
+## 2026-11-03: "Day : 581 / Season : Autumn").
+func _make_postit() -> Button:
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.position = Vector2(16, 14)
+	b.rotation = deg_to_rad(-2.0)
+	b.tooltip_text = tr("bar_open_tip")
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = POSTIT
+	sb.content_margin_left = 16
+	sb.content_margin_right = 18
+	sb.content_margin_top = 12
+	sb.content_margin_bottom = 14
+	sb.shadow_color = Color(0, 0, 0, 0.28)
+	sb.shadow_size = 5
+	sb.shadow_offset = Vector2(2, 3)
+	sb.corner_radius_bottom_right = 10
+	for st in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		var s2: StyleBoxFlat = sb.duplicate()
+		if st.begins_with("hover"):
+			s2.bg_color = POSTIT.lightened(0.15)
+		b.add_theme_stylebox_override(st, s2)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.add_theme_font_size_override("font_size", 15)
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(c, INK)
+	b.visible = false
+	b.pressed.connect(func(): set_bar_open(true))
+	return b
+
+
+## Opens or folds the bar (kept in the settings, "bar_open").
+func set_bar_open(open: bool, keep := true) -> void:
+	_top.visible = open
+	_postit.visible = not open
+	_refresh_postit()
+	if keep:
+		settings["bar_open"] = open
+		settings_changed.emit(settings)
 	_place_tab()
 
 
+func _refresh_postit() -> void:
+	if _postit != null and _postit.visible:
+		_postit.text = tr("postit_text") % [sim.day(), sim.season_name()]
+
+
+## Where a panel on the left goes (the enemies, the star ants, an ant's card): right of the bar, or of the note.
+func left_pos() -> Vector2:
+	var bar: Control = _top if _top.visible else _postit
+	return Vector2(bar.position.x + bar.size.x + 12.0, 12.0)
+
+
+## The food warning under the bar (or the note), and the panels on the left beside it.
 func _place_tab() -> void:
-	if _harmony_tab == null or _top == null:
+	if _top == null or _postit == null:
 		return
-	var b: int = 0
-	var sb = _top.get_theme_stylebox("panel")
-	if sb is StyleBoxFlat:
-		b = (sb as StyleBoxFlat).border_width_bottom
-	_harmony_tab.position = _top.position + Vector2(0, _top.size.y - b)
-	_harmony_tab.visible = _top.visible and harmony >= 0.0
+	var bar: Control = _top if _top.visible else _postit
 	if _food_warn != null:
-		_food_warn.position = _top.position + Vector2((_harmony_tab.size.x + 10.0) if _harmony_tab.visible else 0.0, _top.size.y + 4.0)
+		_food_warn.position = Vector2(bar.position.x, bar.position.y + bar.size.y + 8.0)
+	var at := left_pos()
+	for p in [_enemies, _stars, ant_tip]:
+		if p != null and is_instance_valid(p):
+			p.position = at
 
 
 ## The numbers of the Home's tanks resting in the fridge now, if other colonies fill it ("": there is room).
@@ -214,7 +256,7 @@ func _refresh_food_warn() -> void:
 		Chime.play(self, float(settings.get("music", 0.6)))        # (once, as it comes up: a sound made in code)
 	_food_said = w
 	_food_seen = true
-	_food_warn.visible = w != "" and _top.visible
+	_food_warn.visible = w != ""
 	if w != "":
 		var fd: Vector2 = sim.food_days()
 		_food_warn.text = "⚠ " + w
@@ -303,7 +345,10 @@ func _build_tools(root: Control) -> void:
 		sim._log(T.fridge_in if on else T.fridge_out))
 	cold.visible = sim.scenario == "keeper"      # outdoors winter comes by itself
 	row.add_child(cold)
-	_hint = _label("", 12, MUTED)
+	_hint = _label("", 12, Color(1, 1, 1, 0.85))       # (over the scene, not on paper: light, with a shadow)
+	_hint.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_hint.add_theme_constant_override("shadow_offset_x", 1)
+	_hint.add_theme_constant_override("shadow_offset_y", 1)
 	_hint.anchor_top = 1.0
 	_hint.anchor_bottom = 1.0
 	_hint.offset_left = 18

@@ -70,7 +70,8 @@ var _banner_lines: Array = []    # (two at once in a bad night: both shown)
 ## A banner at the top of the view, over the game: the keeper named this ant (sim.name_ant), so its death is news.
 func _build_banner(root: Control) -> void:
 	_banner = PanelContainer.new()
-	_banner.add_theme_stylebox_override("panel", _box(Color(0.16, 0.07, 0.05, 0.94), AMBER, 8, 18, 10))
+	var bsb: StyleBoxTexture = Paper.page(18, 10)
+	_banner.add_theme_stylebox_override("panel", bsb)
 	_banner.anchor_left = 0.5
 	_banner.anchor_right = 0.5
 	_banner.offset_top = 96
@@ -144,12 +145,16 @@ func refresh(delta: float) -> void:
 	var sky := tr("sky_rain") if sim.climate.raining() else (tr("sky_night") if sim.sun_height() < -0.05 else tr("sky_clear"))
 	_weather.text = tr("weather_line") % [sim.climate.air, sky, int(sim.activity * 100)]
 	_place_tab()
+	_harmony_row.visible = harmony >= 0.0
+	if _frame % 30 == 0:
+		_refresh_postit()
 	if harmony >= 0.0:
 		_harmony_l.text = tr("harmony_line") % _thousands(int(harmony))
 	_frame += 1
 	if _frame == 2:
 		_fps_label.visible = bool(settings.get("show_fps", false))
-		set_side_open(bool(settings.get("side_open", not _crowded())), false)     # (the top bar has its size by now)
+		set_side_open(bool(settings.get("side_open", true)), false)
+		set_bar_open(bool(settings.get("bar_open", true)), false)
 		# background music, at the keeper's volume (not in test shots and runs)
 		var testing := Array(OS.get_cmdline_user_args()).any(func(a): return a.begins_with("--shot") or a.begins_with("--selftest"))
 		if not testing:
@@ -231,7 +236,7 @@ func refresh(delta: float) -> void:
 	_hum_bar.value = hum * 100.0
 	var ok: bool = hum >= sim.sp["humidity_ok_min"] and hum <= sim.sp["humidity_ok_max"]
 	_show(_vals["hum"], "%d%%" % int(hum * 100), INK if ok else DANGER)
-	_chart.queue_redraw()
+	_stats.refresh()
 	_refresh_enemies()
 	_refresh_stars()
 

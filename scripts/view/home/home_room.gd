@@ -21,7 +21,7 @@ const SHELF_TANK_Y := [0.06, 0.55]           # the boards a tank stands on: insi
 # (v0.11.53, the tanks as big as the game's: two along the wall behind the keeper, one on the left by the window, one on
 # the right between the desk and the door; its back 2 cm off the wall, in front of the skirting board - flush with the
 # wall until v0.11.75, the skirting showed through it: the keeper, 2026-11-03)
-const SHELF_AT := [[Vector3(-1.0, 0, 1.77), PI], [Vector3(0.55, 0, 1.77), PI], [Vector3(-1.77, 0, 0.7), PI * 0.5],
+const SHELF_AT := [[Vector3(-1.0, 0, 1.77), PI], [Vector3(0.55, 0, 1.77), PI], [Vector3(-1.77, 0, 0.75), PI * 0.5],
 	[Vector3(1.77, 0, -0.8), -PI * 0.5]]
 const DESK_SMALL_X := -0.313                 # the small tank on the desk, left of the middle; the bigger one right of it
 const DESK_BIG_X := 0.463
@@ -276,8 +276,9 @@ func _desk() -> void:
 	_box(Vector3(DESK_SIZE.x - 0.1, 0.1, 0.02), Vector3(DESK.x, lh - 0.05, DESK.z - DESK_SIZE.z * 0.5 + 0.05), leg)    # the back rail
 	_drawer(Vector3(DESK.x + 0.45, lh - 0.07, DESK.z + DESK_SIZE.z * 0.5 - 0.03), 0.45, 0.12)
 	var y := DESK.y + DESK_SIZE.y * 0.5
-	_notebook(Vector3(DESK.x - 0.72, y, DESK.z + 0.22), 0.2)
-	_pencil(Vector3(DESK.x - 0.52, y, DESK.z + 0.3), 0.5)
+	# (the notebook and pencil at the left end, the kit's tray in front of the small tank - v0.11.78)
+	_notebook(Vector3(DESK.x - 0.8, y, DESK.z + 0.2), 0.2)
+	_pencil(Vector3(DESK.x - 0.76, y, DESK.z + 0.33), 0.35)
 	_keeper_tools(y)                         # (the keeper's kit along the front: home_tools.gd)
 
 

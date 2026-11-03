@@ -256,6 +256,12 @@ func _take_shot() -> void:
 			var tp: PackedStringArray = String(_opts["target"]).split(",")
 			nest_view.target = Vector3(float(tp[0]), float(tp[1]), float(tp[2]))
 			nest_view.snap_camera()
+	if _opts.has("stats-tab"):
+		hud.show_side_tab(true)               # (dev: the side panel's Statistics tab; --stats-y=a,b,c: what it plots)
+		if _opts.has("stats-y"):
+			hud._stats._apply({"x": String(_opts.get("stats-x", "day")), "ys": String(_opts["stats-y"]).split(","), "own": _opts.has("stats-own")})
+	if _opts.has("bar-fold"):
+		hud.settings["bar_open"] = false      # (dev: the bar folded away, the sticky note - as the HUD opens it)
 	if _opts.has("colonies"):
 		hud.open_colonies(String(_opts["colonies"]) if _opts["colonies"] != "1" else "")    # (--colonies=wild|keeper)
 	if _opts.has("home-layout") and home != null:

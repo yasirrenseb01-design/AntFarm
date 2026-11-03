@@ -1,5 +1,16 @@
 extends "res://scripts/view/ui/parts/hud_controls.gd"
-## HUD, layer 6 of 7: the side panel (colony readout, live nest cross-section, chart, journal).
+## HUD, layer 6 of 7: the side panel (colony readout, live nest cross-section, journal; the Statistics tab).
+
+const StatsChart := preload("res://scripts/view/ui/stats_chart.gd")
+
+var _stats                      # ui/stats_chart.gd: the Statistics tab
+var _side_tabs: Array = []      # its two tab buttons: the status, Statistics
+
+
+## Shows the Statistics tab (dev: --stats-tab) or the status.
+func show_side_tab(stats: bool) -> void:
+	_side_tabs[1 if stats else 0].button_pressed = true
+	_side_tabs[1 if stats else 0].pressed.emit()
 
 
 func _build_panel(root: Control) -> void:
@@ -13,9 +24,38 @@ func _build_panel(root: Control) -> void:
 	panel.offset_bottom = -12
 	root.add_child(panel)
 	_side = panel
+	var whole := VBoxContainer.new()
+	whole.add_theme_constant_override("separation", 10)
+	panel.add_child(whole)
+	# two tabs (the keeper, 2026-11-03): the colony's status - its readout, the nest's cross-section and the journal -
+	# and Statistics, the day-by-day record plotted as the keeper sets it (ui/stats_chart.gd; the population chart was
+	# in the status until v0.11.77)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 4)
+	whole.add_child(tabs)
+	var tg := ButtonGroup.new()
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 14)
-	panel.add_child(col)
+	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	whole.add_child(col)
+	_stats = StatsChart.new()
+	_stats.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_stats.visible = false
+	whole.add_child(_stats)
+	_stats.setup(sim, self)
+	for pair in [[tr("panel_status"), col], [tr("panel_stats"), _stats]]:
+		var b := _button(pair[0], true, tg)
+		b.button_pressed = pair[1] == col
+		var show: Control = pair[1]
+		b.pressed.connect(func():
+			col.visible = show == col
+			_stats.visible = show == _stats
+			_stats.redraw())
+		tabs.add_child(b)
+		_side_tabs.append(b)
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs.add_child(gap)
 	# folded away, a tab is left at the right edge to bring it back (on a narrow window it covered the top bar's buttons)
 	var fold := _button(tr("panel_fold"), false)
 	fold.tooltip_text = tr("panel_fold_tip")
@@ -31,16 +71,10 @@ func _build_panel(root: Control) -> void:
 	root.add_child(_side_tab)
 	root.get_viewport().size_changed.connect(_layout_side)
 
-	var st := _section(col, tr("panel_status"))
-	var head: Control = st.get_child(0)          # (the section's title, with the fold button beside it)
-	st.remove_child(head)
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var head_row := HBoxContainer.new()
-	head_row.add_child(head)
-	head_row.add_child(fold)
-	st.add_child(head_row)
-	st.move_child(head_row, 0)
+	tabs.add_child(fold)
+	var st := VBoxContainer.new()
+	st.add_theme_constant_override("separation", 6)
+	col.add_child(st)
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 10)
@@ -96,12 +130,6 @@ func _build_panel(root: Control) -> void:
 	_nest.draw.connect(_draw_nest)
 	ns.add_child(_nest)
 
-	var cs := _section(col, tr("panel_chart"))
-	_chart = Control.new()
-	_chart.custom_minimum_size = Vector2(0, 92)
-	_chart.draw.connect(_draw_chart)
-	cs.add_child(_chart)
-
 	var ls := _section(col, tr("panel_journal"))
 	ls.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log = RichTextLabel.new()
@@ -116,8 +144,8 @@ func _build_panel(root: Control) -> void:
 func _render_log() -> void:
 	var lines := PackedStringArray()
 	for e in sim.log_entries.slice(0, 40):
-		var col := "#e8664f" if e.kind == "bad" else ("#9cc565" if e.kind == "ok" else ("#e9a23b" if e.kind == "named" else "#f1e6d6"))
-		lines.append("[color=#8a7562]%s[/color]  [color=%s]%s[/color]" % [L.stamp(e), col, L.entry_text(e)])
+		var col := "#" + (DANGER if e.kind == "bad" else (LEAF if e.kind == "ok" else (AMBER if e.kind == "named" else INK))).to_html(false)
+		lines.append("[color=#%s]%s[/color]  [color=%s]%s[/color]" % [MUTED.to_html(false), L.stamp(e), col, L.entry_text(e)])
 	_log.text = "\n".join(lines)
 
 
@@ -257,35 +285,6 @@ func _nest_label(c: Control, text: String, p: Vector2) -> void:
 
 # ---------------------------------------------------------------- chart
 
-func _draw_chart() -> void:
-	var c := _chart
-	var w := c.size.x
-	var h := c.size.y
-	var pts: Array = sim.history.duplicate()
-	pts.append({"workers": sim.workers.size(), "brood": sim.eggs.size() + sim.larvae.size() + sim.pupae.size()})
-	var top := 10
-	for p in pts:
-		top = maxi(top, maxi(p.workers, p.brood))
-	top = int(ceil(top / 10.0)) * 10
-	var left := 30.0
-	var font := c.get_theme_default_font()
-	for v in [0, top / 2, top]:
-		var y := h - 12 - float(v) / top * (h - 20)
-		c.draw_line(Vector2(left, y), Vector2(w, y), LINE, 1.0)
-		c.draw_string(font, Vector2(0, y + 4), str(v), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MUTED)
-	var n := pts.size()
-	for series in [["brood", INK], ["workers", AMBER]]:
-		var line := PackedVector2Array()
-		for i in n:
-			var x := left + (0.0 if n < 2 else float(i) / (n - 1)) * (w - left - 4)
-			line.append(Vector2(x, h - 12 - float(pts[i][series[0]]) / top * (h - 20)))
-		if line.size() >= 2:
-			c.draw_polyline(line, series[1], 2.0, true)
-		c.draw_circle(line[line.size() - 1], 3.0, series[1])
-	c.draw_string(font, Vector2(left, h), tr("panel_day_n") % maxi(1, sim.day() - n + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, MUTED)
-	c.draw_string(font, Vector2(w - 60, h), tr("panel_today"), HORIZONTAL_ALIGNMENT_RIGHT, 60, 10, MUTED)
-
-
 ## The side panel folded away or out (kept in the settings; the first time folded on a window too narrow for both it
 ## and the top bar). Folded, the outworld's camera centres on the whole window and the camera buttons move right.
 ## The tools at the bottom left, drawn smaller (down to 0.7) when they would run under the side panel - a narrow window
@@ -316,24 +315,13 @@ func set_side_open(open: bool, keep := true) -> void:
 	_layout_side()
 
 
-## Whether the top bar runs in under the side panel (a window narrower than ~1700 px).
+## (the bar is on the left since v0.11.78: nothing of it runs in under the side panel any more)
 func _crowded() -> bool:
-	_fit_top(_room_beside())
-	return _top.get_combined_minimum_size().x > _room_beside()
+	return false
 
 
-## Room for the top bar left of an open side panel.
-func _room_beside() -> float:
-	return _side.get_viewport_rect().size.x - _top.position.x - PANEL_W - 24.0
-
-
-## Open on a crowded window, the side panel starts below the top bar, so no button is under it.
 func _layout_side() -> void:
-	var whole := _side.get_viewport_rect().size.x - _top.position.x - 14.0
-	var crowded := _crowded()                     # (fits the bar beside the panel: tighter, without the species' name)
-	if crowded or not _side.visible:
-		_fit_top(whole)                           # (the panel below it or folded away: the bar has the whole width)
-	_side.offset_top = (_top.position.y + _top.size.y + 10.0) if crowded else 12.0
+	_side.offset_top = 12.0
 	_side_tab.offset_top = _side.offset_top
 	_fit_bottom()
 
@@ -348,17 +336,3 @@ func _fit_bottom() -> void:
 	var k: float = _tools_bar.scale.x             # (drawn smaller in a narrow window: _fit_tools)
 	if _tools_bar.position.x + _tools_bar.get_combined_minimum_size().x * k + 8.0 > pad_left:
 		_cam_pad.offset_bottom = -12.0 - _tools_bar.get_combined_minimum_size().y * k - 34.0
-
-
-## The top bar fitted to the window: all of it if there is room; else tighter, then without the species' name (in
-## English the buttons are longer: at 1600 px the last ones were off the screen).
-func _fit_top(room: float) -> void:
-	_top_title.visible = true
-	_top_row.add_theme_constant_override("separation", 20)
-	_top.reset_size()
-	if _top.get_combined_minimum_size().x > room:
-		_top_row.add_theme_constant_override("separation", 10)
-		_top.reset_size()
-	if _top.get_combined_minimum_size().x > room:
-		_top_title.visible = false
-		_top.reset_size()

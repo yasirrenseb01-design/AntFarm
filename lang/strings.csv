@@ -388,7 +388,7 @@ tool_pan,มือ (เลื่อนจอ),Hand (move the view)
 tool_rock,ก้อนหิน,Stone
 tool_rock_take,เก็บหิน,Take stone
 tool_erase,ลบกลิ่น,Wipe scent
-top_subtitle,%s · รังเดี่ยว ราชินี 1 ตัว · %s 60×37 ซม. · v%s,"%s · single colony, 1 queen · %s 60×37 cm · v%s"
+top_subtitle,%s · รังเดี่ยว ราชินี 1 ตัว · %s %s ซม. · v%s,"%s · single colony, 1 queen · %s %s cm · v%s"
 top_plot,แปลงสวน,garden plot
 top_box,กล่อง,box
 speed_pause,หยุด,Pause
@@ -584,3 +584,22 @@ home_water_fill,เติม,Fill
 home_water_all,เติมทุกตู้,Fill all
 home_water_done,เติมน้ำตู้ %s แล้ว,Filled the water of tank %s
 water_paid,+%d Colony Harmony (เติมน้ำตอนเหลือน้อย),+%d Colony Harmony (filled when it was low)
+bar_fold_tip,พับแถบเก็บ (เหลือกระดาษโน้ตบอกวันและฤดู),Fold the bar away (a sticky note with the day and the season stays)
+bar_open_tip,เปิดแถบรัง,Open the colony bar
+postit_text,"วันที่ : %d
+ฤดู : %s","Day : %d
+Season : %s"
+panel_stats,สถิติ,Statistics
+stat_day,วันที่,Day
+stat_brood,ลูกมดทั้งหมด,All brood
+stat_air,อากาศ (°C),Air (°C)
+stat_water,น้ำในแท็งก์ (%),Water tank (%)
+stat_sets,ชุดที่บันทึก,Saved sets
+stat_delete,ลบ,Delete
+stat_name_hint,ตั้งชื่อชุดนี้...,Name this set...
+stat_save,บันทึก,Save
+stat_x,แกน X,X axis
+stat_y,แกน Y (เลือกได้หลายค่า),Y axis (pick any)
+stat_own_scale,แต่ละเส้นใช้สเกลของตัวเอง,Each line on its own scale
+stat_no_data,ยังไม่มีข้อมูลพอ (บันทึกวันละครั้ง),Not enough yet (recorded once a day)
+stat_default,ประชากรรายวัน (ตั้งต้น),Population by day (default)

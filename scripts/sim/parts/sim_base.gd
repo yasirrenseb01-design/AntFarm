@@ -413,9 +413,16 @@ func erase_pheromones(p: Vector2, r: float) -> void:
 	food.clear_circle(p, r)
 
 
+## A day of the colony's record (history): what the side panel's Statistics tab can plot (ui/stats_chart.gd KEYS; the
+## population and the stores only until v0.11.77).
 func _snapshot() -> Dictionary:
 	return {"day": day(), "workers": workers.size(), "brood": eggs.size() + larvae.size() + pupae.size(),
-		"sugar": sugar, "protein": protein}
+		"sugar": snappedf(sugar, 0.01), "protein": snappedf(protein, 0.01), "eggs": eggs.size(), "larvae": larvae.size(),
+		"pupae": pupae.size(), "out": out_count, "nurses": nurses, "callow": callow, "fat": snappedf(fat, 0.01),
+		"nest_t": snappedf(climate.nest, 0.1), "air": snappedf(climate.air, 0.1), "hum": snappedf(humidity * 100.0, 0.1),
+		"water": snappedf(water * 100.0, 0.1), "dev": snappedf(dev * 100.0, 0.1), "dead": stats.dead,
+		"brood_dead": stats.brood_dead + stats.cannibalized, "vol": snappedf(nest.volume_cm3(), 0.01),
+		"depth": snappedf(nest.depth_cm(), 0.1), "size": snappedf(mean_worker_mm(), 0.01) if not workers.is_empty() else 0.0}
 
 
 func target_air() -> int:

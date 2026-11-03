@@ -28,13 +28,16 @@ signal menu_requested                  # back to the title screen (game/title.gd
 signal harmony_spent(points: float)     # Colony Harmony points paid for something (main.gd takes them from the purse)
 
 var PANEL_W := 352.0             # the side panel (wider in English: its words are longer; hud.setup)
-const INK := Color("f1e6d6")
-const MUTED := Color("b09a83")
-const AMBER := Color("e9a23b")
-const LEAF := Color("9cc565")
-const DANGER := Color("e8664f")
-const BG := Color(0.1, 0.075, 0.055, 0.92)
-const LINE := Color(0.3, 0.22, 0.16)
+# on the keeper's field notebook's paper (the keeper, 2026-11-03: "make the colony page look like paper" - light ink on a
+# dark panel until v0.11.77): ink, graphite, a red-brown pencil for what is wanted, green and red pencils
+const INK := Paper.INK
+const MUTED := Paper.PENCIL
+const AMBER := Color(0.66, 0.33, 0.03)
+const LEAF := Paper.LEAF
+const DANGER := Paper.DANGER
+const BG := Color(0.79, 0.66, 0.49)
+const LINE := Color(0.45, 0.34, 0.22)
+const POSTIT := Color(0.98, 0.88, 0.45)          # the folded bar: a sticky note
 
 var sim
 var quiet := false             # no warning chimes (main: while the time away is worked out - every warning on the way
@@ -44,7 +47,6 @@ var _vals := {}
 var _log: RichTextLabel
 var _hum_bar: ProgressBar
 var _nest: Control
-var _chart: Control
 var _clock: Label
 var _weather: Label
 var _date: Label                   # the year, the date and the season, small beside the days kept
@@ -74,7 +76,6 @@ var real_speed := 0.0               # the speed the game is really running at (s
 var harmony := -1.0                 # the keeper's Colony Harmony points (set by main; below 0: not shown)
 var _harmony_row: HBoxContainer
 var _food_warn: Label             # sugar or protein running out (hud_controls.food_warning)
-var _harmony_tab: PanelContainer      # the points, on a tab hung under the top bar (hud_controls._join_tab)
 var _harmony_l: Label
 var music                   # ui/music.gd (null in test runs)
 var _outside_tools: Array = []
@@ -88,8 +89,9 @@ var _log_dirty := true
 var _view_btns := {}
 var _cam_3d: Array = []          # rotate buttons: both 3D views
 var _cam_out: Array = []
-var _top: PanelContainer         # the top bar
-var _top_row: HBoxContainer      # ... its row (tighter on a narrow window)
+var _top: PanelContainer         # the colony's bar, on the left (along the top until v0.11.77)
+var _top_row: VBoxContainer      # ... its column
+var _postit: Button              # the bar folded away: a sticky note with the day and the season
 var guide_targets := {}          # what the first-colony guide points at (ui/guide.gd): name -> Control
 var _tools_bar: PanelContainer   # the tool bar at the bottom
 var _top_title: Control          # ... the species and the box, left out on a window too narrow for it all
@@ -158,7 +160,15 @@ func _make_theme() -> Theme:
 	th.set_stylebox("fill", "ProgressBar", _box(Color("5d9bd6"), Color("5d9bd6"), 4, 0, 0))
 	th.set_constant("separation", "HBoxContainer", 8)
 	th.set_constant("separation", "VBoxContainer", 8)
-	return th
+	# the paper over all of it (ui/paper.gd: the windows' look), with the panels' own padding and a shadow off the page
+	var pt := Paper.theme(th)
+	var page: StyleBoxTexture = Paper.page(14, 12)
+	pt.set_stylebox("panel", "PanelContainer", page)
+	pt.set_stylebox("background", "ProgressBar", _box(Color(0.4, 0.3, 0.2, 0.25), LINE, 4, 0, 0))
+	pt.set_stylebox("fill", "ProgressBar", _box(Color(0.25, 0.5, 0.78), Color(0.25, 0.5, 0.78), 4, 0, 0))
+	pt.set_color("font_color", "LineEdit", INK)
+	pt.set_stylebox("normal", "LineEdit", _box(Color(1, 1, 1, 0.18), LINE, 4, 8, 4))
+	return pt
 
 
 ## A tick box for the theme: an outline (off) or an amber box with a tick (on).

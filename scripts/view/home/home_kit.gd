@@ -18,7 +18,8 @@ const DESK := Vector3(0.0, 0.75, -1.58)      # the desk top's centre (its top su
 const DESK_SIZE := Vector3(1.9, 0.04, 0.8)   # (1.9 m: the tanks as big as the game's boxes, 60 and 90 cm, side by side -
                                              # the keeper, 2026-10-27; 1.5 x 0.72 until v0.11.52)
 const DOOR := Vector3(1.98, 0.0, 0.85)       # the door's foot, on the right wall
-const WIN_Z := -0.7                          # the window's centre along the left wall
+const WIN_Z := -0.6                          # the window's centre along the left wall (-0.7 until v0.11.77: its sill went
+                                             # into the taller fridge in the corner - the keeper, 2026-11-03)
 const CHAIR := Vector3(0.1, 0.0, -0.87)      # the chair's foot, and its turn
 const CHAIR_TURN := -0.25
 var blocks: Array = []            # Rect2s on the floor (x, z) the keeper cannot walk into: the desk, the chair, the shelves

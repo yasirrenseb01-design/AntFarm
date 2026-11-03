@@ -109,6 +109,6 @@ func from_dict(d: Dictionary) -> void:
 	day_amp = d.day_amp
 	air = d.air
 	nest = d.nest
-	rain_ticks = d.rain_ticks
 	scenario = d.scenario
+	rain_ticks = d.rain_ticks if scenario == "wild" else 0      # (a tank saved while it rained in it, before v0.11.78)
 	fridge = d.fridge

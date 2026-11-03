@@ -48,11 +48,13 @@ func _stick(a: Vector3, b: Vector3, r: float, mat: Material, parent: Node3D) -> 
 
 ## The kit put away in a wooden tray with three compartments, at the desk's front right (the keeper, 2026-10-29: "laid
 ## out loose it looks untidy - put them in a box"): the long tools side by side, the tubes in their cradle, the dish,
-## the aspirator with its hose coiled and the bottle; y: the desk top.
+## the aspirator with its hose coiled and the bottle; y: the desk top. In front of the small tank, clear of the bigger
+## one (in front of that until v0.11.77, 1.4 cm off its glass: the game's box, a little bigger, went through the tray -
+## the keeper, 2026-11-03).
 const TRAY := Vector3(0.56, 0.035, 0.2)         # outside: long, the walls' height, deep
 
 func _keeper_tools(y: float) -> void:
-	var c := Vector3(DESK.x + 0.48, y, DESK.z + DESK_SIZE.z * 0.5 - 0.115)      # (its front 1.5 cm in from the desk's edge)
+	var c := Vector3(DESK.x - 0.31, y, DESK.z + DESK_SIZE.z * 0.5 - 0.115)      # (its front 1.5 cm in from the desk's edge)
 	_tray(c)
 	var f := c.y + 0.006                                    # the tray's floor
 	_brush(Vector3(c.x - 0.18, f, c.z - 0.07), 0.0)
