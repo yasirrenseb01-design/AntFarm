@@ -272,6 +272,8 @@ func brood_pos(kind: String) -> Vector3:
 ## What the soil holds - its stones and roots (nest.soil) - as things of their own, shown when the soil is seen through
 ## (the keeper, 2026-11-03: they showed only where the cut or a tunnel's wall met them, soil.gdshader). Voxel units, as
 ## the block; a pebble a lumpy ball grey to buff as the soil shader colours them, a root a brown rod.
+const STONES_SEEN_THROUGH := false   # (the keeper, 2026-11-03: "turn the stones off for now" - in the cut they still show)
+
 func _build_soil_things() -> void:
 	_soil_things = Node3D.new()
 	_soil_things.visible = false
@@ -279,7 +281,7 @@ func _build_soil_things() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 7
 	var i := 0
-	for sto in nest.soil.get("stones", []):
+	for sto in (nest.soil.get("stones", []) if STONES_SEEN_THROUGH else []):
 		var tone: float = fposmod(sin(float(i) * 12.9898) * 43758.5453, 1.0)
 		var m := StandardMaterial3D.new()
 		# (darker than the cut shows them, and a little see-through: a pebble in front of a chamber hid the ants in it)

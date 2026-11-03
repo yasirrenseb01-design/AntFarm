@@ -4,6 +4,7 @@ extends PanelContainer
 ## A shelf is only somewhere to put tanks: each small tank is bought apart (one tank, one colony).
 
 const Paper := preload("res://scripts/view/ui/paper.gd")
+const Preview := preload("res://scripts/game/shop_preview.gd")
 # what is sold, its name and its note (keys of lang/strings.csv, written out: tests/lang_test.gd finds them so)
 # (the ant farm is not sold for now - the keeper, 2026-10-27: on its own its foraging floor is next to nothing; it comes
 # back after Early Access as an add-on joined to a tank by a tube, the colony's nest growing into it: BACKLOG. Farms
@@ -21,7 +22,7 @@ func setup(ui) -> void:
 	add_theme_stylebox_override("panel", Paper.page(20, 16))
 	anchor_left = 1.0
 	anchor_right = 1.0
-	offset_left = -430
+	offset_left = -540                 # (a square of each thing sold on its row: shop_preview.gd)
 	offset_right = -16
 	offset_top = 62
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -59,6 +60,9 @@ func refresh() -> void:
 		_col.add_child(HSeparator.new())
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
+		var pic := Preview.thumb(item, get_parent())       # (the large view over the Home's screen: its root)
+		pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(pic)
 		var info := VBoxContainer.new()
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		info.add_theme_constant_override("separation", 0)

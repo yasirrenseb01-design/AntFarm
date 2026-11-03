@@ -318,6 +318,8 @@ func _take_shot() -> void:
 			home_room._aim()
 		if _opts.has("shop"):
 			home_room.shop.toggle()           # (--shop: the shop page open)
+			if _opts.has("shop-view"):
+				home_room.shop.Preview.open(String(_opts["shop-view"]), home_room.shop.get_parent())     # (--shop-view=big|small|shelf2|shelf4)
 		if _opts.has("home-walk"):
 			# (dev: --home-walk=<key>: that key held for a second after one - W A S or D - and where the keeper went)
 			var key: int = {"w": KEY_W, "a": KEY_A, "s": KEY_S, "d": KEY_D}.get(String(_opts["home-walk"]).to_lower(), KEY_W)

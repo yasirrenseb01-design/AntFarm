@@ -12,7 +12,7 @@ extends RefCounted
 
 const Store := preload("res://scripts/game/save_store.gd")
 const MAX_TEXT := 4096
-const PRICES := {"small": 100.0, "farm": 80.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0}
+const PRICES := {"small": 600.0, "farm": 80.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0}
 const MAX_SHELVES := 4
 
 var dry := false                 # (dev: --home-layout - bought in memory only, home.json left as it was)
