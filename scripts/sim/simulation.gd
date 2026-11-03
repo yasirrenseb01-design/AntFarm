@@ -254,15 +254,17 @@ func summary() -> Dictionary:
 	return {"sugar_days": snappedf(fd.x, 0.1), "protein_days": snappedf(fd.y, 0.1), "day": day(), "workers": workers.size(), "eggs": eggs.size(), "larvae": larvae.size(),
 		"pupae": pupae.size(), "born": stats.born, "dead": stats.dead, "brood_dead": stats.brood_dead + stats.cannibalized,
 		"chambers": nest.chambers.size(), "volume": nest.volume_cm3(), "humidity": humidity,
-		"queen": queen.alive, "glass": nest.slab, "scenario": scenario, "founding": founding(), "fridge": fridge_on}
+		"queen": queen.alive, "glass": nest.slab, "scenario": scenario, "founding": founding(), "fridge": fridge_on,
+		"water": snappedf(water, 0.001), "water_use": snappedf(water_use(), 0.00001)}
 
 
-## The automatic keeper used by tests and, if the player allows it, while the game is closed:
-## waters when the reservoir runs low and feeds in proportion to the colony.
+## The automatic keeper used by tests and, if the player allows it, while the game is closed (only then: in the game the
+## keeper waters and feeds - the keeper, 2026-11-03): fills the water tank once it is empty (or the nest dried out
+## anyway) and feeds in proportion to the colony.
 func auto_care(day_index: int) -> void:
 	if scenario == "wild":
 		return      # outdoors nobody tends the colony: rain waters it and it forages for itself
-	if humidity < 0.45:
+	if water <= 0.0 or humidity < 0.45:
 		add_water()
 	if workers.is_empty():
 		return

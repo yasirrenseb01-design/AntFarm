@@ -252,6 +252,14 @@ func _metabolism(dt: float) -> void:
 
 const TANK_DAYS := 25.0          # a full water tank lasts about this many days at room temperature
 
+
+## How much of the water tank goes in a game day now (the Home shows each tank's going down from it: save meta).
+func water_use() -> float:
+	var k := 0.09 + (0.06 if heater else 0.0) + workers.size() * 0.0002
+	if founding():
+		k *= 0.3
+	return k / 0.09 / TANK_DAYS
+
 func _moisture(dt: float) -> void:
 	if scenario == "wild":
 		_soil_moisture(dt)
@@ -265,7 +273,7 @@ func _moisture(dt: float) -> void:
 			k *= 0.3
 		if water > 0.0:
 			humidity += (0.72 - humidity) * (1.0 - exp(-0.6 * dt))
-			water = maxf(0.0, water - dt * k / 0.09 / TANK_DAYS)
+			water = maxf(0.0, water - dt * water_use())
 		else:
 			humidity = clampf(humidity * exp(-k * dt), 0.0, 1.0)
 		_warn("lowwater", water > 0.0 and water < 0.15, T.warn_lowwater)

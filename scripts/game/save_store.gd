@@ -24,7 +24,9 @@ const MAX_TEXT := 1024 * 1024    # settings.cfg, slotN.json
 # what each setting is, and the value it has when the file has none or something else there
 const SETTINGS := {"slot": 1, "away": 3, "care": true, "lang": "", "view": "outworld", "desk_told": false, "show_fps": false,
 	"side_open": true, "music": 0.6, "guide_done": false, "quality": "medium", "fps_cap": 1, "home_hand": true, "home_cross": true, "home_lamp": true}
-const META := {"day": 0, "workers": 0, "saved_unix": 0, "glass": false, "queen": true, "scenario": "keeper"}
+const META := {"day": 0, "workers": 0, "saved_unix": 0, "glass": false, "queen": true, "scenario": "keeper", "water": 1.0,
+	"water_use": 0.0, "refills": ""}
+const MAX_REFILLS := 20          # the water tank filled from the Home: the times kept for the colony's next opening
 
 
 static func _dir() -> String:
@@ -115,6 +117,54 @@ static func meta(slot: int) -> Dictionary:
 		if (v is float and (want is float or want is int)) or (v is String and want is String) or (v is bool and want is bool):
 			out[k] = v
 	return out
+
+
+## The keeper filled this colony's water tank from the Home (the keeper, 2026-11-03: "fill the tanks from the Home, many at
+## once"): the time goes in its slotN.json, "refills" (unix seconds, comma-separated); the colony fills it at that moment
+## of the time away worked out when it is opened next (main_base.gd), and the next save leaves it out again.
+static func add_refill(slot: int, unix: float) -> void:
+	if not FileAccess.file_exists(_meta_path(slot)) or _size(_meta_path(slot)) > MAX_TEXT:
+		return
+	var d = JSON.parse_string(FileAccess.get_file_as_string(_meta_path(slot)))
+	if not d is Dictionary:
+		return
+	var times := refills(d)
+	times.append(unix)
+	d["refills"] = ",".join(times.slice(-MAX_REFILLS).map(func(t): return "%.0f" % t))
+	var m := FileAccess.open(_meta_path(slot), FileAccess.WRITE)
+	if m:
+		m.store_string(JSON.stringify(d))
+		m.close()
+
+
+## The refill times in a slot's meta, oldest first (only numbers are taken from it).
+static func refills(m: Dictionary) -> Array:
+	var out: Array = []
+	var v = m.get("refills", "")
+	if v is String:
+		for part in v.split(",", false):
+			if part.is_valid_float() and out.size() < MAX_REFILLS:
+				out.append(float(part))
+	out.sort()
+	return out
+
+
+## How full a colony's water tank is now that is not open (0..1), from its meta: what it held when saved or last
+## filled from the Home, less what it used since at the away rate (game days per real hour); with the helper on
+## (settings "care") an empty tank is filled again, as the time away will do.
+static func water_now(m: Dictionary, days_per_hour: float, care: bool) -> float:
+	var use := maxf(0.0, float(m.get("water_use", 0.0)))
+	var level := clampf(float(m.get("water", 1.0)), 0.0, 1.0)
+	var since := float(m.get("saved_unix", 0.0))
+	var times := refills(m)
+	if not times.is_empty():
+		level = 1.0
+		since = times.back()
+	var days := minf(MAX_AWAY_DAYS, maxf(0.0, Time.get_unix_time_from_system() - since) / 3600.0 * days_per_hour)
+	level -= days * use
+	if level < 0.0 and care and use > 0.0:
+		level = 1.0 - fmod(-level, 1.0)
+	return clampf(level, 0.0, 1.0)
 
 
 ## Keep a copy of the slot as slotN.<tag>.antfarm (+ .json) before it is migrated or given up on.

@@ -42,6 +42,7 @@ var _away_before := {}
 var _away_events: Array = []
 var _away_hours := 0.0
 var _away_capped := false
+var _refill_ticks: Array = []    # ticks into the time away at which the keeper filled the water tank from the Home
 var _overlay: CanvasLayer
 var _overlay_label: Label
 var _overlay_bar: ProgressBar
@@ -113,7 +114,16 @@ func _plan_catchup(meta: Dictionary) -> void:
 	_away_hours = real_s / 3600.0
 	_away_capped = days > Store.MAX_AWAY_DAYS
 	days = minf(days, Store.MAX_AWAY_DAYS)
+	# the water tank filled from the Home meanwhile: at that moment of the time away (all at once if none is worked out)
+	_refill_ticks = []
+	var s0: float = float(saved) if saved is int or saved is float else 0.0
+	for u in Store.refills(Store.meta(slot)):
+		if u >= s0:
+			_refill_ticks.append(int(minf(days, (u - s0) / 3600.0 * rate) * sim.TPD))
 	if days < 0.02:
+		if not _refill_ticks.is_empty():
+			sim.add_water()
+		_refill_ticks = []
 		return
 	_catchup_total = int(days * sim.TPD)
 	_catchup_left = _catchup_total
@@ -157,11 +167,15 @@ func _show_catchup_overlay() -> void:
 ## Simulate the time away in slices that fit in a frame, so the window stays responsive.
 func _run_catchup() -> void:
 	sim.ant_substep = 4      # fastest stride that stays unbiased against full-detail stepping (tested)
+	hud.quiet = true
 	var care: bool = _settings.get("care", true)
 	var t0 := Time.get_ticks_msec()
 	while _catchup_left > 0 and Time.get_ticks_msec() - t0 < 40:
 		sim.step()
 		_catchup_left -= 1
+		while not _refill_ticks.is_empty() and _catchup_total - _catchup_left >= int(_refill_ticks[0]):
+			_refill_ticks.pop_front()
+			sim.add_water()                  # (filled from the Home then)
 		if care and sim.tick % sim.TPD == sim.TPD / 4:
 			sim.auto_care(sim.day())
 	_earn(_away_rate, false)
@@ -171,6 +185,10 @@ func _run_catchup() -> void:
 	_overlay_bar.value = 100.0 * done / maxf(1.0, _catchup_total)
 	if _catchup_left <= 0:
 		sim.ant_substep = 1
+		hud.quiet = false
+		if not _refill_ticks.is_empty():
+			sim.add_water()
+			_refill_ticks = []
 		_overlay.queue_free()
 		_save_now()
 		_report_away()

@@ -137,6 +137,12 @@ func _saves() -> void:
 	plain.sim.nest.soil = {}
 	_write_var(plain)
 	_counted("a nest of the plain soil (from before v0.11.18)", _load, ["loaded"])
+	# the Home's bigger tank: its pheromone grids are bigger than the small box's (measured against those, every save of
+	# it was given up on as unreadable - the keeper's started again at day 1 each time, v0.11.43-v0.11.75)
+	var bs := Sim.new()
+	bs.setup(5, 0, false, "keeper", true)
+	_write_var({"meta": bs.summary(), "sim": bs.to_dict()})
+	_counted("a colony in the bigger tank", _load, ["loaded"])
 	# a garden nest whose soil was taken in deeper (y_lo below 0): saved and loaded again whole
 	var gs := Sim.new()
 	gs.setup(4, 14, false, "wild")

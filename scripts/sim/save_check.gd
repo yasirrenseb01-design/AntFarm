@@ -104,7 +104,13 @@ static func _sizes(d: Dictionary) -> String:
 	var wd = n.get("work_dist", PackedInt32Array())
 	if not wd.is_empty() and wd.size() != cells:
 		return "nest.work_dist: %d voxels, not %d" % [wd.size(), cells]
-	var grid: int = _ref.home.val.size()
+	# (the pheromone grids as big as the save's box: the Home's bigger tank has bigger ones - measured against the small
+	# box, every save of the bigger tank was given up on as unreadable and it began again at day 1: the keeper, 2026-11-03)
+	var bw = d.get("world", [])
+	var big: bool = bw is Array and bw.size() == 2 and (bw[0] is float or bw[0] is int) and (bw[1] is float or bw[1] is int) \
+			and Vector2(float(bw[0]), float(bw[1])) == Sim.BIG_WORLD
+	var box: Vector2 = Sim.BIG_WORLD if big else Sim.SMALL_WORLD
+	var grid: int = int(box.x / Sim.CELL) * int(box.y / Sim.CELL)
 	for f in ["home", "food", "alarm"]:
 		if f == "alarm" and d.alarm == null:
 			continue

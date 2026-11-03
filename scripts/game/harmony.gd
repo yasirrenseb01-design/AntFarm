@@ -17,9 +17,15 @@ const AWAY := 1.0
 const WILD := 0.3
 const GAME_DAYS_PER_HOUR_1X := 60.0     # (1 game day a minute at 1x)
 const MAX_POINTS := 1.0e12
+# the keeper filling a tank's water when it was under 30 % - more than 70 % in one go (the keeper, 2026-11-03): WATER, at
+# most once a tank in WATER_WAIT real seconds (a tank lasts ~25 min at 1x and seconds at 100x: not a tap to farm)
+const WATER := 30.0
+const WATER_LOW := 0.3
+const WATER_WAIT := 3600.0
 
 static var base := "user://"            # (tests point this at a sandbox, as the save store)
 var points := 0.0
+var water_paid := {}                    # slot (as text) -> the unix time a filling was last paid for
 var _last := {}                         # the colony's counts already paid for (sim.harmony_n and nest.dug)
 var _sim_id := 0
 
@@ -60,9 +66,26 @@ func load_purse() -> void:
 		points = clampf(float(d.points), 0.0, MAX_POINTS)
 		if not (d.get("v") is float or d.get("v") is int):
 			points /= 10.0                              # (earned at v0.11.39's ten-times values)
+		var wp = d.get("water_paid")
+		water_paid = {}
+		if wp is Dictionary:
+			for k in wp:
+				if k is String and k.is_valid_int() and (wp[k] is float or wp[k] is int) and water_paid.size() < 64:
+					water_paid[k] = float(wp[k])
 
 
 func save_purse() -> void:
 	var f := FileAccess.open(base + "harmony.json", FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify({"points": points, "v": 2}))
+		f.store_string(JSON.stringify({"points": points, "v": 2, "water_paid": water_paid}))
+
+
+## The keeper filled that tank's water, which held `before` (0..1): the points it earns (0 if none), added to the purse.
+func pay_water(slot: int, before: float) -> float:
+	var now := Time.get_unix_time_from_system()
+	if before >= WATER_LOW or now - float(water_paid.get(str(slot), 0.0)) < WATER_WAIT:
+		return 0.0
+	water_paid[str(slot)] = now
+	points = minf(MAX_POINTS, points + WATER)
+	save_purse()
+	return WATER

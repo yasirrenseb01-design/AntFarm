@@ -10,15 +10,19 @@ const View := preload("res://shaders/home/window_view.gdshader")
 const Yard := preload("res://scripts/view/home/home_yard.gd")
 const Fridge := preload("res://scripts/view/home/home_fridge.gd")
 const Zodiac := preload("res://scripts/view/home/zodiac_stars.gd")
-const FRIDGE_AT := Vector3(-1.48, 0.0, -1.64)    # the wintering fridge: the corner left of the desk, its door to the room
+const FRIDGE_AT := Vector3(-1.45, 0.0, -1.64)    # the wintering fridge: the corner left of the desk, its door to the room
+                                                # (its side clear of the window's sill and frame: taller from v0.11.76)
 const SHELF_D := 0.42                        # a shelf's depth; a column for a small tank (tank_spec), two tiers
 const SHELF_COL := 0.69
-const SHELF_Y := [0.55, 1.08]                # the tops of its boards a tank stands on
+const SHELF_Y := [0.06, 0.55, 1.08]          # the tops of its boards: the foot, the middle, the top
+const SHELF_TANK_Y := [0.06, 0.55]           # the boards a tank stands on: inside, the lower one first (on top until
+                                             # v0.11.75, the bottom left empty: the keeper, 2026-11-03)
 # where the shelves go, in the order they are bought: the foot's centre against a wall, and its turn (front to the room)
 # (v0.11.53, the tanks as big as the game's: two along the wall behind the keeper, one on the left by the window, one on
-# the right between the desk and the door)
-const SHELF_AT := [[Vector3(-1.0, 0, 1.79), PI], [Vector3(0.55, 0, 1.79), PI], [Vector3(-1.79, 0, 0.7), PI * 0.5],
-	[Vector3(1.79, 0, -0.8), -PI * 0.5]]
+# the right between the desk and the door; its back 2 cm off the wall, in front of the skirting board - flush with the
+# wall until v0.11.75, the skirting showed through it: the keeper, 2026-11-03)
+const SHELF_AT := [[Vector3(-1.0, 0, 1.77), PI], [Vector3(0.55, 0, 1.77), PI], [Vector3(-1.77, 0, 0.7), PI * 0.5],
+	[Vector3(1.77, 0, -0.8), -PI * 0.5]]
 const DESK_SMALL_X := -0.313                 # the small tank on the desk, left of the middle; the bigger one right of it
 const DESK_BIG_X := 0.463
 var lamp_gain := 1.0                         # the lamps' light falls off as distance to the power of their
@@ -104,7 +108,7 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 			var cols := int(shelves[p.shelf]) / 2
 			var col: int = int(p.spot) % cols
 			var tier: int = int(p.spot) / cols
-			t = _tank(units[p.shelf], Vector3((col - (cols - 1) * 0.5) * SHELF_COL, SHELF_Y[tier], 0.0), big, farm, s, int(p.number), full, x0)
+			t = _tank(units[p.shelf], Vector3((col - (cols - 1) * 0.5) * SHELF_COL, SHELF_TANK_Y[tier], 0.0), big, farm, s, int(p.number), full, x0)
 		if t != null:
 			tank_nodes[s] = t
 			if s == hide:
@@ -123,11 +127,11 @@ func _shelf(i: int, holds: int) -> Node3D:
 	add_child(u)
 	var w := SHELF_COL * (holds / 2)
 	var m := wood(Color(0.5, 0.36, 0.22), Color(0.66, 0.5, 0.33), 9.0, 9.0, 55.0)
-	for y in [0.06] + SHELF_Y:
+	for y in SHELF_Y:
 		_box(Vector3(w, 0.025, SHELF_D), Vector3(0, y - 0.0125, 0), m, u)
 	for sx in [-1, 1]:
-		_box(Vector3(0.025, SHELF_Y[1], SHELF_D), Vector3(sx * (w * 0.5 + 0.0125), SHELF_Y[1] * 0.5, 0), m, u)
-	_box(Vector3(w, SHELF_Y[1], 0.01), Vector3(0, SHELF_Y[1] * 0.5, -SHELF_D * 0.5 + 0.005), m, u)      # the back
+		_box(Vector3(0.025, SHELF_Y[2], SHELF_D), Vector3(sx * (w * 0.5 + 0.0125), SHELF_Y[2] * 0.5, 0), m, u)
+	_box(Vector3(w, SHELF_Y[2], 0.01), Vector3(0, SHELF_Y[2] * 0.5, -SHELF_D * 0.5 + 0.005), m, u)      # the back
 	var r := (u.transform * AABB(Vector3(-w * 0.5 - 0.03, 0, -SHELF_D * 0.5), Vector3(w + 0.06, 1, SHELF_D)))
 	blocks.append(Rect2(r.position.x, r.position.z, r.size.x, r.size.z))
 	return u

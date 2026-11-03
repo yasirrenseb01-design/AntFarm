@@ -51,7 +51,7 @@ func setup(s, w) -> void:
 
 func _on_logged(e: Dictionary) -> void:
 	_log_dirty = true
-	if e.get("key", "") in [T.warn_lowwater, T.warn_nowater, T.warn_lowhum] and _chime != null:
+	if e.get("key", "") in [T.warn_lowwater, T.warn_nowater, T.warn_lowhum] and _chime != null and not quiet:
 		_chime.play()
 	if e.kind == "named":
 		_named_news(L.entry_text(e))
@@ -99,7 +99,7 @@ func _named_news(text: String) -> void:
 	_banner.reset_size()
 	_banner.offset_left = -_banner.size.x * 0.5
 	_banner.offset_right = _banner.size.x * 0.5
-	if _chime != null:
+	if _chime != null and not quiet:
 		_chime.play()
 
 

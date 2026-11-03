@@ -198,7 +198,7 @@ home_lamp_off,"โคมไฟ · คลิก: ปิด","The lamp · click: s
 home_lamp_on,"โคมไฟ · คลิก: เปิด","The lamp · click: switch it on"
 home_fridge,"ตู้เย็นจำศีล 4–12°C · ตู้ที่จำศีลอยู่: %s · คลิกเพื่อเข้าไปดูรัง","The wintering fridge, 4-12°C · tanks resting in it: %s · click to look in on the colony"
 home_fridge_none,"ตู้เย็นจำศีล 4–12°C · ยังไม่มีตู้ไหนจำศีล (กด จำศีลในตู้เย็น ในรัง)","The wintering fridge, 4-12°C · no tank resting in it (Hibernate in fridge, in the colony)"
-fridge_full,"ตู้เย็นมีตู้ %s จำศีลอยู่แล้ว (ใส่ได้ทีละตู้) — นำตู้นั้นออกก่อน","Tank %s is already resting in the fridge (one at a time) - take it out first"
+fridge_full,"ตู้เย็นมีตู้ %s จำศีลอยู่แล้ว (ใส่ได้สองตู้) — นำออกก่อนหนึ่งตู้","Tanks %s are already resting in the fridge (two at a time) - take one out first"
 home_shop,ร้านค้า,Shop
 shop_title,ร้านค้า,Shop
 shop_big,ตู้ที่ 2 (ใหญ่ขึ้น),"A second, bigger tank"
@@ -360,7 +360,7 @@ col_saved,เซฟแล้ว,Saved
 set_away,ตอนปิดเกม,While the game is closed
 set_time_1,ระหว่างเล่น 1 วันในเกม = 1 นาทีที่ความเร็ว 1× (ปุ่ม 0.2×–5× ที่แถบบน) — มดเดินด้วยความเร็วจริง แต่วันเดือนของรังย่อลง,"While you play, 1 game day = 1 minute at 1× (the 0.2×–5× buttons on the top bar) — the ants move at their real pace, but the colony's days and months are shortened"
 set_time_2,ให้เห็นรังโต · ตอนปิดเกม เวลาเดินตามที่เลือกข้างบน (ปกติช้ากว่าตอนเล่น รังจะได้ไม่ขาดน้ำขาดอาหารตอนคุณไม่อยู่นาน),"so you can watch the colony grow · while the game is closed time runs as chosen above (usually slower than in play, so the colony does not go short of water and food when you are away long)"
-set_care,ผู้ช่วยเติมน้ำและให้อาหารตอนที่ไม่อยู่ (เฉพาะชุดเลี้ยง),A helper waters and feeds while you are away (formicarium only)
+set_care,"ผู้ช่วยเติมน้ำ (เมื่อถังหมด) และให้อาหารตอนปิดเกม (เฉพาะชุดเลี้ยง) — ระหว่างเล่นต้องเติมเอง","A helper fills the water (when the tank runs dry) and feeds while the game is closed (formicarium only) - while you play, you do it yourself"
 set_music,เพลงพื้นหลัง,Music
 off,ปิด,Off
 set_fps,แสดงอัตราเฟรม (FPS) มุมซ้ายบน · ปุ่มลัด F3,Show the frame rate (FPS) top left · shortcut F3
@@ -577,3 +577,9 @@ trait_spread_lo,ขุดห้องซ้อนลงล่าง,stacks its c
 trait_tip,"แต่ละรังมีนิสัยของตัวเอง สุ่มตอนตั้งรัง: ราชินีที่ตัวหนักกว่าเลี้ยงลูกรุ่นแรกได้มากกว่า (งานวิจัยของมดดำสวนเอง) · ความขยันหากิน อายุ ขนาดมดงาน และวิธีขุด ต่างกันในแต่ละรัง (พบในมดหลายชนิด บางข้อเป็นการอนุมาน)","Every colony has its own character, drawn when it is founded: a heavier queen raises more of the first brood (measured in this species) · how keen its workers are to forage, how long they live, their size and how the colony digs differ from colony to colony (seen in many ants; some of it is inferred)"
 nest_temp_tip,อุณหภูมิแต่ละห้องตามความลึก (ข้างบนอุ่นตอนกลางวัน เย็นตอนกลางคืน · ข้างล่างนิ่งกว่า) — พี่เลี้ยงย้ายลูกมดไปห้องที่โตเร็วที่สุด:,Each chamber's warmth by its depth (the top warms by day and cools at night · deeper is steadier) - the nurses carry the brood to where it grows fastest:
 chamber_temp_row,"ลึก %.1f ซม.  %.1f°C  %s","%.1f cm deep  %.1f°C  %s"
+home_water,น้ำในรัง,Water tanks
+home_water_tank,ตู้ %s,Tank %s
+home_water_fill,เติม,Fill
+home_water_all,เติมทุกตู้,Fill all
+home_water_done,เติมน้ำตู้ %s แล้ว,Filled the water of tank %s
+water_paid,+%d Colony Harmony (เติมน้ำตอนเหลือน้อย),+%d Colony Harmony (filled when it was low)

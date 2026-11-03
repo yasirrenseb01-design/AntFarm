@@ -6,13 +6,15 @@ extends RefCounted
 ## So: an under-counter beverage cooler - a matt black cabinet, a glass door in a stainless frame with a long bar
 ## handle, a small blue digital thermostat on the door's top rail, wire shelves on runners inside, a cool white light
 ## strip under its top, a vent grille at its foot, levelling feet. Inside it, the tanks whose colony is wintering in it
-## (the "Hibernate in fridge" tool in the colony; the save's meta "fridge"): one tank, small or the bigger one.
+## (the "Hibernate in fridge" tool in the colony; the save's meta "fridge"): two tanks, one on each shelf, small or the
+## bigger one (one until v0.11.75; a taller cooler for two: the keeper, 2026-11-03).
 ## Metres; its foot's middle at the origin, its front toward +z. home_room.gd places it; clicking it says who is in.
 
 const Kit := preload("res://scripts/view/home/home_kit.gd")
-const SIZE := Vector3(1.0, 0.86, 0.68)           # outside (a wide one: the bigger tank, 90.6 x 56.9 cm, fits - the keeper,
-const INNER := Vector3(0.93, 0.7, 0.6)           # 2026-10-27: "the big tank too, but only one tank")
-const SHELF_Y := [0.06]                          # its shelf's top inside, from the foot (one tank on it)
+const SIZE := Vector3(1.0, 1.12, 0.68)           # outside (a wide one: the bigger tank, 90.6 x 56.9 cm, fits - the keeper,
+const INNER := Vector3(0.93, 0.96, 0.6)          # 2026-10-27; tall enough for two, the bigger one 38 cm with its soil)
+const SHELF_Y := [0.06, 0.5]                     # its shelves' tops inside, from the plinth (a tank on each)
+const HOLDS := 2                                 # tanks it takes
 const TEMP := "8°C"
 
 

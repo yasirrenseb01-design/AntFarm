@@ -180,6 +180,11 @@ func _ready() -> void:
 		_apply_graphics())
 	_apply_graphics()
 	hud.save_requested.connect(_save_now)
+	hud.water_given.connect(func(before):
+		if _persist and not _demo and not _opts.has("testsave"):
+			var got := harmony.pay_water(slot, before)
+			if got > 0.0:
+				hud.call("_named_news", tr("water_paid") % int(got)))
 	hud.harmony_spent.connect(func(p):
 		harmony.points = maxf(0.0, harmony.points - p)
 		harmony.save_purse())
@@ -343,13 +348,22 @@ func _notification(what: int) -> void:
 		# the views freed here, before the engine's own shutdown: left to it, quitting from the Home took ~4 s, the window
 		# standing there (the keeper, 2026-10-29: 5-8 s) - freed first, it is gone in ~0.5 s
 		get_tree().auto_accept_quit = false
+		# the window out of sight at once, saved already: whatever the engine's own shutdown takes after this is not
+		# seen (the keeper, 2026-11-03: "quitting is still slow" - ~0.6 s measured here, longer on the keeper's own runs)
+		get_window().hide()
 		_finish_quit.call_deferred()
 
 
 
 func _finish_quit() -> void:
 	for c in get_children():
+		var t0 := Time.get_ticks_msec()
+		var nm := String(c.name)
 		c.free()
+		if OS.has_environment("QUITDBG"):
+			print("QUITDBG free %s %d ms" % [nm, Time.get_ticks_msec() - t0])
+	if OS.has_environment("QUITDBG"):
+		print("QUITDBG quit at %.3f" % Time.get_unix_time_from_system())
 	get_tree().quit()
 
 

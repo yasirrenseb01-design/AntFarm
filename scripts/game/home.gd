@@ -12,6 +12,7 @@ const Room := preload("res://scripts/view/home/home_room.gd")
 const Paper := preload("res://scripts/view/ui/paper.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const Shop := preload("res://scripts/game/home_shop.gd")
+const Water := preload("res://scripts/game/home_water.gd")
 const Hand := preload("res://scripts/view/home/home_hand.gd")
 const Chime := preload("res://scripts/view/ui/chime.gd")
 const EYE := 1.55                 # metres: the keeper's eyes
@@ -39,6 +40,7 @@ var _toast_t := 0.0
 var _purse: Label
 var _help: Label
 var shop                          # game/home_shop.gd: the shop page
+var water                         # game/home_water.gd: each tank's water, filled from here
 var _hand: TextureRect            # the keeper's hand drawn flat, in the middle of the view (with the 3D hand off)
 var _hand3d                       # view/home/home_hand.gd: the keeper's hand in 3D, lower right (settings "home_hand")
 var _cross: ColorRect             # an aiming point in the middle of the view (settings "home_cross")
@@ -216,6 +218,9 @@ void fragment() { float d = length(UV - 0.5) * 22.0; float r = mix(5.0, 8.0, hot
 	root.add_child(shop)
 	shop.setup(self)
 	shop_b.pressed.connect(shop.toggle)
+	water = Water.new()
+	root.add_child(water)
+	water.setup(self)
 	_tip = _note(root, h)
 	_toast = _note(root, h)
 	_food = _note(root, h)                       # (the tanks whose sugar or protein is running out: _check_food)
@@ -291,14 +296,15 @@ func open() -> void:
 	_move_t = 1.0
 	_aim()
 	_update_purse()
-	_check_food()
+	water.refresh()
+	_check_food(false)                          # (no chime as the Home opens: only for a warning that comes up in it)
 
 
 ## The keeper's colonies about to run out of sugar or protein (the keeper, 2026-10-27: "sometimes I forget"): the one
 ## open now from the simulation itself, the others from what they were when saved (save_store meta: sugar_days,
 ## protein_days - sim.food_days); under 2 game days (hud_controls.FOOD_WARN_DAYS). A founding queen and a colony
 ## without workers are not warned about.
-func _check_food() -> void:
+func _check_food(chime := true) -> void:
 	var lines := []
 	for p in main.home.places():
 		var s: int = p.slot
@@ -317,7 +323,7 @@ func _check_food() -> void:
 			w = " · ".join(parts)
 		if w != "":
 			lines.append(tr("home_food_low") % [p.number, w])
-	if not lines.is_empty() and not _food.visible:
+	if chime and not lines.is_empty() and not _food.visible:
 		Chime.play(self, float(main._settings.get("music", 0.6)))      # (as the note comes up)
 	_food.text = ("⚠ " + "\n⚠ ".join(lines)) if not lines.is_empty() else ""
 	_food.visible = not lines.is_empty()

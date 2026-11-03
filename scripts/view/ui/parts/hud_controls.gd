@@ -170,17 +170,20 @@ func _place_tab() -> void:
 		_food_warn.position = _top.position + Vector2((_harmony_tab.size.x + 10.0) if _harmony_tab.visible else 0.0, _top.size.y + 4.0)
 
 
-## The number of the Home's tank resting in the fridge now, if it is another colony's (0: the fridge is free).
-func _fridge_taken() -> int:
+## The numbers of the Home's tanks resting in the fridge now, if other colonies fill it ("": there is room).
+func _fridge_taken() -> String:
 	if home == null:
-		return 0
+		return ""
+	var nums := []
 	for p in home.places():
 		if int(p.slot) != current_slot and bool(Store.meta(int(p.slot)).get("fridge", false)):
-			return int(p.number)
-	return 0
+			nums.append(str(p.number))
+	return ", ".join(nums) if nums.size() >= Fridge.HOLDS else ""
 
 
 var _food_said := ""                   # the warning shown last (the chime sounds as a new one comes up)
+var _food_seen := false                # (the first look, as the colony opens: no chime - the keeper, 2026-11-03: "a
+                                       # notification sound as the game loads")
 
 func _testing() -> bool:
 	return Array(OS.get_cmdline_user_args()).any(func(a): return a.begins_with("--selftest"))
@@ -207,9 +210,10 @@ func _refresh_food_warn() -> void:
 	if _food_warn == null:
 		return
 	var w := food_warning()
-	if w != "" and _food_said == "" and not _testing():
+	if w != "" and _food_said == "" and _food_seen and not _testing() and not quiet:
 		Chime.play(self, float(settings.get("music", 0.6)))        # (once, as it comes up: a sound made in code)
 	_food_said = w
+	_food_seen = true
 	_food_warn.visible = w != "" and _top.visible
 	if w != "":
 		var fd: Vector2 = sim.food_days()
@@ -269,7 +273,10 @@ func _build_tools(root: Control) -> void:
 	row.add_child(VSeparator.new())
 	var water := _button(tr("add_water"), false)
 	guide_targets["water"] = water
-	water.pressed.connect(func(): sim.add_water())
+	water.pressed.connect(func():
+		var before: float = sim.water
+		sim.add_water()
+		water_given.emit(before))
 	water.visible = sim.scenario == "keeper"     # outdoors the rain waters the nest
 	row.add_child(water)
 	var pher := _button(tr("show_scent"), true)
@@ -286,9 +293,9 @@ func _build_tools(root: Control) -> void:
 	var cold := _button(tr("fridge"), true)
 	cold.button_pressed = sim.fridge_on
 	cold.toggled.connect(func(on):
-		var other := _fridge_taken() if on else 0
-		if other > 0:
-			# the Home's fridge holds one tank (the keeper, 2026-10-27): another colony is resting in it
+		var other := _fridge_taken() if on else ""
+		if other != "":
+			# the Home's fridge holds two tanks (one until v0.11.75): other colonies are resting in it
 			cold.set_pressed_no_signal(false)
 			call("_named_news", tr("fridge_full") % other)        # (the banner: hud.gd)
 			return
