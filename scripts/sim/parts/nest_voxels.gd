@@ -127,8 +127,9 @@ func setup(r: RandomNumberGenerator, glass_slab := false, founding := false) -> 
 
 ## Stones, roots and the depth of the clay for this colony's patch of ground (a generator of its own). Kept clear of
 ## what is dug already and of the entrance shaft. [inference: a garden's soil has pebbles and roots in it, and ants
-## dig round them; the layer depths are chosen to differ by a few cm]
-func lay_out_soil(seed_v: int) -> void:
+## dig round them; the layer depths are chosen to differ by a few cm] Roots only in the garden (wild): a keeper's box of
+## soil has none (the keeper, 2026-11-03: "the roots in the tank out - it is a plain box; and they did not look real").
+func lay_out_soil(seed_v: int, wild := false) -> void:
 	var g := RandomNumberGenerator.new()
 	g.seed = seed_v
 	var stones := []
@@ -157,24 +158,61 @@ func lay_out_soil(seed_v: int) -> void:
 				clear = false
 		if clear:
 			stones.append([c.x, c.y, c.z, r])
-	for i in g.randi_range(2, 4):
-		# a root down from the surface, slanting
-		var a := Vector3(g.randf_range(4.0, nx - 5.0), ny - 1.0, (nz - 2.5) if slab else g.randf_range(4.0, nz - 5.0))
-		if Vector2(a.x, a.z).distance_to(mid) < 7.0:
-			continue
-		var dir := Vector3(g.randf_range(-0.6, 0.6), -1.0, 0.0 if slab else g.randf_range(-0.6, 0.6)).normalized()
-		var b := a + dir * g.randf_range(20.0, 48.0)
-		b = b.clamp(Vector3(2, 3, 1 if slab else 2), Vector3(nx - 3, ny - 1, nz - 2 if slab else nz - 3))
-		var rr := g.randf_range(0.6, 1.1)
-		var ok := true
-		for k in 9:
-			if _open_near(a.lerp(b, k / 8.0), rr + 2.0):
-				ok = false
-		if ok:
-			roots.append([a.x, a.y, a.z, b.x, b.y, b.z, rr])
+	if wild:
+		roots = _lay_out_roots(g, mid)
 	var clay := g.randf_range(9.0, 20.0)
 	soil = {"stones": stones, "roots": roots, "clay": clay, "sand": clay + g.randf_range(18.0, 34.0)}
 	_stamp_hard()
+
+
+const MAX_ROOTS := 32          # root segments held (soil.gdshader's arrays, nest_view's pieces)
+
+## A plant's roots in the garden's soil, as roots grow (the keeper's drawing of root systems, 2026-11-03): one to three
+## from the surface, each a tap root wandering down in a few segments that thin as they go, side roots branching off
+## it out and down, and on some of those finer ones again - segments [a.xyz, b.xyz, radius], up to MAX_ROOTS.
+## [inference: shapes after drawings of root systems; no measurement of a garden plant's roots by an ant nest]
+func _lay_out_roots(g: RandomNumberGenerator, mid: Vector2) -> Array:
+	var out := []
+	var lo := Vector3(2, 3, 1 if slab else 2)
+	var hi := Vector3(nx - 3, ny - 1, nz - 2 if slab else nz - 3)
+	var grow := func(from: Vector3, dir: Vector3, r: float, steps: int, seg_len: Vector2, spread: float) -> Array:
+		var segs := []
+		var p := from
+		var d := dir
+		for k in steps:
+			if out.size() + segs.size() >= MAX_ROOTS or r < 0.12:
+				break
+			d = (d + Vector3(g.randf_range(-spread, spread), g.randf_range(-spread * 0.6, spread * 0.2),
+				0.0 if slab else g.randf_range(-spread, spread))).normalized()
+			if d.y > -0.15:
+				d = (d + Vector3(0, -0.4, 0)).normalized()         # (roots go down)
+			var q: Vector3 = (p + d * g.randf_range(seg_len.x, seg_len.y)).clamp(lo, hi)
+			if q.distance_to(p) < 1.0 or _open_near(q, r + 1.5) or _open_near(p.lerp(q, 0.5), r + 1.5):
+				break
+			segs.append([p.x, p.y, p.z, q.x, q.y, q.z, r])
+			p = q
+			r *= 0.88
+		return segs
+	for i in g.randi_range(1, 3):
+		var a := Vector3(g.randf_range(4.0, nx - 5.0), ny - 1.0, (nz - 2.5) if slab else g.randf_range(4.0, nz - 5.0))
+		if Vector2(a.x, a.z).distance_to(mid) < 8.0:
+			continue
+		var tap: Array = grow.call(a, Vector3(g.randf_range(-0.3, 0.3), -1.0, 0.0 if slab else g.randf_range(-0.3, 0.3)).normalized(),
+			g.randf_range(0.6, 0.9), g.randi_range(6, 9), Vector2(3.5, 6.0), 0.45)
+		out.append_array(tap)
+		# side roots from the tap root's joints, out to either side and down, some with finer ones on them
+		for sg in tap:
+			if out.size() >= MAX_ROOTS or g.randf() > 0.8:
+				continue
+			var at := Vector3(sg[3], sg[4], sg[5])
+			var side := Vector3(g.randf_range(-1.0, 1.0), g.randf_range(-0.7, -0.2), 0.0 if slab else g.randf_range(-1.0, 1.0)).normalized()
+			var branch: Array = grow.call(at, side, float(sg[6]) * 0.65, g.randi_range(2, 4), Vector2(2.5, 4.5), 0.6)
+			out.append_array(branch)
+			if not branch.is_empty() and g.randf() < 0.5 and out.size() < MAX_ROOTS:
+				var b0: Array = branch[0]
+				var fine := Vector3(g.randf_range(-1.0, 1.0), -0.5, 0.0 if slab else g.randf_range(-1.0, 1.0)).normalized()
+				out.append_array(grow.call(Vector3(b0[3], b0[4], b0[5]), fine, float(b0[6]) * 0.65, 2, Vector2(2.0, 3.5), 0.7))
+	return out.slice(0, MAX_ROOTS)
 
 
 ## Marks the stones' and roots' voxels hard (and solid) - in the layers held (y_lo up).
@@ -323,6 +361,46 @@ func carve_line(a: Vector3, b: Vector3, radius: float) -> void:
 	for i in steps + 1:
 		var p := a.lerp(b, float(i) / steps)
 		carve_ellipsoid(p, Vector3.ONE * radius)
+
+
+## The way through the open nest from a to b widened to r (half-widths, voxels) - not through a stone or a root: the
+## queen's way to another chamber (sim_warmth). Returns the voxels dug out. [inference: Lasius workers dig passages to
+## their own width and the queen is broader - she gets through, and the workers widen the way; no measurement found]
+func widen_way(a: Vector3, b: Vector3, r: Vector3) -> int:
+	var from := Vector3i(roundi(a.x), roundi(a.y), roundi(a.z))
+	var to := Vector3i(roundi(b.x), roundi(b.y), roundi(b.z))
+	if not is_open(from) or not is_open(to):
+		return 0
+	var came := {from: from}
+	var q: Array[Vector3i] = [from]
+	var head := 0
+	while head < q.size() and not came.has(to):
+		var c := q[head]
+		head += 1
+		for d in DIRS:
+			var n := c + d
+			if not came.has(n) and is_open(n):
+				came[n] = c
+				q.append(n)
+	if not came.has(to):
+		return 0
+	var dug := 0
+	var c := to
+	while c != from:
+		for y in range(maxi(y_lo, int(c.y - r.y)), mini(ny - 1, int(c.y + r.y) + 1)):
+			for z in range(maxi(1, int(c.z - r.z)), mini(nz - 1, int(c.z + r.z) + 1)):
+				for x in range(maxi(1, int(c.x - r.x)), mini(nx - 1, int(c.x + r.x) + 1)):
+					var v := Vector3i(x, y, z)
+					var k := idx(v)
+					if rho[k] >= AIR and not is_hard(v) and ((Vector3(v) - Vector3(c)) / r).length_squared() <= 1.0:
+						rho[k] = 0
+						_mark(v)
+						dug += 1
+		c = came[c]
+	if dug > 0:
+		_recount()
+		_bfs()
+	return dug
 
 
 func _mark(c: Vector3i) -> void:

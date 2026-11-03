@@ -121,6 +121,11 @@ func from_dict(d: Dictionary) -> void:
 	climate.from_dict(d.climate)
 	nest = NestVolume.new()
 	nest.from_dict(rng, d.nest)
+	# (a keeper's box has no roots from v0.11.85: those of a colony started before go - the voxels round them are soil
+	# like the rest again)
+	if String(d.get("scenario", "keeper")) != "wild" and not (nest.soil.get("roots", []) as Array).is_empty():
+		nest.soil["roots"] = []
+		nest._stamp_hard()
 	home = Field.new(gw, gh, CELL)
 	home.from_dict(d.home)
 	food = Field.new(gw, gh, CELL)

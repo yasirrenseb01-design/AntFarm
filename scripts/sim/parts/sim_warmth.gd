@@ -24,6 +24,8 @@ var ch_mean := PackedFloat32Array()            # and over about the last day (th
 var surf_mean := -1000.0                       # the ground's daytime temperature over about the last ten days (°C)
 
 
+const QUEEN_WAY := Vector3(1.9, 1.7, 1.9)     # half-widths (voxels, 1.5 mm) of the way the queen takes: ~5.5 mm across
+
 func _dev_rate(t: float) -> float:
 	if t < sp["dev_min_c"]:
 		return 0.0
@@ -112,6 +114,9 @@ func _place_brood(dt: float) -> void:
 	elif queen_at == deepest:
 		better = _mean_score(q_best) > _mean_score(queen_at)          # (out of her winter quarters as soon as it is warmer up)
 	if q_best != queen_at and _queen_stay > 2.0 and better and queen.alive:
+		# the way between the two widened to her size as she goes (nest_voxels.widen_way: the tunnels are as wide as a
+		# worker, and her body went through their walls - the keeper, 2026-11-03)
+		nest.widen_way(nest.chambers[queen_at].c, nest.chambers[q_best].c, QUEEN_WAY)
 		queen_at = q_best
 		_queen_stay = 0.0
 	# larvae (by day and night) and cocoons (a little higher, drier)

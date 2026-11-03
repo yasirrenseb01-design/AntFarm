@@ -61,14 +61,14 @@ func setup(s) -> void:
 		st.append(Vector4(sto[0], sto[1], sto[2], sto[3]))
 	var ra := PackedVector4Array()
 	var rb := PackedVector4Array()
-	for r in nest.soil.get("roots", []).slice(0, 4):
+	for r in nest.soil.get("roots", []).slice(0, 32):
 		ra.append(Vector4(r[0], r[1], r[2], r[6]))
 		rb.append(Vector4(r[3], r[4], r[5], 0.0))
 	_mat.set_shader_parameter("n_stones", st.size())
 	_mat.set_shader_parameter("n_roots", ra.size())
 	st.resize(24)
-	ra.resize(4)
-	rb.resize(4)
+	ra.resize(32)
+	rb.resize(32)
 	_mat.set_shader_parameter("stones", st)
 	_mat.set_shader_parameter("roots_a", ra)
 	_mat.set_shader_parameter("roots_b", rb)
@@ -312,7 +312,7 @@ func _build_soil_things() -> void:
 			continue
 		var mi := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
-		cm.top_radius = float(ro[6]) * 0.7
+		cm.top_radius = float(ro[6]) * 0.88       # (the next segment starts as thin as this one ends)
 		cm.bottom_radius = float(ro[6])
 		cm.height = len
 		cm.radial_segments = 8
@@ -322,6 +322,17 @@ func _build_soil_things() -> void:
 		var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
 		mi.transform = Transform3D(Basis(x, y, x.cross(y)), (a + b) * 0.5)
 		_soil_things.add_child(mi)
+		# a knob at its joint, so the bends are smooth (straight pieces alone showed their cut ends)
+		var j := MeshInstance3D.new()
+		var js := SphereMesh.new()
+		js.radius = float(ro[6]) * 0.88
+		js.height = js.radius * 2.0
+		js.radial_segments = 8
+		js.rings = 4
+		j.mesh = js
+		j.material_override = rm
+		j.position = b
+		_soil_things.add_child(j)
 
 
 func set_active(on: bool) -> void:

@@ -15,8 +15,8 @@ uniform vec3 vol_org = vec3(0.0);           // the voxel the volume starts at (a
 uniform int n_stones = 0;
 uniform vec4 stones[24];
 uniform int n_roots = 0;
-uniform vec4 roots_a[4];
-uniform vec4 roots_b[4];
+uniform vec4 roots_a[32];
+uniform vec4 roots_b[32];
 uniform float clay_top = 14.0;
 uniform float sand_top = 41.0;
 

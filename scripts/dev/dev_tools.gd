@@ -183,7 +183,11 @@ func _take_shot() -> void:
 	if _opts.has("queen-to"):
 		# (dev: the colony sends the queen to that chamber - she walks there through the tunnels)
 		get_tree().create_timer(2.0).timeout.connect(func():
-			sim.queen_at = clampi(int(_opts["queen-to"]), 0, sim.nest.chambers.size() - 1)
+			var qt := clampi(int(_opts["queen-to"]), 0, sim.nest.chambers.size() - 1)
+			if not _opts.has("no-widen"):                  # (as the colony sends her: the way widened - sim_warmth)
+				var n_dug: int = sim.nest.widen_way(sim.nest.chambers[sim.queen_at].c, sim.nest.chambers[qt].c, sim.QUEEN_WAY)
+				print("queen-to: way widened, %d voxels" % n_dug)
+			sim.queen_at = qt
 			sim._queen_stay = 0.0
 			nest_view._refresh_spots())
 	if _opts.get("view", "outworld") == "nest":
