@@ -153,6 +153,16 @@ func _make_postit() -> Button:
 	b.position = Vector2(16, 14)
 	b.rotation = deg_to_rad(-2.0)
 	b.tooltip_text = tr("bar_open_tip")
+	_style_postit(b)
+	b.add_theme_font_size_override("font_size", 15)
+	b.visible = false
+	b.pressed.connect(func(): set_bar_open(true))
+	return b
+
+
+## A button drawn as a yellow sticky note (the folded bar; the folded side panel's tab - the keeper, 2026-11-03: dark on
+## the dark scene it could hardly be seen).
+func _style_postit(b: Button) -> void:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = POSTIT
 	sb.content_margin_left = 16
@@ -169,12 +179,8 @@ func _make_postit() -> Button:
 			s2.bg_color = POSTIT.lightened(0.15)
 		b.add_theme_stylebox_override(st, s2)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 15)
 	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
 		b.add_theme_color_override(c, INK)
-	b.visible = false
-	b.pressed.connect(func(): set_bar_open(true))
-	return b
 
 
 ## Opens or folds the bar (kept in the settings, "bar_open").
@@ -302,6 +308,8 @@ func _build_tools(root: Control) -> void:
 			nest_view.set_xray(on)
 		_cut_row.visible = not on and not sim.nest.slab)
 	row.add_child(_xray_btn)
+	# the nest seen through the soil from the start (the keeper, 2026-11-03: the cut face of bare soil first until v0.11.78)
+	_xray_btn.button_pressed = true
 	var g := ButtonGroup.new()
 	for pair in [["tool_pan", "pan"]] + FoodKinds.tools() + [["tool_rock", "rock"], ["tool_rock_take", "rock_take"], ["tool_erase", "erase"]]:
 		var b := _button(tr(pair[0]), true, g)

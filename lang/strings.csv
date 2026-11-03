@@ -393,8 +393,8 @@ top_plot,แปลงสวน,garden plot
 top_box,กล่อง,box
 speed_pause,หยุด,Pause
 speed_dev,ความเร็วสำหรับนักพัฒนา (F10 ซ่อน/แสดง),Developer speed (F10 shows / hides)
-view_outworld,พื้นดิน 3 มิติ,Outworld 3D
-view_nest,ในรัง 3 มิติ,Nest 3D
+view_outworld,พื้นดิน,Outworld
+view_nest,ในรัง,Nest
 enemies,ศัตรู,Enemies
 enemies_tip,ปล่อยแมงมุมหมาป่า ตะขาบหิน หรือด้วงดิน มาดูมดสู้,"Let in a wolf spider, a stone centipede or a ground beetle and watch the ants fight"
 stars,มดเด่น,Top ants
@@ -439,7 +439,7 @@ go_see,ไปดู,Go see
 panel_fold,พับ ›,Fold ›
 panel_fold_tip,พับแผงสถานะเก็บ (ดูฉากได้กว้างขึ้น),Fold the colony panel away (more room for the view)
 panel_open,‹ สถานะรัง,‹ Colony
-panel_open_tip,เปิดแผงสถานะรัง บันทึก และกราฟประชากร,"Open the colony panel: status, journal and population chart"
+panel_open_tip,เปิดแผงสถานะรัง บันทึก และสถิติ,"Open the colony panel: status, journal and statistics"
 panel_status,สถานะรัง,Colony
 panel_workers,มดงาน,Workers
 panel_out,นอกรัง,Outside

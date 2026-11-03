@@ -3,6 +3,10 @@ extends "res://scripts/view/nest/parts/nest_duties.gd"
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 
+const LOD_NEAR := 55.0        # camera distance (voxels) a nestmate is worked out every frame within; every second to LOD_FAR
+const LOD_FAR := 90.0
+
+
 func _move_mate(m: Dictionary, n: Vector3i) -> void:
 	m.prev = m.cell
 	m.cell = n
@@ -444,6 +448,7 @@ func _update_ants(delta: float) -> void:
 		if not v.get("hide", false):
 			_mate_cells[Vector3i(roundi(v.to.x), roundi(v.to.y), roundi(v.to.z))] = v
 	_mate_frame += 1
+	var cam_at: Vector3 = _cam.global_position if _cam != null else Vector3.INF
 	for mi in _mates.size():
 		var m: Dictionary = _mates[mi]
 		# off screen a nestmate is moved on only every fourth frame (with the time it missed): it is not drawn
@@ -451,6 +456,14 @@ func _update_ants(delta: float) -> void:
 		var seen_now: bool = not m.has("xf") or _visible((m.xf as Transform3D).origin)
 		if not seen_now and not m.has("script") and (_mate_frame + mi) % 4 != 0:
 			continue
+		# on screen but far from the camera - small: every second or third frame (the nest seen through the soil shows
+		# every nestmate at once: 300 of them all worked out every frame, 17 fps on the Intel UHD - the keeper, 2026-11-03,
+		# chose to open the nest through the soil: "and make it lighter")
+		if seen_now and not m.has("script") and m.has("xf") and cam_at != Vector3.INF:
+			var cd: float = cam_at.distance_to((m.xf as Transform3D).origin)
+			var every := 1 if cd < LOD_NEAR else (2 if cd < LOD_FAR else 3)
+			if every > 1 and (_mate_frame + mi) % every != 0:
+				continue
 		var md: float = m.lag
 		m.lag = 0.0
 		# (stepping off the brood or a nestmate to a free spot: even a chilled ant does that much)

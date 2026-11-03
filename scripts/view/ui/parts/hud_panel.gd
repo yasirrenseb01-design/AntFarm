@@ -67,6 +67,9 @@ func _build_panel(root: Control) -> void:
 	_side_tab.offset_right = -12
 	_side_tab.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_side_tab.visible = false
+	_style_postit(_side_tab)
+	_side_tab.add_theme_font_size_override("font_size", 15)
+	_side_tab.rotation = deg_to_rad(2.0)
 	_side_tab.pressed.connect(func(): set_side_open(true))
 	root.add_child(_side_tab)
 	root.get_viewport().size_changed.connect(_layout_side)

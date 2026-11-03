@@ -201,6 +201,8 @@ func _take_shot() -> void:
 		nest_view.snap_camera()
 		if _opts.has("xray"):
 			nest_view.set_xray(true)
+		if _opts.has("no-xray"):
+			hud._xray_btn.button_pressed = false      # (dev: the cut face, as before v0.11.79 the nest view opened)
 		if _opts.has("look"):
 			nest_view._refresh_spots()
 			nest_view.focus(_opts["look"])
@@ -262,6 +264,8 @@ func _take_shot() -> void:
 			hud._stats._apply({"x": String(_opts.get("stats-x", "day")), "ys": String(_opts["stats-y"]).split(","), "own": _opts.has("stats-own")})
 	if _opts.has("bar-fold"):
 		hud.settings["bar_open"] = false      # (dev: the bar folded away, the sticky note - as the HUD opens it)
+	if _opts.has("side-fold"):
+		hud.settings["side_open"] = false     # (dev: the side panel folded away, its tab)
 	if _opts.has("colonies"):
 		hud.open_colonies(String(_opts["colonies"]) if _opts["colonies"] != "1" else "")    # (--colonies=wild|keeper)
 	if _opts.has("home-layout") and home != null:
