@@ -53,6 +53,7 @@ func _build_panel(root: Control) -> void:
 			_stats.redraw())
 		tabs.add_child(b)
 		_side_tabs.append(b)
+	guide_targets["stats"] = _side_tabs[1]
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.add_child(gap)

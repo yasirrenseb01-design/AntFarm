@@ -5,6 +5,7 @@ extends "res://scripts/view/nest/parts/nest_mates.gd"
 ## Layers: parts/nest_scene <- nest_camera <- nest_brood <- nest_piles <- nest_lifecycle <- nest_bodies <- nest_rest <- nest_contact <- nest_duties <- nest_mates <- nest_view (see docs/ARCHITECTURE.md).
 
 
+const Look := preload("res://scripts/game/look_prefs.gd")
 func setup(s) -> void:
 	sim = s
 	queen_scale = float(sim.sp.look.queen_scale)
@@ -376,8 +377,9 @@ func _unhandled_input(e: InputEvent) -> void:
 				follow_wid = -1
 	elif e is InputEventMouseMotion:
 		if _rot:
-			yaw_t -= e.relative.x * 0.007
-			pitch_t = clampf(pitch_t + e.relative.y * 0.006, -0.2, 1.45)
+			var rel: Vector2 = Look.turn(e.relative)      # (the keeper's mouse speed: settings, game/look_prefs.gd)
+			yaw_t -= rel.x * 0.007
+			pitch_t = clampf(pitch_t + rel.y * 0.006, -0.2, 1.45)
 		elif _pan:
 			var right := _cam.global_transform.basis.x
 			var up := _cam.global_transform.basis.y

@@ -23,7 +23,8 @@ const MAX_RAW := 64 * 1024 * 1024
 const MAX_TEXT := 1024 * 1024    # settings.cfg, slotN.json
 # what each setting is, and the value it has when the file has none or something else there
 const SETTINGS := {"slot": 1, "away": 3, "care": true, "lang": "", "view": "outworld", "desk_told": false, "show_fps": false,
-	"side_open": true, "bar_open": true, "music": 0.6, "guide_done": false, "quality": "medium", "fps_cap": 1, "home_hand": true, "home_cross": true, "home_lamp": true}
+	"side_open": true, "bar_open": true, "music": 0.6, "guide_done": false, "quality": "medium", "fps_cap": 1, "home_hand": true, "home_cross": true, "home_lamp": true,
+	"look_speed": 1.0, "look_invert": false, "home_tips_done": false}
 const META := {"day": 0, "workers": 0, "saved_unix": 0, "glass": false, "queen": true, "scenario": "keeper", "water": 1.0,
 	"water_use": 0.0, "refills": ""}
 const MAX_REFILLS := 20          # the water tank filled from the Home: the times kept for the colony's next opening

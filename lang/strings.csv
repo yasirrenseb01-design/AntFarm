@@ -541,14 +541,14 @@ guide_next,ต่อไป ›,Next ›
 guide_done,เริ่มเลี้ยงมด,Start keeping
 guide_skip,ข้าม,Skip
 guide_welcome,นี่คือรังของคุณ ถ้าเริ่มจากราชินีตัวเดียว เธอจะขังตัวเองในห้องเล็กใต้ดินแล้วเลี้ยงลูกรุ่นแรกเอง หลายสัปดาห์แรกจึงดูเหมือนไม่มีอะไรเกิดขึ้น — เร่งเวลาได้ที่ปุ่มความเร็วตรงนี้,"This is your colony. A lone queen seals herself into a small chamber underground and raises her first brood on her own, so for the first weeks little seems to happen - speed time up with these buttons."
-guide_water,"มดต้องการน้ำ ดูหลอด ""น้ำ"" ในแผงสถานะรัง แล้วกด ""เติมน้ำในรัง"" ก่อนน้ำหมด (มีเสียงเตือนเมื่อใกล้หมด)","Ants need water. Watch the ""Water"" gauge in the colony panel and press ""Add water"" before it runs dry (a chime warns you when it is low)."
+guide_water,"มดต้องการน้ำ ดูหลอด ""น้ำ"" ในแผงสถานะรัง แล้วกด ""เติมน้ำในรัง"" ก่อนน้ำหมด (มีเสียงเตือนเมื่อใกล้หมด) · ตอนปิดเกมมีผู้ช่วยเติมให้เมื่อถังหมด (ปิดได้ในตั้งค่า) แต่ระหว่างเล่นต้องเติมเอง","Ants need water. Watch the ""Water"" gauge in the colony panel and press ""Add water"" before it runs dry (a chime warns you when it is low). While the game is closed a helper fills the tank when it runs dry (it can be turned off in Settings) - while you play, it is up to you."
 guide_water_wild,ในสวน ฝนให้น้ำรังเอง ไม่ต้องเติมน้ำ — แต่หน้าแล้งรังอาจลำบาก ดูความชื้นในแผงสถานะรังได้,"In the garden the rain waters the nest, so there is nothing to add - but a dry summer is hard on a colony. The colony panel shows the humidity."
 guide_food,พอมีมดงานออกหากิน วางอาหารในกล่องได้: หยดน้ำผึ้ง (น้ำตาลให้มดทั้งรัง) หรือจิ้งหรีดตาย (โปรตีนให้ตัวอ่อนโต) — เลือกที่แถบนี้แล้วคลิกบนพื้น,"Once workers come out to forage, put food in the box: a drop of honey (sugar for the whole colony) or a dead cricket (protein the larvae need to grow) - pick it here, then click on the ground."
 guide_food_wild,ในสวนมดหาอาหารเอง (น้ำหวานจากเพลี้ย แมลงเล็กๆ) จะวางน้ำผึ้งหรือจิ้งหรีดช่วยก็ได้ — เลือกที่แถบนี้แล้วคลิกบนพื้น,"In the garden the ants find their own food (honeydew from aphids, small insects), but you can help with honey or a cricket - pick it here, then click on the ground."
-guide_views,สลับดูบนดินกับในรัง — ในรังจะเห็นราชินี ลูกมด และอุโมงค์ที่มดขุดเอง (ลากเพื่อหมุน ล้อเมาส์เพื่อซูม),"Switch between the outworld and the nest - inside you see the queen, the brood and the tunnels the ants dig themselves (drag to turn, wheel to zoom)."
+guide_views,"สลับดูพื้นดินกับในรัง — ในรังเห็นทะลุดินตั้งแต่แรก: ราชินี ลูกมด และอุโมงค์ที่มดขุดเอง (ปุ่ม ""มองทะลุดิน"" ปิดเพื่อดูหน้าตัดดิน · ลากเพื่อหมุน ล้อเมาส์เพื่อซูม)","Switch between the outworld and the nest - the nest opens seen through the soil: the queen, the brood and the tunnels the ants dig themselves (""See through the soil"" off shows the cut face · drag to turn, wheel to zoom)."
 guide_ants,"คลิกมดตัวไหนก็ได้เพื่อดูว่ามันกำลังทำอะไร และตั้งชื่อให้มัน · ""มดเด่น"" รวมมดที่ทำงานแต่ละอย่างมากที่สุดและมดที่คุณตั้งชื่อไว้","Click any ant to see what it is doing, and give it a name. ""Top ants"" lists the busiest ant in each line of work and every ant you have named."
 guide_away,ปิดเกมแล้วรังยังมีชีวิตต่อ (ตั้งได้ในหน้าตั้งค่าว่าเวลาเดินเร็วแค่ไหนตอนปิด) และเกมเซฟให้อัตโนมัติทุกนาที,"The colony lives on while the game is closed (how fast time runs then is up to you, in Settings), and the game saves itself every minute."
-guide_keys,เมนูหรือ Esc = กลับหน้าแรก · F9 ซ่อนหน้าจอ · F8 กล้องเดินชมรังให้เอง (ไว้ถ่ายคลิป) · ขอให้สนุกกับการเลี้ยงมด!,Menu or Esc takes you back to the title screen · F9 hides everything on screen · F8 lets the camera tour the colony by itself (for filming). Enjoy your ants!
+guide_keys,ปุ่ม ‹ พับแถบนี้เก็บ เหลือกระดาษโน้ตบอกวันและฤดู (คลิกโน้ตเพื่อเปิด) · เมนูหรือ Esc = กลับหน้าแรก · F9 ซ่อนหน้าจอ · F8 กล้องเดินชมรังให้เอง (ไว้ถ่ายคลิป) · ขอให้สนุกกับการเลี้ยงมด!,"‹ folds this bar away to a sticky note with the day and the season (click the note to open it) · Menu or Esc takes you back to the title screen · F9 hides everything on screen · F8 lets the camera tour the colony by itself (for filming). Enjoy your ants!"
 settings_guide,แสดงคำแนะนำผู้เล่นใหม่อีกครั้ง,Show the getting-started guide again
 settings_guide_note,จะขึ้นตอนกลับเข้าเกม,It shows when you go back to the game
 # graphics (game/graphics.gd),,
@@ -606,3 +606,13 @@ stat_default,ประชากรรายวัน (ตั้งต้น),Pop
 stat_new_value,"ค่านี้เริ่มบันทึกวันละครั้งตั้งแต่ v0.11.78
 เส้นจะขึ้นเมื่อผ่านไปสองวันในเกม","This value is recorded once a day from v0.11.78
 its line shows after two game days"
+set_look,ความไวเมาส์ (หมุนมุมมอง),Mouse sensitivity (turning the view)
+set_look_invert,กลับแกนขึ้น-ลง,Invert up-down
+home_tips_title,ห้องเลี้ยงมดของคุณ,Your ant room
+home_tip_tank,คลิกตู้บนโต๊ะหรือชั้นวางเพื่อเข้ารังนั้น · Esc กลับหน้าแรก,Click a tank on the desk or a shelf to go into that colony · Esc goes back to the title page
+home_tip_water,"มุมซ้ายล่างคือน้ำของแต่ละตู้ ค่อยๆ ลดลงตามเวลา กด ""เติม"" ได้จากที่นี่ (มีสองตู้ขึ้นไปจะมี ""เติมทุกตู้"") · เติมตอนเหลือต่ำกว่า 30% ได้แต้ม","Bottom left: each tank's water, going down as time passes - press ""Fill"" here (""Fill all"" once there are two tanks or more) · filling one under 30 % earns points"
+home_tip_shop,"ร้านค้ามุมขวาบน: ใช้แต้ม Colony Harmony ที่มดหามาให้ ซื้อตู้ใหญ่ ตู้เล็ก และชั้นวาง","The shop, top right: spend the Colony Harmony points your ants earn on a bigger tank, small tanks and shelves"
+home_tip_fridge,"ตู้เย็นในมุมห้องไว้ให้มดจำศีลหน้าหนาว (ใส่ได้สองตู้ กด ""จำศีลในตู้เย็น"" ในรัง)","The fridge in the corner is for the ants' winter rest (two tanks; press ""Hibernate in fridge"" in the colony)"
+home_tip_keys,"เดิน W A S D · หันมองด้วยเมาส์ (ความไวปรับได้ในตั้งค่า) · Tab ปล่อยเมาส์เพื่อกดปุ่ม","Walk with W A S D · look round with the mouse (its speed is in Settings) · Tab frees the pointer for the buttons"
+home_tips_ok,เข้าใจแล้ว,Got it
+guide_stats,"แท็บ ""สถิติ"" ทำกราฟจากค่าในสถานะรัง: เลือกแกน X หนึ่งค่า (ปกติเป็นวัน) แกน Y กี่ค่าก็ได้ ตั้งชื่อแล้วบันทึกไว้ใช้กับทุกรัง","The ""Statistics"" tab plots the colony's status: one value along X (the day, usually), any along Y - name the set and save it for every colony."

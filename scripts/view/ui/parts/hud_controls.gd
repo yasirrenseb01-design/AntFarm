@@ -30,6 +30,7 @@ func _build_top(root: Control) -> void:
 	var fold := _button("‹", false)
 	fold.tooltip_text = tr("bar_fold_tip")
 	fold.pressed.connect(func(): set_bar_open(false))
+	guide_targets["fold"] = fold
 	name_row.add_child(fold)
 	title.add_child(name_row)
 	var sub := _label(tr("top_subtitle") % [sim.sp["name"], tr("top_plot") if sim.scenario == "wild" else tr("top_box"),

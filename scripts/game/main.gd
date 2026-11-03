@@ -1,6 +1,7 @@
 extends "res://scripts/dev/dev_tools.gd"
 const DesktopMode := preload("res://scripts/game/desktop_mode.gd")
 const SaveCheck := preload("res://scripts/sim/save_check.gd")
+const LookPrefs := preload("res://scripts/game/look_prefs.gd")
 var desktop                    # desktop mode: the nest as the wallpaper (PART 11)
 static var _window_set := false       # the window was maximized at this start (main._ready)
 ## Entry point. Owns the simulation, the views, the camera and the HUD. Top of the chain:
@@ -312,6 +313,7 @@ func _room_info() -> Dictionary:
 
 ## Graphics quality and the frame-rate cap from the settings (game/graphics.gd); the first time, from the graphics card.
 func _apply_graphics() -> void:
+	LookPrefs.apply(_settings)                  # (the mouse's speed turning the views: game/look_prefs.gd)
 	if not _settings.has("quality"):
 		_settings["quality"] = Graphics.auto_level()
 		if _settings.quality == "low" and not _settings.has("fps_cap"):

@@ -5,6 +5,7 @@ extends "res://scripts/view/outworld/parts/outworld_camera.gd"
 ## Layers: parts/outworld_scene <- outworld_props <- outworld_crowd <- outworld_creatures <- outworld_camera <- outworld_view.
 
 
+const Look := preload("res://scripts/game/look_prefs.gd")
 func setup(s) -> void:
 	sim = s
 	ANT_SCALE = Spec.ANT_SCALE * float(sim.sp.look.worker_scale)      # (the species' size: docs/SPECIES.md)
@@ -226,8 +227,9 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseMotion:
 		hover = pick(e.position)
 		if _rot:
-			yaw_t -= e.relative.x * 0.007
-			pitch_t = clampf(pitch_t + e.relative.y * 0.006, 0.12, 1.54)
+			var rel: Vector2 = Look.turn(e.relative)      # (the keeper's mouse speed: settings, game/look_prefs.gd)
+			yaw_t -= rel.x * 0.007
+			pitch_t = clampf(pitch_t + rel.y * 0.006, 0.12, 1.54)
 		elif _pan:
 			var vp := get_viewport().get_visible_rect().size
 			var upp := 2.0 * cam_dist * tan(deg_to_rad(_cam.fov * 0.5)) / vp.y

@@ -214,6 +214,33 @@ func open_settings() -> void:
 			settings_changed.emit(settings))
 		home_row.add_child(cb)
 	col.add_child(home_row)
+	# the mouse turning the views - the Home's look round, the colony's cameras (game/look_prefs.gd)
+	var look := HBoxContainer.new()
+	look.add_child(_label(tr("set_look"), 13, Paper.PENCIL))
+	var ls := HSlider.new()
+	ls.focus_mode = Control.FOCUS_NONE
+	ls.min_value = 0.25
+	ls.max_value = 3.0
+	ls.step = 0.05
+	ls.value = float(settings.get("look_speed", 1.0))
+	ls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ls.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var ls_txt := _label("%.2f×" % ls.value, 13, Paper.INK)
+	ls_txt.custom_minimum_size.x = 52
+	ls.value_changed.connect(func(v):
+		settings["look_speed"] = v
+		ls_txt.text = "%.2f×" % v
+		settings_changed.emit(settings))
+	look.add_child(ls)
+	look.add_child(ls_txt)
+	var inv := CheckBox.new()
+	inv.text = tr("set_look_invert")
+	inv.button_pressed = bool(settings.get("look_invert", false))
+	inv.toggled.connect(func(on):
+		settings["look_invert"] = on
+		settings_changed.emit(settings))
+	look.add_child(inv)
+	col.add_child(look)
 	# graphics quality and the frame-rate cap (game/graphics.gd; main applies them as the settings change)
 	var gfx := HBoxContainer.new()
 	gfx.add_theme_constant_override("separation", 8)

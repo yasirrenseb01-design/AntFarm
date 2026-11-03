@@ -266,6 +266,8 @@ func _take_shot() -> void:
 			DirAccess.make_dir_recursive_absolute("user://card_test")
 			OutworldCard.write("user://card_test", 1, outworld, nest_view)
 			print("card written"))
+	if _opts.has("no-ui"):
+		hud.visible = false                   # (dev: no UI - store page pictures, as F9)
 	if _opts.has("stats-tab"):
 		hud.show_side_tab(true)               # (dev: the side panel's Statistics tab; --stats-y=a,b,c: what it plots)
 		if _opts.has("stats-y"):

@@ -13,6 +13,8 @@ const Paper := preload("res://scripts/view/ui/paper.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const Shop := preload("res://scripts/game/home_shop.gd")
 const Water := preload("res://scripts/game/home_water.gd")
+const Look := preload("res://scripts/game/look_prefs.gd")
+const Tips := preload("res://scripts/game/home_tips.gd")
 const Hand := preload("res://scripts/view/home/home_hand.gd")
 const Chime := preload("res://scripts/view/ui/chime.gd")
 const EYE := 1.55                 # metres: the keeper's eyes
@@ -41,6 +43,7 @@ var _purse: Label
 var _help: Label
 var shop                          # game/home_shop.gd: the shop page
 var water                         # game/home_water.gd: each tank's water, filled from here
+var tips                          # game/home_tips.gd: what is where, the first time
 var _hand: TextureRect            # the keeper's hand drawn flat, in the middle of the view (with the 3D hand off)
 var _hand3d                       # view/home/home_hand.gd: the keeper's hand in 3D, lower right (settings "home_hand")
 var _cross: ColorRect             # an aiming point in the middle of the view (settings "home_cross")
@@ -221,6 +224,9 @@ void fragment() { float d = length(UV - 0.5) * 22.0; float r = mix(5.0, 8.0, hot
 	water = Water.new()
 	root.add_child(water)
 	water.setup(self)
+	tips = Tips.new()
+	root.add_child(tips)
+	tips.setup(self)
 	_tip = _note(root, h)
 	_toast = _note(root, h)
 	_food = _note(root, h)                       # (the tanks whose sugar or protein is running out: _check_food)
@@ -297,6 +303,7 @@ func open() -> void:
 	_aim()
 	_update_purse()
 	water.refresh()
+	tips.maybe_show()
 	_check_food(false)                          # (no chime as the Home opens: only for a warning that comes up in it)
 
 
@@ -369,7 +376,7 @@ func _aim() -> void:
 ## The pointer: held in the middle (turning the view) unless the keeper freed it (Tab), the shop is open, or a window
 ## (a new colony, a question) is up.
 func _pointer_free() -> bool:
-	return _free or shop.visible or not get_viewport().get_embedded_subwindows().is_empty() or (main._opts.has("shot") and not main._opts.has("home-aim"))
+	return _free or shop.visible or (tips != null and tips.visible) or not get_viewport().get_embedded_subwindows().is_empty() or (main._opts.has("shot") and not main._opts.has("home-aim"))
 
 
 func _process(delta: float) -> void:
@@ -476,8 +483,9 @@ func _on_input(e: InputEvent) -> void:
 func _input(e: InputEvent) -> void:
 	if not is_open or not (e is InputEventMouseMotion) or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		return
-	_yaw -= e.relative.x * LOOK
-	_pitch = clampf(_pitch - e.relative.y * LOOK, -1.3, 1.1)
+	var rel: Vector2 = Look.turn(e.relative)          # (the keeper's mouse speed: settings, game/look_prefs.gd)
+	_yaw -= rel.x * LOOK
+	_pitch = clampf(_pitch - rel.y * LOOK, -1.3, 1.1)
 	_aim()
 
 

@@ -56,8 +56,9 @@ func setup(h) -> void:
 		["guide_food_wild" if wild else "guide_food", "food"],
 		["guide_views", "views"],
 		["guide_ants", "stars"],
+		["guide_stats", "stats"],
 		["guide_away", "menu"],
-		["guide_keys", "menu"]]
+		["guide_keys", "fold"]]
 	_show(0)
 
 
@@ -69,8 +70,10 @@ func _show(i: int) -> void:
 	_count.text = tr("guide_step") % [i + 1, _steps.size()]
 	_text.text = tr(_steps[i][0])
 	_next.text = tr("guide_next") if i < _steps.size() - 1 else tr("guide_done")
-	if _steps[i][1] == "water" and not hud._side.visible:
-		hud.set_side_open(true)              # (the water tube is in the side panel: folded away in a narrow window)
+	if _steps[i][1] in ["water", "stats"] and not hud._side.visible:
+		hud.set_side_open(true)              # (the water tube and the Statistics tab are in the side panel: folded away)
+	if not hud._top.visible:
+		hud.set_bar_open(true)               # (the bar folded to its note: most of what the guide shows is on it)
 	_card.reset_size()
 	_place.call_deferred()
 
@@ -88,8 +91,26 @@ func _place() -> void:
 	var cs := _card.get_combined_minimum_size()
 	var t := _target()
 	var at := (vp - cs) * 0.5
+	_beside = false
 	if t != null:
 		var r := t.get_global_rect()
+		var bar: Rect2 = hud._top.get_global_rect()
+		if hud._top.visible and bar.encloses(r):
+			# on the bar down the left (from v0.11.78): beside it, level with what it points at - under it, the card
+			# lay over the bar's own buttons
+			_beside = true
+			at = Vector2(bar.end.x + 70.0, clampf(r.get_center().y - cs.y * 0.5, 14.0, vp.y - cs.y - 14.0))
+			_card.position = at
+			queue_redraw()
+			return
+		var side: Rect2 = hud._side.get_global_rect()
+		if hud._side.visible and side.encloses(r):
+			# (on the side panel: left of it, not over the colony's figures)
+			_beside = true
+			at = Vector2(side.position.x - cs.x - 70.0, clampf(r.get_center().y - cs.y * 0.5, 14.0, vp.y - cs.y - 14.0))
+			_card.position = at
+			queue_redraw()
+			return
 		at.x = clampf(r.get_center().x - cs.x * 0.5, 14.0, vp.x - cs.x - 14.0)
 		at.y = r.end.y + 70.0 if r.get_center().y < vp.y * 0.5 else r.position.y - cs.y - 70.0
 	# not over the ant's info box or a panel open on the left: along to where it is clear of them (it stays put while
@@ -115,6 +136,7 @@ func _keep_out() -> Array:
 
 
 var _seen_out := []
+var _beside := false               # the card beside the bar or the side panel, the arrow across to it
 
 func _process(_delta: float) -> void:
 	var now := _keep_out()
@@ -133,6 +155,16 @@ func _draw() -> void:
 	var ink := Paper.ACCENT
 	draw_rect(r, Color(ink, 0.9), false, 2.5)
 	var c := _card.get_global_rect()
+	if _beside:
+		# (the card right of the bar: the arrow across to it)
+		var left := r.get_center().x < c.position.x
+		var f2 := Vector2(c.position.x if left else c.end.x, clampf(r.get_center().y, c.position.y + 16.0, c.end.y - 16.0))
+		var t2 := Vector2(r.end.x + 4.0 if left else r.position.x - 4.0, r.get_center().y)
+		draw_line(f2, t2, ink, 2.5, true)
+		var d2 := (t2 - f2).normalized()
+		var s2 := Vector2(-d2.y, d2.x)
+		draw_colored_polygon(PackedVector2Array([t2, t2 - d2 * 14.0 + s2 * 7.0, t2 - d2 * 14.0 - s2 * 7.0]), ink)
+		return
 	var from := Vector2(clampf(r.get_center().x, c.position.x + 20.0, c.end.x - 20.0), c.position.y if r.get_center().y < c.position.y else c.end.y)
 	var to := Vector2(r.get_center().x, r.end.y + 4.0 if r.get_center().y < c.position.y else r.position.y - 4.0)
 	draw_line(from, to, ink, 2.5, true)
