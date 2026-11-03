@@ -267,6 +267,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if outworld == null:
 		return
+	if _opts.has("hitch-log"):
+		_log_hitch(delta)
 	if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED and not desktop.on:
 		Engine.max_fps = Graphics.FPS_MINIMIZED                      # (minimized: next to nothing to draw)
 	elif Engine.max_fps == Graphics.FPS_MINIMIZED and not desktop.on:
@@ -277,7 +279,7 @@ func _process(delta: float) -> void:
 	if _persist:
 		_autosave_t += delta
 		if _autosave_t >= 60.0:
-			_save_now()
+			_save_now(false)
 	var t0 := Time.get_ticks_usec()
 	if speed > 0:
 		_acc += delta * 60.0 * speed
@@ -304,15 +306,20 @@ func _process(delta: float) -> void:
 	t0 = _pt("sim", t0)
 	if desktop != null and desktop.hidden:
 		return                 # (the wallpaper, under a full-screen app: nothing to draw - the colony lives on)
-	if mode == "outworld":
+	# (the Home over the colony: its views are not drawn then - the window's 3D is off - and were still moved on every
+	# frame, 13-20 ms of the Home's 33 on a laptop: the keeper, 2026-11-04 "the Home stutters"; they pick up again as
+	# the keeper leaves it, as the wallpaper's do)
+	var in_home: bool = home_room != null and home_room.is_open
+	if mode == "outworld" and not in_home:
 		outworld.ground.tick_pheromones()
 	t0 = _pt("pheromones", t0)
-	outworld.speed = speed
-	outworld.refresh(delta)
-	t0 = _pt("outworld view", t0)
-	nest_view.speed = speed
-	nest_view.refresh(delta)
-	t0 = _pt("nest view", t0)
+	if not in_home:
+		outworld.speed = speed
+		outworld.refresh(delta)
+		t0 = _pt("outworld view", t0)
+		nest_view.speed = speed
+		nest_view.refresh(delta)
+		t0 = _pt("nest view", t0)
 	hud.harmony = harmony.points if _persist and not _demo and not _opts.has("testsave") else -1.0
 	hud.refresh(delta)
 	_pt("hud", t0)
@@ -458,3 +465,23 @@ func _change_language(lang: String) -> void:
 	next_slot = slot
 	skip_title = title == null or not title.is_open
 	get_tree().reload_current_scene()
+
+
+## (dev: --hitch-log - each frame over 80 ms, when, what was on and where the game's own part of it went (ms, the
+## parts over 2): the game played as the keeper does, not --shot)
+var _hitch_was := {}
+func _log_hitch(delta: float) -> void:
+	var now := {}
+	for k in fprof:
+		now[k] = fprof[k]
+	for k in nest_view.fprof:
+		now["nest: " + k] = nest_view.fprof[k]
+	if delta > 0.08:
+		var parts := []
+		for k in now:
+			var d: float = (now[k] - _hitch_was.get(k, 0)) / 1000.0
+			if d > 2.0:
+				parts.append("%s %.0f" % [k, d])
+		print("hitch %.0f ms at %.1f s  mode %s  title %s  home %s  catch-up %d | %s" % [delta * 1000.0, Time.get_ticks_msec() / 1000.0,
+			mode, title != null and title.is_open, home_room != null and home_room.is_open, _catchup_left, ", ".join(parts)])
+	_hitch_was = now

@@ -349,7 +349,10 @@ func _pair_diggers(all: Dictionary) -> void:
 	# the face they make for
 	var face: Vector3i = nest.work_at if nest.work_at.x >= 0 else (Vector3i(nest.diggers[0].cell) if not nest.diggers.is_empty() else Vector3i(-1, 0, 0))
 	if face.x >= 0 and _xfield_at.get(-2, Vector3i(-9, -9, -9)) != face and _dig_wid.size() > _dig_live.size():
-		_xfields[-2] = _field_from(face)
+		if _xfields.has(-2):
+			_xjobs[-2] = _field_job(face)          # (over the next frames, the old face's meanwhile: ~0.1 s at once, v0.11.87)
+		else:
+			_xfields[-2] = _field_from(face)
 		_xfield_at[-2] = face
 
 

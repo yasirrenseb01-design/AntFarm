@@ -87,7 +87,9 @@ static func thumb(item: String, host: Control) -> Control:
 	view.stretch = true
 	view.set_anchors_preset(Control.PRESET_FULL_RECT)
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	view.add_child(_stage(item, Vector2i(192, 144), 0.45))
+	var vp := _stage(item, Vector2i(192, 144), 0.45)
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE      # (it stands still: drawn once, not each frame - four
+	view.add_child(vp)                                         # worlds of their own every frame while the shop is open)
 	box.add_child(view)
 	var frame := Panel.new()
 	var fsb := StyleBoxFlat.new()

@@ -505,6 +505,14 @@ func _take_shot() -> void:
 		print("pick check: %d of %d clicks on a nestmate's head / middle / gaster picked that nestmate (%d behind another body)" % [ok, tried, hidden])
 	if _opts.has("perf") and frame_ms.size() > 20:
 		print("first frames (ms): ", frame_ms.slice(0, 12).map(func(x): return snappedf(x, 1.0)))
+		# the hitches after the first frames, and when (seconds from the start): a stutter that comes back now and then
+		var at := 0.0
+		var hitches := []
+		for i in frame_ms.size():
+			at += frame_ms[i]
+			if i >= 10 and frame_ms[i] > 80.0:
+				hitches.append("%.0f ms at %.1f s" % [frame_ms[i], at / 1000.0])
+		print("hitches over 80 ms: ", hitches.slice(0, 20))
 		# frame times: the average and the worst ones (stutter is what the eye notices)
 		var s := frame_ms.slice(10)
 		s.sort()

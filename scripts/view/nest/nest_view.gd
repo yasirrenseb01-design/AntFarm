@@ -358,6 +358,7 @@ func refresh(delta: float) -> void:
 		_vol_dirty = true
 		_vol_timer = 0.0
 		_soft = PackedFloat32Array()
+		_fcells_cache.clear()
 	if not nest.dirty.is_empty():
 		_vol_dirty = true
 		_floor_cache.clear()            # the floor moved: brood is set down on it afresh
@@ -366,6 +367,7 @@ func refresh(delta: float) -> void:
 		_gfit_cache.clear()
 		_soil_gen += 1
 	for k in nest.dirty:
+		_fcells_forget(k)
 		if not _queue.has(k):
 			_queue.append(k)
 		if not _soft.is_empty():
@@ -398,13 +400,16 @@ func refresh(delta: float) -> void:
 		_spot_timer = 1.5
 		_refresh_spots()
 		_clear_brood_of_ants()        # (and any resting ant whose body lies over the brood gets up)
+	_fields_step()
 	# brood and the mound change slowly; rebuild their instances only when something moved
 	t0 = _nprof("camera/spots", t0)
 	_poll_events()
 	_step_anims(delta * minf(speed, 1.0) if speed > 0 else 0.0)     # (slowed with the clock below 1x: slow motion)
 	t0 = _nprof("life-cycle", t0)
-	var sig := [sim.eggs.size(), sim.larvae.size(), sim.pupae.size(), nest.excavated / 2, snappedf(_plane_w, 0.5),
-		snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5), sim.tick / 600,
+	# (the cut only while the soil is not seen through - through it all the brood is shown, _brood_shown: with the
+	# camera turning, the whole brood was laid out again every frame, ~70 ms each in the keeper's nest, v0.11.87)
+	var sig := [sim.eggs.size(), sim.larvae.size(), sim.pupae.size(), nest.excavated / 2, 0.0 if xray else snappedf(_plane_w, 0.5),
+		0.0 if xray else snappedf(_plane_n.x, 0.05), _spot_timer > 1.45, _moved, _larva_group, _pending("egg"), _pending("pupate"), int(sim.protein * 1.5), sim.tick / 600,
 		snappedf(_queen_turn, 0.12)]          # the queen turning round: the brood round her is laid out again
 	if sig != _brood_sig:
 		_brood_sig = sig

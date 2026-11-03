@@ -56,6 +56,7 @@ var _move_to := Transform3D()
 var _move_t := 1.0
 var _clock_t := 0.0
 var _food: Label
+var _tip_t := 0.0                 # (the note beside the hand written again after this: _describe reads the tank's save)
 
 
 func setup(m) -> void:
@@ -289,6 +290,8 @@ func _set_clock() -> void:
 func open() -> void:
 	if main.home == null:
 		return
+	if Time.get_ticks_msec() - main._card_ms > 60000:
+		main.write_card()                        # (the colony just left, as it is now: the autosave does not draw it)
 	_build()
 	is_open = true
 	visible = true
@@ -530,15 +533,21 @@ func _point(at: Vector2) -> void:
 		if hit != null and from.distance_to(hit) < best_d:
 			best_d = from.distance_to(hit)
 			best = it
-	if not is_same(best, _hot):
+	var fresh := not is_same(best, _hot)
+	if fresh:
 		_hot = best
 		_room.hover(best)
 		_hand.texture = _hand_open if best == null else _hand_point
 		(_cross.material as ShaderMaterial).set_shader_parameter("hot", 0.0 if best == null else 1.0)
 	_tip.visible = best != null
 	if best != null:
-		_tip.text = _describe(best)
-		_tip.reset_size()
+		# (its words: from the tank's save file - read every frame until v0.11.87; now as the hand comes onto it, then
+		# twice a second)
+		var now := Time.get_ticks_msec() / 1000.0
+		if fresh or now > _tip_t:
+			_tip_t = now + 0.5
+			_tip.text = _describe(best)
+			_tip.reset_size()
 		_tip.position = at + Vector2(26, 18)
 		var vs := get_viewport().get_visible_rect().size
 		_tip.position.x = minf(_tip.position.x, vs.x - _tip.size.x - 8)

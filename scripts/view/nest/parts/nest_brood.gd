@@ -8,17 +8,18 @@ extends "res://scripts/view/nest/parts/nest_camera.gd"
 var _queen_soil := {}          # her shift out of the soil as she walks (nest_soil._soil_push keeps it)
 
 func _floor_cells(ch: Dictionary) -> Array:
-	# (cached until the soil changes or the chamber grows: worked out every 1.5 s, the ways out cost ~1 ms a time)
+	# (cached until the soil round it changes or the chamber grows: worked out every 1.5 s, the ways out cost ~1 ms a
+	# time - _fcells_forget; the soil changed round it: a few chambers worked out again each time, the others as they
+	# were a moment ago - _fcells_budget)
 	var key := "%s %s %s" % [ch.c, ch.goal, ch.get("yaw", 0.0)]
-	if int(_fcells_cache.get("gen", -1)) != _soil_gen:
-		_fcells_cache.clear()
-		_fcells_cache["gen"] = _soil_gen
-	if _fcells_cache.has(key):
-		return (_fcells_cache[key] as Array).duplicate()
+	if _fcells_cache.has(key) and (not _fcells_cache[key].stale or _fcells_budget <= 0):
+		return (_fcells_cache[key].cells as Array).duplicate()
+	_fcells_budget -= 1
 	var out := []
 	var clear := []
 	var c: Vector3 = ch.c
 	var g: float = ch.goal
+	var far := {}                    # (_by_exit's cells, each looked at once: neighbouring floor cells share most of theirs)
 	for y in range(int(c.y - g * 0.5) - 1, int(c.y + g * 0.5) + 2):
 		for z in range(int(c.z - g) - 1, int(c.z + g) + 2):
 			for x in range(int(c.x - g) - 1, int(c.x + g) + 2):
@@ -27,26 +28,45 @@ func _floor_cells(ch: Dictionary) -> Array:
 					# (the chamber's own floor - not the floor of a gallery running on out of it)
 					if Vector3(v).distance_to(c) < g + 1.5 and _plan_h(Vector3(v), ch) <= 1.1:
 						out.append(Vector3(x, y - 0.45, z))
-						if not _by_exit(v, ch):
+						if not _by_exit(v, ch, far):
 							clear.append(out[-1])
 	# (clear of the ways out - unless that leaves too little floor: in a small crowded chamber the brood heaped up
 	# high on what was left, and every ant in it climbed over the heap)
-	_fcells_cache[key] = clear if clear.size() * 10 >= out.size() * 6 else out
-	return (_fcells_cache[key] as Array).duplicate()
+	# (the cells it looked at: the loops above, the cell under each, the ways out two cells round and up)
+	var box := AABB(Vector3(c.x - g - 4.0, c.y - g * 0.5 - 4.0, c.z - g - 4.0), Vector3(g * 2.0 + 8.0, g + 9.0, g * 2.0 + 8.0))
+	_fcells_cache[key] = {"cells": clear if clear.size() * 10 >= out.size() * 6 else out, "box": box, "stale": false}
+	return (_fcells_cache[key].cells as Array).duplicate()
 
 
-var _fcells_cache := {}            # (_floor_cells by chamber, for _soil_gen)
+var _fcells_cache := {}            # (_floor_cells by chamber: {"cells", "box", "stale"})
+var _fcells_budget := 0            # (chambers whose soil changed that may be worked out again in this _refresh_spots)
+
+
+## The soil changed in chunk k (nest_voxels CHUNK, 16 cells a side): the chambers' floors worked out from the soil there
+## are to be worked out again, the others kept (until v0.11.87 every chamber's were, each time any ant dug: ~170 ms every few seconds
+## in the keeper's 12-chamber nest - the keeper, 2026-11-04 "it stutters").
+func _fcells_forget(k: Vector3i) -> void:
+	var chunk := AABB(Vector3(k * 16), Vector3(16, 16, 16))
+	for key in _fcells_cache.keys():
+		if (_fcells_cache[key].box as AABB).intersects(chunk):
+			_fcells_cache[key].stale = true
 
 
 ## Whether floor cell v is where a gallery leaves the chamber (open space beyond the chamber's outline within 2
 ## cells): nurses keep the way clear - brood laid there lay across the passage (the keeper saw cocoons blocking
 ## it, 2026-10-22). Shaft mouths down through the floor: _near_drop.
-func _by_exit(v: Vector3i, ch: Dictionary) -> bool:
+## memo: what each cell was found to be, for this chamber and soil (_floor_cells).
+func _by_exit(v: Vector3i, ch: Dictionary, memo = null) -> bool:
 	for dz in range(-2, 3):
 		for dy in range(0, 3):
 			for dx in range(-2, 3):
 				var n := v + Vector3i(dx, dy, dz)
-				if nest.is_open(n) and _plan_h(Vector3(n), ch) > 1.3:
+				var out = memo.get(n) if memo != null else null
+				if out == null:
+					out = nest.is_open(n) and _plan_h(Vector3(n), ch) > 1.3
+					if memo != null:
+						memo[n] = out
+				if out:
 					return true
 	return false
 
@@ -107,10 +127,24 @@ func _field_from(start: Vector3i) -> Dictionary:
 	# of a wide shaft) 3: ants keep to the walls, but can still get everywhere (a field along the walls only
 	# left parts of the nest cut off; one through the air ignored that ants walk on surfaces, and a widened
 	# shaft then sent them sideways for ever beside its open middle)
-	var f := {start: 0}
-	var buckets := {0: [start]}
-	var cur := 0
-	var left := 1
+	var job := _field_job(start)
+	_field_run(job, 0)
+	return job.f
+
+
+## A distance field to be worked out over several frames (_field_run): until v0.11.87 every room's was redone in one
+## frame each time ~25 cells were dug, ~1.2 s with the game standing still in the keeper's 12-chamber nest.
+func _field_job(start: Vector3i) -> Dictionary:
+	return {"f": {start: 0}, "buckets": {0: [start]}, "cur": 0, "left": 1}
+
+
+## Works the job on, step by step as _field_from did, until it is done (true) or the clock passes until_us (0: no limit).
+func _field_run(job: Dictionary, until_us: int) -> bool:
+	var f: Dictionary = job.f
+	var buckets: Dictionary = job.buckets
+	var cur: int = job.cur
+	var left: int = job.left
+	var rounds := 0
 	while left > 0:
 		var b: Array = buckets.get(cur, [])
 		buckets.erase(cur)
@@ -130,10 +164,46 @@ func _field_from(start: Vector3i) -> Dictionary:
 					buckets[nd].append(n)
 					left += 1
 		cur += 1
-	return f
+		rounds += 1
+		if until_us > 0 and rounds % 4 == 0 and Time.get_ticks_usec() > until_us:
+			break
+	job.cur = cur
+	job.left = left
+	return left <= 0
+
+
+var _fields_todo := []             # the rooms' fields being worked out again: [[key, start], ...] (_fields_step)
+var _fields_next := {}
+var _fields_job := {}
+var _xfields := {}                 # more distance fields: -2 the dig face (nest_bind), _corpse_key(id) a body to fetch (nest_dead)
+var _xjobs := {}                   # _xfields being worked out again: key -> job (the old one kept meanwhile)
+
+
+## A few ms a frame on the distance fields being worked out again (nest_view.refresh): the rooms' swapped in when all
+## are done (the old ones used meanwhile), the dig face's as it is done.
+func _fields_step() -> void:
+	var until := Time.get_ticks_usec() + 3000
+	while not _fields_todo.is_empty() and Time.get_ticks_usec() < until:
+		if _fields_job.is_empty():
+			_fields_job = _field_job(_fields_todo[0][1])
+		if not _field_run(_fields_job, until):
+			return
+		_fields_next[_fields_todo[0][0]] = _fields_job.f
+		_fields_job = {}
+		_fields_todo.pop_front()
+		if _fields_todo.is_empty():
+			_fields = _fields_next
+			_fields_next = {}
+	for key in _xjobs.keys():
+		if Time.get_ticks_usec() >= until:
+			return
+		if _field_run(_xjobs[key], until):
+			_xfields[key] = _xjobs[key].f
+			_xjobs.erase(key)
 
 
 func _refresh_spots() -> void:
+	_fcells_budget = 2
 	_rooms.clear()
 	_room_of.clear()
 	var all := []
@@ -190,13 +260,21 @@ func _refresh_spots() -> void:
 	if int(sim.brood_at.get("pupae", -1)) < 0:
 		_spots.pupae = _room_spots(_upper, all)
 
-	# a fresh distance field per room only when the tunnels have changed noticeably
+	# a fresh distance field per room only when the tunnels have changed noticeably: at once the first time, else over
+	# the next frames (_fields_step)
 	if absi(nest.air - _fields_air) > 25 or _fields.size() != _rooms.size() + 1:
-		_fields_air = nest.air
-		_fields.clear()
-		_fields[-1] = _field_from(nest.entrance)
-		for i in _rooms.size():
-			_fields[i] = _field_from(_rooms[i].cell)
+		if _fields.is_empty():
+			_fields_air = nest.air
+			_fields[-1] = _field_from(nest.entrance)
+			for i in _rooms.size():
+				_fields[i] = _field_from(_rooms[i].cell)
+		elif _fields_todo.is_empty():
+			_fields_air = nest.air
+			_fields_next = {}
+			_fields_job = {}
+			_fields_todo = [[-1, nest.entrance]]
+			for i in _rooms.size():
+				_fields_todo.append([i, _rooms[i].cell])
 	_update_larva_group()
 
 

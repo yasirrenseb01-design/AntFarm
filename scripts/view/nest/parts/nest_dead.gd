@@ -4,7 +4,6 @@ extends "res://scripts/view/nest/parts/nest_rest.gd"
 ## distance fields (the dig face, a body to fetch) and the --io counts the binding layer above keeps.
 
 var io := {}                     # dev (--io): ants in and out of the nest as the nest view drew them, counted
-var _xfields := {}                # more distance fields: -2 the dig face (nest_bind), _corpse_key(id) a body to fetch
 
 
 func _field_of(key: int) -> Dictionary:

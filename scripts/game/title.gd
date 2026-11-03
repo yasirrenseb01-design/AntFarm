@@ -307,9 +307,9 @@ func _show_ui(on: bool) -> void:
 # ---------------------------------------------------------------- the camera tour
 
 func _process(delta: float) -> void:
-	if not is_open:
-		return
-	_shot_t -= delta
+	if not is_open or (main.home_room != null and main.home_room.is_open):
+		return                                     # (under the Home: its next shot changed the colony's view, ~3.5 s of
+	_shot_t -= delta                               # shaders made again every 14 s - the keeper, 2026-11-04 "it stutters")
 	if _shot_t <= 0.0:
 		_next_shot()
 	if main.mode == "outworld":

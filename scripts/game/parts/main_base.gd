@@ -75,19 +75,27 @@ var _closing := false           # (the window closing: saved once - main.gd _not
 var _card_ms := -1000000         # (when the box from above was last drawn for the Home)
 
 
-func _save_now() -> void:
+## card: the box from above drawn for the Home's tank too (not with the autosave: drawn with the whole scene, 0.1-0.25 s
+## - the game stood still that long every minute, the keeper 2026-11-04 "it stutters"; the Home draws it as it opens:
+## write_card).
+func _save_now(card := true) -> void:
 	if _persist and sim != null and not _demo and not _opts.has("testsave"):        # (a grown test colony stays as it was)
 		var t0 := Time.get_ticks_msec()
 		Store.save(slot, sim)
 		var t1 := Time.get_ticks_msec()
-		# (the box from above, for the Home's tank - drawn with the whole scene, 0.2-2.5 s: closing, not again if drawn in
-		# the last minute and a half - the autosave draws it every minute anyway)
-		if sim.scenario != "wild" and outworld != null and not (_closing and Time.get_ticks_msec() - _card_ms < 90000):
-			OutworldCard.write(Store.base + "saves", slot, outworld, nest_view)
-			_card_ms = Time.get_ticks_msec()
+		# (closing: not again if drawn in the last ten minutes - the Home drew it as it opened)
+		if card and not (_closing and Time.get_ticks_msec() - _card_ms < 600000):
+			write_card()
 		harmony.save_purse()
 		quitdbg("save %d ms, card+purse %d ms" % [t1 - t0, Time.get_ticks_msec() - t1])
 		_autosave_t = 0.0
+
+
+## The box from above for the Home's tank (outworld_card.gd), of the colony open now.
+func write_card() -> void:
+	if _persist and sim != null and not _demo and not _opts.has("testsave") and sim.scenario != "wild" and outworld != null:
+		OutworldCard.write(Store.base + "saves", slot, outworld, nest_view)
+		_card_ms = Time.get_ticks_msec()
 
 
 ## (dev: QUITDBG=1 - what quitting takes, step by step, in user://quitdbg.txt with the time: a released build's printing
