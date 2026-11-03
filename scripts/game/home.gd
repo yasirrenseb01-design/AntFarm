@@ -533,6 +533,16 @@ func _point(at: Vector2) -> void:
 		if hit != null and from.distance_to(hit) < best_d:
 			best_d = from.distance_to(hit)
 			best = it
+	# (through the fridge's glass door: the tank behind it the hand is on, not the fridge - its box held both, nearer,
+	# and a click went into the first colony resting in it whichever shelf was pointed at: the keeper, 2026-11-04)
+	if best != null and best.kind == "fridge":
+		var inner_d := INF
+		for it in _room.items:
+			if it.kind == "tank" and (best.box as AABB).has_point((it.box as AABB).get_center()):
+				var hit = (it.box as AABB).intersects_ray(from, dir)
+				if hit != null and from.distance_to(hit) < inner_d:
+					inner_d = from.distance_to(hit)
+					best = it
 	var fresh := not is_same(best, _hot)
 	if fresh:
 		_hot = best
