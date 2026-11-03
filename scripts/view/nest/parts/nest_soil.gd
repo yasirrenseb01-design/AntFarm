@@ -32,7 +32,11 @@ func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 	var moving := float(m.get("mv", 0.0)) > 0.3
 	m.soil_t = float(m.get("soil_t", 0.0)) + md
 	var touching := off != Vector3.ZERO or yaw != 0.0
-	if float(m.soil_t) < (0.0 if moving else 0.05):      # (walking: every frame - every other, it was in the wall of a bend a frame before it was pushed)
+	# (walking: every frame - every other, it was in the wall of a bend a frame before it was pushed; far from the camera,
+	# small on screen, a twentieth of a second all the same: nest_mates FAR_CAM - ~9 ms a frame with 300 seen through
+	# the soil)
+	var far: bool = m.get("far", false)
+	if float(m.soil_t) < (0.05 if far and moving else (0.0 if moving else (0.12 if far else 0.05))):
 		if off == Vector3.ZERO and yaw == 0.0:
 			return tr
 		var tk := tr                             # (as it was shifted and turned last time)

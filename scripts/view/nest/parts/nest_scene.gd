@@ -32,6 +32,7 @@ var target_t := Vector3.ZERO
 var _last_click := 0
 
 var _cam: Camera3D
+var _underground: MeshInstance3D     # the soil round the block (a backdrop: nest_view.setup)
 var _mat: ShaderMaterial
 var _xray_mat: ShaderMaterial
 var follow_wid := -1            # a worker the camera keeps in view (the HUD's star ants panel; nest_view.refresh), -1 = none

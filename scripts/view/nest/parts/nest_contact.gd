@@ -26,10 +26,11 @@ func _climb(m: Dictionary, tr: Transform3D, md: float, at: float) -> Transform3D
 	# (on a nestmate's back: what it needs is worked out 15 times a second, the height eased between - a crowd of
 	# ants climbing over one another, each against all those round it, cost ~5 ms a frame every frame)
 	m.climb_t = float(m.get("climb_t", 1.0)) + md
-	if on_ant and float(m.climb_t) < 0.066 and m.has("cw"):
+	var far: bool = m.get("far", false)              # (far from the camera: worked out less often - nest_mates FAR_CAM)
+	if on_ant and float(m.climb_t) < (0.2 if far else 0.066) and m.has("cw"):
 		return _climb_ease(m, tr, at, (m.cw as Vector2).x, (m.cw as Vector2).y)
 	# (by the brood, as it was a frame or two ago: two frames in three it keeps that - most stand still there)
-	if not on_ant and int(m.get("bc_gen", -1)) == _brood_gen and (_mate_frame + int(m.get("wid", 0))) % 3 != 0:
+	if not on_ant and int(m.get("bc_gen", -1)) == _brood_gen and (_mate_frame + int(m.get("wid", 0))) % (6 if far else 3) != 0:
 		return _climb_ease(m, tr, at, (m.cw as Vector2).x, (m.cw as Vector2).y)
 	m.climb_t = 0.0
 	if on_ant:

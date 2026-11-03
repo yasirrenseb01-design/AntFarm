@@ -3,9 +3,7 @@ extends "res://scripts/view/nest/parts/nest_duties.gd"
 ## meetings, the queen's idle life, and the diggers from the simulation.
 
 
-const LOD_NEAR := 55.0        # camera distance (voxels) a nestmate is worked out every frame within; every second to LOD_FAR
-const LOD_FAR := 90.0
-
+const FAR_CAM := 55.0         # voxels from the camera: a nestmate further is worked out in less detail (keep apart, climb)
 
 func _move_mate(m: Dictionary, n: Vector3i) -> void:
 	m.prev = m.cell
@@ -435,6 +433,7 @@ func _update_ants(delta: float) -> void:
 	var us_apart := 0
 	var us_fit := 0
 	var us_climb := 0
+	var us_push := 0
 	var us_gap := 0
 	_mate_cells.clear()
 	for m in _mates:
@@ -456,14 +455,6 @@ func _update_ants(delta: float) -> void:
 		var seen_now: bool = not m.has("xf") or _visible((m.xf as Transform3D).origin)
 		if not seen_now and not m.has("script") and (_mate_frame + mi) % 4 != 0:
 			continue
-		# on screen but far from the camera - small: every second or third frame (the nest seen through the soil shows
-		# every nestmate at once: 300 of them all worked out every frame, 17 fps on the Intel UHD - the keeper, 2026-11-03,
-		# chose to open the nest through the soil: "and make it lighter")
-		if seen_now and not m.has("script") and m.has("xf") and cam_at != Vector3.INF:
-			var cd: float = cam_at.distance_to((m.xf as Transform3D).origin)
-			var every := 1 if cd < LOD_NEAR else (2 if cd < LOD_FAR else 3)
-			if every > 1 and (_mate_frame + mi) % every != 0:
-				continue
 		var md: float = m.lag
 		m.lag = 0.0
 		# (stepping off the brood or a nestmate to a free spot: even a chilled ant does that much)
@@ -521,7 +512,10 @@ func _update_ants(delta: float) -> void:
 				# last turn); between, it keeps the shift it has (eased slowly anyway) - the costliest part of
 				# the nest view with hundreds of ants
 				m.ka_t = float(m.get("ka_t", 0.0)) + md
-				if (_mate_frame + mi) % 3 == 0 or not m.has("sep"):
+				# (far from the camera - small on screen - less often: every sixth frame. Moved on and drawn every
+				# frame all the same: skipping whole frames for them, v0.11.79, made them flicker - the keeper, 2026-11-03)
+				m.far = cam_at != Vector3.INF and cam_at.distance_to(tr.origin) > FAR_CAM
+				if (_mate_frame + mi) % (6 if m.far else 3) == 0 or not m.has("sep"):
 					m.narrow = _cell_narrow(m.cell)
 					_keep_apart(m, tr.origin, near, minf(m.ka_t, 0.25))
 					_step_aside(m, m.ka_t)
@@ -631,6 +625,7 @@ func _update_ants(delta: float) -> void:
 		tr.origin -= tr.basis.y.normalized() * float(m.sink)
 		var tcl := Time.get_ticks_usec()
 		tr = _soil_push(m, tr, md)               # (out of the walls of a narrow bend: nest_contact)
+		us_push += Time.get_ticks_usec() - tcl
 		tr = _climb(m, tr, md, madt)
 		us_climb += Time.get_ticks_usec() - tcl
 		us_apart += Time.get_ticks_usec() - tc
@@ -676,6 +671,7 @@ func _update_ants(delta: float) -> void:
 	fprof["ants: keep apart"] = fprof.get("ants: keep apart", 0) + us_apart
 	fprof["ants: ground fit"] = fprof.get("ants: ground fit", 0) + us_fit
 	fprof["ants: climb"] = fprof.get("ants: climb", 0) + us_climb
+	fprof["ants: soil push"] = fprof.get("ants: soil push", 0) + us_push
 	fprof["ants: look ahead"] = fprof.get("ants: look ahead", 0) + us_gap
 	tp = _nprof("ants: loop (all)", tp)
 	_emerging(xs, cols, cus, young)

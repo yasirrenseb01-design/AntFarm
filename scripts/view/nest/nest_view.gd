@@ -107,6 +107,26 @@ func setup(s) -> void:
 	shelf.material_override = sm
 	shelf.position = Vector3(nest.nx / 2.0, nest.y_lo - 1.0, nest.nz / 2.0)
 	add_child(shelf)
+	shelf.visible = false                    # (under the soil round it now: _underground)
+	# round the block, the soil running on underground (the keeper, 2026-11-03: the block floated over a grey floor in
+	# the dark): a big sphere seen from inside, the soil's layers below the ground's level (shaders/terrain/underground)
+	var bd := MeshInstance3D.new()
+	var bsm := SphereMesh.new()
+	bsm.radius = 1200.0
+	bsm.height = 2400.0
+	bsm.radial_segments = 48
+	bsm.rings = 24
+	bd.mesh = bsm
+	var bmat := ShaderMaterial.new()
+	bmat.shader = load("res://shaders/terrain/underground.gdshader")
+	bmat.set_shader_parameter("top_y", nest.ny - 0.5)
+	bmat.set_shader_parameter("clay_top", nest.clay_top())
+	bmat.set_shader_parameter("sand_top", nest.sand_top())
+	bd.material_override = bmat
+	bd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bd.position = Vector3(nest.nx / 2.0, nest.ny / 2.0, nest.nz / 2.0)
+	add_child(bd)
+	_underground = bd
 
 	# Lasius niger: glossy dark body with a fine pubescence that gives the gaster a dull sheen
 	# legs, antennae, head, mandibles and gaster are animated per ant by shaders/ant.gdshader

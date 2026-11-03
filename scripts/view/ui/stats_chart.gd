@@ -182,13 +182,21 @@ func _draw() -> void:
 	var bottom := h - 16.0
 	var top := 6.0
 	c.draw_rect(Rect2(left, top, w - left - 2.0, bottom - top), Color(1, 1, 1, 0.12))
-	# X: the points that have a value for it, in its order
+	# only the days that have the X value and one of the Y values: a value recorded only from v0.11.78 has no line
+	# over the days before it (the keeper, 2026-11-03: one dot at the right end of 370 days - "is the chart right?")
+	var kept := []
+	for p in pts:
+		if (p as Dictionary).has(x_key) and y_keys.any(func(k): return (p as Dictionary).has(k)):
+			kept.append(p)
+	pts = kept
 	var xs := []
 	for p in pts:
-		if (p as Dictionary).has(x_key):
-			xs.append(float(p[x_key]))
+		xs.append(float(p[x_key]))
 	if xs.size() < 2 or y_keys.is_empty():
-		c.draw_string(font, Vector2(left + 8, h * 0.5), tr("stat_no_data"), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, hud.MUTED)
+		var why := tr("stat_no_data") if y_keys.is_empty() or sim.history.size() < 2 else tr("stat_new_value")
+		var lines := why.split("\n")
+		for li in lines.size():
+			c.draw_string(font, Vector2(left + 8, h * 0.5 + li * 16 - 8), lines[li], HORIZONTAL_ALIGNMENT_LEFT, w - left - 12, 12, hud.MUTED)
 		_legend.text = ""
 		return
 	var x0: float = xs.min()

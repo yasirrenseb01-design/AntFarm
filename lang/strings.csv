@@ -603,3 +603,6 @@ stat_y,แกน Y (เลือกได้หลายค่า),Y axis (pick 
 stat_own_scale,แต่ละเส้นใช้สเกลของตัวเอง,Each line on its own scale
 stat_no_data,ยังไม่มีข้อมูลพอ (บันทึกวันละครั้ง),Not enough yet (recorded once a day)
 stat_default,ประชากรรายวัน (ตั้งต้น),Population by day (default)
+stat_new_value,"ค่านี้เริ่มบันทึกวันละครั้งตั้งแต่ v0.11.78
+เส้นจะขึ้นเมื่อผ่านไปสองวันในเกม","This value is recorded once a day from v0.11.78
+its line shows after two game days"
