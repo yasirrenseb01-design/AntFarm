@@ -616,3 +616,4 @@ home_tip_fridge,"ตู้เย็นในมุมห้องไว้ให
 home_tip_keys,"เดิน W A S D · หันมองด้วยเมาส์ (ความไวปรับได้ในตั้งค่า) · Tab ปล่อยเมาส์เพื่อกดปุ่ม","Walk with W A S D · look round with the mouse (its speed is in Settings) · Tab frees the pointer for the buttons"
 home_tips_ok,เข้าใจแล้ว,Got it
 guide_stats,"แท็บ ""สถิติ"" ทำกราฟจากค่าในสถานะรัง: เลือกแกน X หนึ่งค่า (ปกติเป็นวัน) แกน Y กี่ค่าก็ได้ ตั้งชื่อแล้วบันทึกไว้ใช้กับทุกรัง","The ""Statistics"" tab plots the colony's status: one value along X (the day, usually), any along Y - name the set and save it for every colony."
+home_winter,"ตู้ %s: ถึงหน้าหนาวแล้ว — พาเข้าตู้เย็นจำศีล (ปุ่ม ""จำศีลในตู้เย็น"" ในรัง)","Tank %s: winter has come - put it in the fridge to rest (""Hibernate in fridge"" in the colony)"

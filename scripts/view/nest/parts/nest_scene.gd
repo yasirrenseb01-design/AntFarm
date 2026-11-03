@@ -33,6 +33,7 @@ var _last_click := 0
 
 var _cam: Camera3D
 var _underground: MeshInstance3D     # the soil round the block (a backdrop: nest_view.setup)
+var _soil_things: Node3D             # its stones and roots, drawn when the soil is seen through
 var _mat: ShaderMaterial
 var _xray_mat: ShaderMaterial
 var follow_wid := -1            # a worker the camera keeps in view (the HUD's star ants panel; nest_view.refresh), -1 = none

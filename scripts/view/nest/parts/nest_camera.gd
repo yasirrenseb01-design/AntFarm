@@ -172,6 +172,8 @@ func _update_camera() -> void:
 func set_xray(on: bool) -> void:
 	xray = on
 	_ghost.visible = on
+	if _soil_things != null:
+		_soil_things.visible = on        # (the stones and roots in it: nest_view._build_soil_things)
 	for k in _chunks:
 		_chunks[k].material_override = _xray_mat if on else _mat
 	_brood_sig = []

@@ -4,7 +4,7 @@
 # Facing +x, ~17 units long without the mandibles (25 mm), feet at y = 0. Alpha = part / 16 for
 # shaders/creatures/beetle.gdshader: 0 body, 1 head, 2/3 left/right antenna, 4-9 legs
 # (front-left, front-right, mid-left, mid-right, hind-left, hind-right), 10 mandibles.
-# Hip pivots there: x = 3.6 / 1.2 / -0.6, y = 2.0, z = 1.3 * side; antenna bases (7.95, 3.0, 1.0 * side);
+# Hip pivots there: x = 3.6 / 1.2 / -0.6, y = 2.0, z = 1.3 * side; antenna bases (7.7, 2.95, 0.72 * side);
 # mandible bases (8.2, 2.45, 0.6 * side).
 #
 # Shape after Carabus violaceus / C. problematicus, the black ground beetles with violet margins of
@@ -154,13 +154,15 @@ def ground_beetle():
         # 11-segmented antennae: a stout scape, a short pedicel, then nine beaded segments, held forward and out
         part = 2 if side < 0 else 3
         lens = [1.0, 0.4] + [0.82] * 9
-        p = Vector((7.95, 3.0, 1.0 * side))
+        # (from inside the head's side, in front of the eye: at its surface before, the smoothed head came out smaller
+        # and the antennae stood off it - the keeper, 2026-11-03, "the beetle's antennae float")
+        p = Vector((7.7, 2.95, 0.72 * side))
         d = Vector((0.72, 0.22, 0.62 * side)).normalized()
         turn = Vector((0.55, -0.12, 0.82 * side)).normalized()
         for k in range(11):
             dk = d.lerp(turn, k / 10.0).normalized()
             q = p + dk * lens[k]
-            r = 0.17 if k == 0 else (0.11 if k == 1 else 0.115 - 0.003 * k)
+            r = 0.19 if k == 0 else (0.11 if k == 1 else 0.115 - 0.003 * k)
             a, b = tuple(p), tuple(q)
             tube("antenna", [a, lerp(a, b, 0.5), b], [r * 0.75, r, r * 0.8], 0, const((0.05, 0.05, 0.06, part / 16.0)), 6, cap=False)
             p = q
@@ -178,16 +180,38 @@ def ground_beetle():
             knee = (kd[0], kd[1], kd[2] * side)
             ankle = (ad[0], ad[1], ad[2] * side)
             foot = (fd[0], fd[1], fd[2] * side)
-            ell("coxa", lerp(hip, knee, 0.08), (0.45, 0.38, 0.38), 0, pc, 8)
-            tube("femur", [hip, lerp(hip, knee, 0.2), lerp(hip, knee, 0.6), knee], [0.3, 0.38, 0.34, 0.24], 0, pc, 8)
-            tube("tibia", [knee, lerp(knee, ankle, 0.5), ankle], [0.2, 0.2, 0.24], 0, pc, 7)
+            # (shaped as in photographs of Carabus - the keeper, 2026-11-03: "give the legs some shape"; plain even
+            # tubes and beads for feet before): a big coxa and a trochanter at the hip, the femur a thick spindle, the
+            # tibia slender at the knee widening to the ankle with two rows of short spines, five tarsal segments each
+            # a narrow cone thickening to its end with a bristle either side, the claws
+            ell("coxa", lerp(hip, knee, 0.08), (0.6, 0.48, 0.48), 0, pc, 8)
+            ell("trochanter", lerp(hip, knee, 0.2), (0.42, 0.3, 0.3), 0, pc, 8)
+            tube("femur", [hip, lerp(hip, knee, 0.25), lerp(hip, knee, 0.55), lerp(hip, knee, 0.85), knee],
+                [0.28, 0.46, 0.5, 0.38, 0.22], 0, pc, 10)
+            tube("tibia", [knee, lerp(knee, ankle, 0.35), lerp(knee, ankle, 0.7), ankle], [0.17, 0.19, 0.23, 0.27], 0, pc, 8)
+            kv = Vector(knee)
+            av = Vector(ankle)
+            axis = (av - kv).normalized()
+            out = Vector((0.0, 0.0, side)).cross(axis).normalized()          # (across the leg, in its plane)
+            for k in range(7):
+                u = 0.22 + 0.1 * k
+                c = kv.lerp(av, u)
+                for row in (-1, 1):
+                    base = c + out * (0.2 * row) + Vector((0.0, -0.05, 0.0))
+                    tip = base + (out * (0.26 * row) + axis * 0.2 + Vector((0.0, -0.08, 0.0)))
+                    tube("spine", [tuple(base), tuple(tip)], [0.045, 0.006], 0, pc, 4, cap=False)
             for sp in (-0.18, 0.18):
                 tube("spur", [ankle, (ankle[0] + sp - 0.15, ankle[1] - 0.15, ankle[2] + 0.3 * side)], [0.06, 0.01], 0, pc, 4, cap=False)
             prev = ankle
             for k in range(5):
                 q = lerp(ankle, foot, [0.27, 0.47, 0.64, 0.78, 1.0][k])
                 q = (q[0], q[1] + 0.04, q[2])
-                tube("tarsus", [prev, lerp(prev, q, 0.5), q], [0.11, 0.13 - 0.008 * k, 0.1 - 0.008 * k], 0, pc, 6, cap=False)
+                r = 0.1 - 0.008 * k
+                tube("tarsus", [prev, lerp(prev, q, 0.6), q], [r * 0.55, r * 0.8, r], 0, pc, 6, cap=False)
+                seg = (Vector(q) - Vector(prev)).normalized()
+                for cs in (-1, 1):
+                    bt = Vector(q) + Vector((0.0, 0.0, 0.09 * cs)) + seg * 0.12 + Vector((0.0, -0.06, 0.06 * cs))
+                    tube("bristle", [q, tuple(bt)], [0.025, 0.004], 0, pc, 3, cap=False)
                 prev = q
             fwd = Vector(foot) - Vector(ankle)
             fwd.normalize()

@@ -5,6 +5,8 @@ extends "res://scripts/view/nest/parts/nest_camera.gd"
 
 # ---------------------------------------------------------------- brood and queen
 
+var _queen_soil := {}          # her shift out of the soil as she walks (nest_soil._soil_push keeps it)
+
 func _floor_cells(ch: Dictionary) -> Array:
 	# (cached until the soil changes or the chamber grows: worked out every 1.5 s, the ways out cost ~1 ms a time)
 	var key := "%s %s %s" % [ch.c, ch.goal, ch.get("yaw", 0.0)]
@@ -381,6 +383,13 @@ func _queen_pose() -> void:
 		_queen_walk_fwd = _queen_walk_fwd.slerp(fwd, minf(1.0, 5.0 * get_process_delta_time())).normalized()
 		var f := (_queen_walk_fwd - up * _queen_walk_fwd.dot(up)).normalized()
 		_queen_xf = Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * queen_scale), qp + up * (QUEEN_LIFT + 0.45))
+		# out of the walls of a narrow tunnel or bend as a nestmate is (nest_soil._soil_push: its body's points through her
+		# own transform, so her size) - her body went into the soil on her way between chambers (the keeper, 2026-11-03;
+		# --queen-walk)
+		if _queen_soil.is_empty():
+			_queen_soil = {"size": queen_scale, "gait": 0.0, "stride": 1.0, "wid": -2, "mv": 1.0}
+		_queen_soil["mv"] = 1.0
+		_queen_xf = call("_soil_push", _queen_soil, _queen_xf, get_process_delta_time())      # (a later layer: nest_soil)
 		if absf(f.y) < 0.7:
 			_queen_turn = atan2(-f.z, f.x)          # (so she stands facing her way once she is there)
 			_queen_rest_turn = _queen_turn

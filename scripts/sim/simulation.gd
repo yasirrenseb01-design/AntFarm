@@ -256,7 +256,7 @@ func summary() -> Dictionary:
 		"pupae": pupae.size(), "born": stats.born, "dead": stats.dead, "brood_dead": stats.brood_dead + stats.cannibalized,
 		"chambers": nest.chambers.size(), "volume": nest.volume_cm3(), "humidity": humidity,
 		"queen": queen.alive, "glass": nest.slab, "scenario": scenario, "founding": founding(), "fridge": fridge_on,
-		"water": snappedf(water, 0.001), "water_use": snappedf(water_use(), 0.00001)}
+		"water": snappedf(water, 0.001), "water_use": snappedf(water_use(), 0.00001), "doy": snappedf(doy_f(), 0.01)}
 
 
 ## The automatic keeper used by tests and, if the player allows it, while the game is closed (only then: in the game the

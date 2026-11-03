@@ -94,6 +94,7 @@ func setup(s) -> void:
 	_ghost.position = Vector3(nest.nx / 2.0 - 0.5, nest.ny / 2.0 - 0.5, nest.nz / 2.0 - 0.5)
 	_ghost.visible = false
 	add_child(_ghost)
+	_build_soil_things()
 	_upload_volume()
 
 	# the shelf the block sits on (under the soil held: lowered with it as the garden's soil is taken in deeper)
@@ -266,6 +267,61 @@ func queen_pos() -> Vector3:
 func brood_pos(kind: String) -> Vector3:
 	var at: Array = _spots.get(kind, [])
 	return at[at.size() / 2] if not at.is_empty() else Vector3.INF
+
+
+## What the soil holds - its stones and roots (nest.soil) - as things of their own, shown when the soil is seen through
+## (the keeper, 2026-11-03: they showed only where the cut or a tunnel's wall met them, soil.gdshader). Voxel units, as
+## the block; a pebble a lumpy ball grey to buff as the soil shader colours them, a root a brown rod.
+func _build_soil_things() -> void:
+	_soil_things = Node3D.new()
+	_soil_things.visible = false
+	add_child(_soil_things)
+	var r := RandomNumberGenerator.new()
+	r.seed = 7
+	var i := 0
+	for sto in nest.soil.get("stones", []):
+		var tone: float = fposmod(sin(float(i) * 12.9898) * 43758.5453, 1.0)
+		var m := StandardMaterial3D.new()
+		# (darker than the cut shows them, and a little see-through: a pebble in front of a chamber hid the ants in it)
+		m.albedo_color = Color(0.48, 0.47, 0.45).lerp(Color(0.72, 0.66, 0.56), tone).darkened(0.45)
+		m.albedo_color.a = 0.6
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.roughness = 0.9
+		var mi := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = float(sto[3])
+		sm.height = float(sto[3]) * 2.0
+		sm.radial_segments = 12
+		sm.rings = 6
+		mi.mesh = sm
+		mi.material_override = m
+		mi.position = Vector3(float(sto[0]), float(sto[1]), float(sto[2]))
+		mi.rotation = Vector3(r.randf() * TAU, r.randf() * TAU, 0.0)
+		mi.scale = Vector3(r.randf_range(0.85, 1.15), r.randf_range(0.7, 1.0), r.randf_range(0.85, 1.15))
+		_soil_things.add_child(mi)
+		i += 1
+	var rm := StandardMaterial3D.new()
+	rm.albedo_color = Color(0.3, 0.19, 0.1, 0.7)
+	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rm.roughness = 0.95
+	for ro in nest.soil.get("roots", []):
+		var a := Vector3(float(ro[0]), float(ro[1]), float(ro[2]))
+		var b := Vector3(float(ro[3]), float(ro[4]), float(ro[5]))
+		var len := a.distance_to(b)
+		if len < 0.1:
+			continue
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = float(ro[6]) * 0.7
+		cm.bottom_radius = float(ro[6])
+		cm.height = len
+		cm.radial_segments = 8
+		mi.mesh = cm
+		mi.material_override = rm
+		var y := (b - a).normalized()
+		var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
+		mi.transform = Transform3D(Basis(x, y, x.cross(y)), (a + b) * 0.5)
+		_soil_things.add_child(mi)
 
 
 func set_active(on: bool) -> void:

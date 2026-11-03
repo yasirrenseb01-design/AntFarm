@@ -26,7 +26,7 @@ const SETTINGS := {"slot": 1, "away": 3, "care": true, "lang": "", "view": "outw
 	"side_open": true, "bar_open": true, "music": 0.6, "guide_done": false, "quality": "medium", "fps_cap": 1, "home_hand": true, "home_cross": true, "home_lamp": true,
 	"look_speed": 1.0, "look_invert": false, "home_tips_done": false}
 const META := {"day": 0, "workers": 0, "saved_unix": 0, "glass": false, "queen": true, "scenario": "keeper", "water": 1.0,
-	"water_use": 0.0, "refills": ""}
+	"water_use": 0.0, "refills": "", "doy": 0.0}
 const MAX_REFILLS := 20          # the water tank filled from the Home: the times kept for the colony's next opening
 
 

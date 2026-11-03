@@ -2,7 +2,7 @@ shader_type spatial;
 render_mode diffuse_burley;
 // Ground beetle (see tools/blender/build_props.py ground_beetle()). COLOR.a = part id / 16:
 // 0 body, 1 head, 2/3 antennae, 4-9 legs (FL, FR, ML, MR, HL, HR), 10 mandibles.
-// Hips at x = 3.6 / 1.2 / -0.6, y = 2.0, z = 1.3 * side; antenna bases (7.95, 3.0, 1.0 * side), mandibles (8.2, 2.45, 0.6 * side). Legs move in alternating tripods.
+// Hips at x = 3.6 / 1.2 / -0.6, y = 2.0, z = 1.3 * side; antenna bases (7.7, 2.95, 0.72 * side), mandibles (8.2, 2.45, 0.6 * side). Legs move in alternating tripods.
 // INSTANCE_CUSTOM: x = gait phase, y = 1 striking (mandibles snap, abdomen raised to spray) /
 // 2 dead (legs drawn up; the view lays it on its back), z = clock, w = how much it is running.
 // The armour is black with a violet-blue metallic sheen that shows at grazing angles.
@@ -40,7 +40,7 @@ void vertex() {
 		NORMAL = R * NORMAL;
 	} else if (part == 2.0 || part == 3.0) {
 		float side = part == 2.0 ? -1.0 : 1.0;
-		vec3 piv = vec3(7.95, 3.0, 1.0 * side);
+		vec3 piv = vec3(7.7, 2.95, 0.72 * side);
 		float a = sin(t * 2.6 + side) * 0.18 + (dead ? -0.4 : 0.0);
 		mat3 R = rot_y(a * side) * rot_z(0.08 * sin(t * 1.9 + side));
 		VERTEX = piv + R * (VERTEX - piv);

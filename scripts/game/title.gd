@@ -85,7 +85,8 @@ func setup(m) -> void:
 	_item(col, tr("title_home"), func(): main.home_room.open())
 	_item(col, tr("title_wild"), func(): h.open_colonies("wild"))
 	_item(col, tr("settings"), func(): h.open_settings())
-	_item(col, tr("wallpaper"), func(): main._enter_desktop())
+	# (the wallpaper from a colony only - its button on the bar: from the title page it put up the colony behind it, not
+	# the one the keeper means: the keeper, 2026-11-03)
 	_item(col, tr("title_quit"), func(): main.quit_game())
 	var ver: Label = h._label("v%s" % ProjectSettings.get_setting("application/config/version", "dev"), 12, h.MUTED)
 	ver.anchor_top = 1.0
