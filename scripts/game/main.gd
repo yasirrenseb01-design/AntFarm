@@ -4,6 +4,7 @@ const SaveCheck := preload("res://scripts/sim/save_check.gd")
 const LookPrefs := preload("res://scripts/game/look_prefs.gd")
 var desktop                    # desktop mode: the nest as the wallpaper (PART 11)
 static var _window_set := false       # the window was maximized at this start (main._ready)
+static var _started := false          # _ready has run once in this process (the scene reloads for another colony)
 ## Entry point. Owns the simulation, the views, the camera and the HUD. Top of the chain:
 ## parts/main_base <- parts/main_camera <- dev/dev_tools <- main.
 ##
@@ -48,6 +49,13 @@ func _ready() -> void:
 		for k in _opts.keys():
 			if not k in RELEASE_OPTS:
 				_opts.erase(k)
+	# what the game was started with is for its start only: after a reload (another colony, the language) the wallpaper's
+	# own restart options would start it as the wallpaper again - the keeper, 2026-11-03: back from the wallpaper, then a
+	# colony picked in the Home, and the game went to the wallpaper by itself
+	if _started:
+		for k in ["desktop", "desktop-after", "leave-after", "win", "view", "reload-after"]:
+			_opts.erase(k)
+	_started = true
 	sim = Sim.new()
 	_persist = not (_opts.has("selftest") or _opts.has("shot")) or _opts.has("sandbox")
 	if _opts.has("sandbox"):
@@ -243,6 +251,13 @@ func _ready() -> void:
 		if _opts.has("leave-after"):
 			# (dev: back to the game after that many seconds, as a click on the tray icon does)
 			get_tree().create_timer(float(_opts["leave-after"])).timeout.connect(desktop.leave)
+	if _opts.has("reload-after") and not OS.has_feature("template"):
+		# (dev: --reload-after=<s> - another colony picked after that long, the scene loading again as from the Home;
+		# once: after the reload it is not taken again)
+		var ra := float(_opts["reload-after"])
+		get_tree().create_timer(ra).timeout.connect(func():
+			desktop._log("dev reload-after: wallpaper on %s" % desktop.on)
+			_go_to(slot, ""))
 	if _opts.has("quit-after") and not _opts.has("shot"):
 		# (dev: close as the keeper would after that many seconds - desktop mode checked on the real desktop)
 		get_tree().create_timer(float(_opts["quit-after"])).timeout.connect(func():
@@ -407,7 +422,7 @@ func _enter_desktop() -> void:
 			args += ["--gpu-index", str(_opts["gpu"])]                       # (dev: the RTX, not the Intel UHD)
 		args.append("--")
 		args.append("--desktop")
-		for k in ["testsave", "slot", "sandbox", "no-cover-check", "quit-after", "leave-after", "view", "gpu", "desk-driver"]:
+		for k in ["testsave", "slot", "sandbox", "no-cover-check", "quit-after", "leave-after", "view", "gpu", "desk-driver", "reload-after"]:
 			if _opts.has(k):
 				args.append("--%s=%s" % [k, _opts[k]])
 		# the window as it is, to come back to (desktop_mode.gd)
