@@ -83,7 +83,7 @@ func _save_now() -> void:
 		# (the box from above, for the Home's tank - drawn with the whole scene, 0.2-2.5 s: closing, not again if drawn in
 		# the last minute and a half - the autosave draws it every minute anyway)
 		if sim.scenario != "wild" and outworld != null and not (_closing and Time.get_ticks_msec() - _card_ms < 90000):
-			OutworldCard.write(Store.base + "saves", slot, outworld)
+			OutworldCard.write(Store.base + "saves", slot, outworld, nest_view)
 			_card_ms = Time.get_ticks_msec()
 		harmony.save_purse()
 		quitdbg("save %d ms, card+purse %d ms" % [t1 - t0, Time.get_ticks_msec() - t1])

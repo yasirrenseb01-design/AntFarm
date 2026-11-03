@@ -258,6 +258,14 @@ func _take_shot() -> void:
 			var tp: PackedStringArray = String(_opts["target"]).split(",")
 			nest_view.target = Vector3(float(tp[0]), float(tp[1]), float(tp[2]))
 			nest_view.snap_camera()
+	if _opts.has("card"):
+		# (dev: --card - the box from above, as the Home's tank shows it, taken after 3 s into user://card_test/)
+		if not outworld.has_node("OutworldCard"):
+			OutworldCard.prepare(outworld)
+		get_tree().create_timer(3.0).timeout.connect(func():
+			DirAccess.make_dir_recursive_absolute("user://card_test")
+			OutworldCard.write("user://card_test", 1, outworld, nest_view)
+			print("card written"))
 	if _opts.has("stats-tab"):
 		hud.show_side_tab(true)               # (dev: the side panel's Statistics tab; --stats-y=a,b,c: what it plots)
 		if _opts.has("stats-y"):

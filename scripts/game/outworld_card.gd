@@ -41,7 +41,8 @@ static func prepare(outworld) -> void:
 
 ## Takes the picture there and then (a save just before the game quits or another colony loads is not lost) and writes
 ## it.
-static func write(dir: String, slot: int, outworld) -> void:
+## nest: the nest's view, hidden while the picture is taken (in the same world).
+static func write(dir: String, slot: int, outworld, nest: Node3D = null) -> void:
 	if outworld == null or not is_instance_valid(outworld) or not outworld.has_node("OutworldCard"):
 		return
 	if DisplayServer.get_name() == "headless":
@@ -50,7 +51,17 @@ static func write(dir: String, slot: int, outworld) -> void:
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	var gm: ShaderMaterial = outworld._ground_mat
 	gm.set_shader_parameter("pher_on", 0.0)                      # (the scent trails left out)
+	# (the keeper watching the nest: the foraging view is hidden then, and the picture came out dark - the Home's
+	# bigger tank black on top, the keeper 2026-11-03; shown for the picture, the nest's view out of it)
+	var ow_was: bool = outworld.visible
+	var nest_was: bool = nest != null and is_instance_valid(nest) and nest.visible
+	outworld.visible = true
+	if nest_was:
+		nest.visible = false
 	RenderingServer.force_draw(false)
+	outworld.visible = ow_was
+	if nest_was:
+		nest.visible = true
 	gm.set_shader_parameter("pher_on", 1.0 if outworld.ground.show_pheromones else 0.0)
 	var img := vp.get_texture().get_image()
 	if img != null and not img.is_empty():
