@@ -214,7 +214,7 @@ func _unhandled_input(e: InputEvent) -> void:
 				_rot = e.pressed and not e.shift_pressed
 			elif e.pressed:
 				_use_tool(tool, pick(e.position))
-				_painting = tool in ["rock", "erase"]
+				_painting = tool in ["rock", "rock_take", "erase"]
 			else:
 				_painting = false
 		elif e.button_index == MOUSE_BUTTON_RIGHT or e.button_index == MOUSE_BUTTON_MIDDLE:
@@ -247,8 +247,11 @@ func _use_tool(tool: String, at: Vector3) -> void:
 			sim.place_food(tool, p)
 			_items_timer = 0.0
 		"rock":
-			if p.distance_to(_last_paint) > 9.0 and sim.can_place(p) and sim.add_rock(p, 10.0):
+			if p.distance_to(_last_paint) > 9.0 and sim.can_place(p) and sim.add_rock(p, 10.0, true):
 				_last_paint = p
+				_items_timer = 0.0
+		"rock_take":
+			if sim.remove_rock(p):
 				_items_timer = 0.0
 		"erase":
 			sim.erase_pheromones(p, 24.0)

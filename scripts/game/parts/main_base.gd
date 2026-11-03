@@ -58,8 +58,9 @@ func _pt(key: String, t0: int) -> int:
 	fprof[key] = fprof.get(key, 0) + now - t0
 	return now
 var _opts := {}
-## the command-line options the released game keeps (main._ready): the wallpaper restart's own
-const RELEASE_OPTS := ["desktop", "win", "slot", "view", "gpu", "desk-driver", "windowed"]
+## the command-line options the released game keeps (main._ready): the wallpaper restart's own; "sandbox": a save folder of
+## its own (measuring the released build without the keeper's saves)
+const RELEASE_OPTS := ["desktop", "win", "slot", "view", "gpu", "desk-driver", "windowed", "sandbox"]
 
 
 func _set_mode(m: String) -> void:
@@ -85,9 +86,20 @@ func _save_now() -> void:
 			OutworldCard.write(Store.base + "saves", slot, outworld)
 			_card_ms = Time.get_ticks_msec()
 		harmony.save_purse()
-		if OS.has_environment("QUITDBG"):
-			print("QUITDBG save %d ms, card+purse %d ms at %.3f" % [t1 - t0, Time.get_ticks_msec() - t1, Time.get_unix_time_from_system()])
+		quitdbg("save %d ms, card+purse %d ms" % [t1 - t0, Time.get_ticks_msec() - t1])
 		_autosave_t = 0.0
+
+
+## (dev: QUITDBG=1 - what quitting takes, step by step, in user://quitdbg.txt with the time: a released build's printing
+## is not written out before it ends)
+static func quitdbg(what: String) -> void:
+	if not OS.has_environment("QUITDBG"):
+		return
+	var f := FileAccess.open("user://quitdbg.txt", FileAccess.READ_WRITE if FileAccess.file_exists("user://quitdbg.txt") else FileAccess.WRITE)
+	if f != null:
+		f.seek_end()
+		f.store_line("%.3f %s" % [Time.get_unix_time_from_system(), what])
+		f.close()
 
 
 ## Switch to another slot, or start a fresh colony in one: save the current colony, then reload.

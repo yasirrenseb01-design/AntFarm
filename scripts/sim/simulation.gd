@@ -157,6 +157,7 @@ func from_dict(d: Dictionary) -> void:
 	midden_pos = d.get("midden_pos", Vector2(575, 480))
 	rock = d.rock
 	rocks = d.rocks
+	rock_ver += 1
 	_restamp_rocks()                    # which stones are climbed over is worked out from the stones themselves
 	# (not saved: worked out from the nest and the colony as the daily plan does)
 	if nest.entrance_r < 0.0:

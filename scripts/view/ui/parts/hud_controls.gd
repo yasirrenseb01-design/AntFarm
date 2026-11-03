@@ -261,7 +261,7 @@ func _build_tools(root: Control) -> void:
 		_cut_row.visible = not on and not sim.nest.slab)
 	row.add_child(_xray_btn)
 	var g := ButtonGroup.new()
-	for pair in [["tool_pan", "pan"]] + FoodKinds.tools() + [["tool_rock", "rock"], ["tool_erase", "erase"]]:
+	for pair in [["tool_pan", "pan"]] + FoodKinds.tools() + [["tool_rock", "rock"], ["tool_rock_take", "rock_take"], ["tool_erase", "erase"]]:
 		var b := _button(tr(pair[0]), true, g)
 		b.button_pressed = pair[1] == ground.tool
 		var t: String = pair[1]

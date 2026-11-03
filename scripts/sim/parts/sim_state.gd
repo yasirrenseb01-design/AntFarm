@@ -42,6 +42,7 @@ var gw := 0
 var gh := 0
 var rock := PackedByteArray()
 var rocks: Array = []
+var rock_ver := 0                 # (not saved) a stone laid or taken away: the views draw the stones again
 var nest_pos := Vector2(480, 400)
 var midden_pos := Vector2(575, 480)
 var plot_seed := 0                    # how this colony's plot is laid out (sim_base._lay_out_plot; 0: the one plot every

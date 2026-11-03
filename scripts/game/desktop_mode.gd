@@ -124,7 +124,7 @@ func _on_menu(id: int) -> void:
 		1:
 			main._save_now()
 			if not close():
-				get_tree().quit()
+				main._finish_quit()
 
 
 func _run(kind: String, args: Array) -> void:
@@ -198,7 +198,7 @@ func _done(kind: String, code: int, out: String) -> void:
 				DisplayServer.window_get_mode(), DisplayServer.window_get_position(), DisplayServer.window_get_size(), _saved])
 		"quit":
 			on = false
-			get_tree().quit()
+			main._finish_quit()          # (as from the window: saved already - main.gd _notification)
 		"covered":
 			if on:
 				_set_hidden(out == "1")

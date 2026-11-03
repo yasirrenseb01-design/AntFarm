@@ -29,3 +29,32 @@ static func report(t: Dictionary) -> String:
 	var n := maxi(1, int(t.get("n", 0)))
 	return "queen soil: %d frames, gaster in the soil %.1f%%, deepest %.2f units" % [int(t.get("n", 0)),
 		100.0 * int(t.get("in_soil", 0)) / n, float(t.get("deep", 0.0))]
+
+
+## (--queen-walk, with --queen-to and --seq: the keeper, 2026-11-03 - "walking to another chamber her body leaves the
+## tunnel") Her whole body while she walks: points round her head, thorax and gaster (sides, top), frames with any of
+## them in the soil, and the share of points in it.
+const BODY := [Vector3(1.25, 0.15, 0.0), Vector3(0.9, 0.3, 0.3), Vector3(0.9, 0.3, -0.3), Vector3(0.3, 0.2, 0.35),
+	Vector3(0.3, 0.2, -0.35), Vector3(0.3, 0.6, 0.0), Vector3(-0.7, 0.1, 0.5), Vector3(-0.7, 0.1, -0.5),
+	Vector3(-1.3, 0.05, 0.6), Vector3(-1.3, 0.05, -0.6), Vector3(-1.3, 0.65, 0.0), Vector3(-2.2, 0.15, 0.0)]
+
+
+static func measure_walk(nv, t: Dictionary) -> void:
+	if nv._queen_mm.instance_count == 0 or nv._queen_path.is_empty():
+		return
+	var xf: Transform3D = nv._queen_xf
+	var inside := 0
+	for p in BODY:
+		if nv._density_at(xf * p) > 0.5:
+			inside += 1
+	t.n = int(t.get("n", 0)) + 1
+	t.frames = int(t.get("frames", 0)) + (1 if inside > 0 else 0)
+	t.pts = int(t.get("pts", 0)) + inside
+	t.bad = int(t.get("bad", 0)) + (1 if inside >= 3 else 0)
+
+
+static func report_walk(t: Dictionary) -> String:
+	var n := maxi(1, int(t.get("n", 0)))
+	return "queen walk: %d frames walking, any point in the soil %.1f%%, 3+ points %.1f%%, points in the soil %.1f%%" % [
+		int(t.get("n", 0)), 100.0 * int(t.get("frames", 0)) / n, 100.0 * int(t.get("bad", 0)) / n,
+		100.0 * int(t.get("pts", 0)) / (n * BODY.size())]

@@ -555,6 +555,10 @@ func _take_shot() -> void:
 						print("  follow %s: %.2f %s at %s" % [_opts["follow-bodies"], fw[0], fw[2], fw[1]])
 				if _opts.has("queen-soil") and mode == "nest":
 					QueenCheck.measure(nest_view, _queen_soil)
+				if _opts.has("queen-walk") and mode == "nest":
+					QueenCheck.measure_walk(nest_view, _queen_walk)
+				if _opts.has("flips") and mode == "nest":
+					FlipCheck.measure(nest_view, _flips)
 				if _opts.has("stacks") and mode == "nest":
 					StackCheck.measure(nest_view, _stacks)
 				if _opts.has("turns") and mode == "outworld":
@@ -824,6 +828,10 @@ func _take_shot() -> void:
 			print(StackCheck.report(_stacks))
 		if _opts.has("queen-soil"):
 			print(QueenCheck.report(_queen_soil))
+		if _opts.has("queen-walk"):
+			print(QueenCheck.report_walk(_queen_walk))
+		if _opts.has("flips"):
+			print(FlipCheck.report(_flips))
 		if _opts.has("feet"):
 			print(FootCheck.report(_feet))
 		if _opts.has("buried"):
@@ -861,7 +869,10 @@ const BodyCheck := preload("res://scripts/dev/body_check.gd")
 const TurnCheck := preload("res://scripts/dev/turn_check.gd")
 const StackCheck := preload("res://scripts/dev/stack_check.gd")
 const QueenCheck := preload("res://scripts/dev/queen_check.gd")
+const FlipCheck := preload("res://scripts/dev/flip_check.gd")
 var _queen_soil := {}             # (--queen-soil: the queen's gaster in the soil, see queen_check.gd)
+var _flips := {}                  # (--flips: nestmates upside down, see flip_check.gd)
+var _queen_walk := {}             # (--queen-walk: her body in the soil while she walks, see queen_check.gd)
 var _stacks := {}                 # (--stacks: how high the brood is heaped, see stack_check.gd)
 var _turns := {}                  # (--turns: foragers' heading swings and body tilts, see turn_check.gd)
 const FootCheck := preload("res://scripts/dev/foot_check.gd")

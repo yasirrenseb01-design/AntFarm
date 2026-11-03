@@ -386,6 +386,7 @@ new_go,เริ่มรังนี้,Start this colony
 # controls,,
 tool_pan,มือ (เลื่อนจอ),Hand (move the view)
 tool_rock,ก้อนหิน,Stone
+tool_rock_take,เก็บหิน,Take stone
 tool_erase,ลบกลิ่น,Wipe scent
 top_subtitle,%s · รังเดี่ยว ราชินี 1 ตัว · %s 60×37 ซม. · v%s,"%s · single colony, 1 queen · %s 60×37 cm · v%s"
 top_plot,แปลงสวน,garden plot

@@ -18,6 +18,13 @@
 - compile ด้วย `production=yes d3d12=yes accesskit=no` (โหมดวอลเปเปอร์ต้องใช้ D3D12; accesskit = ตัวอ่านหน้าจอสำหรับผู้พิการทางสายตา ต้องดาวน์โหลด SDK เพิ่ม ไว้ทีหลัง)
 - Cloud session (Linux) build exe ไม่ได้อยู่แล้ว ไม่ต้องมีกุญแจ
 
+## แก้ซอร์ส Godot ที่ใส่ไว้ (ต้องทำซ้ำถ้า clone Godot ใหม่)
+- **ไอคอนคลาสหน้าต่าง** (v0.11.77, ผู้เล่น 2026-11-03: แถบงานโชว์ไอคอนเปล่าของ Windows): ตอน export Godot เขียนกลุ่มไอคอนชื่อ `ICON`
+  (`platform/windows/export/template_modifier.cpp`) แต่ตอนเปิดเกมหาชื่อ `GODOT_ICON` (`platform/windows/display_server_windows.cpp`
+  ราวบรรทัด 7950) หาไม่เจอเลยใช้ `IDI_WINLOGO` (ชื่อกลุ่มที่เขียนก็เพี้ยน หาด้วย "ICON" ก็ไม่เจอ) → แก้ให้ดึงไอคอนแรกของ exe
+  ด้วย `ExtractIconExW` ก่อน fallback (ค้นคำว่า `AntFarm:` ในไฟล์นั้น)
+  — ตรวจ: เปิดเกม อ่าน `GetClassLongPtr(hwnd, GCLP_HICON)` ต้องเป็นรูปราชินี; template เดิมสำรองที่ `templatesntfarm_release_x86_64.v4.7.2-orig.exe`
+
 ## ถ้ากุญแจหาย
 ไม่มีผลกับผู้เล่นหรือเซฟ: สร้างกุญแจใหม่ (`python -c "import secrets;print(secrets.token_hex(32))" > E:\GodotBuild\antfarm_pck.key`)
 แล้ว compile template ใหม่ด้วย `build_template.sh` (กุญแจกับ template ต้องเป็นคู่เดียวกันเสมอ)

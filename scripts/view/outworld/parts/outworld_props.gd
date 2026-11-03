@@ -4,9 +4,9 @@ extends "res://scripts/view/outworld/parts/outworld_scene.gd"
 
 
 func _sync_rocks() -> void:
-	if sim.rocks.size() == _rocks_n:
+	if sim.rock_ver == _rocks_n:
 		return
-	_rocks_n = sim.rocks.size()
+	_rocks_n = sim.rock_ver
 	for c in _rock_root.get_children():
 		c.queue_free()
 	# the small stones the ants climb over go into the height grid (body and feet ride over them)

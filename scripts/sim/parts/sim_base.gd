@@ -318,7 +318,8 @@ func add_water() -> void:
 	_log(T.water_added, "", [int(humidity * 100)])
 
 
-func add_rock(p: Vector2, r: float) -> bool:
+## placed: laid by the keeper (the stone tool) - the keeper can take it away again (remove_rock).
+func add_rock(p: Vector2, r: float, placed := false) -> bool:
 	if p.distance_to(nest_pos) < r + 24.0 or p.distance_to(midden_pos) < r + 10.0:
 		return false
 	for f in foods:
@@ -341,8 +342,9 @@ func add_rock(p: Vector2, r: float) -> bool:
 		var a := TAU * k / 14.0
 		var rr := r * (0.86 + 0.18 * sin(s + k * 1.9) + 0.08 * sin(s * 0.7 + k * 3.7))
 		poly.append(p + Vector2.from_angle(a) * rr)
-	rocks.append({"pos": p, "r": r, "poly": poly, "tone": rng.randf()})
+	rocks.append({"pos": p, "r": r, "poly": poly, "tone": rng.randf(), "placed": placed})
 	_restamp_rocks()
+	rock_ver += 1
 	# ants caught where the stone lands scramble out to its edge
 	for a in outside:
 		var d: Vector2 = a.pos - p
@@ -389,6 +391,21 @@ func _restamp_rocks() -> void:
 				for cx in range(maxi(0, int((p.x - r) / CELL)), mini(gw - 1, int((p.x + r) / CELL)) + 1):
 					if Vector2(cx * CELL + CELL * 0.5, cy * CELL + CELL * 0.5).distance_to(p) <= r:
 						rock[cy * gw + cx] = 2 if climbable else 1
+
+
+const TAKE_R := 10.5            # stones laid before v0.11.77 were not marked as the keeper's: the tool's size (10 px) is
+
+## The keeper takes away a stone they laid (the keeper, 2026-11-03: "let me remove the stones I put down"), the one
+## under p: true if there was one. The box's own stones (bigger, from setup) stay.
+func remove_rock(p: Vector2) -> bool:
+	for i in range(rocks.size() - 1, -1, -1):
+		var rk: Dictionary = rocks[i]
+		if (bool(rk.get("placed", false)) or float(rk.r) <= TAKE_R) and p.distance_to(rk.pos) <= float(rk.r) + 2.0:
+			rocks.remove_at(i)
+			_restamp_rocks()
+			rock_ver += 1
+			return true
+	return false
 
 
 func erase_pheromones(p: Vector2, r: float) -> void:
