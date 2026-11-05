@@ -7,7 +7,7 @@
 ทั้งก้อนตั้งแต่หัว **Keep a colony…** จนจบส่วนไทย แล้ววางในช่อง Description หัวข้อ ตัวหนา รายการ และลิงก์จะติดไปด้วย
 (ถ้าวางแล้วเป็นตัว `##` ดิบ แปลว่าคัดลอกจากไฟล์ดิบ ให้คัดลอกจากหน้าที่แสดงผลแทน)
 
-ต้องกรอกเองหลังรัน `tools/package.ps1`: ขนาด zip และรหัส SHA-256 (บรรทัดที่มี `‹…›`)
+ไม่ใส่รหัส SHA-256 บนหน้าร้าน (ผู้ใช้ 2026-11-05): รหัสเปลี่ยนทุกครั้งที่ทำ zip ใหม่ ถ้าลืมแก้จะไม่ตรงกับไฟล์
 
 ---
 
@@ -151,7 +151,7 @@ watch, and learn.
 3. Windows may show **"Windows protected your PC"** because the game is not digitally signed yet: click **More info**, then **Run anyway**.
 
 Saves live in `%APPDATA%\Godot\app_userdata\AntFarm\` (saved every minute and on exit). The game does not go online, has no account,
-ads or tracking — see PRIVACY.txt in the zip. SHA-256 of the zip: `‹วางรหัสจาก .sha256›`
+ads or tracking — see PRIVACY.txt in the zip.
 
 ### AI-generated content
 
@@ -247,7 +247,7 @@ Join the **Discord: https://discord.gg/ReXz7AFgrG** — or leave a comment on th
 3. Windows อาจขึ้น **"Windows protected your PC"** เพราะเกมยังไม่ได้เซ็นชื่อดิจิทัล: กด **More info** แล้วกด **Run anyway**
 
 เซฟอยู่ที่ `%APPDATA%\Godot\app_userdata\AntFarm\` (เซฟเองทุกนาทีและตอนปิด) เกมไม่ต่ออินเทอร์เน็ต ไม่มีบัญชี โฆษณา หรือการเก็บสถิติ —
-ดู PRIVACY.txt ใน zip · SHA-256 ของ zip: `‹วางรหัสจาก .sha256›`
+ดู PRIVACY.txt ใน zip
 
 ### เนื้อหาที่สร้างด้วย AI
 
