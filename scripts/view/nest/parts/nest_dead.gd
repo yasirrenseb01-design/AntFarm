@@ -37,6 +37,9 @@ func _corpses_add(xf: Transform3D) -> void:
 	var tr := Transform3D(xf.basis * Basis(Vector3.RIGHT, PI), xf.origin + xf.basis.y * 0.5)
 	_corpse_n += 1
 	_corpses.append({"id": _corpse_n, "xf": tr, "cell": Vector3i(xf.origin.round()), "t": _t, "taken": false})
+	# (the way to it worked out from now on, a few ms a frame - when the undertaker came, all at once, the game stood
+	# still ~120 ms at each death in the keeper's 12-chamber nest, v0.11.89)
+	_xjobs[_corpse_key(_corpse_n)] = _field_job(_corpse_cell(_corpses[-1]))
 	io.corpse_laid = int(io.get("corpse_laid", 0)) + 1
 
 
@@ -62,15 +65,23 @@ func _free_corpse(m: Dictionary) -> int:
 
 func _corpse_field(id: int) -> Dictionary:
 	var key := _corpse_key(id)
+	if _xjobs.has(key):
+		_field_run(_xjobs[key], 0)              # (asked for before it was done: what is left of it now)
+		_xfields[key] = _xjobs[key].f
+		_xjobs.erase(key)
 	if not _xfields.has(key):
-		var c := _corpses_by_id(id)
-		var at: Vector3i = c.cell
-		for k in 4:
-			if _walkable(at):
-				break
-			at.y -= 1
-		_xfields[key] = _field_from(at)
+		_xfields[key] = _field_from(_corpse_cell(_corpses_by_id(id)))
 	return _xfields[key]
+
+
+## The walkable cell a body lies on.
+func _corpse_cell(c: Dictionary) -> Vector3i:
+	var at: Vector3i = c.cell
+	for k in 4:
+		if _walkable(at):
+			break
+		at.y -= 1
+	return at
 
 
 ## An undertaker that has reached the body picks it up and goes on out with it.
@@ -78,6 +89,7 @@ func _pick_corpse(m: Dictionary) -> void:
 	var id: int = m.fetch
 	m.erase("fetch")
 	_xfields.erase(_corpse_key(id))
+	_xjobs.erase(_corpse_key(id))
 	_corpses = _corpses.filter(func(c): return c.id != id)
 	m.carry = true
 	m.item = "corpse"
@@ -91,6 +103,8 @@ func _draw_corpses(carried: Array) -> void:
 	for c in _corpses:
 		if not c.taken and _t - float(c.t) > CORPSE_KEEP:
 			io.corpse_expired = int(io.get("corpse_expired", 0)) + 1
+			_xfields.erase(_corpse_key(c.id))        # (the way to it, thousands of cells: not kept for ever)
+			_xjobs.erase(_corpse_key(c.id))
 	_corpses = _corpses.filter(func(c): return c.taken or _t - float(c.t) <= CORPSE_KEEP)
 	if _corpses.is_empty() and carried.is_empty() and _corpse_mm == null:
 		return

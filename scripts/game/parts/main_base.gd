@@ -209,9 +209,19 @@ func _run_catchup() -> void:
 		if not _refill_ticks.is_empty():
 			sim.add_water()
 			_refill_ticks = []
+		_warm_nest()
 		_overlay.queue_free()
 		_save_now()
 		_report_away()
+
+
+## The nest made ready while the loading is still on screen, so its first opening does not stand still (nest_view.warm).
+func _warm_nest() -> void:
+	if _persist and not _opts.has("shot") and not _opts.has("no-warm"):        # (--no-warm: dev, measuring without it)
+		var t0 := Time.get_ticks_msec()
+		nest_view.warm()
+		if _opts.has("hitch-log"):
+			print("nest made ready in %d ms: slot %d day %d, %d workers, %d drawn in the nest" % [Time.get_ticks_msec() - t0, slot, sim.day(), sim.workers.size(), nest_view._mates.size()])
 
 
 ## Colony Harmony for what the colony did since the last call (not a test colony, nor the one behind the title).

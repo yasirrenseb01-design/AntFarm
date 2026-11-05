@@ -338,9 +338,12 @@ const CLR_MAX := 0.3                # how far an ant is lifted clear of the soil
 
 
 func _update_ants(delta: float) -> void:
+	var t0p := Time.get_ticks_usec()
 	_bind_workers()                         # one drawn nestmate per real worker inside
+	t0p = _nprof("ants: bind", t0p)
 	_end_approaches()                       # (nest_duties: givers and groomers that have walked up to their partner)
 	_duty_pairs()
+	t0p = _nprof("ants: duty pairs", t0p)
 	# while larvae or cocoons are being moved between chambers, a few nurses do the carrying
 	if _moved < sim.larvae.size() or _moved_p < sim.pupae.size():
 		var carriers := 0
@@ -366,6 +369,7 @@ func _update_ants(delta: float) -> void:
 			_moved = 1 << 20
 			_moved_p = 1 << 20
 
+	t0p = _nprof("ants: carriers", t0p)
 	var running := speed > 0
 	var cells_per_sec := clampf(60.0 * speed / nest.STEP_EVERY, 0.0, 25.0) if running else 0.0
 	# cold-blooded: a cool nest slows them, and below ~5 °C they barely stir (winter torpor)
@@ -375,6 +379,7 @@ func _update_ants(delta: float) -> void:
 	var adt := delta * minf(speed, 1.0) * lerpf(0.25, 1.0, chill) if running else 0.0
 	if running:
 		_meetings()
+	t0p = _nprof("ants: meetings", t0p)
 	var body: Color = AntModel.body_linear(sim.sp["body_color"])       # (as in the outworld)
 	var young: Color = AntModel.body_linear(sim.sp["callow_color"])
 	var xs := []

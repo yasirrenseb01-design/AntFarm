@@ -346,6 +346,23 @@ func set_active(on: bool) -> void:
 		_feed.skip()                   # what happened while we were away is not replayed
 
 
+## The nest's first frame done once while the game loads, unseen: every ant in it finding where to rest was ~750 ms in
+## one frame the first time the nest was opened (368 workers; the keeper's nest, v0.11.89). main_base._warm_nest.
+func warm() -> void:
+	if active:
+		return
+	active = true
+	_refresh_spots()
+	refresh(1.0 / 60.0)
+	active = false
+	# (a way to the dig face to go on with: the first one worked out when a digger is sent, ~120 ms, would be the only one
+	# done all at once - the next are worked out over several frames with this one in use meanwhile, _pair_diggers)
+	if not _xfields.has(-2):
+		var face: Vector3i = nest.work_at if nest.work_at.x >= 0 else nest.entrance
+		_xfields[-2] = _field_from(face)
+		_xfield_at[-2] = face
+
+
 func refresh(delta: float) -> void:
 	if not active:
 		return

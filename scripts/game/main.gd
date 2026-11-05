@@ -228,6 +228,8 @@ func _ready() -> void:
 		hud.show_report(tr("save_title"), _load_note)
 	if _catchup_left > 0:
 		_show_catchup_overlay()
+	else:
+		_warm_nest.call_deferred()
 	if _opts.has("clip"):
 		title.open_clip.call_deferred()             # (dev: clip mode, as F8 starts it)
 	elif _opts.has("title") or (_persist and not skip_title and not _opts.has("testsave") and not _opts.has("desktop") and not _opts.has("no-title")
@@ -258,6 +260,8 @@ func _ready() -> void:
 		get_tree().create_timer(ra).timeout.connect(func():
 			desktop._log("dev reload-after: wallpaper on %s" % desktop.on)
 			_go_to(slot, ""))
+	if _opts.has("nest-after"):
+		_dev_nest_after()
 	if _opts.has("quit-after") and not _opts.has("shot"):
 		# (dev: close as the keeper would after that many seconds - desktop mode checked on the real desktop)
 		get_tree().create_timer(float(_opts["quit-after"])).timeout.connect(func():
@@ -470,7 +474,16 @@ func _change_language(lang: String) -> void:
 ## (dev: --hitch-log - each frame over 80 ms, when, what was on and where the game's own part of it went (ms, the
 ## parts over 2): the game played as the keeper does, not --shot)
 var _hitch_was := {}
-func _log_hitch(delta: float) -> void:
+var _hitch_us := 0
+var _hitch_mode := ""
+func _log_hitch(_delta: float) -> void:
+	# (by the clock: the engine's delta does not go past ~150 ms, a frame of 800 read as 146)
+	var us := Time.get_ticks_usec()
+	var delta := (us - _hitch_us) / 1000000.0 if _hitch_us > 0 else 0.0
+	_hitch_us = us
+	if mode != _hitch_mode:
+		_hitch_mode = mode
+		print("view %s at %.1f s" % [mode, us / 1000000.0])
 	var now := {}
 	for k in fprof:
 		now[k] = fprof[k]

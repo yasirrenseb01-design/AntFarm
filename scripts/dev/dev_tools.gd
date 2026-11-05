@@ -899,6 +899,34 @@ func _take_shot() -> void:
 	get_tree().quit()
 
 
+## (dev: --nest-after=<s> - the nest opened after that long, as the keeper's button does, for --hitch-log;
+## --nest-kill-every=<s> - from then on a nestmate dies in it that often, the body and the undertaker played at 1x)
+func _dev_nest_after() -> void:
+	get_tree().create_timer(float(_opts["nest-after"])).timeout.connect(func():
+		print("nest opened at %.1f s" % (Time.get_ticks_msec() / 1000.0))
+		hud._apply_mode("nest")
+		_set_mode("nest")
+		if _opts.has("nest-shot"):
+			# (--nest-shot=<path>: the picture 3 s after it opened, the game played as the keeper does)
+			get_tree().create_timer(3.0).timeout.connect(func():
+				await RenderingServer.frame_post_draw
+				get_viewport().get_texture().get_image().save_png(String(_opts["nest-shot"])))
+		if _opts.has("nest-kill-every"):
+			var kt := Timer.new()
+			kt.wait_time = float(_opts["nest-kill-every"])
+			kt.autostart = true
+			kt.timeout.connect(func():
+				for m in nest_view._mates:
+					if m.has("xf") and int(m.get("wid", -1)) >= 0 and not m.has("script") and not m.get("leaving", false):
+						for w in sim.workers:
+							if w.id == int(m.wid):
+								sim._kill(w, "old")
+								print("killed at %.1f s; bodies so far: laid %d, carried off %d, expired %d" % [Time.get_ticks_msec() / 1000.0,
+									int(nest_view.io.get("corpse_laid", 0)), int(nest_view.io.get("corpse_taken", 0)), int(nest_view.io.get("corpse_expired", 0))])
+								return)
+			add_child(kt))
+
+
 const BodyCheck := preload("res://scripts/dev/body_check.gd")
 const TurnCheck := preload("res://scripts/dev/turn_check.gd")
 const StackCheck := preload("res://scripts/dev/stack_check.gd")

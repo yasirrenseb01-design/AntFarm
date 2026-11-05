@@ -82,11 +82,35 @@ func _work_in_chamber(ch: Dictionary, best: Array) -> int:
 	var ax := chamber_axes(ch)
 	var m := maxf(ax.x, ax.z) * _lobe_max(ch) + 1.0
 	var c: Vector3 = ch.c
+	# (every voxel of the box round it, each day, for each chamber not finished: ~80 ms of a game day's ~135 in the
+	# keeper's 12-chamber nest, the game standing still each morning - the same voxels found, with what stays the same
+	# from one to the next worked out once, v0.11.89)
+	var yaw: float = ch.get("yaw", 0.0)
+	var cy := cos(yaw)
+	var sy := sin(yaw)
+	var lm := _lobe_max(ch) * 1.001          # (the widest its wall can be; a little over: only what is surely outside is skipped)
+	var ox := ax.x * lm
+	var oz := ax.z * lm
+	var rows := ny - y_lo
+	var has_hard := not hard.is_empty()
 	for y in range(maxi(y_lo, floori(c.y - ax.y - 1.0)), mini(ny, ceili(c.y + ax.y + 1.0) + 1)):
 		for z in range(maxi(0, floori(c.z - m)), mini(nz, ceili(c.z + m) + 1)):
+			if slab and z < nz - 3:
+				continue
+			var row := (z * rows + y - y_lo) * nx
+			var dz := z - c.z
 			for x in range(maxi(0, floori(c.x - m)), mini(nx, ceili(c.x + m) + 1)):
+				var i := row + x
+				if rho[i] < AIR or has_hard and hard[i] == 1:
+					continue
+				if not slab:
+					var dx := x - c.x
+					var ou := (dx * cy + dz * sy) / ox
+					var ov := (-dx * sy + dz * cy) / oz
+					if ou * ou + ov * ov > 1.0:
+						continue
 				var v := Vector3i(x, y, z)
-				if rho[idx(v)] >= AIR and not is_hard(v) and (not slab or z >= nz - 3) and chamber_q(Vector3(v), ch) <= 1.0:
+				if _q_at(Vector3(v), ch, ax, cy, sy) <= 1.0:
 					n += 1
 					_face_at(v, 100000, best)
 	return n
@@ -131,18 +155,52 @@ func _work_paths() -> void:
 	work_dist.fill(-1)
 	if work_at.x < 0 or not inside(work_at) or not is_open(work_at):
 		return
-	work_dist[idx(work_at)] = 0
-	var q: Array[Vector3i] = [work_at]
+	# (along flat indices, idx()'s layout: ~55 ms each game day through inside/is_open/idx for every neighbour, v0.11.89)
+	var rows := ny - y_lo
+	var up := nx
+	var back := rows * nx
+	var d := work_dist
+	var r := rho
+	var q := PackedInt32Array()
+	q.resize(d.size())
+	var first := idx(work_at)
+	d[first] = 0
+	q[0] = first
 	var h := 0
-	while h < q.size():
-		var c: Vector3i = q[h]
+	var t := 1
+	while h < t:
+		var i: int = q[h]
 		h += 1
-		var dc: int = work_dist[idx(c)]
-		for dd in DIRS:
-			var n: Vector3i = c + dd
-			if inside(n) and is_open(n) and work_dist[idx(n)] < 0:
-				work_dist[idx(n)] = dc + 1
-				q.append(n)
+		var dc: int = d[i] + 1
+		var x := i % nx
+		var row := i / nx
+		var yy := row % rows
+		var zz := row / rows
+		if x + 1 < nx and r[i + 1] < AIR and d[i + 1] < 0:
+			d[i + 1] = dc
+			q[t] = i + 1
+			t += 1
+		if x > 0 and r[i - 1] < AIR and d[i - 1] < 0:
+			d[i - 1] = dc
+			q[t] = i - 1
+			t += 1
+		if yy + 1 < rows and r[i + up] < AIR and d[i + up] < 0:
+			d[i + up] = dc
+			q[t] = i + up
+			t += 1
+		if yy > 0 and r[i - up] < AIR and d[i - up] < 0:
+			d[i - up] = dc
+			q[t] = i - up
+			t += 1
+		if zz + 1 < nz and r[i + back] < AIR and d[i + back] < 0:
+			d[i + back] = dc
+			q[t] = i + back
+			t += 1
+		if zz > 0 and r[i - back] < AIR and d[i - back] < 0:
+			d[i - back] = dc
+			q[t] = i - back
+			t += 1
+	work_dist = d
 
 
 ## Half-axes of a chamber's planned shape: long, wide (across), high. Flat: about two ants high.
@@ -162,13 +220,17 @@ func chamber_axes(ch: Dictionary) -> Vector3:
 
 ## Where a point lies relative to a chamber's planned shape (<= 1 inside), turned to its heading.
 func chamber_q(p: Vector3, ch: Dictionary) -> float:
-	var d: Vector3 = p - ch.c
 	var yaw: float = ch.get("yaw", 0.0)
-	var ax := chamber_axes(ch)
+	return _q_at(p, ch, chamber_axes(ch), cos(yaw), sin(yaw))
+
+
+## chamber_q with its half-axes and the cosine and sine of its heading already worked out.
+func _q_at(p: Vector3, ch: Dictionary, ax: Vector3, cy: float, sy: float) -> float:
+	var d: Vector3 = p - ch.c
 	if slab:
 		return room_q(Vector3(d.x / _lobe(ch, 0.0 if d.x >= 0.0 else PI), d.y, 0.0), ax)     # one layer deep: no heading
-	var u := d.x * cos(yaw) + d.z * sin(yaw)
-	var v := -d.x * sin(yaw) + d.z * cos(yaw)
+	var u := d.x * cy + d.z * sy
+	var v := -d.x * sy + d.z * cy
 	var f := _lobe(ch, atan2(v / ax.z, u / ax.x))
 	return room_q(Vector3(u / f, d.y, v / f), ax)
 
