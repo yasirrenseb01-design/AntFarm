@@ -128,8 +128,8 @@ watch, and learn.
 - **Ant farm extensions** (a glass ant farm joined to a tank with a clear tube, ants living in both) — planned after release.
 - **Decorations:** a decoration shop and placing plants, stones, leaves, twigs and mossy rocks in a tank before you start.
 - **Arranging your room** (moving shelves and tanks yourself) — not decided yet. The door in the Home is "coming soon".
-- **Mating flights** (winged queens and males), **other ant species**, **rival colonies**.
-- **Wallpaper mode:** main monitor only; poking the ants on the desktop and starting with Windows are not there yet.
+- **Mating flights** (winged queens and males), **a second species, the leafcutter *Atta cephalotes***, **rival colonies**.
+- **Wallpaper mode:** main monitor only, for watching; starting with Windows is not there yet.
 - Windows only for now. Big colonies (hundreds of ants) are heavy on the CPU; making them lighter is planned after release.
 
 ### System requirements (measured, not guessed)
@@ -225,8 +225,8 @@ Join the **Discord: https://discord.gg/ReXz7AFgrG** — or leave a comment on th
 - **แอนท์ฟาร์มต่อขยาย** (ตู้แอนท์ฟาร์มกระจกต่อกับตู้ด้วยท่อใส มดอยู่ได้ทั้งสองส่วน) — วางแผนไว้หลังปล่อย
 - **ของตกแต่ง:** ร้านของตกแต่ง และวางต้นไม้ หิน ใบไม้แห้ง กิ่งไม้ ก้อนมีมอส ในตู้ก่อนเริ่มเลี้ยง
 - **จัดห้องเอง** (ย้ายชั้นวางและตู้) — ยังไม่ได้ตัดสินใจ ประตูในห้อง Home ยังขึ้น "อัปเดตเร็วๆ นี้"
-- **การบินผสมพันธุ์** (ราชินีและตัวผู้มีปีก), **มดสายพันธุ์อื่น**, **มดรังอื่นมาแย่งพื้นที่**
-- **โหมดวอลเปเปอร์:** จอหลักจอเดียว ยังจิ้มมดบนเดสก์ท็อปไม่ได้ และยังเปิดพร้อม Windows ไม่ได้
+- **การบินผสมพันธุ์** (ราชินีและตัวผู้มีปีก), **สายพันธุ์ที่ 2 มดตัดใบ *Atta cephalotes***, **มดรังอื่นมาแย่งพื้นที่**
+- **โหมดวอลเปเปอร์:** จอหลักจอเดียว ไว้ดูอย่างเดียว และยังเปิดพร้อม Windows ไม่ได้
 - ตอนนี้มีแค่ Windows รังใหญ่ (หลายร้อยตัว) ใช้ CPU มาก — จะทำให้เบาลงหลังปล่อย
 
 ### สเปกเครื่อง (จากที่วัดจริง)
