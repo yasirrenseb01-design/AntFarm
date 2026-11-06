@@ -214,7 +214,18 @@ shop_buy,ซื้อ,Buy
 shop_owned,มีแล้ว,Bought
 shop_no_place,ไม่มีที่ว่างบนชั้นวาง — ซื้อชั้นวางก่อน,No free place on a shelf — buy a shelf first
 shop_no_wall,ไม่มีผนังว่างสำหรับชั้นวางแล้ว,No wall left for another shelf
-shop_full,มีตู้ครบเท่าที่เกมรองรับแล้ว,As many tanks as the game can keep
+shop_screen,จอติดผนัง 43 นิ้ว,A 43-inch screen on the wall
+shop_screen_note,"ดูรังสดๆ บนผนังหลังโต๊ะ — เลือกตู้และมุมกล้องได้บนจอ","The colony live on the wall behind the desk - pick the tank and the view on the screen"
+home_screen,จอติดผนัง · คลิกปุ่มบนจอ,The wall screen · click its buttons
+screen_auto,สุ่ม,Tour
+screen_outworld,พื้นดิน,Outworld
+screen_nest,ในรัง,Nest
+screen_queen,ตามราชินี,Queen
+screen_off,ปิดจอ,Off
+screen_tank,ตู้ %s,Tank %s
+screen_touch,คลิกเพื่อเปิดจอ,Click to turn it on
+shop_limit,มีตู้ครบ 6 ตู้ต่อสายพันธุ์แล้ว,All 6 tanks a species can have
+shop_shelf_enough,มีที่วางพอสำหรับทุกตู้แล้ว,Room enough already for every tank
 shop_short,แต้มยังไม่พอ,Not enough points yet
 shop_confirm,ซื้อ %s ราคา %s แต้ม?\nเหลือ %s แต้ม,Buy %s for %s points?\n%s points left
 shop_bought,ซื้อแล้ว: %s,Bought: %s
@@ -616,6 +627,7 @@ home_tip_fridge,"ตู้เย็นในมุมห้องไว้ให
 home_tip_keys,"เดิน W A S D · หันมองด้วยเมาส์ (ความไวปรับได้ในตั้งค่า) · Tab ปล่อยเมาส์เพื่อกดปุ่ม","Walk with W A S D · look round with the mouse (its speed is in Settings) · Tab frees the pointer for the buttons"
 home_tips_ok,เข้าใจแล้ว,Got it
 guide_stats,"แท็บ ""สถิติ"" ทำกราฟจากค่าในสถานะรัง: เลือกแกน X หนึ่งค่า (ปกติเป็นวัน) แกน Y กี่ค่าก็ได้ ตั้งชื่อแล้วบันทึกไว้ใช้กับทุกรัง","The ""Statistics"" tab plots the colony's status: one value along X (the day, usually), any along Y - name the set and save it for every colony."
+home_winter_near,"ตู้ %s: ใกล้หน้าหนาวแล้ว — เตรียมพาเข้าตู้เย็นจำศีลได้ (ปุ่ม ""จำศีลในตู้เย็น"" ในรัง)","Tank %s: winter is coming - time to think of the fridge (""Hibernate in fridge"" in the colony)"
 home_winter,"ตู้ %s: ถึงหน้าหนาวแล้ว — พาเข้าตู้เย็นจำศีล (ปุ่ม ""จำศีลในตู้เย็น"" ในรัง)","Tank %s: winter has come - put it in the fridge to rest (""Hibernate in fridge"" in the colony)"
 shop_view_3d,ดูโมเดล 3 มิติ,See it in 3D
 shop_view_hint,ลากเพื่อหมุนดู,Drag to turn it

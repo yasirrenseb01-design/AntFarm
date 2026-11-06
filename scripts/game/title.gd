@@ -307,7 +307,8 @@ func _show_ui(on: bool) -> void:
 # ---------------------------------------------------------------- the camera tour
 
 func _process(delta: float) -> void:
-	if not is_open or (main.home_room != null and main.home_room.is_open):
+	var under_home: bool = main.home_room != null and main.home_room.is_open
+	if not is_open or (under_home and not main.home_room.screen_tour()):
 		return                                     # (under the Home: its next shot changed the colony's view, ~3.5 s of
 	_shot_t -= delta                               # shaders made again every 14 s - the keeper, 2026-11-04 "it stutters")
 	if _shot_t <= 0.0:
@@ -319,7 +320,7 @@ func _process(delta: float) -> void:
 		nv.yaw_t += TURN * delta
 		# what the camera looks at, right of the menu (the outworld does it with side_px)
 		var vp: Vector2 = nv.get_viewport().get_visible_rect().size
-		nv._cam.h_offset = 0.0 if clip else -MENU_PX * 0.5 * 2.0 * nv.cam_dist * tan(deg_to_rad(nv._cam.fov * 0.5)) / vp.y
+		nv._cam.h_offset = 0.0 if clip or under_home else -MENU_PX * 0.5 * 2.0 * nv.cam_dist * tan(deg_to_rad(nv._cam.fov * 0.5)) / vp.y
 	if _follow != null:
 		_follow_t += delta
 		if not _keep_following(_follow):

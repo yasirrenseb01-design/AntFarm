@@ -27,6 +27,7 @@ var outworld
 var mode := "outworld"             # "outworld" (3D, above ground) or "nest" (3D underground)
 static var next_nest := ""      # "<soil|glass>:<queen|young>:<wild|keeper>": start a fresh colony after the reload
 static var next_slot := 0       # which save slot to open after the reload (0 = the last one played)
+static var next_home := false   # reloaded for the colony picked on the Home's screen: back in the room (home_screen.gd)
 static var skip_title := false  # reloaded for another colony from the game: straight into it, not the title screen
 var slot := 1
 var _persist := false

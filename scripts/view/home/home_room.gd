@@ -119,6 +119,25 @@ func build(places: Array, shelves: Array, filled: Callable, hour: float, env: En
 	set_hour(hour)
 
 
+## The screen on the wall behind the desk (game/home_screen.gd), 43 inches: over the tanks, clear of the desk lamp. Its
+## picture (a quad in front of the frame, facing the room, texture set by the caller): returned; dark until then.
+const SCREEN_AT := Vector3(0.0, 1.75, -W * 0.5 + 0.03)
+const SCREEN_SIZE := Vector2(0.952, 0.536)
+func wall_screen(at := SCREEN_AT) -> MeshInstance3D:
+	var body := flat(Color(0.035, 0.035, 0.04), 0.4, 0.3)
+	_box(Vector3(SCREEN_SIZE.x + 0.024, SCREEN_SIZE.y + 0.024, 0.04), at, body)
+	var pic := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = SCREEN_SIZE
+	pic.mesh = q
+	pic.position = at + Vector3(0, 0, 0.0205)
+	pic.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	pic.material_override = flat(Color(0.015, 0.015, 0.02), 0.25)
+	add_child(pic)
+	items.append({"kind": "screen", "mats": [], "box": AABB(at - Vector3(SCREEN_SIZE.x * 0.5, SCREEN_SIZE.y * 0.5, 0.02), Vector3(SCREEN_SIZE.x, SCREEN_SIZE.y, 0.05))})
+	return pic
+
+
 ## A shelf against a wall: two tiers of boards, one column for each two tanks it holds.
 func _shelf(i: int, holds: int) -> Node3D:
 	var u := Node3D.new()

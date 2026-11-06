@@ -62,6 +62,29 @@ func _init() -> void:
 	_is("after the shop: big kept", shop.big, again.big)
 	_is("after the shop: shelves", shop.shelves, [2, 4])
 	_is("places", shop.places().map(func(p): return [p.shelf, p.spot, p.big]), [[-1, 0, false], [0, 0, false], [-1, 0, true], [0, 1, false], [1, 0, false]])
+	# the limit (the keeper, 2026-11-06): 6 tanks a species, the wild mode as many; no more shelves once there is room for them
+	_is("the sixth tank", shop.buy("small"), true)
+	_is("a seventh: over the limit", shop.why_not("small", 1.0e6), "shop_limit")
+	_is("a seventh big or farm too", [shop.why_not("big", 1.0e6), shop.why_not("farm", 1.0e6)], ["shop_owned", "shop_limit"])
+	_is("add_tank at the limit", shop.add_tank(), 0)
+	_is("buy at the limit", shop.buy("small"), false)
+	_is("tanks and wild at the limit", [shop.tanks.size(), shop.wild.size()], [6, 6])
+	_is("no shelf needed: room for 7", shop.why_not("shelf4", 1.0e6), "shop_shelf_enough")
+	# the wall screen: once, kept in home.json; not counted as a tank
+	_is("the screen, too few points", shop.why_not("screen", 10.0), "shop_short")
+	_is("buy the screen", shop.buy("screen"), true)
+	_is("the screen again", shop.why_not("screen", 1.0e6), "shop_owned")
+	var seen := HomeStore.new()
+	seen.load_layout()
+	_is("the screen from home.json, tanks as they were", [seen.screen, seen.tanks.size()], [true, 6])
+	# a keeper with more than that keeps them
+	var over: Array = shop.tanks + [20, 21]
+	shop.tanks = over
+	shop.save_layout()
+	var kept := HomeStore.new()
+	kept.load_layout()
+	_is("tanks beyond the limit stay", kept.tanks.size(), 8)
+	_is("and no more are sold", kept.why_not("small", 1.0e6), "shop_limit")
 	_clear()
 	var fresh := HomeStore.new()
 	fresh.load_layout()
