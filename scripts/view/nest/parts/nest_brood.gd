@@ -5,6 +5,7 @@ extends "res://scripts/view/nest/parts/nest_camera.gd"
 
 # ---------------------------------------------------------------- brood and queen
 
+const QueenWay := preload("res://scripts/view/nest/queen_way.gd")
 var _queen_soil := {}          # her shift out of the soil as she walks (nest_soil._soil_push keeps it)
 
 func _floor_cells(ch: Dictionary) -> Array:
@@ -241,7 +242,12 @@ func _refresh_spots() -> void:
 			_queen_home_prev = goal
 			_queen_path = []
 		elif _queen_room_ch != _rooms[queen_room].ch:
-			_queen_path = _path_to(_spots.queen, goal)
+			# (down the middle of the tunnels, where her body fits: queen_way.gd)
+			var way: Array = QueenWay.find(self, _spots.queen, goal)
+			_queen_path = _smooth_path(way) if not way.is_empty() else _path_to(_spots.queen, goal)
+			_queen_trail.clear()
+			_queen_back = Vector3.UP
+			_queen_walk_fwd = Vector3(cos(_queen_turn), 0.0, -sin(_queen_turn))      # (from how she stood)
 		_queen_room_ch = _rooms[queen_room].ch
 	if _queen_path.is_empty():
 		_refresh_egg_spots()
@@ -445,29 +451,40 @@ func _queen_pose() -> void:
 	_queen_mm.instance_count = 1 if show else 0
 	if show and not _queen_path.is_empty():
 		# on her way: along the floor and up or down the shaft walls, body along her way, feet to the soil
-		var cell := Vector3i(roundi(qp.x), roundi(qp.y + 0.45), roundi(qp.z))
-		# (heavy: on the floor she stays upright, never on the ceiling; only in a shaft with no floor under her does she
-		# stand on its wall - and her up turns smoothly, not cell by cell: the keeper, 2026-10-27, saw her walk upside
-		# down on the roof of a gallery and jerk from cell to cell)
-		var want_up := _queen_up(cell)
-		_queen_up_s = _queen_up_s.slerp(want_up, minf(1.0, 4.0 * get_process_delta_time())).normalized() if _queen_up_s != Vector3.ZERO else want_up
-		var up := _queen_up_s
-		var to: Vector3 = _queen_path[0]
-		var fwd := to - qp
-		fwd -= up * fwd.dot(up)
+		# (her body lies along her way as a train on its track, her gaster where she has just been and her head where she
+		# is going: turned by the way at her middle alone, the straight body ~6 voxels long swung out at each bend and slope -
+		# gaster right 41% of the frames with her thorax clear, v0.11.90, --queen-walk)
+		if _queen_trail.is_empty() or (_queen_trail[-1] as Vector3).distance_to(qp) > 0.2:
+			_queen_trail.append(qp)
+			if _queen_trail.size() > 40:
+				_queen_trail.pop_front()
+		var fwd := _way_ahead(qp, QUEEN_AHEAD) - _way_behind(qp, QUEEN_BEHIND)
 		if fwd.length_squared() < 0.0004:
 			fwd = _queen_walk_fwd
 		fwd = fwd.normalized()
-		_queen_walk_fwd = _queen_walk_fwd.slerp(fwd, minf(1.0, 5.0 * get_process_delta_time())).normalized()
-		var f := (_queen_walk_fwd - up * _queen_walk_fwd.dot(up)).normalized()
-		_queen_xf = Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * queen_scale), qp + up * (QUEEN_LIFT + 0.45))
+		var dt := get_process_delta_time()
+		_queen_walk_fwd = _turned(_queen_walk_fwd, fwd, minf(1.0, 8.0 * dt), _queen_back)
+		var f := _queen_walk_fwd
+		# (her back, square to her body and turning smoothly. Heavy: up on the level and on a slope, never on the ceiling; on
+		# a way too steep for that, out from the wall she goes along. A back worked out from what is under her feet, nearly
+		# in line with her body going down a shaft, flipped her right over in a frame: 176 degrees, the keeper's colony)
+		var want_back := Vector3.UP if absf(f.y) < QUEEN_STEEP else _wall_out(qp, f)
+		_queen_back = _turned(_queen_back, want_back, minf(1.0, 5.0 * dt), f)
+		_queen_back = (_queen_back - f * f.dot(_queen_back)).normalized()
+		var was_xf := _queen_drawn if _queen_drawn_on else _queen_xf      # (setting off: from how she stood)
+		_queen_xf = Transform3D(Basis(f, _queen_back, f.cross(_queen_back)).scaled(Vector3.ONE * queen_scale), qp + _queen_back * (QUEEN_LIFT + 0.45))
+		_queen_was_walking = true
+		# (pushed out of a wall she moved up to 0.43 voxels and turned 20 degrees in a frame, walking 0.04: heavy, she does not)
 		# out of the walls of a narrow tunnel or bend as a nestmate is (nest_soil._soil_push: its body's points through her
 		# own transform, so her size) - her body went into the soil on her way between chambers (the keeper, 2026-11-03;
 		# --queen-walk)
 		if _queen_soil.is_empty():
 			_queen_soil = {"size": queen_scale, "gait": 0.0, "stride": 1.0, "wid": -2, "mv": 1.0}
 		_queen_soil["mv"] = 1.0
-		_queen_xf = call("_soil_push", _queen_soil, _queen_xf, get_process_delta_time())      # (a later layer: nest_soil)
+		_queen_xf = call("_soil_push", _queen_soil, _queen_xf, dt)      # (a later layer: nest_soil)
+		_queen_xf = _queen_eased(was_xf, _queen_xf, dt)
+		_queen_drawn = _queen_xf
+		_queen_drawn_on = true
 		if absf(f.y) < 0.7:
 			_queen_turn = atan2(-f.z, f.x)          # (so she stands facing her way once she is there)
 			_queen_rest_turn = _queen_turn
@@ -514,7 +531,17 @@ func _queen_pose() -> void:
 		_queen_dy = lerpf(_queen_dy, want_dy, k)
 		_queen_pitch = lerpf(_queen_pitch, want_pitch, k)
 		var qbasis := Basis(Vector3.UP, _queen_turn) * Basis(Vector3.BACK, _queen_pitch)
+		_queen_drawn_on = false
+		var walked_xf := _queen_xf
 		_queen_xf = Transform3D(qbasis.scaled(Vector3.ONE * queen_scale), at + Vector3.UP * _queen_dy)
+		# (arriving: from how she walked in to how she stands, not in a frame - 27 degrees at once)
+		if _queen_was_walking:
+			_queen_was_walking = false
+			_queen_arrive_from = walked_xf
+			_queen_arrive_t = QUEEN_SETTLE
+		if _queen_arrive_t > 0.0:
+			_queen_arrive_t = maxf(0.0, _queen_arrive_t - get_process_delta_time())
+			_queen_xf = _queen_xf.interpolate_with(_queen_arrive_from, smoothstep(0.0, QUEEN_SETTLE, _queen_arrive_t))
 		_queen_mm.set_instance_transform(0, _queen_xf)
 		_queen_mm.set_instance_color(0, AntModel.body_linear(Color(0.07, 0.055, 0.047)))     # glossy black-brown, darker than her workers
 		# the cells under her body, for the nestmates' routes
@@ -536,17 +563,89 @@ func _queen_pose() -> void:
 						_queen_near[Vector3i(x, y, z)] = true
 
 
-## Her up on her way: straight up where there is floor under her (in a low gallery the floor and the roof cancel in
-## _up_at and its first pick could be the roof), else the wall she is on - never pointing down.
-func _queen_up(c: Vector3i) -> Vector3:
-	if _holds(c + Vector3i(0, -1, 0)) or _holds(c + Vector3i(0, -2, 0)):
-		return Vector3.UP
-	var u := _up_at(c)
-	u.y = maxf(u.y, 0.0)
-	return u.normalized() if u.length_squared() > 0.01 else Vector3.UP
+var _queen_trail: Array = []       # where she has just walked (the last ~8 voxels)
+var _queen_back := Vector3.UP      # the way her back faces, walking
+var _queen_was_walking := false
+var _queen_arrive_from := Transform3D.IDENTITY     # how she came in, eased from as she stops
+var _queen_arrive_t := 0.0
+var _queen_drawn := Transform3D.IDENTITY           # how she was drawn last frame, walking
+var _queen_drawn_on := false
+const QUEEN_TURN_MOST := 2.5       # radians a second her body turns at most, walking (~8 degrees a frame at 30 fps)
+const QUEEN_MOVE_MOST := 7.0       # voxels a second her body moves at most, walking (she walks 2.5; a bit over for the push out of a wall)
+const QUEEN_SETTLE := 0.5          # seconds from how she walked in to how she stands
+const QUEEN_STEEP := 0.7           # her way this steep (of 1, straight up or down): she goes along a wall, not on a floor
+const QUEEN_AHEAD := 1.6           # how far along her way her head reaches, and her gaster behind her (voxels, her model x queen_scale)
+const QUEEN_BEHIND := 3.3
 
 
-var _queen_up_s := Vector3.ZERO
+## a turned toward b, by share w; the two opposite, round axis. (Vector3.slerp with the two nearly the same said "axis must be
+## normalized" each frame, ~400 a walk; with the two opposite it has no way to turn.)
+func _turned(a: Vector3, b: Vector3, w: float, axis: Vector3) -> Vector3:
+	var d := a.dot(b)
+	if d > 0.9999:
+		return b
+	if d < -0.999:
+		var round_it := axis - a * a.dot(axis)
+		if round_it.length_squared() < 0.01:
+			round_it = a.cross(Vector3.RIGHT if absf(a.x) < 0.9 else Vector3.UP)
+		return a.rotated(round_it.normalized(), PI * w).normalized()
+	return a.slerp(b, w).normalized()
+
+
+## to, but no faster than she can move and turn from `was`.
+func _queen_eased(was: Transform3D, to: Transform3D, dt: float) -> Transform3D:
+	var q0 := was.basis.orthonormalized().get_rotation_quaternion()
+	var q1 := to.basis.orthonormalized().get_rotation_quaternion()
+	var ang := q0.angle_to(q1)
+	var most := QUEEN_TURN_MOST * dt
+	var q := q0.slerp(q1, most / ang) if ang > most else q1
+	var move := to.origin - was.origin
+	return Transform3D(Basis(q).scaled(Vector3.ONE * queen_scale), was.origin + move.limit_length(QUEEN_MOVE_MOST * dt))
+
+
+## Out from the wall she goes along: the nearest soil round her, square to her way (the side her back already faces counts
+## for it: she does not cross from wall to wall).
+func _wall_out(p: Vector3, f: Vector3) -> Vector3:
+	var a := f.cross(_queen_back)
+	a = a.normalized() if a.length_squared() > 0.0001 else f.cross(Vector3.RIGHT).normalized()
+	var b := f.cross(a).normalized()
+	var from := p + _queen_back * 0.6
+	var best := _queen_back
+	var best_score := INF
+	for k in 8:
+		var dir := (a * cos(k * TAU / 8.0) + b * sin(k * TAU / 8.0))
+		var score := QueenWay._reach(self, from, dir, 5.0) + dir.dot(_queen_back) * 1.5
+		if score < best_score:
+			best_score = score
+			best = -dir
+	return best
+
+
+## The point that far on along her way.
+func _way_ahead(p: Vector3, dist: float) -> Vector3:
+	var at := p
+	var left := dist
+	for q in _queen_path:
+		var d := at.distance_to(q)
+		if d >= left:
+			return at.lerp(q, left / maxf(d, 0.001))
+		left -= d
+		at = q
+	return at
+
+
+## The point that far back along where she has walked.
+func _way_behind(p: Vector3, dist: float) -> Vector3:
+	var at := p
+	var left := dist
+	for i in range(_queen_trail.size() - 1, -1, -1):
+		var q: Vector3 = _queen_trail[i]
+		var d := at.distance_to(q)
+		if d >= left:
+			return at.lerp(q, left / maxf(d, 0.001))
+		left -= d
+		at = q
+	return at
 
 
 ## Room kept for the queen where brood is laid: from her body as it is, and from her place (whichever way she
