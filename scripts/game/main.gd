@@ -100,6 +100,11 @@ func _ready() -> void:
 					slot = home.tanks[0]
 		Harmony.base = Store.base
 		harmony.load_purse()
+		if home.screen_refund:
+			# (the wall screen bought in v0.11.92 is no more: its points back. home.json was written without it as it was read)
+			home.screen_refund = false
+			harmony.points += home.SCREEN_REFUND
+			harmony.save_purse()
 		next_slot = 0
 		if next_nest == "":
 			var data := Store.load_slot(slot)
@@ -226,14 +231,8 @@ func _ready() -> void:
 		_save_now()
 	if _load_note != "":
 		hud.show_report(tr("save_title"), _load_note)
-	# (the colony picked on the Home's screen: the keeper stays in the room, the time away shown on the screen)
-	var to_home := next_home
-	next_home = false
-	if to_home:
-		skip_title = false
 	if _catchup_left > 0:
 		_show_catchup_overlay()
-		_overlay.visible = not to_home
 	else:
 		_warm_nest.call_deferred()
 	if _opts.has("clip"):
@@ -241,8 +240,6 @@ func _ready() -> void:
 	elif _opts.has("title") or (_persist and not skip_title and not _opts.has("testsave") and not _opts.has("desktop") and not _opts.has("no-title")
 			and not _opts.has("desktop-after")):
 		title.open.call_deferred(not _demo)          # (what the game opens on; deferred: the views place their cameras first)
-		if to_home:
-			home_room.open.call_deferred()
 	if skip_title and _persist and not _demo and not _opts.has("testsave"):
 		get_tree().create_timer(1.0).timeout.connect(hud.maybe_guide)
 	if _opts.has("guide"):
@@ -270,8 +267,6 @@ func _ready() -> void:
 			_go_to(slot, ""))
 	if _opts.has("nest-after"):
 		_dev_nest_after()
-	if _opts.has("home-play"):
-		_dev_home_play()
 	if _opts.has("quit-after") and not _opts.has("shot"):
 		# (dev: close as the keeper would after that many seconds - desktop mode checked on the real desktop)
 		get_tree().create_timer(float(_opts["quit-after"])).timeout.connect(func():
@@ -323,8 +318,7 @@ func _process(delta: float) -> void:
 	# (the Home over the colony: its views are not drawn then - the window's 3D is off - and were still moved on every
 	# frame, 13-20 ms of the Home's 33 on a laptop: the keeper, 2026-11-04 "the Home stutters"; they pick up again as
 	# the keeper leaves it, as the wallpaper's do)
-	# (the screen on the Home's wall, on and in view, shows them: they move on)
-	var in_home: bool = home_room != null and home_room.is_open and not home_room.screen_live()
+	var in_home: bool = home_room != null and home_room.is_open
 	if mode == "outworld" and not in_home:
 		outworld.ground.tick_pheromones()
 	t0 = _pt("pheromones", t0)

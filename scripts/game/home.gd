@@ -15,7 +15,6 @@ const Shop := preload("res://scripts/game/home_shop.gd")
 const Water := preload("res://scripts/game/home_water.gd")
 const Look := preload("res://scripts/game/look_prefs.gd")
 const Tips := preload("res://scripts/game/home_tips.gd")
-const Screen := preload("res://scripts/game/home_screen.gd")
 const Hand := preload("res://scripts/view/home/home_hand.gd")
 const Chime := preload("res://scripts/view/ui/chime.gd")
 const EYE := 1.55                 # metres: the keeper's eyes
@@ -45,10 +44,6 @@ var _help: Label
 var shop                          # game/home_shop.gd: the shop page
 var water                         # game/home_water.gd: each tank's water, filled from here
 var tips                          # game/home_tips.gd: what is where, the first time
-var screen                        # game/home_screen.gd: the screen on the wall, bought
-static var _kept := {}            # where the keeper stood, as the scene starts again for the colony picked on the screen
-var _ray_from := Vector3.ZERO     # the view's ray through what the hand is on
-var _ray_dir := Vector3.FORWARD
 var _hand: TextureRect            # the keeper's hand drawn flat, in the middle of the view (with the 3D hand off)
 var _hand3d                       # view/home/home_hand.gd: the keeper's hand in 3D, lower right (settings "home_hand")
 var _cross: ColorRect             # an aiming point in the middle of the view (settings "home_cross")
@@ -126,7 +121,6 @@ func _build() -> void:
 	var we := WorldEnvironment.new()
 	we.environment = _env
 	_vp.add_child(we)
-	screen = null
 	rebuild_room()
 	_cam = Camera3D.new()
 	_cam.fov = 62.0
@@ -254,18 +248,6 @@ func rebuild_room() -> void:
 		live_cold = int(main.sim.fridge_on)          # (the colony just left: as it is now, not as last saved)
 	_room.build(main.home.places(), main.home.shelves, func(s): return Store.exists(s), _hour(), _env, 0, -1, main.slot, live_cold)
 	_hot = null
-	if main.home.screen:
-		var pic: MeshInstance3D = _room.wall_screen()
-		if screen == null:
-			screen = Screen.new()
-			add_child(screen)
-			screen.setup(self)
-		screen.placed(pic.position, Room.SCREEN_SIZE)
-		var m := StandardMaterial3D.new()
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.albedo_texture = screen.texture()
-		m.albedo_color = Color(1.25, 1.25, 1.25)        # (a screen is brighter than the wall; the room's tone mapping dims it)
-		pic.material_override = m
 
 
 ## A short note on paper under the bar, gone after a moment.
@@ -321,11 +303,6 @@ func open() -> void:
 	_free = false
 	_seated = false
 	_move_t = 1.0
-	if not _kept.is_empty():
-		_cam.position = _kept.at
-		_yaw = _kept.yaw
-		_pitch = _kept.pitch
-		_kept = {}
 	_aim()
 	_update_purse()
 	water.refresh()
@@ -414,9 +391,6 @@ func _exit_tree() -> void:
 
 
 func _leave() -> void:
-	if screen != null:
-		screen.stop()
-	screen = null
 	is_open = false
 	visible = false
 	get_viewport().disable_3d = false
@@ -557,8 +531,6 @@ func _input(e: InputEvent) -> void:
 func _point(at: Vector2) -> void:
 	var from := _cam.project_ray_origin(at)
 	var dir := _cam.project_ray_normal(at)
-	_ray_from = from
-	_ray_dir = dir
 	var best = null
 	var best_d := INF
 	for it in _room.items:
@@ -577,11 +549,6 @@ func _point(at: Vector2) -> void:
 					inner_d = from.distance_to(hit)
 					best = it
 	var fresh := not is_same(best, _hot)
-	if screen != null:
-		if best != null and best.kind == "screen":
-			screen.hover(from, dir)
-		else:
-			screen.unhover()
 	if fresh:
 		_hot = best
 		_room.hover(best)
@@ -603,8 +570,6 @@ func _point(at: Vector2) -> void:
 
 
 func _describe(it) -> String:
-	if it.kind == "screen":
-		return tr("home_screen")
 	if it.kind == "door":
 		return tr("home_door")
 	if it.kind == "lamp":
@@ -622,25 +587,7 @@ func _describe(it) -> String:
 		"" if m.get("queen", true) else tr("title_queen_dead")]
 
 
-## Where the keeper stands, kept for the room coming back (the colony picked on the screen).
-func keep_pose() -> void:
-	_kept = {"at": _cam.position, "yaw": _yaw, "pitch": _pitch}
-
-
-## The colony's views go on behind the room for the screen (main._process, title._process).
-func screen_live() -> bool:
-	return screen != null and screen.live()
-
-
-func screen_tour() -> bool:
-	return screen != null and screen.tour()
-
-
 func _click(it) -> void:
-	if it.kind == "screen":
-		if screen != null:
-			screen.click(_ray_from, _ray_dir)
-		return
 	if it.kind == "door":
 		toast(tr("home_soon"), _tip.position + Vector2(0, 40))
 		return

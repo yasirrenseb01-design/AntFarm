@@ -10,8 +10,7 @@ const Preview := preload("res://scripts/game/shop_preview.gd")
 # back after Early Access as an add-on joined to a tank by a tube, the colony's nest growing into it: BACKLOG. Farms
 # already bought stay as they are.)
 const ITEMS := [["big", "shop_big", "shop_big_note"], ["small", "shop_small", "shop_small_note"],
-	["shelf2", "shop_shelf2", "shop_shelf2_note"], ["shelf4", "shop_shelf4", "shop_shelf4_note"],
-	["screen", "shop_screen", "shop_screen_note"]]
+	["shelf2", "shop_shelf2", "shop_shelf2_note"], ["shelf4", "shop_shelf4", "shop_shelf4_note"]]
 
 var home_ui                    # game/home.gd
 var _col: VBoxContainer

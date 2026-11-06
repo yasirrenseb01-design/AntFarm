@@ -12,7 +12,8 @@ extends RefCounted
 
 const Store := preload("res://scripts/game/save_store.gd")
 const MAX_TEXT := 4096
-const PRICES := {"small": 600.0, "farm": 80.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0, "screen": 4000.0}
+const PRICES := {"small": 600.0, "farm": 80.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0}
+const SCREEN_REFUND := 4000.0      # (the wall screen, sold in v0.11.92 and taken out: the keeper, 2026-11-07)
 const MAX_SHELVES := 4
 ## How many tanks can be had of one species (the keeper, 2026-11-06: the points come fast, and more colonies than this
 ## are not used; the wild mode has as many). When there is a second species: 3 of each (BACKLOG). Tanks had already beyond
@@ -24,7 +25,7 @@ var tanks: Array = []          # slot numbers, in the order the tanks were had
 var wild: Array = []
 var big := 0                   # the bigger tank's slot (0: not bought)
 var shelves: Array = []        # each shelf bought: how many tanks it holds (2 or 4)
-var screen := false            # the screen on the wall bought (game/home_screen.gd)
+var screen_refund := false     # home.json said the wall screen was bought: its points to go back (main._ready), once
 var farms: Array = []          # the slots of the ant farms bought (a flat glass frame: its colony nests in the glass slab,
                                # sim nest.slab; the keeper, 2026-10-27: sold in the shop, a little cheaper than a small tank)
 
@@ -39,7 +40,7 @@ func load_layout() -> void:
 	big = 0
 	shelves = []
 	farms = []
-	screen = false
+	screen_refund = false
 	var path := _path()
 	if FileAccess.file_exists(path):
 		var f := FileAccess.open(path, FileAccess.READ)
@@ -53,7 +54,7 @@ func load_layout() -> void:
 				var b = d.get("big")
 				if (b is float or b is int) and tanks.has(int(b)):
 					big = int(b)
-				screen = d.get("screen") == true
+				screen_refund = d.get("screen") == true
 				var sh = d.get("shelves")
 				if sh is Array:
 					for c in sh:
@@ -100,7 +101,7 @@ func save_layout() -> void:
 	DirAccess.make_dir_recursive_absolute(Store.base)
 	var f := FileAccess.open(_path(), FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves, "farms": farms, "screen": screen}))
+		f.store_string(JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves, "farms": farms}))
 
 
 ## Another tank: one more colony at home and one more in the wild mode; its slot (0 if there can be no more).
@@ -140,7 +141,7 @@ func nest_of(slot: int) -> String:
 
 ## Why that cannot be bought now (a key of lang/strings.csv), "" if it can.
 func why_not(item: String, points: float) -> String:
-	if item == "big" and big != 0 or item == "screen" and screen:
+	if item == "big" and big != 0:
 		return "shop_owned"
 	if item.begins_with("shelf") and shelves.size() >= MAX_SHELVES:
 		return "shop_no_wall"
@@ -183,8 +184,6 @@ func buy(item: String) -> bool:
 				return false
 		"shelf2", "shelf4":
 			shelves.append(2 if item == "shelf2" else 4)
-		"screen":
-			screen = true
 		_:
 			return false
 	save_layout()

@@ -309,10 +309,6 @@ func _take_shot() -> void:
 		print("home-time: title %.0f ms, home open %.0f ms, first 5 frames %.0f ms (worst %.0f ms), frames %s" % [
 			(t1 - t0) / 1000.0, (t2 - t1) / 1000.0, sum, frames.max(), str(frames.slice(0, 8).map(func(x): return int(x)))])
 	if _opts.has("home"):
-		if _opts.has("home-screen"):
-			home.screen = true                 # (dev: --home-screen[=auto|outworld|nest|queen]: the wall screen bought, in memory)
-			if String(_opts["home-screen"]) in ["auto", "outworld", "nest", "queen"]:
-				_settings["home_screen_mode"] = String(_opts["home-screen"])
 		home_room.open()                     # (--home [--home-hour=<h>] [--home-at=x,z,yaw,pitch]: the Home, the camera there)
 		if _opts.has("home-at"):
 			var hp: PackedStringArray = String(_opts["home-at"]).split(",")
@@ -901,52 +897,6 @@ func _take_shot() -> void:
 	_save_now()
 	print("saved ", path, "  fps ", Engine.get_frames_per_second(), "  process ms %.2f" % (Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0))
 	get_tree().quit()
-
-
-## (dev: --home-play[=x,z,yaw,pitch]: the Home opened after 2 s in the game as it is played (not --shot), the wall screen bought in
-## memory, for --hitch-log; --home-screen=<mode> its view; --screen-press=<x,y | tank<slot>>: 3 s on, that touched on the
-## screen through its own hit test - the slot once, it being the colony open after the reload.)
-func _dev_home_play() -> void:
-	get_tree().create_timer(2.0).timeout.connect(func():
-		home.screen = true
-		if String(_opts.get("home-screen", "")) in ["auto", "outworld", "nest", "queen"]:
-			_settings["home_screen_mode"] = String(_opts["home-screen"])
-		var came_back: bool = home_room.is_open       # (reloaded for a colony picked on the screen: where the keeper stood kept)
-		if not came_back:
-			home_room.open()
-		var at := String(_opts["home-play"]).split(",")
-		if at.size() >= 4 and not came_back:
-			home_room._cam.position = Vector3(float(at[0]), home_room.EYE, float(at[1]))
-			home_room._yaw = float(at[2])
-			home_room._pitch = float(at[3])
-			home_room._aim()
-		print("home-play: slot %d, keeper at %s, screen %s, overlay %s" % [slot, str(home_room._cam.position), home_room.screen != null, _overlay != null and is_instance_valid(_overlay) and _overlay.visible])
-		if _opts.has("home-png"):
-			home_room.tips.visible = false
-			# (--home-png=<path without .png>: what is on the window then, and each 4 s for 20 s: _s<slot>_<n>.png)
-			for n in 5:
-				get_tree().create_timer(0.2 + 4.0 * n).timeout.connect(func():
-					await RenderingServer.frame_post_draw
-					if is_inside_tree():
-						get_viewport().get_texture().get_image().save_png("%s_s%d_%d.png" % [_opts["home-png"], slot, n]))
-		if _opts.has("screen-press"):
-			get_tree().create_timer(3.0).timeout.connect(func():
-				var sc = home_room.screen
-				var what := String(_opts["screen-press"])
-				if what.begins_with("tank"):
-					var to := int(what.substr(4))
-					if to != slot:
-						print("screen-press: to the colony of slot %d from %d, the keeper at %s" % [to, slot, str(home_room._cam.position)])
-						sc._to_tank(to)
-					else:
-						print("screen-press: colony of slot %d open, Home open %s, the keeper at %s, catch-up left %d" % [slot, home_room.is_open, str(home_room._cam.position), _catchup_left])
-				else:
-					var xy := what.split(",")
-					var h = sc._hit(Vector2(float(xy[0]), float(xy[1])))
-					print("screen-press at %s: %s" % [what, (h.c as Button).text if h != null else "nothing"])
-					if h != null:
-						h.do.call()
-					print("  mode %s, on %s, view %s" % [sc._mode, sc._on, mode])))
 
 
 ## (dev: --nest-after=<s> - the nest opened after that long, as the keeper's button does, for --hitch-log;

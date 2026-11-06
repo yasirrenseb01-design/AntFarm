@@ -14,8 +14,6 @@ static func model(item: String) -> Node3D:
 	match item:
 		"big", "small":
 			r._tank(r, Vector3.ZERO, item == "big", false, -1, 0, true, 0.0)      # (slot -1: no colony's pictures, plain soil)
-		"screen":
-			r.wall_screen(Vector3.ZERO)
 		"shelf2", "shelf4":
 			var u: Node3D = r._shelf(0, 2 if item == "shelf2" else 4)
 			u.position = Vector3.ZERO

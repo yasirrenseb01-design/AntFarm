@@ -214,16 +214,6 @@ shop_buy,ซื้อ,Buy
 shop_owned,มีแล้ว,Bought
 shop_no_place,ไม่มีที่ว่างบนชั้นวาง — ซื้อชั้นวางก่อน,No free place on a shelf — buy a shelf first
 shop_no_wall,ไม่มีผนังว่างสำหรับชั้นวางแล้ว,No wall left for another shelf
-shop_screen,จอติดผนัง 43 นิ้ว,A 43-inch screen on the wall
-shop_screen_note,"ดูรังสดๆ บนผนังหลังโต๊ะ — เลือกตู้และมุมกล้องได้บนจอ","The colony live on the wall behind the desk - pick the tank and the view on the screen"
-home_screen,จอติดผนัง · คลิกปุ่มบนจอ,The wall screen · click its buttons
-screen_auto,สุ่ม,Tour
-screen_outworld,พื้นดิน,Outworld
-screen_nest,ในรัง,Nest
-screen_queen,ตามราชินี,Queen
-screen_off,ปิดจอ,Off
-screen_tank,ตู้ %s,Tank %s
-screen_touch,คลิกเพื่อเปิดจอ,Click to turn it on
 shop_limit,มีตู้ครบ 6 ตู้ต่อสายพันธุ์แล้ว,All 6 tanks a species can have
 shop_shelf_enough,มีที่วางพอสำหรับทุกตู้แล้ว,Room enough already for every tank
 shop_short,แต้มยังไม่พอ,Not enough points yet

@@ -70,13 +70,6 @@ func _init() -> void:
 	_is("buy at the limit", shop.buy("small"), false)
 	_is("tanks and wild at the limit", [shop.tanks.size(), shop.wild.size()], [6, 6])
 	_is("no shelf needed: room for 7", shop.why_not("shelf4", 1.0e6), "shop_shelf_enough")
-	# the wall screen: once, kept in home.json; not counted as a tank
-	_is("the screen, too few points", shop.why_not("screen", 10.0), "shop_short")
-	_is("buy the screen", shop.buy("screen"), true)
-	_is("the screen again", shop.why_not("screen", 1.0e6), "shop_owned")
-	var seen := HomeStore.new()
-	seen.load_layout()
-	_is("the screen from home.json, tanks as they were", [seen.screen, seen.tanks.size()], [true, 6])
 	# a keeper with more than that keeps them
 	var over: Array = shop.tanks + [20, 21]
 	shop.tanks = over
@@ -85,6 +78,19 @@ func _init() -> void:
 	kept.load_layout()
 	_is("tanks beyond the limit stay", kept.tanks.size(), 8)
 	_is("and no more are sold", kept.why_not("small", 1.0e6), "shop_limit")
+	# the wall screen, bought in v0.11.92 and taken out: its refund told once, gone from home.json
+	var f2 := FileAccess.open(DIR + "home.json", FileAccess.READ)
+	var text := f2.get_as_text()
+	f2.close()
+	f2 = FileAccess.open(DIR + "home.json", FileAccess.WRITE)
+	f2.store_string(text.replace('"v":1', '"v":1,"screen":true'))
+	f2.close()
+	var ref1 := HomeStore.new()
+	ref1.load_layout()
+	_is("a screen bought: refund told, tanks kept", [ref1.screen_refund, ref1.tanks.size()], [true, 8])
+	var ref2 := HomeStore.new()
+	ref2.load_layout()
+	_is("told only once", ref2.screen_refund, false)
 	_clear()
 	var fresh := HomeStore.new()
 	fresh.load_layout()
