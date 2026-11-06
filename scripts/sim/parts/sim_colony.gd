@@ -107,7 +107,9 @@ func _colony(dt: float) -> void:
 			idle.append(a)
 			a.task = Ant.TASK_RESERVE
 	# the reserve, eagerest foragers last (pop_back takes them first)
-	idle.sort_custom(func(x, y): return x.threshold(Ant.TH_FORAGE) > y.threshold(Ant.TH_FORAGE) or (x.threshold(Ant.TH_FORAGE) == y.threshold(Ant.TH_FORAGE) and x.id > y.id))
+	for a in idle:
+		a.sort_a = a.threshold(Ant.TH_FORAGE)
+	idle.sort_custom(func(x, y): return x.sort_a > y.sort_a or (x.sort_a == y.sort_a and x.id > y.id))
 	# (who feeds which larva is worked out every half hour by the duties, parts/sim_duties.gd; the older ants resting
 	# inside help when nurses are short, and a founding queen feeds her first larvae herself)
 	var lpn: float = sp["larvae_per_nurse"]
@@ -156,10 +158,11 @@ func _colony(dt: float) -> void:
 		out_count += 1
 		_recruits -= 1
 	_recruits = 0
+	var forage_trait := colony_trait("forage")
 	for a in idle:
 		if out_count >= max_out:
 			break
-		if rng.randf() < p_exit * colony_trait("forage") / a.threshold(Ant.TH_FORAGE):     # the eager go out more often (and some colonies)
+		if rng.randf() < p_exit * forage_trait / a.threshold(Ant.TH_FORAGE):     # the eager go out more often (and some colonies)
 			_send_out(a, Ant.SEARCH)
 			out_count += 1
 
@@ -177,13 +180,17 @@ func _colony(dt: float) -> void:
 		# chosen, not measured; until v0.11.19 it was 40)
 		diggers_wanted = clampi(int((idle.size() * 0.35 + 1.0) * keen), 1, 20) if workers.size() - out_count > 0 else 0
 	# who digs: the reserve ants still inside most ready to dig (the view shows them at the dig face)
-	var still_in := idle.filter(func(x): return x.state == Ant.IN_NEST)
-	still_in.sort_custom(func(x, y):
-		if dug.has(x.id) != dug.has(y.id):
-			return dug.has(x.id)              # the diggers already at it first (no flicking between jobs)
-		return x.threshold(Ant.TH_DIG) < y.threshold(Ant.TH_DIG) or (x.threshold(Ant.TH_DIG) == y.threshold(Ant.TH_DIG) and x.id < y.id))
-	for i in mini(diggers_wanted, still_in.size()):
-		still_in[i].task = Ant.TASK_DIG
+	if diggers_wanted > 0:                # (none wanted: nothing to sort)
+		var still_in := idle.filter(func(x): return x.state == Ant.IN_NEST)
+		for a in still_in:
+			a.sort_a = 0.0 if dug.has(a.id) else 1.0      # the diggers already at it first (no flicking between jobs)
+			a.sort_b = a.threshold(Ant.TH_DIG)
+		still_in.sort_custom(func(x, y):
+			if x.sort_a != y.sort_a:
+				return x.sort_a < y.sort_a
+			return x.sort_b < y.sort_b or (x.sort_b == y.sort_b and x.id < y.id))
+		for i in mini(diggers_wanted, still_in.size()):
+			still_in[i].task = Ant.TASK_DIG
 
 	_metabolism(dt)
 	_moisture(dt)

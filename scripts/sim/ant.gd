@@ -29,6 +29,10 @@ const TH_UNDERTAKE := 2
 const TH_DEFEND := 3
 const TH_DIG := 4
 const TH_ATTEND := 5       # drawn to the queen (her retinue, in the nest view)
+const TH_KINDS := 6
+var _th := PackedFloat64Array()      # its thresholds as worked out (threshold)
+var sort_a := 0.0                    # what it is sorted by this step (sim_colony._colony: read directly, not worked out at each comparison)
+var sort_b := 0.0
 
 # what a worker inside is doing this half hour (its duty, set by parts/sim_duties.gd from the colony's needs; saved)
 const D_OUT := 0           # outside (foraging, defending, carrying out the dead, hauling)
@@ -120,9 +124,17 @@ var vaphid := -1          # 3D outworld: which of the plant's low aphids it clim
 
 ## This worker's threshold for a kind of need (TH_*), 0.6 (eager) .. 1.4 (reluctant): fixed for life,
 ## worked out from its id so nothing extra needs saving.
+## (Kept once worked out, not saved: a sine each time, ~2.3 ms a colony step sorting 400 workers by it - the time away, v0.11.91.)
 func threshold(kind: int) -> float:
-	var h := sin(float(id) * 12.9898 + float(kind) * 78.233) * 43758.5453
-	return 0.6 + 0.8 * (h - floorf(h))
+	if _th.is_empty():
+		_th.resize(TH_KINDS)
+		_th.fill(-1.0)
+	var v: float = _th[kind]
+	if v < 0.0:
+		var h := sin(float(id) * 12.9898 + float(kind) * 78.233) * 43758.5453
+		v = 0.6 + 0.8 * (h - floorf(h))
+		_th[kind] = v
+	return v
 
 
 func is_out() -> bool:

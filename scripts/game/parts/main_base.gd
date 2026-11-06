@@ -184,12 +184,18 @@ func _show_catchup_overlay() -> void:
 	box.add_child(_overlay_bar)
 
 
+var _cu_frames := 0
+var _cu_start := 0
+var _cu_sim := 0
 ## Simulate the time away in slices that fit in a frame, so the window stays responsive.
 func _run_catchup() -> void:
 	sim.ant_substep = 4      # fastest stride that stays unbiased against full-detail stepping (tested)
 	hud.quiet = true
 	var care: bool = _settings.get("care", true)
 	var t0 := Time.get_ticks_msec()
+	_cu_frames += 1
+	if _cu_start == 0:
+		_cu_start = t0
 	while _catchup_left > 0 and Time.get_ticks_msec() - t0 < 40:
 		sim.step()
 		_catchup_left -= 1
@@ -198,12 +204,19 @@ func _run_catchup() -> void:
 			sim.add_water()                  # (filled from the Home then)
 		if care and sim.tick % sim.TPD == sim.TPD / 4:
 			sim.auto_care(sim.day())
+	_cu_sim += Time.get_ticks_msec() - t0
 	_earn(_away_rate, false)
 	var done := _catchup_total - _catchup_left
 	_overlay_label.text = tr("away_running") % [
 		float(done) / sim.TPD, float(_catchup_total) / sim.TPD]
 	_overlay_bar.value = 100.0 * done / maxf(1.0, _catchup_total)
 	if _catchup_left <= 0:
+		if _opts.has("hitch-log"):
+			# (dev: where the time away's minutes go)
+			var total := Time.get_ticks_msec() - _cu_start
+			print("catch-up: %d ticks (%.1f game days) in %.1f s, %d frames; simulating %.1f s (%.0f%%), %.3f ms a tick; the rest %.1f ms a frame" % [_catchup_total, float(_catchup_total) / sim.TPD, total / 1000.0, _cu_frames,
+				_cu_sim / 1000.0, 100.0 * _cu_sim / maxf(total, 1.0), float(_cu_sim) / maxf(_catchup_total, 1.0), float(total - _cu_sim) / maxf(_cu_frames, 1.0)])
+			print("  workers %d, sim.prof %s" % [sim.workers.size(), str(sim.prof)])
 		sim.ant_substep = 1
 		hud.quiet = false
 		if not _refill_ticks.is_empty():
