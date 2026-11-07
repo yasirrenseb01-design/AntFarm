@@ -21,7 +21,7 @@
 | Classification | **Games** | |
 | Kind of project | **Downloadable** | ไฟล์ zip ให้ดาวน์โหลด |
 | Release status | **Early access** | ถ้าในรายการไม่มีคำนี้ ให้เลือก In development แล้วใส่คำว่า Early Access ในคำอธิบาย (มีอยู่แล้ว) |
-| Pricing | **$0 or donate** (= จ่ายตามใจ ขั้นต่ำ 0) | Suggested donation ใส่หรือเว้นว่างก็ได้ |
+| Pricing | **Paid: minimum price $1.49** ("$1.49 USD or more", ผู้ใช้เปลี่ยน 2026-11-07; ตอนปล่อย 2026-11-04 เป็น $0 or donate) | ตั้งราคาที่โปรเจกต์ ไม่ตั้งราคาแยกรายไฟล์ เพื่อให้ขึ้นราคาภายหลังโดยผู้ซื้อเดิมไม่เสียสิทธิ์; สัญญากับผู้เล่นใน Discord: ซื้อแล้วได้อัปเดตฟรีตลอด รวมสายพันธุ์ใหม่ |
 | Uploads | `AntFarm-v‹เวอร์ชัน›-windows.zip` ติ๊ก **Windows** | ไฟล์จาก `build/release/` |
 | Description | ดูข้อ 3 (อังกฤษก่อน ไทยตามหลัง) | |
 | Genre | **Simulation** | |
@@ -289,5 +289,5 @@ Join the **Discord: https://discord.gg/ReXz7AFgrG** — or leave a comment on th
 
 - **AI disclosure ของโค้ด:** โค้ดเกมเขียนร่วมกับผู้ช่วย AI (Claude Code) — ฟอร์มของ itch ถามเรื่องเนื้อหาที่สร้างด้วย AI;
   ร่างนี้แจ้งเฉพาะเพลงตามที่ตกลงไว้ ถ้าจะแจ้งเรื่องโค้ดด้วยให้เพิ่มหนึ่งบรรทัดในส่วน *AI-generated content* และติ๊กในฟอร์ม
-- **เงื่อนไขของ Gemini:** ตรวจว่าใช้เพลงที่สร้างด้วย Gemini ในเกมที่รับเงินบริจาคได้ (จดไว้ใน BACKLOG ตั้งแต่ 2026-10-24)
+- **เงื่อนไขของ Gemini:** ตรวจว่าใช้เพลงที่สร้างด้วย Gemini ในเกมที่ขายได้ (จดไว้ใน BACKLOG ตั้งแต่ 2026-10-24; ยังไม่ได้ตรวจ และเกมขายจริงแล้วตั้งแต่ 2026-11-07)
 - **ชื่อในเครดิต:** กรอกชื่อผู้สร้างใน `docs/release/CREDITS.txt` ก่อนรัน `tools/package.ps1`

@@ -336,6 +336,7 @@ func _build_tools(root: Control) -> void:
 	row.add_child(pher)
 	_outside_tools.append(pher)
 	var heat := _button(tr("heater"), true)
+	heat.button_pressed = sim.heater          # a colony saved with the mat on loads with it on (set before connecting: no log line)
 	heat.toggled.connect(func(on):
 		sim.heater = on
 		sim._log(T.heater_on if on else T.heater_off))
