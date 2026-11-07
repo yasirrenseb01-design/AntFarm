@@ -359,7 +359,11 @@ func _queen(dt: float) -> void:
 		var mouths := workers.size() + larvae.size() + pupae.size()
 		var upkeep: float = 7.0 * (mouths * sp["sugar_worker"] + sp["sugar_queen"])     # a week, at full warmth
 		var earning := sugar_income / upkeep
-		rate *= clampf((earning - 1.0) / 0.5, 0.05, 1.0)
+		# ...unless the stores are well filled already (since v0.12.0): a colony sitting on full stores is not short
+		# of food even when foraging only matches what it eats (the keeper's choice: well-fed colonies grow fast in
+		# keepers' reports; before, a colony with full stores laid at 16%)
+		var fill := (sugar + fat) / (sugar_cap() + fat_cap())
+		rate *= lerpf(clampf((earning - 1.0) / 0.5, 0.05, 1.0), 1.0, clampf((fill - 0.4) / 0.2, 0.0, 1.0))
 	if not queen_tended:
 		rate *= UNTENDED_LAYING          # nobody attended her this half hour (parts/sim_duties.gd)
 	egg_acc += rate * dt

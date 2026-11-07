@@ -20,9 +20,11 @@ const T := preload("res://scripts/sim/text_th.gd")
 const KINDS := {
 	"aphids": {"type": Ant.SUGAR, "amt": 10.0, "cap": 16.0, "regen": 9.0, "r": 16.0, "handling": [60, 140, 9],
 		"found": T.found_aphids, "feed_pose": "climb"},
-	# (drinking: 23-51 s at a drop - L. niger at 0.6 M sucrose, 51 +- 12 s at the first source, 23 +- 11 s at a second one
-	# on the way home: Mailleux et al. 2009, C R Biol 332; until v0.11.18 it was 40-80 ticks, about a second)
-	"honey": {"type": Ant.SUGAR, "amt": 25.0, "cap": 25.0, "regen": 0.0, "r": 8.0, "handling": [1380, 3060, 10],
+	# (drinking: measured 23-51 s at a drop - L. niger at 0.6 M sucrose, 51 +- 12 s at the first source, 23 +- 11 s at a
+	# second one on the way home: Mailleux et al. 2009, C R Biol 332. A game day is 3,600 ticks, so those seconds as
+	# ticks (v0.11.18-0.11.94: 1380-3060) were 9-20 game hours a sip and a drop fed the colony for most of a day;
+	# since v0.12.0 a sip is 1.2-2.8 game hours (3-7 s at 1×), near the aphids' - a choice, the day is compressed)
+	"honey": {"type": Ant.SUGAR, "amt": 25.0, "cap": 25.0, "regen": 0.0, "r": 8.0, "handling": [180, 420, 10],
 		"found": T.found_honey, "dries": 0.78, "tool": "tool_honey", "feed_pose": "rim"},
 	"cricket": {"type": Ant.PROTEIN, "amt": 30.0, "cap": 30.0, "regen": 0.0, "r": 12.0, "handling": [90, 200, 2],
 		"rots_after": 6.0, "tool": "tool_cricket", "feed_pose": "carcass",
