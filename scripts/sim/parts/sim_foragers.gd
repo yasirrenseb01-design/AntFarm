@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_base.gd"
-## Simulation, layer 3 of 9: foragers in the outworld (trails, food, encounters, obstacles).
+## Simulation, layer 3 of 10: foragers in the outworld (trails, food, encounters, obstacles).
 
 
 ## Two foragers meeting head-on stop for a moment and drum each other with their antennae
@@ -230,58 +230,6 @@ func _step_ant(a: Ant) -> void:
 	a.pos = np
 
 
-## The diggers and their workers (the keeper, 2026-10-27: "the simulation as the one truth"): each digger in the
-## tunnels (nest.diggers) is one worker digging (TASK_DIG), kept by id ("wid"); one at the entrance with its pellet
-## sends its worker out with it (Ant.DUMP) to set it down on the crater's ring and come back in, and only then digs on.
-## [Lasius niger workers carry excavated soil out and drop it round the entrance, building the crater: field and
-## keepers' observations; the ring 4.5-10 mm out matches the crater drawn.]
-func _surface() -> void:
-	if nest.diggers.is_empty():
-		return
-	var by_id := {}
-	var taken := {}
-	for w in workers:
-		by_id[w.id] = w
-	for d in nest.diggers:
-		var wid := int(d.get("wid", -1))
-		var w = by_id.get(wid)
-		var keep: bool = w != null and not w.dead and (w.task == Ant.TASK_DIG or w.state == Ant.DUMP)
-		if keep:
-			taken[wid] = true
-		elif wid >= 0 and not d.get("surfacing", false):
-			d.wid = -1                                 # its worker gone or taken off digging: another takes it on
-	for d in nest.diggers:
-		if int(d.get("wid", -1)) < 0:
-			var best = null
-			for w in workers:
-				if w.task == Ant.TASK_DIG and w.state == Ant.IN_NEST and not w.dead and not taken.has(w.id) and (best == null or w.id < best.id):
-					best = w
-			if best != null:
-				d.wid = best.id
-				taken[best.id] = true
-		if not d.get("surfacing", false):
-			continue
-		var wid := int(d.get("wid", -1))
-		var w = by_id.get(wid)
-		var job = _dumps.get(wid)
-		if job != null:
-			if job.get("dropped", false) and (w == null or w.dead or w.state == Ant.IN_NEST):
-				_dumps.erase(wid)
-				nest.finish_surface(d)
-			continue
-		if w == null or w.dead or w.state != Ant.IN_NEST:
-			nest.excavated += 1                        # no worker to carry it: dropped at the entrance (as before v0.11.57)
-			nest.finish_surface(d)
-			continue
-		_send_out(w, Ant.DUMP)
-		w.carry = Ant.SOIL
-		w.pos = nest_pos
-		var a := rng.randf() * TAU
-		_dumps[wid] = {"to": nest_pos + Vector2.from_angle(a) * (9.0 + absf(rng.randfn(0.0, 1.0)) * 7.0), "dig": int(d.id),
-			"dropped": false}
-		w.ang = a
-
-
 func _pick_up(a: Ant, f: Dictionary) -> void:
 	# collecting a load takes a while: stroking aphids for honeydew, drinking until the crop is full,
 	# or cutting a piece off a carcass with the mandibles
@@ -464,12 +412,33 @@ func _sense(a: Ant, field: Field, off: float) -> float:
 	return field.read_i(i)
 
 
+## Turns toward the stronger trail left or right. Runs for nearly every forager every step: _sense and field.read_i are
+## written out here, the same sums (v0.12.2: ~a quarter of the foragers' time was the calls).
 func _steer(a: Ant, field: Field, period: int) -> void:
 	if a.follow > 0:
 		return
-	var l := _sense(a, field, -0.55)
-	var c := _sense(a, field, 0.0)
-	var r := _sense(a, field, 0.55)
+	var px := a.pos.x
+	var py := a.pos.y
+	var val := field.val
+	var stamp := field.stamp
+	var clock := field.clock
+	var got := [0.0, 0.0, 0.0]
+	for k in 3:
+		var ang := a.ang + (-0.55 if k == 0 else (0.0 if k == 1 else 0.55))
+		var x := px + cos(ang) * 10.0
+		var y := py + sin(ang) * 10.0
+		if x < 0.0 or y < 0.0 or x >= WORLD.x or y >= WORLD.y:
+			got[k] = -1.0
+			continue
+		var i := int(y * INV_CELL) * gw + int(x * INV_CELL)
+		if rock[i] == 1:
+			got[k] = -1.0
+			continue
+		var v := val[i]
+		got[k] = 0.0 if v <= 0.0 else v * exp(clock - stamp[i])
+	var l: float = got[0]
+	var c: float = got[1]
+	var r: float = got[2]
 	if maxf(l, maxf(c, r)) < 0.03 or (c >= l and c >= r):
 		return
 	var turn := minf(1.0, 0.45 * period / SENSE_EVERY)

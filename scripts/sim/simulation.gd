@@ -1,7 +1,7 @@
 extends "res://scripts/sim/parts/sim_duties.gd"
 ## Colony + outworld simulation. Pure data and no nodes, so it can run headless (self-tests,
 ## offline catch-up). This file is the top of the chain: the main step, saving/loading and summaries.
-## Layers: parts/sim_state <- sim_base <- sim_foragers <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties <- simulation
+## Layers: parts/sim_state <- sim_base <- sim_foragers <- sim_surface <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties <- simulation
 ## (see docs/ARCHITECTURE.md).
 
 

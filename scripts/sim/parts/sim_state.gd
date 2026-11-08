@@ -1,6 +1,6 @@
 extends RefCounted
-## Simulation, layer 1 of 9: all colony and outworld state - constants, variables, the save format (split from
-## sim_base.gd in v0.11.8). Layers: sim_state <- sim_base <- sim_foragers <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties
+## Simulation, layer 1 of 10: all colony and outworld state - constants, variables, the save format (split from
+## sim_base.gd in v0.11.8). Layers: sim_state <- sim_base <- sim_foragers <- sim_surface <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties
 ## <- simulation.
 
 const Ant := preload("res://scripts/sim/ant.gd")

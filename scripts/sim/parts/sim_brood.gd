@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_warmth.gd"
-## Simulation, layer 6 of 9: the queen laying and the brood growing (eggs, larvae, cocoons, new workers);
+## Simulation, layer 7 of 10: the queen laying and the brood growing (eggs, larvae, cocoons, new workers);
 ## the colony limit (species "colony_max"). Split from sim_colony.gd in v0.12.1.
 
 

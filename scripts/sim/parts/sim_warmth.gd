@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_enemies.gd"
-## Simulation, layer 5 of 9: how warm each chamber is (by its depth), where the nurses keep the brood, and which
+## Simulation, layer 6 of 10: how warm each chamber is (by its depth), where the nurses keep the brood, and which
 ## chamber the queen stays in (v0.11.19, the keeper 2026-10-21: "the queen never moves; does the brood really move
 ## with the temperature?").
 ##   The soil's daily warmth fades with depth: its swing at depth z is exp(-z / D) of the swing at the surface,

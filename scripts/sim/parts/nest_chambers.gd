@@ -1,5 +1,5 @@
-extends "res://scripts/sim/parts/nest_voxels.gd"
-## Nest volume, layer 2 of 3 (split from scripts/sim/nest_volume.gd in v0.8.5): the chamber plan
+extends "res://scripts/sim/parts/nest_store.gd"
+## Nest volume, layer 3 of 4 (split from scripts/sim/nest_volume.gd in v0.8.5): the chamber plan
 ## (shapes, sizes, where new chambers go).
 
 # the colony's digging habit (sim_state.traits depth / spread; set by the simulation, not saved with the nest)
@@ -14,7 +14,37 @@ var heat_k := 1.0                 # (deeper under a hotter ground: set daily by 
 
 ## Which part of the nest plan a voxel belongs to: 2 = inside a chamber, 1 = on a shaft toward a
 ## planned chamber, 0 = unplanned soil.
+# _plan_at of each voxel asked, kept while the plan is as it was (v0.12.2: _plan_at walks every chamber, ~0.1 ms a call
+# in a nest of 28, and the diggers asked it ~7,000 times a game day). The plan is looked at again each nest step.
+var _plan_memo := {}
+var _plan_memo_sig := []
+
+
+## What _plan_at and count_work_left depend on besides the soil: the entrance shaft and every chamber's plan.
+func plan_sig() -> Array:
+	var sig := [entrance_r, entrance, ny, slab, chambers.size()]
+	for ch in chambers:
+		sig.append(ch.goal)
+		sig.append(ch.get("open", true))
+	return sig
+
+
+func _check_plan_memo() -> void:
+	var sig := plan_sig()
+	if sig != _plan_memo_sig:
+		_plan_memo.clear()
+		_plan_memo_sig = sig
+
+
 func _plan_at(c: Vector3i) -> int:
+	var m = _plan_memo.get(c)
+	if m == null:
+		m = _plan_now(c)
+		_plan_memo[c] = m
+	return m
+
+
+func _plan_now(c: Vector3i) -> int:
 	var p := Vector3(c)
 	var on_shaft := false
 	# the entrance shaft down to the first chamber, widened as more ants use it
@@ -42,6 +72,11 @@ func _plan_at(c: Vector3i) -> int:
 ## left a few workers keep digging even when the nest is big enough overall (else a planned chamber
 ## was never finished and the colony stayed crowded in the old one). Counted once a day.
 func count_work_left() -> int:
+	# (the same answer while the open space, the distances and the plan are as they were: then the count is not made
+	# again - the diggers' check every 120 ticks asked it ~25 times a game day, ~18 ms each in a big nest; v0.12.2)
+	var key := [air, y_lo, dist_ver, rho.size(), plan_sig()]
+	if key == _work_key:
+		return _work_n
 	var n := 0
 	work_at = Vector3i(-1, -1, -1)
 	var best := [1 << 30]
@@ -59,7 +94,13 @@ func count_work_left() -> int:
 			entrance_done = entrance_r
 		n += left
 	_work_paths()
+	_work_key = key
+	_work_n = n
 	return n
+
+
+var _work_key := []
+var _work_n := 0
 
 
 ## The gallery dug to a chamber, as straight pieces [[a, b], ...]: from the old chamber's wall to it - bent once on
@@ -296,6 +337,8 @@ func target_depth(workers: int) -> float:
 ## plans a new chamber a little deeper and sinks a shaft down to it, giving the stacked layout of
 ## Lasius nests (flat chambers in series along vertical shafts).
 func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
+	_plan_memo.clear()
+	_plan_memo_sig = []
 	var event := ""
 	# busier traffic: the entrance shaft is widened from one ant's width toward ~two (L. niger nest entrances are
 	# a few mm across; the rate is chosen)

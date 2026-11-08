@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_brood.gd"
-## Simulation, layer 7 of 9: colony physiology (days, roles, feeding, moisture, the outworld's food and weather).
+## Simulation, layer 8 of 10: colony physiology (days, roles, feeding, moisture, the outworld's food and weather).
 
 
 func _new_day() -> void:
@@ -69,6 +69,29 @@ func _eagerest(pool: Array, kind: int) -> int:
 	return best
 
 
+# All the workers in two fixed orders, made again only when the workers change (born: appended; died: a new array).
+# Thresholds never change, so this gives the orders sorting the reserve each time gave (v0.12.2: that sort was most of
+# _colony's time in a colony of 1,000).
+var _rank_of: Array = []
+var _rank_n := -1
+var _by_forage: Array = []            # eagerest foragers last: TH_FORAGE high to low, then id high to low
+var _by_dig: Array = []               # readiest diggers first: TH_DIG low to high, then id low to high
+
+
+func _ranked() -> void:
+	if is_same(_rank_of, workers) and _rank_n == workers.size():
+		return
+	_rank_of = workers
+	_rank_n = workers.size()
+	for a in workers:
+		a.sort_a = a.threshold(Ant.TH_FORAGE)
+		a.sort_b = a.threshold(Ant.TH_DIG)
+	_by_forage = workers.duplicate()
+	_by_forage.sort_custom(func(x, y): return x.sort_a > y.sort_a or (x.sort_a == y.sort_a and x.id > y.id))
+	_by_dig = workers.duplicate()
+	_by_dig.sort_custom(func(x, y): return x.sort_b < y.sort_b or (x.sort_b == y.sort_b and x.id < y.id))
+
+
 func _colony(dt: float) -> void:
 	_place_brood(dt)
 	dev = dev_in(queen_at)                # (in her chamber: how fast she lays, and the larvae are fed)
@@ -102,12 +125,12 @@ func _colony(dt: float) -> void:
 			nurses += 1
 			a.task = Ant.TASK_NURSE
 		else:
-			idle.append(a)
 			a.task = Ant.TASK_RESERVE
-	# the reserve, eagerest foragers last (pop_back takes them first)
-	for a in idle:
-		a.sort_a = a.threshold(Ant.TH_FORAGE)
-	idle.sort_custom(func(x, y): return x.sort_a > y.sort_a or (x.sort_a == y.sort_a and x.id > y.id))
+	# the reserve, eagerest foragers last (pop_back takes them first): picked out of all the workers kept in that order
+	_ranked()
+	for a in _by_forage:
+		if a.task == Ant.TASK_RESERVE:
+			idle.append(a)
 	# (who feeds which larva is worked out every half hour by the duties, parts/sim_duties.gd; the older ants resting
 	# inside help when nurses are short, and a founding queen feeds her first larvae herself)
 	var lpn: float = sp["larvae_per_nurse"]
@@ -179,16 +202,15 @@ func _colony(dt: float) -> void:
 		diggers_wanted = clampi(int((idle.size() * 0.35 + 1.0) * keen), 1, 20) if workers.size() - out_count > 0 else 0
 	# who digs: the reserve ants still inside most ready to dig (the view shows them at the dig face)
 	if diggers_wanted > 0:                # (none wanted: nothing to sort)
-		var still_in := idle.filter(func(x): return x.state == Ant.IN_NEST)
-		for a in still_in:
-			a.sort_a = 0.0 if dug.has(a.id) else 1.0      # the diggers already at it first (no flicking between jobs)
-			a.sort_b = a.threshold(Ant.TH_DIG)
-		still_in.sort_custom(func(x, y):
-			if x.sort_a != y.sort_a:
-				return x.sort_a < y.sort_a
-			return x.sort_b < y.sort_b or (x.sort_b == y.sort_b and x.id < y.id))
-		for i in mini(diggers_wanted, still_in.size()):
-			still_in[i].task = Ant.TASK_DIG
+		# (the reserve still inside, readiest first; the diggers already at it before the rest - no flicking between jobs)
+		var left := diggers_wanted
+		for was_digging in [true, false]:
+			for a in _by_dig:
+				if left == 0:
+					break
+				if a.task == Ant.TASK_RESERVE and a.state == Ant.IN_NEST and dug.has(a.id) == was_digging:
+					a.task = Ant.TASK_DIG
+					left -= 1
 
 	_metabolism(dt)
 	_moisture(dt)

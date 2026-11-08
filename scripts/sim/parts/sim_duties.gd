@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_colony.gd"
-## Simulation, layer 8 of 9 (PART EA3a): duties in the nest. Every half hour of game time each worker inside is given
+## Simulation, layer 9 of 10 (PART EA3a): duties in the nest. Every half hour of game time each worker inside is given
 ## a duty - feeding larvae, carrying brood, giving honeydew to a nestmate (giver and taker paired one by one),
 ## attending the queen, cleaning, digging, standing still or walking about - from the colony's needs, its task
 ## (sim_colony._colony) and its own leanings (Ant.threshold), drawing only on duty_rng (its own generator, seeded from the
@@ -53,10 +53,11 @@ func _duties() -> void:
 	if starving or hungry or satiated():
 		k *= 1.25
 	var n_rest := mini(roundi(free.size() * 0.8), roundi(minf(0.9, k) * inside.size()))     # (a few always about)
-	var by_lazy := free.map(func(a): return [a.threshold(Ant.TH_FORAGE) + duty_rng.randf() * 0.4, a])
-	by_lazy.sort_custom(func(x, y): return x[0] > y[0])
+	# (as [-key, id, ant] sorted by the engine: ~4x faster than a sort_custom lambda, the same order - v0.12.2)
+	var by_lazy := free.map(func(a): return [-(a.threshold(Ant.TH_FORAGE) + duty_rng.randf() * 0.4), a.id, a])
+	by_lazy.sort()
 	for i in by_lazy.size():
-		var a = by_lazy[i][1]
+		var a = by_lazy[i][2]
 		if i < n_rest:
 			a.duty = Ant.D_REST
 			a.rest_h += DUTY_H
@@ -95,9 +96,9 @@ func _feed_larvae(inside: Array) -> void:
 	for t in [Ant.TASK_NURSE, Ant.TASK_CALLOW, Ant.TASK_RESERVE, Ant.TASK_DIG]:
 		var some: Array = inside.filter(func(a): return a.task == t and (a.duty == -1 or a.duty == Ant.D_DIG))
 		# keen nurses first, but not always the same ones (they take turns)
-		var keen := some.map(func(a): return [a.threshold(Ant.TH_AGE) + duty_rng.randf() * 0.5, a])
-		keen.sort_custom(func(x, y): return x[0] > y[0])
-		order += keen.map(func(x): return x[1])
+		var keen := some.map(func(a): return [-(a.threshold(Ant.TH_AGE) + duty_rng.randf() * 0.5), a.id, a])
+		keen.sort()
+		order += keen.map(func(x): return x[2])
 	var feeds: Array = larvae.duplicate()
 	feeds.sort_custom(func(x, y): return float(x.h) > float(y.h))
 	var li := 0
@@ -155,29 +156,42 @@ func _tend_queen(inside: Array) -> void:
 	queen_tended = true
 	if not queen.alive or workers.is_empty():
 		return                           # (a founding queen alone: nobody to attend her, and nothing lost by it)
-	var can: Array = inside.filter(func(a): return a.duty == -1)
-	can.sort_custom(func(x, y): return x.threshold(Ant.TH_ATTEND) < y.threshold(Ant.TH_ATTEND))
-	can += inside.filter(func(a): return a.duty == Ant.D_DIG)          # (a digger comes over if nobody else is free)
+	# the `want` free ones least reluctant to attend her (picked, not the whole lot sorted: v0.12.2), then diggers
 	var want := clampi(roundi(inside.size() * 0.05), 2, 6)
-	for i in mini(want, can.size()):
-		if can[i].duty == Ant.D_DIG:
-			can[i].dig_h -= DUTY_H
-		can[i].duty = Ant.D_QUEEN
-	queen_tended = not can.is_empty()
+	var can: Array = []                  # [threshold, ant], low to high
+	var diggers := []
+	for a in inside:
+		if a.duty == Ant.D_DIG:
+			diggers.append(a)            # (a digger comes over if nobody else is free)
+		elif a.duty == -1:
+			var t: float = a.threshold(Ant.TH_ATTEND)
+			if can.size() == want and t >= can[want - 1][0]:
+				continue
+			var at := can.size()
+			while at > 0 and can[at - 1][0] > t:
+				at -= 1
+			can.insert(at, [t, a])
+			if can.size() > want:
+				can.pop_back()
+	var chosen := can.map(func(x): return x[1]) + diggers
+	for i in mini(want, chosen.size()):
+		if chosen[i].duty == Ant.D_DIG:
+			chosen[i].dig_h -= DUTY_H
+		chosen[i].duty = Ant.D_QUEEN
+	queen_tended = not chosen.is_empty()
 
 
 ## Honeydew mouth to mouth: each forager home with honeydew feeds a nestmate; an ant with a full crop feeds up to GIVES, the
 ## weakest first; those fed pass on what they got next round (L. niger: frequency, not size, of the exchanges sets how
 ## food spreads, and nest workers are go-betweens [Ln]). The sugar itself is the colony's.
 func _share_honeydew(inside: Array) -> void:
-	var takers: Array = inside.filter(func(a): return a.duty == -1 and a.sweet <= 0.25)
-	takers.sort_custom(func(x, y): return x.energy < y.energy or (x.energy == y.energy and x.id < y.id))
+	var takers: Array = inside.filter(func(a): return a.duty == -1 and a.sweet <= 0.25).map(func(a): return [a.energy, a.id, a])
+	takers.sort()                        # (energy, then id: as the sort_custom before v0.12.2, ~4x faster)
+	takers = takers.map(func(x): return x[2])
 	var ti := 0
 	# each load of honeydew brought home since the last round went first to a nestmate at the entrance (the forager may be
 	# out again by now)
-	var by_id := {}
-	for a in workers:
-		by_id[a.id] = a
+	var by_id := _worker_map()
 	for fid in _unloaded:
 		var f = by_id.get(fid)
 		if f == null or f.dead or ti >= takers.size():
@@ -195,8 +209,9 @@ func _share_honeydew(inside: Array) -> void:
 			f.partner = t.id
 	_unloaded.clear()
 	# ...and those with a full crop pass it on
-	var givers: Array = inside.filter(func(a): return a.sweet > 0.25 and a.duty == -1)
-	givers.sort_custom(func(x, y): return x.sweet > y.sweet or (x.sweet == y.sweet and x.id < y.id))
+	var givers: Array = inside.filter(func(a): return a.sweet > 0.25 and a.duty == -1).map(func(a): return [-a.sweet, a.id, a])
+	givers.sort()
+	givers = givers.map(func(x): return x[2])
 	for g in givers:
 		if ti >= takers.size():
 			break

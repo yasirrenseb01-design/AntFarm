@@ -1,6 +1,6 @@
 extends "res://scripts/sim/parts/nest_chambers.gd"
-## Underground nest, layer 3 of 3 (top): the diggers — where they dig, bites, carrying the soil out.
-## Layers: parts/nest_voxels <- parts/nest_chambers <- nest_volume (this file). Split in v0.8.5.
+## Underground nest, layer 4 of 4 (top): the diggers — where they dig, bites, carrying the soil out.
+## Layers: parts/nest_voxels <- parts/nest_store <- parts/nest_chambers <- nest_volume (this file). Split in v0.8.5, v0.12.2.
 
 
 # ---------------------------------------------------------------- digging
@@ -83,6 +83,7 @@ func _bite(s: Vector3i) -> void:
 				if dn >= 0 and (best < 0 or dn < best):
 					best = dn
 		dist[i] = best + 1 if best >= 0 else -1
+		dist_ver += 1
 
 
 var _extend_to := 100000                # a layer to take the soil in down to, at the next step (_bite)
@@ -134,13 +135,14 @@ func _spawn_digger() -> void:
 ## One digging step for every active digger. `wanted` = how many diggers the colony assigns.
 func step(now: int, wanted: int, target_air: int, humidity: float) -> void:
 	tick = now
+	_check_plan_memo()
 	if _extend_to < 100000:
 		extend_down(_extend_to)
 		_extend_to = 100000
 	_dist_age += 1
 	if _dist_age > 120:
 		_dist_age = 0
-		_bfs()
+		_bfs_if_changed()
 	# the face the diggers make for, dug out: the next one now, not at the next daily count (until then they all walked
 	# round a finished face with nothing on it to dig)
 	if work_left > 0 and tick % (STEP_EVERY * 30) == 0 and not _face_left():
