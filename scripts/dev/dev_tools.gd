@@ -550,6 +550,14 @@ func _take_shot() -> void:
 			nparts.append("%s %.1f" % [k, nest_view.fprof[k] / 1000.0 / nf])
 		print("perf parts: %s | nest view: %s | render cpu %.1f gpu %.1f" % [", ".join(parts), ", ".join(nparts),
 			cpu_render_ms / nf, gpu_ms / nf])
+	if _opts.has("view-hash") and mode == "nest":
+		var rows := []
+		for m in nest_view._mates:
+			if m.has("xf"):
+				var x: Transform3D = m.xf
+				rows.append([int(m.get("wid", -1)), x.origin.snapped(Vector3.ONE * 0.0001), x.basis.x.snapped(Vector3.ONE * 0.0001),
+					x.basis.y.snapped(Vector3.ONE * 0.0001), m.get("act", 0), m.get("role", "")])
+		print("view hash: %d nestmates drawn  %s" % [rows.size(), str(hash(var_to_bytes(rows)))])
 	var path: String = _opts["shot"]
 	if _opts.has("seq"):
 		# a strip of frames with the clock running (gait checks): <shot>_0.png, _1.png ...

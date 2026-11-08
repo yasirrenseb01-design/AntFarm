@@ -58,10 +58,35 @@ func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 	var hits := 0
 	var bend: Vector2 = m.get("bend", Vector2.ZERO)
 	var lat := float(m.get("lat", 0.0))
-	for q0 in _SOIL_PTS:
-		var q: Vector3 = _bent(q0, bend, lat)
+	var bp := _bent_pts(m, bend, lat)
+	# (the density at each point read here as _density_at does, the same sums: most points are clear, and the call
+	# was most of the time - v0.12.5)
+	if _soft.is_empty():
+		_density_at(Vector3.ZERO)               # (lays it out)
+	var soft := _soft
+	var sx := _sx
+	var sxy := _sx * _sy
+	var row0 := 1 - _sy0
+	var xlo := -1
+	var ylo: int = nest.y_lo - 1
+	var nxx: int = nest.nx
+	var nyy: int = nest.ny
+	var nzz: int = nest.nz
+	for q: Vector3 in bp[0]:
 		var c: Vector3 = t2 * q
-		if _density_at(c) < 0.45:
+		var x := floori(c.x)
+		var y := floori(c.y)
+		var z := floori(c.z)
+		if x < xlo or y < ylo or z < xlo or x >= nxx or y >= nyy or z >= nzz:
+			continue                               # (beyond the block and its first ring of air: 0)
+		var fx := c.x - x
+		var fy := c.y - y
+		var fz := c.z - z
+		var i := ((z + 1) * _sy + (y + row0)) * sx + (x + 1)
+		var j := i + sxy
+		var dc := lerpf(lerpf(lerpf(soft[i], soft[i + 1], fx), lerpf(soft[i + sx], soft[i + sx + 1], fx), fy),
+			lerpf(lerpf(soft[j], soft[j + 1], fx), lerpf(soft[j + sx], soft[j + sx + 1], fx), fy), fz)
+		if dc < 0.45:
 			continue
 		var g := Vector3(_density_at(c + Vector3(0.2, 0, 0)) - _density_at(c - Vector3(0.2, 0, 0)),
 			_density_at(c + Vector3(0, 0.2, 0)) - _density_at(c - Vector3(0, 0.2, 0)),
@@ -84,8 +109,9 @@ func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 	if moving:
 		# (feeling ahead with its antennae: soil just in front of its head turns it along the wall before it walks
 		# into it - pushed out only once in, its head went into the wall at every bend of a tunnel)
-		for q0 in _FEEL_PTS:
-			var c: Vector3 = t2 * _bent(q0, bend, lat)
+		for k in _FEEL_PTS.size():
+			var q0: Vector3 = _FEEL_PTS[k]
+			var c: Vector3 = t2 * (bp[1][k] as Vector3)
 			if _density_at(c) >= 0.45:
 				torque -= 0.5 * signf(q0.z) * (1.0 if hits == 0 else 0.5)
 				if hits == 0:
@@ -185,6 +211,23 @@ static func _bent(q: Vector3, bend: Vector2, lat: float) -> Vector3:
 		var g := (Vector2(q.x, q.y) - WAIST).rotated(GASTER_CURL - bend.x) + WAIST
 		return _yaw_at(Vector3(g.x, g.y, q.z), WAIST.x, -0.8 * lat)
 	return q
+
+
+## _SOIL_PTS and _FEEL_PTS bent as drawn ([soil, feel]), kept on the ant while its bend and turn stay as they are
+## (resting ants: most of them; v0.12.5).
+func _bent_pts(m: Dictionary, bend: Vector2, lat: float) -> Array:
+	var bp = m.get("bp")
+	if bp != null and bp[2] == bend and bp[3] == lat:
+		return bp
+	var sp := []
+	for q0 in _SOIL_PTS:
+		sp.append(_bent(q0, bend, lat))
+	var fp := []
+	for q0 in _FEEL_PTS:
+		fp.append(_bent(q0, bend, lat))
+	bp = [sp, fp, bend, lat]
+	m.bp = bp
+	return bp
 
 
 ## Whether its antennae (_FEEL_PTS) would touch the soil with it at t.

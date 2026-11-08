@@ -28,6 +28,8 @@ static var _started := false          # _ready has run once in this process (the
 ##       --enemy=wolf_spider [--enemy-at=x,y] [--fight=<ticks>] (stage a fight next to the nest)
 ##       --quality=low|medium|high (graphics)   --guide[=<step>] (the first-colony guide)   --clip (clip mode, as F8)   --title [--title-hover=<i>] (the title screen, as the game opens on it; with --shot too; the pointer on word i)   --species   --settings (those windows open)   --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
 ##   --draw-cap=<n> (nest: draw up to n nestmates, not 250 - measuring only)
+##   --view-hash=<seed> (with godot's --fixed-fps 60 and --frames: the views' random draws seeded; at the end a hash of where every
+##       nestmate is drawn and how - the same before and after a change that should not alter the view)
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
 ##   --scenario=keeper|wild (indoor formicarium, or a plot of ground with seasons and predators)
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
@@ -43,6 +45,8 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		var kv := a.trim_prefix("--").split("=", true, 1)
 		_opts[kv[0]] = kv[1] if kv.size() > 1 else "1"
+	if _opts.has("view-hash"):
+		seed(int(_opts["view-hash"]))       # (dev: the views' own random draws the same every run - with godot --fixed-fps)
 	if OS.has_feature("template"):
 		# (PART EA-R R5) the released game takes only what it passes itself when it starts again as the wallpaper and back
 		# (_enter_desktop, desktop_mode.gd) - none of the developer's options: some write files wherever they are told

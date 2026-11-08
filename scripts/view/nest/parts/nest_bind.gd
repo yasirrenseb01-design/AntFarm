@@ -19,8 +19,12 @@ func _bind_workers() -> void:
 	_pair_diggers(all)
 	for w in sim.workers:
 		if w.state == Ant.IN_NEST and not _dug_by.has(w.id):      # (a worker at the dig face is drawn as its digger)
-			inside.append(w)
-	inside.sort_custom(func(a, b): return a.age < b.age or (a.age == b.age and a.id < b.id))
+			inside.append([w.age, w.id, w])
+	# (youngest first, then by id: as [age, id, worker] sorted by the engine - the sort_custom with a lambda it was, ~4x
+	# slower every frame with a thousand workers; the same order, v0.12.5)
+	inside.sort()
+	for i in inside.size():
+		inside[i] = inside[i][2]
 	if not _io_was.is_empty():
 		for w in sim.workers:
 			var now_in: bool = w.state == Ant.IN_NEST
