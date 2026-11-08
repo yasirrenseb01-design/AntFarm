@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+# AntFarm's C++ part (GDExtension, PART 0.12 step 4): the nest view's hottest loops. Build: tools/native.ps1
+# (godot-cpp in native/godot-cpp, the API dumped from the very Godot the game runs on: native/extension_api.json)
+env = SConscript("godot-cpp/SConstruct")
+# the same sums as GDScript and the engine, to the last bit: no fused multiply-adds, no fast-math
+env.Append(CCFLAGS=["-ffp-contract=off", "-fno-fast-math"])
+env.Append(CPPPATH=["src/"])
+sources = Glob("src/*.cpp")
+library = env.SharedLibrary("../bin/ant_native{}{}".format(env["suffix"], env["SHLIBSUFFIX"]), source=sources)
+env.NoCache(library)
+Default(library)

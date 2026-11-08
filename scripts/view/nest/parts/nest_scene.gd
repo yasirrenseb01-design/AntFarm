@@ -199,6 +199,15 @@ func _density_at(p: Vector3) -> float:
 ## soil uses (it computed the softening from the voxels each time - most of the cost of those checks). Redone
 ## where the ants dig (nest_view refresh).
 var _soft := PackedFloat32Array()
+# the C++ part (bin/ant_native.gdextension, native/src): null where the game has none - the GDScript does the same then
+var _native = ClassDB.instantiate("AntNative") if ClassDB.class_exists("AntNative") and not OS.get_cmdline_user_args().has("--no-native") else null
+
+
+## _soft's layout for the C++ part: [sx, sy, sy0, nx, ny, nz, y_lo].
+func _soft_dims() -> PackedInt32Array:
+	return PackedInt32Array([_sx, _sy, _sy0, nest.nx, nest.ny, nest.nz, nest.y_lo])
+
+
 var _sx := 0
 var _sy := 0
 var _sy0 := 0                       # (the layer _soft starts at: nest.y_lo when it was laid out)

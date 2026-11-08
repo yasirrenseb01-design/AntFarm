@@ -8,3 +8,11 @@ shots/
 # research papers (PDFs stay local - copyright; reference/papers/README.md lists them)
 reference/papers/*.pdf
 reference/papers/*/
+
+# the C++ part: godot-cpp is cloned (native/GODOT_CPP_COMMIT), its build files are not kept
+native/godot-cpp/
+native/**/*.o
+native/.sconsign.dblite
+bin/*.a
+native/extension_api.json
+native/gdextension_interface.h

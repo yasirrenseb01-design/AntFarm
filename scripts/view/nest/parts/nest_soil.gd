@@ -59,53 +59,20 @@ func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 	var bend: Vector2 = m.get("bend", Vector2.ZERO)
 	var lat := float(m.get("lat", 0.0))
 	var bp := _bent_pts(m, bend, lat)
-	# (the density at each point read here as _density_at does, the same sums: most points are clear, and the call
-	# was most of the time - v0.12.5)
 	if _soft.is_empty():
 		_density_at(Vector3.ZERO)               # (lays it out)
-	var soft := _soft
-	var sx := _sx
-	var sxy := _sx * _sy
-	var row0 := 1 - _sy0
-	var xlo := -1
-	var ylo: int = nest.y_lo - 1
-	var nxx: int = nest.nx
-	var nyy: int = nest.ny
-	var nzz: int = nest.nz
-	for q: Vector3 in bp[0]:
-		var c: Vector3 = t2 * q
-		var x := floori(c.x)
-		var y := floori(c.y)
-		var z := floori(c.z)
-		if x < xlo or y < ylo or z < xlo or x >= nxx or y >= nyy or z >= nzz:
-			continue                               # (beyond the block and its first ring of air: 0)
-		var fx := c.x - x
-		var fy := c.y - y
-		var fz := c.z - z
-		var i := ((z + 1) * _sy + (y + row0)) * sx + (x + 1)
-		var j := i + sxy
-		var dc := lerpf(lerpf(lerpf(soft[i], soft[i + 1], fx), lerpf(soft[i + sx], soft[i + sx + 1], fx), fy),
-			lerpf(lerpf(soft[j], soft[j + 1], fx), lerpf(soft[j + sx], soft[j + sx + 1], fx), fy), fz)
-		if dc < 0.45:
-			continue
-		var g := Vector3(_density_at(c + Vector3(0.2, 0, 0)) - _density_at(c - Vector3(0.2, 0, 0)),
-			_density_at(c + Vector3(0, 0.2, 0)) - _density_at(c - Vector3(0, 0.2, 0)),
-			_density_at(c + Vector3(0, 0, 0.2)) - _density_at(c - Vector3(0, 0, 0.2)))
-		# (out sideways or ahead/behind - along its up is the ground fit's - unless the soil is mostly above or below
-		# it: a low ceiling, or the floor of a bend rising into its head; then out that way too, at half the rate)
-		var gp := g - up * g.dot(up)
-		if gp.length_squared() < 0.25 * g.length_squared():
-			gp = gp + up * g.dot(up) * 0.5
-		g = gp
-		if g.length_squared() < 0.000001:
-			continue
-		var out := -g.normalized()
-		var d := 0.1
-		while d < 0.7 and _density_at(c + out * d) >= 0.5:
-			d += 0.1
-		push += out * d
-		torque += out.dot(side) * d * signf(q.x)
-		hits += 1
+	if _native != null:
+		# (in C++ when the game has it: the same sums - bin/ant_native, native/src/ant_native.cpp; v0.12.6)
+		var r: Array = _native.soil_hits(_soft, _soft_dims(), t2, bp[0], up, side)
+		push = r[0]
+		torque = r[1]
+		hits = r[2]
+	else:
+		var r_out := [Vector3.ZERO, 0.0, 0]
+		_soil_hits_gd(t2, bp[0], up, side, r_out)
+		push = r_out[0]
+		torque = r_out[1]
+		hits = r_out[2]
 	if moving:
 		# (feeling ahead with its antennae: soil just in front of its head turns it along the wall before it walks
 		# into it - pushed out only once in, its head went into the wall at every bend of a tunnel)
@@ -213,13 +180,69 @@ static func _bent(q: Vector3, bend: Vector2, lat: float) -> Vector3:
 	return q
 
 
+## _soil_push's pass over the body's points in GDScript (the game without its C++ part; native/src/ant_native.cpp soil_hits
+## is the same): out[0] push, out[1] torque, out[2] hits.
+func _soil_hits_gd(t2: Transform3D, pts: PackedVector3Array, up: Vector3, side: Vector3, out_r: Array) -> void:
+	var push := Vector3.ZERO
+	var torque := 0.0
+	var hits := 0
+	# (the density at each point read here as _density_at does, the same sums: most points are clear, and the call
+	# was most of the time - v0.12.5)
+	var soft := _soft
+	var sx := _sx
+	var sxy := _sx * _sy
+	var row0 := 1 - _sy0
+	var xlo := -1
+	var ylo: int = nest.y_lo - 1
+	var nxx: int = nest.nx
+	var nyy: int = nest.ny
+	var nzz: int = nest.nz
+	for q: Vector3 in pts:
+		var c: Vector3 = t2 * q
+		var x := floori(c.x)
+		var y := floori(c.y)
+		var z := floori(c.z)
+		if x < xlo or y < ylo or z < xlo or x >= nxx or y >= nyy or z >= nzz:
+			continue                               # (beyond the block and its first ring of air: 0)
+		var fx := c.x - x
+		var fy := c.y - y
+		var fz := c.z - z
+		var i := ((z + 1) * _sy + (y + row0)) * sx + (x + 1)
+		var j := i + sxy
+		var dc := lerpf(lerpf(lerpf(soft[i], soft[i + 1], fx), lerpf(soft[i + sx], soft[i + sx + 1], fx), fy),
+			lerpf(lerpf(soft[j], soft[j + 1], fx), lerpf(soft[j + sx], soft[j + sx + 1], fx), fy), fz)
+		if dc < 0.45:
+			continue
+		var g := Vector3(_density_at(c + Vector3(0.2, 0, 0)) - _density_at(c - Vector3(0.2, 0, 0)),
+			_density_at(c + Vector3(0, 0.2, 0)) - _density_at(c - Vector3(0, 0.2, 0)),
+			_density_at(c + Vector3(0, 0, 0.2)) - _density_at(c - Vector3(0, 0, 0.2)))
+		# (out sideways or ahead/behind - along its up is the ground fit's - unless the soil is mostly above or below
+		# it: a low ceiling, or the floor of a bend rising into its head; then out that way too, at half the rate)
+		var gp := g - up * g.dot(up)
+		if gp.length_squared() < 0.25 * g.length_squared():
+			gp = gp + up * g.dot(up) * 0.5
+		g = gp
+		if g.length_squared() < 0.000001:
+			continue
+		var out := -g.normalized()
+		var d := 0.1
+		while d < 0.7 and _density_at(c + out * d) >= 0.5:
+			d += 0.1
+		push += out * d
+		torque += out.dot(side) * d * signf(q.x)
+		hits += 1
+	out_r[0] = push
+	out_r[1] = torque
+	out_r[2] = hits
+
+
 ## _SOIL_PTS and _FEEL_PTS bent as drawn ([soil, feel]), kept on the ant while its bend and turn stay as they are
 ## (resting ants: most of them; v0.12.5).
 func _bent_pts(m: Dictionary, bend: Vector2, lat: float) -> Array:
 	var bp = m.get("bp")
 	if bp != null and bp[2] == bend and bp[3] == lat:
 		return bp
-	var sp := []
+	var sp := PackedVector3Array()
 	for q0 in _SOIL_PTS:
 		sp.append(_bent(q0, bend, lat))
 	var fp := []

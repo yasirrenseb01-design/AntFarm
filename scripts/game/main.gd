@@ -27,7 +27,7 @@ static var _started := false          # _ready has run once in this process (the
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)   --newcolony   --fridge
 ##       --enemy=wolf_spider [--enemy-at=x,y] [--fight=<ticks>] (stage a fight next to the nest)
 ##       --quality=low|medium|high (graphics)   --guide[=<step>] (the first-colony guide)   --clip (clip mode, as F8)   --title [--title-hover=<i>] (the title screen, as the game opens on it; with --shot too; the pointer on word i)   --species   --settings (those windows open)   --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
-##   --draw-cap=<n> (nest: draw up to n nestmates, not 250 - measuring only)
+##   --draw-cap=<n> (nest: draw up to n nestmates, not 250 - measuring only)   --no-native (the C++ part left unused: its GDScript instead)
 ##   --view-hash=<seed> (with godot's --fixed-fps 60 and --frames: the views' random draws seeded; at the end a hash of where every
 ##       nestmate is drawn and how - the same before and after a change that should not alter the view)
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
