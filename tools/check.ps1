@@ -1,5 +1,6 @@
 # Runs every check before a release (see docs/WORKFLOW.md):
 #   1. parse-check every script (a script with a parse error would hang the game, so this goes first)
+#   1b. file sizes: code over ~500 lines fails (older big files: tools/size_allow.txt); big docs warn
 #   2. save round trip, obstacle reach, and the keeper's real colony (copy in user://sandbox) if present
 #   3. determinism: a fixed-seed self-test must match tests/baselines/ (unless the change is intended:
 #      then run with -UpdateBaseline and say so in the CHANGELOG)
@@ -44,6 +45,26 @@ if ($fail -gt 0) {
     # a script that does not parse makes Godot hang on a black window: running the tests now only wastes time
     Write-Host "$fail CHECK(S) FAILED (parse errors: tests not run)" -ForegroundColor Red
     exit 1
+}
+
+Write-Host "1b. file sizes (docs/WORKFLOW.md)"
+# code: over ~500 lines is split; the files that were already over on 2026-11-08 are in tools/size_allow.txt with
+# their line count then - they may shrink, not grow. A new file over 500 fails too.
+$allow = @{}
+Get-Content "tools/size_allow.txt" -Encoding utf8 | Where-Object { $_ -match '^(\d+) (.+)$' } | ForEach-Object { $allow[$Matches[2]] = [int]$Matches[1] }
+$sizeFail = 0
+foreach ($f in (git ls-files "*.gd" "*.py" "*.gdshader" "*.cpp" "*.h" "*.ps1" "*.sh")) {
+    $n = @(Get-Content $f -Encoding utf8).Count
+    if ($allow.ContainsKey($f)) {
+        if ($n -gt $allow[$f]) { Report $f $false ("{0} lines, was {1}: split it or move code out (tools/size_allow.txt)" -f $n, $allow[$f]); $sizeFail++ }
+        elseif ($n -le 500) { Write-Host ("  NOTE  {0} is {1} lines now: take it out of tools/size_allow.txt" -f $f, $n) -ForegroundColor Yellow }
+    } elseif ($n -gt 500) { Report $f $false ("{0} lines (over 500): split it (tools/dev/split_gd.py)" -f $n); $sizeFail++ }
+}
+Report ("code files: none over 500 lines, none of the {0} older big ones grown" -f $allow.Count) ($sizeFail -eq 0)
+# docs that every session reads: a warning only (they are split by hand, see WORKFLOW "เอกสารที่โตได้")
+foreach ($d in @(@("CHANGELOG.md", 600), @("docs/roadmap/BACKLOG.md", 300), @("docs/LESSONS.md", 120))) {
+    $n = @(Get-Content $d[0] -Encoding utf8).Count
+    if ($n -gt $d[1]) { Write-Host ("  WARN  {0}: {1} lines (over {2}) - split it (docs/WORKFLOW.md)" -f $d[0], $n, $d[1]) -ForegroundColor Yellow }
 }
 
 Write-Host "2. tests"

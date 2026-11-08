@@ -18,6 +18,7 @@
   (ตรวจ parse error ก่อน; สคริปต์ที่มี parse error ทำให้ Godot ค้างเป็นจอดำ)
 - ตรวจทุกอย่างก่อนส่ง: `powershell -ExecutionPolicy Bypass -File tools/check.ps1` (`-Quick` ระหว่างทำ)
 - ส่งงาน: เพิ่ม `config/version` (`0.PART.รอบแก้`) ใน `project.godot`, เขียน `CHANGELOG.md`, รัน `tools/build.ps1` (ทางลัดบนเดสก์ท็อปเปิด `build/AntFarm.exe`), commit + push
+  (บรรทัดแรกของ commit ไม่เกิน ~72 ตัวอักษร รายละเอียดเป็นข้อ ๆ ข้างล่าง: WORKFLOW "ข้อความ commit")
 - รังเริ่มต้นคือราชินีตัวเดียว; ทดสอบรัง 14 ตัวใส่ `--workers=14`; ห้ามแตะเซฟจริงของผู้เล่น (ใช้ `--sandbox`)
 - การจำลองต้อง deterministic (ใช้ `sim.rng` ไม่ใช่ `randf()`)
 - GitHub (private): https://github.com/yasirrenseb01-design/AntFarm — branch `main`

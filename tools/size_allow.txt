@@ -1,0 +1,17 @@
+# Code files allowed over the ~500-line limit (tools/check.ps1, part 1b), each at most the number of lines here.
+# Written 2026-11-08 from the files as they were. A file here may shrink but not grow; when one is split under 500,
+# take its line out. Never raise a number to make the check pass: split the file instead (docs/WORKFLOW.md).
+1342 scripts/dev/dev_tools.gd
+1142 scripts/view/nest/parts/nest_lifecycle.gd
+886 scripts/view/nest/parts/nest_mates.gd
+851 scripts/dev/foot_check.gd
+732 scripts/view/nest/parts/nest_piles.gd
+699 scripts/view/nest/parts/nest_brood.gd
+690 scripts/view/outworld/parts/outworld_creatures.gd
+683 scripts/dev/body_check.gd
+650 scripts/view/nest/nest_view.gd
+636 scripts/game/home.gd
+584 scripts/view/nest/parts/nest_scene.gd
+540 scripts/sim/parts/sim_base.gd
+514 scripts/view/nest/parts/nest_bodies.gd
+512 scripts/game/main.gd
