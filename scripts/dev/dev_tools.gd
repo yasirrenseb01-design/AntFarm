@@ -190,6 +190,8 @@ func _take_shot() -> void:
 			sim.queen_at = qt
 			sim._queen_stay = 0.0
 			nest_view._refresh_spots())
+	if _opts.has("draw-cap"):
+		nest_view.draw_cap = int(_opts["draw-cap"])     # (measuring a larger nest view: PART 0.12)
 	if _opts.get("view", "outworld") == "nest":
 		hud._apply_mode("nest")
 		_set_mode("nest")
