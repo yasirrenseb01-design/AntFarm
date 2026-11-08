@@ -8,6 +8,7 @@ const Mesher := preload("res://scripts/view/nest/nest_mesher.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const EventFeed := preload("res://scripts/view/common/event_feed.gd")
+const Mound := preload("res://scripts/view/common/mound.gd")
 const CLUMP := 24                  # eggs stick together in packets of about this many
 const CH := 16
 const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0),
@@ -93,6 +94,7 @@ var _t := 0.0
 signal cut_changed(value: float)
 var _brood_sig: Array = []
 var _mound_n := -1
+var _mound_mi: MeshInstance3D           # the heap itself (v0.12.8): the pellets are only its surface
 var _vol: ImageTexture3D
 var _vol_timer := 0.0
 var _foot_vol: ImageTexture3D       # the soil with the brood in it, for the ants' feet (they stand on eggs, larvae, cocoons)

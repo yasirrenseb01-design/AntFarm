@@ -441,6 +441,8 @@ func _take_shot() -> void:
 		last = now
 		if i == 10:
 			fprof.clear()                 # (the first frames load and warm up)
+		if i > 20 and _opts.has("crowd-jit") and mode == "outworld":
+			_crowd_jit_frame()
 			nest_view.fprof.clear()
 		if i == 60 and _opts.has("floor-check") and mode == "nest":
 			var diffs := []
@@ -550,6 +552,9 @@ func _take_shot() -> void:
 			nparts.append("%s %.1f" % [k, nest_view.fprof[k] / 1000.0 / nf])
 		print("perf parts: %s | nest view: %s | render cpu %.1f gpu %.1f" % [", ".join(parts), ", ".join(nparts),
 			cpu_render_ms / nf, gpu_ms / nf])
+	if _opts.has("crowd-jit") and _cj_n > 0:
+		print("crowd jitter: %d pushed ant-frames, mean jerk %.3f px, shaking (jerk > 0.3 px) %.1f%%, reversals %.1f%%, bodies within 3 px %.2f a frame" % [_cj_n,
+			_cj_sum / _cj_n, 100.0 * _cj_big / _cj_n, 100.0 * _cj_rev / _cj_n, float(_cj_ov) / maxi(1, _cj_frames)])
 	if _opts.has("view-hash") and mode == "nest":
 		var rows := []
 		for m in nest_view._mates:
@@ -1293,3 +1298,45 @@ func _follow_prey(tries: int) -> void:
 			return
 	if tries > 0:
 		get_tree().create_timer(0.1).timeout.connect(func(): _follow_prey(tries - 1))
+
+
+# --crowd-jit (outworld, with --live --frames): how the crowd offset (Ant.voff, view/outworld/parts/outworld_crowd.gd) shakes -
+# its change from frame to frame changing again (jerk: second difference), for ants pushed off their path
+var _cj_hist := {}
+var _cj_n := 0
+var _cj_sum := 0.0
+var _cj_big := 0
+var _cj_rev := 0
+var _cj_ov := 0
+var _cj_frames := 0
+
+
+func _crowd_jit_frame() -> void:
+	var pts := []
+	for a in sim.outside:
+		if a.state != 0 and not a.dead and a.vxf is Transform3D:
+			pts.append(Vector2((a.vxf as Transform3D).origin.x, (a.vxf as Transform3D).origin.z) * 3.0)
+	for i in pts.size():
+		for j in range(i + 1, pts.size()):
+			if (pts[i] as Vector2).distance_squared_to(pts[j]) < 9.0:
+				_cj_ov += 1
+	_cj_frames += 1
+	for a in sim.outside:
+		if a.state == 0 or a.dead or a.vpos.x == INF:
+			continue
+		var h: Array = _cj_hist.get(a.id, [])
+		h.append(a.voff)
+		if h.size() > 3:
+			h.pop_front()
+		_cj_hist[a.id] = h
+		if h.size() == 3 and (h[2] as Vector2).length() > 0.5:
+			var v1: Vector2 = h[1] - h[0]
+			var v2: Vector2 = h[2] - h[1]
+			var j := (v2 - v1).length()
+			_cj_n += 1
+			_cj_sum += j
+			if j > 0.3:
+				_cj_big += 1
+			if v1.length() > 0.1 and v2.length() > 0.1 and v1.dot(v2) < 0.0:
+				_cj_rev += 1
+

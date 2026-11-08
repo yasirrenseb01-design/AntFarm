@@ -21,7 +21,7 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 	if slab and s.z < nz - 3:
 		return 0.0
 	# never break through the surface except around the entrance shaft
-	if s.y >= ny - 2 and Vector2(s.x - entrance.x, s.z - entrance.z).length() > 1.5:
+	if s.y >= ny - 2 and Vector2(s.x - entrance.x, s.z - entrance.z).length() > maxf(1.5, entrance_r):      # (the hole as wide as the shaft is meant to be: v0.12.8)
 		return 0.0
 	# loam near the surface is soft, the clay band below is stiff, sand deeper is loose
 	var depth := ny - s.y

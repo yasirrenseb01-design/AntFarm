@@ -44,7 +44,7 @@ func _separate(delta: float) -> void:
 		var k := s / U                                 # model units -> px
 		var fixed: bool = (a.state == Ant.DEFEND and a.busy > 0) or a.vright > 0.0 or (a.busy > 0 and a.act == sim.ACT_WALL)
 		var e := {"a": a, "p": o + f * CROWD_BACK * k, "q": o + f * CROWD_FRONT * k, "r": CROWD_R * k, "o": o,
-			"fixed": fixed, "push": Vector2.ZERO}
+			"fixed": fixed, "push": Vector2.ZERO, "n": 0}
 		list.append(e)
 		var cell := Vector2i(floori(o.x / CROWD_CELL), floori(o.y / CROWD_CELL))
 		if not grid.has(cell):
@@ -69,6 +69,8 @@ func _separate(delta: float) -> void:
 						continue
 					e.push -= n * pen * we / (we + wg)
 					g.push += n * pen * wg / (we + wg)
+					e.n += 1
+					g.n += 1
 	# and not through the dead lying on the ground (the refuse pile, where a spider dropped them): their bodies push the
 	# living aside as a nestmate's does - those busy at something (cutting, carrying one off) are left where they are
 	var ck: float = ANT_SCALE * 0.95 / U                # model units -> px, as the corpses are drawn
@@ -124,7 +126,11 @@ func _separate(delta: float) -> void:
 				var walk: float = sim.sp["walk_speed"] * (0.35 + 0.65 * sim.activity) * 60.0      # px a second at 1x
 				a.vrim = rotate_toward(a.vrim, a.vrim_goal, walk * speed * delta / R)
 			round_by = absf(angle_difference(was, a.vrim)) * R
-		a.voff = (a.voff + (e.push as Vector2) * CROWD_K) * (1.0 if at_food else ease)
+		# (pressed from several sides at once, each push undone in full overshot: two neighbours both shoving it the same
+		# way moved it twice as far, back again the next frame - in a crowd the ants shook; the keeper, 2026-11-08. Shared
+		# out over the bodies touching it it settles over a few frames instead)
+		var share := 1.0 / sqrt(maxf(1.0, float(e.n)))
+		a.voff = (a.voff + (e.push as Vector2) * CROWD_K * share) * (1.0 if at_food else ease)
 		a.voff = a.voff.limit_length(CROWD_MAX)
 		a.vdoff = 0.5 * (a.voff - before).length() + round_by
 

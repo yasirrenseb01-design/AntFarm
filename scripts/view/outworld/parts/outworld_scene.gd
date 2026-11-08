@@ -11,6 +11,7 @@ const NestCard := preload("res://scripts/game/nest_card.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const PropHeights := preload("res://scripts/view/outworld/prop_heights.gd")
+const Mound := preload("res://scripts/view/common/mound.gd")
 var sel_kind := ""                # the ant the keeper clicked ("worker"), and its id
 var sel_id := -1
 var _sel_mm: MultiMesh            # its white outline
@@ -107,9 +108,7 @@ func ground_h(x: float, z: float) -> float:
 	var h := 3.6 * sin(x * 0.017 + 1.3) * cos(z * 0.023 + 0.4) + 1.6 * sin(x * 0.049 + z * 0.037 + 2.0)
 	h += 0.6 * sin(x * 0.13 + 0.7) * sin(z * 0.11 + 1.9)
 	var d := Vector2(x - _nest_xz.x, z - _nest_xz.y).length()
-	var k := (d - _mound_r) / (_mound_r * 0.6)
-	var mh := maxf(_mound, 0.0)
-	h += mh * exp(-k * k) + mh * 0.5 * (1.0 - smoothstep(0.0, _mound_r, d))
+	h += Mound.height(d, maxf(_mound, 0.0), _mound_r)
 	h -= 1.6 * (1.0 - smoothstep(0.6, 1.9, d))
 	return h
 
@@ -222,11 +221,12 @@ func _build_ground() -> void:
 
 ## The crater of excavated pellets grows with the nest below.
 func _update_mound() -> void:
-	var m := clampf(sqrt(float(sim.nest.excavated)) / 22.0, 0.25, 2.2)
+	var hr := Mound.size(sim.nest.excavated)      # (as big as the soil dug out: view/mound.gd)
+	var m := hr.x
 	if absf(m - _mound) < 0.05:
 		return
 	_mound = m
-	_mound_r = 3.0 + m * 2.2
+	_mound_r = hr.y
 	var mats: Array = [_ground_mat] + _creature_views.values().map(func(cv): return cv.mat)
 	if _ant_shader_mat != null:
 		mats.append(_ant_shader_mat)

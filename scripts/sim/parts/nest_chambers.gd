@@ -82,7 +82,7 @@ func _plan_now(c: Vector3i) -> int:
 		var eb: Vector3 = chambers[0].c
 		var eab := eb - ea
 		var et := clampf((p - ea).dot(eab) / maxf(eab.length_squared(), 0.001), 0.0, 1.0)
-		if p.distance_to(ea + eab * et) <= entrance_r and p.y < ny - 1:
+		if p.distance_to(ea + eab * et) <= entrance_r and p.y < ny:          # (the top layer too, within the hole: v0.12.8)
 			on_shaft = true
 	var reach := _reach()
 	for k in chambers.size():
@@ -205,7 +205,7 @@ func _work_on_line(a: Vector3, b: Vector3, r: float, first: bool, best: Array) -
 	var ab := b - a
 	var lo := Vector3i(floori(minf(a.x, b.x) - r - 1.0), floori(minf(a.y, b.y) - r - 1.0), floori(minf(a.z, b.z) - r - 1.0))
 	var hi := Vector3i(ceili(maxf(a.x, b.x) + r + 1.0), ceili(maxf(a.y, b.y) + r + 1.0), ceili(maxf(a.z, b.z) + r + 1.0))
-	for y in range(maxi(y_lo, lo.y), mini(ny - 1, hi.y + 1)):
+	for y in range(maxi(y_lo, lo.y), mini(ny, hi.y + 1)):
 		for z in range(maxi(0, lo.z), mini(nz, hi.z + 1)):
 			for x in range(maxi(0, lo.x), mini(nx, hi.x + 1)):
 				var v := Vector3i(x, y, z)
@@ -213,7 +213,7 @@ func _work_on_line(a: Vector3, b: Vector3, r: float, first: bool, best: Array) -
 					continue
 				# (the surface crust is never broken but at the entrance - _dig_chance; planned all the same, the top of
 				# a slanting entrance shaft kept its diggers standing there a whole year, the nest never dug)
-				if y >= ny - 2 and Vector2(x - entrance.x, z - entrance.z).length() > 1.5:
+				if y >= ny - 2 and Vector2(x - entrance.x, z - entrance.z).length() > maxf(1.5, entrance_r):
 					continue
 				var p := Vector3(v)
 				var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
@@ -321,6 +321,11 @@ func target_depth(workers: int) -> float:
 	return clampf(cm * depth_k * heat_k / (VOXEL_MM / 10.0), 0.0, float(ny - y_floor) - 6.0)
 
 
+## How wide the entrance shaft is meant to be for a colony of `workers` (radius, voxels).
+static func entrance_for(workers: int) -> float:
+	return clampf(1.0 + workers * 0.012, 1.0, 1.7) + clampf((workers - 300) / 500.0, 0.0, 1.0) * 0.3
+
+
 ## Called by the colony once a day. Chambers grow while brood is crowded; a growing colony also
 ## plans a new chamber a little deeper and sinks a shaft down to it, giving the stacked layout of
 ## Lasius nests (flat chambers in series along vertical shafts).
@@ -332,7 +337,11 @@ func plan_chambers(brood: int, workers: int, target_air := 0) -> String:
 	# a few mm across; the rate is chosen)
 	# (never narrower again: a shaft dug wider does not close up when a worker dies - the plan shrinking under the
 	# work counted in the morning left the diggers walking round a face with nothing on it to dig, all day)
-	entrance_r = maxf(entrance_r, clampf(1.0 + workers * 0.012, 1.0, 1.7))
+	# (and from 300 workers on a little wider still, to 2.0 - 6 mm across - at 800: L. niger entrances are ~5-6 mm across
+	# [pest-control guides, general]; big colonies open more entrances rather than one wide one [L. neoniger: entrances
+	# more as the foraging grounds grow, ~38 cm apart] - more than one is not in the game yet. The keeper, 2026-11-08:
+	# "700 ants and the entrance never grew")
+	entrance_r = maxf(entrance_r, entrance_for(workers))
 	for ch in chambers:
 		# (its centre's nearest cell: the gallery ends at the centre, and cut down to the cell below and behind it
 		# that cell lay outside the gallery - the chamber never opened, the colony stuck with two chambers all year)

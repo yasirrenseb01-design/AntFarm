@@ -20,6 +20,11 @@ func _init() -> void:
 		lines.append("---- %s ----" % k)
 		lines.append(String(lic[k]))
 		lines.append("")
+	# the C++ part (bin/ant_native.*.dll, v0.12.6) is built with godot-cpp (MIT) and the llvm-mingw toolchain's runtime
+	# (LLVM's libc++: Apache 2.0 with the LLVM exception - no notice needed for compiled code; mingw-w64's runtime: permissive)
+	var gc := FileAccess.get_file_as_string("res://native/GODOT_CPP_LICENSE.md")
+	if gc != "":
+		lines += ["---- godot-cpp (in ant_native.windows.template_release.x86_64.dll) ----", gc, ""]
 	var f := FileAccess.open(out, FileAccess.WRITE)
 	f.store_string("\n".join(lines))
 	f.close()

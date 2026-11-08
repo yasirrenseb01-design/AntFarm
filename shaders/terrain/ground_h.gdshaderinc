@@ -11,7 +11,8 @@ float ground_h(vec2 p) {
 		+ 0.6 * sin(p.x * 0.13 + 0.7) * sin(p.y * 0.11 + 1.9);
 	float d = length(p - nest_xz);
 	float k = (d - mound_r) / (mound_r * 0.6);
-	h += mound_h * exp(-k * k) + mound_h * 0.5 * (1.0 - smoothstep(0.0, mound_r, d));
+	// (the crater: scripts/view/mound.gd - as big as the soil dug out from v0.12.8, the entrance's pit kept clear of it)
+	h += (mound_h * exp(-k * k) + mound_h * 0.5 * (1.0 - smoothstep(0.0, mound_r, d))) * smoothstep(1.2, 3.0, d);
 	h -= 1.6 * (1.0 - smoothstep(0.6, 1.9, d));
 	return h;
 }
