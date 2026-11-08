@@ -562,7 +562,7 @@ set_fps_cap,จำกัดเฟรม,Frame cap
 fps_30,30 fps,30 fps
 fps_60,60 fps,60 fps
 fps_free,ไม่จำกัด,No cap
-set_quality_note,ครั้งแรกเกมเลือกให้ตามการ์ดจอ · ตอนสลับไปใช้หน้าต่างอื่นเกมวาดน้อยลงเอง (รังยังเดินต่อ),Chosen from your graphics card the first time · while you use another window the game draws less (the colony lives on)
+set_quality_note,"ครั้งแรกเกมเลือกให้ตามการ์ดจอ · ตอนสลับไปใช้หน้าต่างอื่นเกมวาดน้อยลงเอง (รังยังเดินต่อ) · ในรัง วาดมดได้สูงสุด 250 / 400 / 600 ตัว (ต่ำ / กลาง / สูง) มดทุกตัวยังมีชีวิตครบ","Chosen from your graphics card the first time · while you use another window the game draws less (the colony lives on) · in the nest, up to 250 / 400 / 600 ants are drawn (low / medium / high) - every ant still lives"
 trait_title,นิสัยรัง,Character
 trait_plain,รังธรรมดา ไม่มีอะไรโดดเด่น,an ordinary colony
 trait_queen_hi,ราชินีตัวใหญ่ วางไข่ดก,a big fertile queen

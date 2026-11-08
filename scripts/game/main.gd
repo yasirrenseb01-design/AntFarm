@@ -364,6 +364,8 @@ func _apply_graphics() -> void:
 	if desktop != null and desktop.on:
 		return                                    # (the wallpaper keeps its own 30 fps; this comes back after)
 	Graphics.apply(self, String(_settings.quality), _fps_cap if _window_in_use else mini(Graphics.FPS_IDLE, _fps_cap if _fps_cap > 0 else 999))
+	if nest_view != null and not _opts.has("draw-cap"):
+		nest_view.draw_cap = Graphics.nest_draw(String(_settings.quality))      # (how many nestmates are drawn: v0.12.7)
 
 
 var _fps_cap := 60

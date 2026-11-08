@@ -8,7 +8,7 @@ extends "res://scripts/view/nest/parts/nest_dead.gd"
 ## job: nurses (and the queen's attendants) by the brood and the queen, the reserve resting about, a forager
 ## just back walking in from the entrance, one going out walking up to it first. Diggers are drawn at the dig
 ## face (_dig_vis), and workers still climbing out of their cocoons by their eclosion.
-var draw_cap := 250                # nestmates drawn at most (dev --draw-cap=<n>: PART 0.12 measurements)
+var draw_cap := 250                # nestmates drawn at most: by the graphics quality (game/graphics.gd NEST_DRAW; dev --draw-cap=<n>)
 var _io_was := {}                 # (dev --io: worker id -> in the nest at the last bind)
 
 func _bind_workers() -> void:

@@ -5,10 +5,13 @@ extends RefCounted
 ##   low     no shadows, no glow, the 3D drawn at 75% of the window (scaled up)
 ##   medium  shadows and glow, full size
 ##   high    as medium, 2x MSAA and finer shadows
+## and how many nestmates the nest view draws at most (NEST_DRAW: the simulation keeps every one; v0.12.7 - a colony of up
+## to 1,000 has ~600-750 inside, and each drawn costs the view ~0.12 ms a frame on an Intel UHD: PLAN_0.12)
 ## Desktop mode keeps its own frame rate (30) and puts this one back when it is done.
 
 const LEVELS := ["low", "medium", "high"]
 const FPS_CAPS := [30, 60, 0]           # (0: as fast as the screen shows them, vsync)
+const NEST_DRAW := [250, 400, 600]      # nestmates drawn at most in the nest view, low / medium / high
 const FPS_IDLE := 30                    # the window not in use (another window in front)
 const FPS_MINIMIZED := 5
 
@@ -21,6 +24,10 @@ static func auto_level() -> String:
 	if who.contains("intel"):
 		return "low"
 	return "medium"
+
+
+static func nest_draw(level: String) -> int:
+	return NEST_DRAW[maxi(0, LEVELS.find(level))]
 
 
 ## Applies a level and a frame-rate cap to the game's window and every 3D view under `root`.
