@@ -23,6 +23,9 @@ $env:GODOT_SCRIPT_ENCRYPTION_KEY = (Get-Content $keyFile -Raw).Trim()
 & $godot --headless --path $root --export-release "Windows Desktop" $archived
 Remove-Item Env:\GODOT_SCRIPT_ENCRYPTION_KEY
 if (-not (Test-Path $archived)) { throw "export failed" }
+# the C++ part (v0.12.6: bin/ant_native.gdextension) is exported beside the exe, not inside it: next to the shortcut's copy too
+$dlls = Get-ChildItem "$root\build\versions" -Filter "ant_native.*.dll"
+foreach ($d in $dlls) { try { Copy-Item $d.FullName "$root\build\$($d.Name)" -Force } catch { Write-Output "could not copy $($d.Name) (the game is open?)" } }
 try {
     Copy-Item $archived $target -Force
     Write-Output "built v$version -> $target"

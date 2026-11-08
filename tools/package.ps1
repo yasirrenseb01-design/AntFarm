@@ -17,6 +17,8 @@ if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item $exe "$stage\AntFarm.exe"
 Copy-Item $desk "$stage\AntDesk.exe"
+# the C++ part beside the exe (v0.12.6): without it the game runs on, its GDScript doing the same, a little slower
+Get-ChildItem "$root\build\versions" -Filter "ant_native.*.dll" | ForEach-Object { Copy-Item $_.FullName "$stage\$($_.Name)" }
 Copy-Item "$root\docs\release\README.txt" "$stage\README.txt"
 Copy-Item "$root\docs\release\PRIVACY.md" "$stage\PRIVACY.txt"
 Copy-Item "$root\docs\release\CREDITS.txt" "$stage\CREDITS.txt"
