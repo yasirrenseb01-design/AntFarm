@@ -56,6 +56,9 @@ const DATA := {
 	"queen_eggs_max": 30.0,
 	"queen_eggs_base": 3.0,
 	"queen_eggs_per_worker": 0.4,
+	# The game's colony limit (a design choice, the keeper 2026-11-06: real colonies grow far larger). Every egg is
+	# at most one worker, so workers + brood is kept under it as the queen lays, and laying eases off over the last 15%
+	"colony_max": 1000.0,
 
 	# Food. Adults run on sugar; larvae and egg production need protein.
 	"sugar_worker": 0.08,

@@ -1,6 +1,6 @@
 extends "res://scripts/sim/parts/sim_state.gd"
-## Simulation, layer 2 of 7: setup, time, the keeper's actions, shared helpers (log, warnings, deaths).
-## Layers: sim_state <- sim_base <- sim_foragers <- sim_enemies <- sim_colony <- sim_duties <- simulation.
+## Simulation, layer 2 of 9: setup, time, the keeper's actions, shared helpers (log, warnings, deaths).
+## Layers: sim_state <- sim_base <- sim_foragers <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties <- simulation.
 
 
 # ---------------------------------------------------------------- setup

@@ -18,6 +18,7 @@ log_warn_mold,ราขึ้นในรังเพราะชื้นเก
 log_queen_died,ราชินีตายจาก%s รังจะค่อยๆ หมดไปเพราะไม่มีไข่ใหม่,The queen has died of %s. With no new eggs the colony will slowly dwindle away
 log_cannibalism,ขาดโปรตีน มดงานกินตัวอ่อนที่อดอาหารไปแล้ว %d ตัว,"Short of protein, the workers have eaten starving larvae (%d so far)"
 log_first_worker,มดงานตัวแรกออกจากรังไหมแล้ว! เป็นมดรุ่นแรกตัวเล็ก (nanitic) จะเปิดปากรังออกไปหาอาหาร,"The first worker has come out of her cocoon! A small first-generation worker (a nanitic), she will open the nest and go out to forage"
+log_colony_near_limit,"รังใกล้ขนาดสูงสุดของเกมแล้ว (1,000 ตัว รวมไข่ ตัวอ่อน รังไหม) ราชินีจะวางไข่ช้าลงเรื่อย ๆ ให้พอแทนมดที่ตาย — รังจริงโตได้มากกว่านี้","The colony is nearing the game's largest size (1,000, counting eggs, larvae and cocoons). The queen will lay more and more slowly, enough to replace the ants that die. Real colonies grow far larger"
 log_new_worker,มดงานตัวใหม่ออกจากรังไหม (รวม %d ตัว),A new worker has come out of her cocoon (%d in all)
 log_warn_heat,ในรังร้อนเกินไป ตัวอ่อนเริ่มตาย,The nest is too hot: larvae are dying
 log_fly_fell,มีแมลงวันตายตกลงมาในกล่อง มดจะหาเจอเองถ้าออกสำรวจ,A dead fly has fallen into the box. The ants will find it if they go exploring
