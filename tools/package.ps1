@@ -32,3 +32,10 @@ $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
 $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
 Write-Output "packed $zip ($size MB)"
 Write-Output "SHA-256 $hash"
+
+# Old release zips (2026-11-08: 16 of them had piled up, 2.5 GB): keep this version and every version tagged store-v<ver>
+# (what is or was on the store); remove the rest, folder, zip and .sha256 alike.
+$store = @(git -C $root tag --list "store-v*" | ForEach-Object { $_ -replace '^store-v', '' }) + $version
+Get-ChildItem $out | Where-Object { $_.Name -match '^AntFarm-v(\d+\.\d+\.\d+)' -and $store -notcontains $Matches[1] } | ForEach-Object {
+    try { Remove-Item $_.FullName -Recurse -Force -ErrorAction Stop; Write-Output "removed old release $($_.Name)" } catch {}
+}

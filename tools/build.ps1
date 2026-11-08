@@ -46,3 +46,19 @@ foreach ($b in $all) {
         try { Remove-Item $b.File.FullName -ErrorAction Stop; Write-Output "removed old build $($b.File.Name)" } catch {}
     }
 }
+
+# Test pictures (--shot, --seq): shots\ had grown to 19 GB by 2026-11-08. Remove those older than 14 days, except
+# shots\store\ (the store page's pictures); the tools make them again when they are needed.
+$shots = "$root\shots"
+if (Test-Path $shots) {
+    $limit = (Get-Date).AddDays(-14)
+    $old = @(Get-ChildItem $shots -Recurse -File | Where-Object { $_.LastWriteTime -lt $limit -and $_.FullName -notlike "$shots\store\*" })
+    if ($old.Count -gt 0) {
+        $mb = [math]::Round(($old | Measure-Object Length -Sum).Sum / 1MB)
+        $old | ForEach-Object { try { Remove-Item $_.FullName -ErrorAction Stop } catch {} }
+        Get-ChildItem $shots -Recurse -Directory | Sort-Object { $_.FullName.Length } -Descending |
+            Where-Object { $_.FullName -notlike "$shots\store*" -and -not (Get-ChildItem $_.FullName -Force) } |
+            ForEach-Object { try { Remove-Item $_.FullName -ErrorAction Stop } catch {} }
+        Write-Output "removed $($old.Count) test pictures older than 14 days ($mb MB)"
+    }
+}
