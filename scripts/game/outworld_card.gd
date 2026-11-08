@@ -6,6 +6,7 @@ extends RefCounted
 ## of the tank's soil. As it is lit at that moment (a colony saved at night shows a dark box), the ants there in it,
 ## still. Only an image: nothing in it is run, and one bigger than ours is not read.
 
+const PngCheck := preload("res://scripts/game/png_check.gd")
 const MAX_BYTES := 1024 * 1024
 const W := 512
 
@@ -77,7 +78,10 @@ static func read(dir: String, slot: int) -> ImageTexture:
 	var f := FileAccess.open(p, FileAccess.READ)
 	if f == null or f.get_length() > MAX_BYTES:
 		return null
+	var buf := f.get_buffer(f.get_length())
+	if not PngCheck.fits(buf, 1024, 1024):      # (its size from the header, before it is decoded)
+		return null
 	var img := Image.new()
-	if img.load_png_from_buffer(f.get_buffer(f.get_length())) != OK or img.get_width() > 1024 or img.get_height() > 1024:
+	if img.load_png_from_buffer(buf) != OK or img.get_width() > 1024 or img.get_height() > 1024:
 		return null
 	return ImageTexture.create_from_image(img)

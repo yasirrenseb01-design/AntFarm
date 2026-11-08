@@ -1,0 +1,20 @@
+diff --git a/platform/windows/display_server_windows.cpp b/platform/windows/display_server_windows.cpp
+index e821786..6523cfc 100644
+--- a/platform/windows/display_server_windows.cpp
++++ b/platform/windows/display_server_windows.cpp
+@@ -7948,6 +7948,15 @@ DisplayServerWindows::DisplayServerWindows(const String &p_rendering_driver, Dis
+ 	OleInitialize(nullptr);
+ 
+ 	HICON default_icon = LoadIconW(GetModuleHandle(nullptr), L"GODOT_ICON");
++	if (default_icon == nullptr) {
++		// AntFarm: the export's resource modifier writes the icon group under a name that is not "GODOT_ICON" (and not
++		// found by name either) - the window class got Windows' blank icon, and the taskbar showed it at times: the
++		// exe's first icon, as Explorer finds it
++		WCHAR exe_path[MAX_PATH];
++		if (GetModuleFileNameW(nullptr, exe_path, MAX_PATH) > 0) {
++			ExtractIconExW(exe_path, 0, &default_icon, nullptr, 1);
++		}
++	}
+ 	if (default_icon == nullptr) {
+ 		default_icon = LoadIcon(nullptr, IDI_WINLOGO);
+ 	}

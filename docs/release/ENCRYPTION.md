@@ -22,8 +22,8 @@
 - **ไอคอนคลาสหน้าต่าง** (v0.11.77, ผู้เล่น 2026-11-03: แถบงานโชว์ไอคอนเปล่าของ Windows): ตอน export Godot เขียนกลุ่มไอคอนชื่อ `ICON`
   (`platform/windows/export/template_modifier.cpp`) แต่ตอนเปิดเกมหาชื่อ `GODOT_ICON` (`platform/windows/display_server_windows.cpp`
   ราวบรรทัด 7950) หาไม่เจอเลยใช้ `IDI_WINLOGO` (ชื่อกลุ่มที่เขียนก็เพี้ยน หาด้วย "ICON" ก็ไม่เจอ) → แก้ให้ดึงไอคอนแรกของ exe
-  ด้วย `ExtractIconExW` ก่อน fallback (ค้นคำว่า `AntFarm:` ในไฟล์นั้น)
-  — ตรวจ: เปิดเกม อ่าน `GetClassLongPtr(hwnd, GCLP_HICON)` ต้องเป็นรูปราชินี; template เดิมสำรองที่ `templatesntfarm_release_x86_64.v4.7.2-orig.exe`
+  ด้วย `ExtractIconExW` ก่อน fallback (ค้นคำว่า `AntFarm:` ในไฟล์นั้น; patch เก็บใน repo ที่ `tools/godot/window_icon.patch` ตั้งแต่ 2026-11-08)
+  — ตรวจ: เปิดเกม อ่าน `GetClassLongPtr(hwnd, GCLP_HICON)` ต้องเป็นรูปราชินี; template เดิมสำรองที่ `E:\GodotBuild\templates\antfarm_release_x86_64.v4.7.2-orig.exe`
 
 ## ถ้ากุญแจหาย
 ไม่มีผลกับผู้เล่นหรือเซฟ: สร้างกุญแจใหม่ (`python -c "import secrets;print(secrets.token_hex(32))" > E:\GodotBuild\antfarm_pck.key`)

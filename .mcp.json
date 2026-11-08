@@ -4,7 +4,7 @@
       "type": "stdio",
       "command": "C:\\Users\\Lenovo\\.local\\bin\\uvx.exe",
       "args": [
-        "blender-mcp"
+        "blender-mcp==2.0.0"
       ],
       "env": {}
     }

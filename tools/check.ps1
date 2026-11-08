@@ -92,6 +92,10 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/dump_test
 Report "the diggers carry their soil out themselves (laying a trail, back in)" ($r -match "DUMP TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/species_test.gd") 120
 Report "every species has every key (scripts/sim/species/registry.gd)" ($r -match "SPECIES TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/files_fuzz_test.gd") 300
+Report "harmony.json, home.json and the tanks' pictures broken or changed: no script error, a huge picture not decoded" ($r -match "FILES FUZZ TEST PASSED" -and $r -notmatch "SCRIPT ERROR")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/native_guard_test.gd") 120
+Report "the C++ part given wrong sizes: answers air, reads nothing past its arrays" ($r -match "NATIVE GUARD TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/tank_spec_test.gd") 120
 Report "the tank's sizes: one set, the same as the simulation's" ($r -match "TANK SPEC TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/home_test.gd") 120
