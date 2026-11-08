@@ -86,6 +86,7 @@ func _ranked() -> void:
 	for a in workers:
 		a.sort_a = a.threshold(Ant.TH_FORAGE)
 		a.sort_b = a.threshold(Ant.TH_DIG)
+		a.sort_c = a.threshold(Ant.TH_AGE)
 	_by_forage = workers.duplicate()
 	_by_forage.sort_custom(func(x, y): return x.sort_a > y.sort_a or (x.sort_a == y.sort_a and x.id > y.id))
 	_by_dig = workers.duplicate()
@@ -102,32 +103,32 @@ func _colony(dt: float) -> void:
 		forager_age = sp["callow_days"]     # the first nanitics start foraging within days of emerging
 
 	var age_k := clampf(0.35 + 0.65 * (climate.nest - 4.0) / 20.0, 0.35, 1.0)     # cold slows ageing
-	var dug := {}                         # who was digging: they keep at it while digging is wanted
-	for a in workers:
-		if a.task == Ant.TASK_DIG:
-			dug[a.id] = true
 	nurses = 0
 	callow = 0
 	out_count = 0
 	var idle: Array = []
 	outside.clear()
+	_out_ver += 1
+	_ranked()
+	var callow_d: float = sp["callow_days"]
+	var aged := dt * age_k
 	for a in workers:
-		a.age += dt * age_k
+		a.was_dig = a.task == Ant.TASK_DIG       # who was digging: they keep at it while digging is wanted
+		a.age += aged
 		if a.state != Ant.IN_NEST:
 			out_count += 1
 			outside.append(a)
 			a.task = Ant.TASK_DIG if a.state == Ant.DUMP else Ant.TASK_OUT      # (a digger out with its pellet)
 			continue
-		if a.age < sp["callow_days"]:
+		if a.age < callow_d:
 			callow += 1
 			a.task = Ant.TASK_CALLOW
-		elif a.age < forager_age * (0.5 + 0.5 * a.threshold(Ant.TH_AGE)):     # some turn forager sooner than others
+		elif a.age < forager_age * (0.5 + 0.5 * a.sort_c):     # some turn forager sooner than others
 			nurses += 1
 			a.task = Ant.TASK_NURSE
 		else:
 			a.task = Ant.TASK_RESERVE
 	# the reserve, eagerest foragers last (pop_back takes them first): picked out of all the workers kept in that order
-	_ranked()
 	for a in _by_forage:
 		if a.task == Ant.TASK_RESERVE:
 			idle.append(a)
@@ -180,10 +181,11 @@ func _colony(dt: float) -> void:
 		_recruits -= 1
 	_recruits = 0
 	var forage_trait := colony_trait("forage")
+	var p_go := p_exit * forage_trait
 	for a in idle:
 		if out_count >= max_out:
 			break
-		if rng.randf() < p_exit * forage_trait / a.threshold(Ant.TH_FORAGE):     # the eager go out more often (and some colonies)
+		if rng.randf() < p_go / a.sort_a:     # the eager go out more often (and some colonies)
 			_send_out(a, Ant.SEARCH)
 			out_count += 1
 
@@ -208,7 +210,7 @@ func _colony(dt: float) -> void:
 			for a in _by_dig:
 				if left == 0:
 					break
-				if a.task == Ant.TASK_RESERVE and a.state == Ant.IN_NEST and dug.has(a.id) == was_digging:
+				if a.task == Ant.TASK_RESERVE and a.state == Ant.IN_NEST and a.was_dig == was_digging:
 					a.task = Ant.TASK_DIG
 					left -= 1
 
@@ -264,9 +266,11 @@ func _metabolism(dt: float) -> void:
 		fat += store
 		sugar -= store
 	var dry := humidity < 0.1
+	var starve_k: float = dt * heat * (1.0 - fed) / sp["starve_days_worker"]
+	var risk: float = sp["forager_daily_risk"] * dt
 	for a in workers:
 		if starving:
-			a.energy -= dt * heat * (1.0 - fed) / sp["starve_days_worker"] / a.hardiness
+			a.energy -= starve_k / a.hardiness
 		elif dry:
 			a.energy -= dt / 6.0 / a.hardiness
 		else:
@@ -275,7 +279,7 @@ func _metabolism(dt: float) -> void:
 			_kill(a, "starve" if starving else "thirst")
 		elif a.age > a.life:
 			_kill(a, "old")
-		elif a.state != Ant.IN_NEST and rng.randf() < sp["forager_daily_risk"] * dt:
+		elif a.state != Ant.IN_NEST and rng.randf() < risk:
 			_kill(a, "out")          # lost while foraging: a bird, a spider, a raindrop, a wrong turn
 	_warn("starve", starving, T.warn_starve)
 	_warn("dry", dry, T.warn_dry)
@@ -353,9 +357,11 @@ func _outworld(dt: float) -> void:
 			f.amt = minf(f.cap, f.amt + f.regen * dt * (0.4 + 0.6 * light) * life)
 			if was < 1.0 and f.amt >= 1.0:
 				_food_dirty = true      # honeydew again: foragers can smell it once more
-		elif FoodKinds.info(f.kind).has("dries"):
-			f.amt *= pow(FoodKinds.info(f.kind).dries, dt)  # a drop dries out and crystallises
-		elif f.age > FoodKinds.info(f.kind).get("rots_after", INF) and not f.rotten:
+			continue
+		var info := FoodKinds.info(f.kind)
+		if info.has("dries"):
+			f.amt *= pow(info.dries, dt)  # a drop dries out and crystallises
+		elif f.age > info.get("rots_after", INF) and not f.rotten:
 			f.rotten = true
 			_food_dirty = true
 	var before := foods.size()

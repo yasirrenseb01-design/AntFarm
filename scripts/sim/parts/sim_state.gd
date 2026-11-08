@@ -111,6 +111,9 @@ var food_cell := PackedInt32Array()     # per pheromone cell: index of a food wi
 var _food_dirty := true
 var prof := {"colony": 0, "grid": 0, "ants": 0, "other": 0, "steps": 0, "grids": 0}
 var _noise_k := 1.0
+var _maybe_drag := true                 # some ant outside may be holding an item to haul (see simulation.step)
+var _out_ver := 0                        # counts the changes to `outside` (sim_foragers._turn_of)
+var _wild := false                      # scenario == "wild", set at the start of each step (the foragers test it every step)
 var _recruits := 0                       # nestmates excited by successful foragers, sent out next colony tick
 var ant_substep := 1                     # >1 at high game speeds: each ant moves every N ticks with N× stride
 var _log_home := log(HOME_EVAP)

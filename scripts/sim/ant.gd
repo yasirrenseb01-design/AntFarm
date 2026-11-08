@@ -33,6 +33,8 @@ const TH_KINDS := 6
 var _th := PackedFloat64Array()      # its thresholds as worked out (threshold)
 var sort_a := 0.0                    # what it is sorted by this step (sim_colony._colony: read directly, not worked out at each comparison)
 var sort_b := 0.0
+var sort_c := 0.0                    # (its TH_AGE: sim_colony._ranked)
+var was_dig := false                 # (it was at the dig face before this colony tick: sim_colony._colony)
 
 # what a worker inside is doing this half hour (its duty, set by parts/sim_duties.gd from the colony's needs; saved)
 const D_OUT := 0           # outside (foraging, defending, carrying out the dead, hauling)

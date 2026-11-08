@@ -34,6 +34,7 @@ func step() -> void:
 		prof.nest = prof.get("nest", 0) + Time.get_ticks_usec() - tn
 	var t1 := Time.get_ticks_usec()
 	_spd = sp["walk_speed"] * (0.35 + 0.65 * activity)
+	_wild = scenario == "wild"
 	_want_sugar = sugar < sugar_cap() * 0.95
 	_want_protein = protein < protein_cap() * 0.95
 	if _food_dirty:
@@ -47,12 +48,20 @@ func step() -> void:
 		_spd *= n
 	if tick % 4 == 0:
 		_encounters()
+	# those holding an item are moved together with it, below (only _start_drag makes one: _maybe_drag)
 	var hauling := false
-	for a: Ant in outside:
-		if a.state == Ant.DRAG:
-			hauling = true                         # moved together with the item they hold, below
-		elif a.state != Ant.IN_NEST and not a.dead and (n == 1 or a.id % n == phase):
-			if a.state == Ant.DEFEND:
+	if _maybe_drag:
+		for a: Ant in outside:
+			if a.state == Ant.DRAG:
+				hauling = true
+				break
+		_maybe_drag = hauling
+	# at a substep of n each ant walks every n-th tick: only those whose turn it is are gone through, in the order of
+	# `outside` as before (v0.12.3)
+	for a: Ant in (outside if n == 1 else _turn_of(n, phase)):
+		var st := a.state
+		if st != Ant.DRAG and st != Ant.IN_NEST and not a.dead:
+			if st == Ant.DEFEND:
 				_step_defender(a)
 			else:
 				_step_ant(a)
@@ -65,6 +74,7 @@ func step() -> void:
 	if _any_dead:
 		workers = workers.filter(func(w): return not w.dead)
 		outside = outside.filter(func(w): return not w.dead)
+		_out_ver += 1
 		_any_dead = false
 	var t4 := Time.get_ticks_usec()
 	prof.colony += t1 - t0
@@ -180,6 +190,7 @@ func from_dict(d: Dictionary) -> void:
 		workers.append(a)
 		by_id[a.id] = a
 	outside = []
+	_maybe_drag = true
 	for id in d.outside:
 		if by_id.has(id):
 			outside.append(by_id[id])

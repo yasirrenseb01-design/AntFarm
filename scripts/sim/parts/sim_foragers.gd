@@ -1,30 +1,5 @@
 extends "res://scripts/sim/parts/sim_base.gd"
-## Simulation, layer 3 of 10: foragers in the outworld (trails, food, encounters, obstacles).
-
-
-## Two foragers meeting head-on stop for a moment and drum each other with their antennae
-## (how Lasius check nestmate scent and pass on news of food).
-func _encounters() -> void:
-	var grid := {}
-	for a: Ant in outside:
-		if a.busy > 0 or a.meet_cd > 0 or a.state == Ant.IN_NEST or a.state == Ant.DEFEND or a.state == Ant.DRAG:
-			continue
-		var k := Vector2i(int(a.pos.x / 6.0), int(a.pos.y / 6.0))
-		var o = grid.get(k)
-		if o == null:
-			grid[k] = a
-			continue
-		if o.busy > 0 or a.pos.distance_squared_to(o.pos) > 16.0:
-			continue
-		if absf(wrapf(a.ang - o.ang, -PI, PI)) < 2.0:
-			continue                      # walking the same way: no greeting
-		var secs := rng.randi_range(12, 30)
-		for p in [[a, o], [o, a]]:
-			p[0].busy = secs
-			p[0].act = 3
-			p[0].ang = (p[1].pos - p[0].pos).angle()
-			p[0].meet_cd = rng.randi_range(240, 600)
-		grid.erase(k)
+## Simulation, layer 3 of 10: foragers in the outworld (trails, food, obstacles; their meetings: sim_surface.gd).
 
 
 func _rebuild_food_grid() -> void:
@@ -36,9 +11,16 @@ func _rebuild_food_grid() -> void:
 			continue
 		var p: Vector2 = f.pos
 		var r: float = f.r + 40.0   # how far a forager can smell it
+		# (squares well inside or well outside the circle told apart in plain sums; only those within 0.01 px of its edge
+		# measured the way they always were, in the engine's floats - the same squares: v0.12.3)
+		var r_in := (r - 0.01) * (r - 0.01)
+		var r_out := (r + 0.01) * (r + 0.01)
 		for cy in range(maxi(0, int((p.y - r) / CELL)), mini(gh - 1, int((p.y + r) / CELL)) + 1):
+			var dy := cy * CELL + CELL * 0.5 - p.y
 			for cx in range(maxi(0, int((p.x - r) / CELL)), mini(gw - 1, int((p.x + r) / CELL)) + 1):
-				if Vector2(cx * CELL + CELL * 0.5, cy * CELL + CELL * 0.5).distance_to(p) <= r:
+				var dx := cx * CELL + CELL * 0.5 - p.x
+				var d2 := dx * dx + dy * dy
+				if d2 < r_in or (d2 <= r_out and Vector2(cx * CELL + CELL * 0.5, cy * CELL + CELL * 0.5).distance_to(p) <= r):
 					food_cell[cy * gw + cx] = fi
 
 
@@ -48,6 +30,7 @@ const ACT_SCAN := 15        # standing still, head and antennae sweeping (shader
 func _send_out(a: Ant, state: int) -> void:
 	if a.state == Ant.IN_NEST:
 		outside.append(a)
+		_out_ver += 1
 	a.state = state
 	a.pos = nest_pos + Vector2.from_angle(rng.randf() * TAU) * 3.0
 	a.ang = rng.randf() * TAU
@@ -74,7 +57,8 @@ func _step_ant(a: Ant) -> void:
 				a.turn_after = false
 				a.ang += PI          # loaded up: turn round and head home
 		return
-	a.trip += n
+	var trip: int = a.trip + n
+	a.trip = trip
 	# stop-and-go: a searching ant halts every few seconds to sweep its head and antennae, then walks
 	# on; one walking home along a trail stops far less often
 	if a.state == Ant.SEARCH or a.state == Ant.HOME:
@@ -97,8 +81,9 @@ func _step_ant(a: Ant) -> void:
 	# periods are in ticks of game time, so behaviour per distance walked is the same at any substep
 	var sense_p := maxi(SENSE_EVERY, n)
 	var drop_p := maxi(2, n)
-	var sense_now := ((a.trip + a.id) % sense_p) < n
-	var drop_now := ((a.trip + a.id) % drop_p) < n
+	var aid: int = a.id
+	var sense_now := ((trip + aid) % sense_p) < n
+	var drop_now := ((trip + aid) % drop_p) < n
 	if sense_now and not creatures.is_empty():
 		# an enemy close by: mark the spot with alarm pheromone; unladen ants join the fight
 		for c in creatures:
@@ -189,33 +174,36 @@ func _step_ant(a: Ant) -> void:
 			if sense_now:
 				_steer(a, home, sense_p)
 			_turn_toward(a, nest_pos, 0.03)  # path integration keeps them oriented
-	a.ang += rng.randf_range(-0.16, 0.16) * _noise_k
+	var ang: float = a.ang + rng.randf_range(-0.16, 0.16) * _noise_k
+	a.ang = ang
 	if a.follow > 0:
-		a.follow -= ant_substep
-	var np := pos + Vector2(cos(a.ang), sin(a.ang)) * spd
-	if a.state == Ant.SEARCH and scenario == "wild" and _at_glass(np) and rng.randf() < BEYOND_P:
+		a.follow -= n
+	var np := pos + Vector2(cos(ang), sin(ang)) * spd
+	# (_at_glass and blocked written out once for the step: the same tests - v0.12.3)
+	var glass := np.x < 3.0 or np.y < 3.0 or np.x > WORLD.x - 3.0 or np.y > WORLD.y - 3.0
+	if a.state == Ant.SEARCH and _wild and glass and rng.randf() < BEYOND_P:
 		# outdoors the plot has no walls: past its edge the garden goes on (aphid colonies up the plants,
 		# small prey) - the ant forages out of sight for a while and comes back the same way
 		a.busy = rng.randi_range(BEYOND_TICKS[0], BEYOND_TICKS[1])
 		a.act = ACT_AWAY
 		return
-	if a.state == Ant.SEARCH and scenario != "wild" and _at_glass(np) and rng.randf() < WALL_CLIMB_P:
+	if a.state == Ant.SEARCH and not _wild and glass and rng.randf() < WALL_CLIMB_P:
 		# at the glass: up the wall it goes (the view draws the climb), as far as the slippery band near the
 		# top, then back down and away again
 		a.busy = WALL_TICKS
 		a.act = ACT_WALL
 		a.turn_after = true
 		return
-	if blocked(np):
+	if glass or rock[int(np.y / CELL) * gw + int(np.x / CELL)] == 1:
 		a.follow = 24
 		# follow the edge of the obstacle: try headings swinging toward the ant's chosen side
 		var found := false
 		for turn in [0.5, 1.0, 1.6, 2.3]:
 			for sgn in [a.slide, -a.slide]:
-				var ang: float = a.ang + turn * sgn
-				var q := pos + Vector2(cos(ang), sin(ang)) * spd
+				var ta: float = a.ang + turn * sgn
+				var q := pos + Vector2(cos(ta), sin(ta)) * spd
 				if not blocked(q):
-					a.ang = ang
+					a.ang = ta
 					np = q
 					found = true
 					break
@@ -300,6 +288,7 @@ func _at_glass(p: Vector2) -> bool:
 
 func _start_drag(a: Ant, f: Dictionary) -> void:
 	a.state = Ant.DRAG
+	_maybe_drag = true
 	a.foe = f.seed
 	a.ang = (a.pos - f.pos).angle()          # where round the item it holds on
 	a.since = 0
@@ -422,23 +411,35 @@ func _steer(a: Ant, field: Field, period: int) -> void:
 	var val := field.val
 	var stamp := field.stamp
 	var clock := field.clock
-	var got := [0.0, 0.0, 0.0]
-	for k in 3:
-		var ang := a.ang + (-0.55 if k == 0 else (0.0 if k == 1 else 0.55))
-		var x := px + cos(ang) * 10.0
-		var y := py + sin(ang) * 10.0
-		if x < 0.0 or y < 0.0 or x >= WORLD.x or y >= WORLD.y:
-			got[k] = -1.0
-			continue
+	var wx := WORLD.x
+	var wy := WORLD.y
+	var ang := a.ang - 0.55
+	var x := px + cos(ang) * 10.0
+	var y := py + sin(ang) * 10.0
+	var l := -1.0
+	if x >= 0.0 and y >= 0.0 and x < wx and y < wy:
 		var i := int(y * INV_CELL) * gw + int(x * INV_CELL)
-		if rock[i] == 1:
-			got[k] = -1.0
-			continue
-		var v := val[i]
-		got[k] = 0.0 if v <= 0.0 else v * exp(clock - stamp[i])
-	var l: float = got[0]
-	var c: float = got[1]
-	var r: float = got[2]
+		if rock[i] != 1:
+			var v := val[i]
+			l = 0.0 if v <= 0.0 else v * exp(clock - stamp[i])
+	ang = a.ang
+	x = px + cos(ang) * 10.0
+	y = py + sin(ang) * 10.0
+	var c := -1.0
+	if x >= 0.0 and y >= 0.0 and x < wx and y < wy:
+		var i := int(y * INV_CELL) * gw + int(x * INV_CELL)
+		if rock[i] != 1:
+			var v := val[i]
+			c = 0.0 if v <= 0.0 else v * exp(clock - stamp[i])
+	ang = a.ang + 0.55
+	x = px + cos(ang) * 10.0
+	y = py + sin(ang) * 10.0
+	var r := -1.0
+	if x >= 0.0 and y >= 0.0 and x < wx and y < wy:
+		var i := int(y * INV_CELL) * gw + int(x * INV_CELL)
+		if rock[i] != 1:
+			var v := val[i]
+			r = 0.0 if v <= 0.0 else v * exp(clock - stamp[i])
 	if maxf(l, maxf(c, r)) < 0.03 or (c >= l and c >= r):
 		return
 	var turn := minf(1.0, 0.45 * period / SENSE_EVERY)

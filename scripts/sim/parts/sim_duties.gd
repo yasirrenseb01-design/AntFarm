@@ -44,7 +44,11 @@ func _duties() -> void:
 	_share_honeydew(inside)
 	# the rest: standing still (more at night, in the cold, when full - and when hungry: a starved L. niger colony is less
 	# active in the nest [Ln]), the laziest first and the same ones again; some cleaning; the others walking about
-	var free: Array = inside.filter(func(a): return a.duty == -1)
+	# (plain loops where filter/map lambdas were, the same lists in the same order and the same draws: v0.12.3)
+	var free: Array = []
+	for a in inside:
+		if a.duty == -1:
+			free.append(a)
 	var k := REST_SHARE
 	if daylight() < 0.15:
 		k *= 1.3
@@ -54,7 +58,9 @@ func _duties() -> void:
 		k *= 1.25
 	var n_rest := mini(roundi(free.size() * 0.8), roundi(minf(0.9, k) * inside.size()))     # (a few always about)
 	# (as [-key, id, ant] sorted by the engine: ~4x faster than a sort_custom lambda, the same order - v0.12.2)
-	var by_lazy := free.map(func(a): return [-(a.threshold(Ant.TH_FORAGE) + duty_rng.randf() * 0.4), a.id, a])
+	var by_lazy: Array = []
+	for a in free:
+		by_lazy.append([-(a.threshold(Ant.TH_FORAGE) + duty_rng.randf() * 0.4), a.id, a])
 	by_lazy.sort()
 	for i in by_lazy.size():
 		var a = by_lazy[i][2]
@@ -71,7 +77,10 @@ func _duties() -> void:
 ## Some of the cleaners clean a nestmate standing still rather than themselves ([ญาติ] ~6% of the time against ~15%:
 ## about 2 in 7): the groomer's partner is the one it licks, and that one's (D_REST) partner is its groomer.
 func _groom_mates(inside: Array) -> void:
-	var still: Array = inside.filter(func(a): return a.duty == Ant.D_REST)
+	var still: Array = []
+	for a in inside:
+		if a.duty == Ant.D_REST:
+			still.append(a)
 	for a in inside:
 		if a.duty != Ant.D_GROOM or still.is_empty() or duty_rng.randf() >= ALLOGROOM_SHARE:
 			continue
@@ -93,12 +102,21 @@ func _feed_larvae(inside: Array) -> void:
 		l["f"] = 0.0
 	var want := larvae.size()
 	var order: Array = []
-	for t in [Ant.TASK_NURSE, Ant.TASK_CALLOW, Ant.TASK_RESERVE, Ant.TASK_DIG]:
-		var some: Array = inside.filter(func(a): return a.task == t and (a.duty == -1 or a.duty == Ant.D_DIG))
+	var tasks := [Ant.TASK_NURSE, Ant.TASK_CALLOW, Ant.TASK_RESERVE, Ant.TASK_DIG]
+	var by_task := [[], [], [], []]
+	for a in inside:
+		if a.duty == -1 or a.duty == Ant.D_DIG:
+			var ti := tasks.find(a.task)
+			if ti >= 0:
+				by_task[ti].append(a)
+	for some: Array in by_task:
 		# keen nurses first, but not always the same ones (they take turns)
-		var keen := some.map(func(a): return [-(a.threshold(Ant.TH_AGE) + duty_rng.randf() * 0.5), a.id, a])
+		var keen: Array = []
+		for a in some:
+			keen.append([-(a.threshold(Ant.TH_AGE) + duty_rng.randf() * 0.5), a.id, a])
 		keen.sort()
-		order += keen.map(func(x): return x[2])
+		for x in keen:
+			order.append(x[2])
 	var feeds: Array = larvae.duplicate()
 	feeds.sort_custom(func(x, y): return float(x.h) > float(y.h))
 	var li := 0
@@ -185,9 +203,17 @@ func _tend_queen(inside: Array) -> void:
 ## weakest first; those fed pass on what they got next round (L. niger: frequency, not size, of the exchanges sets how
 ## food spreads, and nest workers are go-betweens [Ln]). The sugar itself is the colony's.
 func _share_honeydew(inside: Array) -> void:
-	var takers: Array = inside.filter(func(a): return a.duty == -1 and a.sweet <= 0.25).map(func(a): return [a.energy, a.id, a])
+	var takers: Array = []
+	var givers: Array = []
+	for a in inside:
+		if a.duty == -1:
+			if a.sweet <= 0.25:
+				takers.append([a.energy, a.id, a])
+			else:
+				givers.append([-a.sweet, a.id, a])      # (sweet is not changed before the givers are gone through)
 	takers.sort()                        # (energy, then id: as the sort_custom before v0.12.2, ~4x faster)
-	takers = takers.map(func(x): return x[2])
+	for i in takers.size():
+		takers[i] = takers[i][2]
 	var ti := 0
 	# each load of honeydew brought home since the last round went first to a nestmate at the entrance (the forager may be
 	# out again by now)
@@ -209,9 +235,9 @@ func _share_honeydew(inside: Array) -> void:
 			f.partner = t.id
 	_unloaded.clear()
 	# ...and those with a full crop pass it on
-	var givers: Array = inside.filter(func(a): return a.sweet > 0.25 and a.duty == -1).map(func(a): return [-a.sweet, a.id, a])
 	givers.sort()
-	givers = givers.map(func(x): return x[2])
+	for i in givers.size():
+		givers[i] = givers[i][2]
 	for g in givers:
 		if ti >= takers.size():
 			break
