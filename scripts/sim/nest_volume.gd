@@ -249,10 +249,14 @@ func _step_digger(d: Dictionary, target_air: int, humidity: float) -> void:
 	var cands: Array[Vector3i] = []
 	var weights: Array[float] = []
 	var total := 0.0
-	var to_work: bool = work_left > 0 and work_at.x >= 0 and work_dist.size() == rho.size() and work_dist[idx(c)] >= 0
+	var to_work: bool = work_left > 0 and work_at.x >= 0 and work_dist.size() == rho.size() and work_d(idx(c)) >= 0
+	var here_w := work_d(idx(c)) if to_work else -1
 	for dd in DIRS:
 		var n := c + dd
-		var on_way: bool = to_work and inside(n) and work_dist[idx(n)] >= 0 and work_dist[idx(n)] < work_dist[idx(c)]
+		var on_way := false
+		if to_work and inside(n):
+			var wn := work_d(idx(n))
+			on_way = wn >= 0 and wn < here_w
 		if not walkable(n) and not on_way:
 			continue                     # (on the way to planned work it may cross a tunnel's middle)
 		var w := 1.0 + 6.0 * _dig_signal(n)

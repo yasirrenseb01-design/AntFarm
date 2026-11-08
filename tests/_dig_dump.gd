@@ -34,7 +34,7 @@ func _init():
 		var ds := []
 		for d in s.nest.diggers:
 			var c: Vector3i = d.cell
-			var wd: int = s.nest.work_dist[s.nest.idx(c)] if s.nest.work_dist.size() == s.nest.rho.size() else -9
+			var wd: int = s.nest.work_d(s.nest.idx(c)) if s.nest.work_dist.size() == s.nest.rho.size() else -9
 			var bp := 0.0
 			var why := ""
 			for dd in s.nest.DIRS:

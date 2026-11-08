@@ -26,6 +26,7 @@ func plan_sig() -> Array:
 	for ch in chambers:
 		sig.append(ch.goal)
 		sig.append(ch.get("open", true))
+		sig.append(ch.c)
 	return sig
 
 
@@ -34,6 +35,34 @@ func _check_plan_memo() -> void:
 	if sig != _plan_memo_sig:
 		_plan_memo.clear()
 		_plan_memo_sig = sig
+
+
+# How far each chamber and gallery reaches, to pass over in _plan_now those surely out of reach of a voxel (made again
+# whenever plan_sig() is not what it was made from, v0.12.3). A chamber's room_q is over 1 more than its height above or below its middle, or past its widest
+# lobe; a gallery's way is 1.3 round its line. Each kept a voxel wider than that.
+var _plan_reach: Array = []
+var _plan_reach_sig := []
+
+
+func _reach() -> Array:
+	var sig := plan_sig()
+	if sig == _plan_reach_sig:
+		return _plan_reach
+	_plan_reach_sig = sig
+	_plan_reach = []
+	for ch in chambers:
+		var ax := chamber_axes(ch)
+		var m := maxf(ax.x, ax.z) * _lobe_max(ch) + 1.0
+		var c: Vector3 = ch.c
+		var segs := []
+		if ch.has("from"):
+			for seg in _gallery(ch):
+				var a: Vector3 = seg[0]
+				var b: Vector3 = seg[1]
+				segs.append([a, b, Vector3(minf(a.x, b.x), minf(a.y, b.y), minf(a.z, b.z)) - Vector3.ONE * 2.3,
+					Vector3(maxf(a.x, b.x), maxf(a.y, b.y), maxf(a.z, b.z)) + Vector3.ONE * 2.3])
+		_plan_reach.append([c, ax.y + 1.0, m, segs])
+	return _plan_reach
 
 
 func _plan_at(c: Vector3i) -> int:
@@ -55,16 +84,29 @@ func _plan_now(c: Vector3i) -> int:
 		var et := clampf((p - ea).dot(eab) / maxf(eab.length_squared(), 0.001), 0.0, 1.0)
 		if p.distance_to(ea + eab * et) <= entrance_r and p.y < ny - 1:
 			on_shaft = true
-	for ch in chambers:
-		if ch.get("open", true) and chamber_q(p, ch) <= 1.0:
+	var reach := _reach()
+	for k in chambers.size():
+		var ch: Dictionary = chambers[k]
+		var rc: Array = reach[k]
+		var cc: Vector3 = rc[0]
+		var near: bool = absf(p.y - cc.y) <= float(rc[1])
+		if near:
+			var m: float = rc[2]
+			near = absf(p.x - cc.x) <= m if slab else Vector2(p.x - cc.x, p.z - cc.z).length() <= m
+		if near and ch.get("open", true) and chamber_q(p, ch) <= 1.0:
 			return 2
-		if ch.has("from"):
-			for seg in _gallery(ch):
-				var a: Vector3 = seg[0]
-				var ab: Vector3 = seg[1] - a
-				var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
-				if p.distance_to(a + ab * t) <= 1.3:
-					on_shaft = true
+		if on_shaft:
+			continue                       # (nothing more a gallery can tell: only a chamber further on matters)
+		for seg in rc[3]:
+			var lo: Vector3 = seg[2]
+			var hi: Vector3 = seg[3]
+			if p.x < lo.x or p.y < lo.y or p.z < lo.z or p.x > hi.x or p.y > hi.y or p.z > hi.z:
+				continue
+			var a: Vector3 = seg[0]
+			var ab: Vector3 = seg[1] - a
+			var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+			if p.distance_to(a + ab * t) <= 1.3:
+				on_shaft = true
 	return 1 if on_shaft else 0
 
 
@@ -188,60 +230,6 @@ func _face_at(v: Vector3i, pri: int, best: Array) -> void:
 		if inside(o) and is_open(o) and dist[idx(o)] >= 0 and dist[idx(o)] + pri < best[0]:
 			best[0] = dist[idx(o)] + pri
 			work_at = o
-
-
-## Steps from every voxel an ant can walk to (along the walls) to work_at, so diggers walk the tunnels to it.
-func _work_paths() -> void:
-	work_dist.resize(nx * hy() * nz)
-	work_dist.fill(-1)
-	if work_at.x < 0 or not inside(work_at) or not is_open(work_at):
-		return
-	# (along flat indices, idx()'s layout: ~55 ms each game day through inside/is_open/idx for every neighbour, v0.11.89)
-	var rows := ny - y_lo
-	var up := nx
-	var back := rows * nx
-	var d := work_dist
-	var r := rho
-	var q := PackedInt32Array()
-	q.resize(d.size())
-	var first := idx(work_at)
-	d[first] = 0
-	q[0] = first
-	var h := 0
-	var t := 1
-	while h < t:
-		var i: int = q[h]
-		h += 1
-		var dc: int = d[i] + 1
-		var x := i % nx
-		var row := i / nx
-		var yy := row % rows
-		var zz := row / rows
-		if x + 1 < nx and r[i + 1] < AIR and d[i + 1] < 0:
-			d[i + 1] = dc
-			q[t] = i + 1
-			t += 1
-		if x > 0 and r[i - 1] < AIR and d[i - 1] < 0:
-			d[i - 1] = dc
-			q[t] = i - 1
-			t += 1
-		if yy + 1 < rows and r[i + up] < AIR and d[i + up] < 0:
-			d[i + up] = dc
-			q[t] = i + up
-			t += 1
-		if yy > 0 and r[i - up] < AIR and d[i - up] < 0:
-			d[i - up] = dc
-			q[t] = i - up
-			t += 1
-		if zz + 1 < nz and r[i + back] < AIR and d[i + back] < 0:
-			d[i + back] = dc
-			q[t] = i + back
-			t += 1
-		if zz > 0 and r[i - back] < AIR and d[i - back] < 0:
-			d[i - back] = dc
-			q[t] = i - back
-			t += 1
-	work_dist = d
 
 
 ## Half-axes of a chamber's planned shape: long, wide (across), high. Flat: about two ants high.

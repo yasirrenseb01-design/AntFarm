@@ -56,6 +56,7 @@ func _check(what: String, nest) -> int:
 				print("  FAIL %s: chamber at %s: %d voxels, plain way %d" % [what, ch.c, got, want])
 				bad += 1
 	nest.count_work_left()
+	nest.finish_work_paths()
 	var plain := _plain_paths(nest)
 	var reached := 0
 	for i in plain.size():
