@@ -453,10 +453,15 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 		if slab:
 			site = Vector3(src.c.x + (1.0 if cos(hd) >= 0.0 else -1.0) * Vector2(site.x - src.c.x, site.z - src.c.z).length(),
 				site.y, src.c.z)
-		if site.x < x_lo + 8 or site.x > nx - 9 or site.y < y_floor + 6 or site.y > ny - 9 or site.z < (1 if slab else z_lo + 8) or site.z > nz - (2 if slab else 9):
+		# (within the tank's soil, the box held grown to it first - PART 0.12 step 5c; a box that cannot grow: within it)
+		var sx := Vector2i(0, tank.x) if tank != Vector2i.ZERO else Vector2i(x_lo, nx)
+		var sz := Vector2i(0, tank.y) if tank != Vector2i.ZERO else Vector2i(z_lo, nz)
+		if site.x < sx.x + 8 or site.x > sx.y - 9 or site.y < y_floor + 6 or site.y > ny - 9 or site.z < (1 if slab else sz.x + 8) or site.z > sz.y - (2 if slab else 9):
 			continue
 		if site.y - 10.0 < float(y_lo):
 			extend_down(int(site.y) - 12)         # (the soil down there, taken in before it is planned in)
+		var sc := Vector2(src.c.x, src.c.z)
+		extend_xz(Vector2(minf(site.x, sc.x), minf(site.z, sc.y)), Vector2(maxf(site.x, sc.x), maxf(site.z, sc.y)))
 		if hard_near(site, 6.0):
 			continue                                      # not on a stone or a root ...
 		var from: Vector3 = _rim_toward(src, (site - Vector3(src.c)) * Vector3(1, 0, 1))

@@ -64,6 +64,7 @@ static func save(slot: int, sim, extra: Dictionary = {}) -> bool:
 	meta["version"] = ProjectSettings.get_setting("application/config/version", "dev")
 	# where the nest's block lies along the box, from its left inside (metres: the Home draws it there on the glass)
 	meta["nest_x0"] = sim.nest_pos.x * 0.0005 - (sim.nest.entrance.x - sim.nest.x_lo) * 0.0015
+	meta["nest_w"] = sim.nest.wx() * 0.0015         # (and how wide: the box held, grown sideways - PART 0.12)
 	f.store_var({"meta": meta, "sim": sim.to_dict()})
 	f.close()
 	if FileAccess.file_exists(_path(slot)):

@@ -157,9 +157,10 @@ func _render_log() -> void:
 ## coloured with the same soil layers as the 3D view. Rebuilt only when the ants have dug.
 func _refresh_nest_image() -> void:
 	var nv = sim.nest
-	if nv.air == _proj_air and _proj_tex != null:
+	if nv.air == _proj_air and nv.resized == _proj_resized and _proj_tex != null:
 		return
 	_proj_air = nv.air
+	_proj_resized = nv.resized
 	var h: int = nv.hy()                       # (the soil held: a deep garden nest's from y_lo, below 0)
 	var img := Image.create(nv.wx(), h, false, Image.FORMAT_RGBA8)
 	var loam := Color(0.3, 0.2, 0.12)
@@ -175,7 +176,7 @@ func _refresh_nest_image() -> void:
 			var tone := soil * (0.9 + 0.2 * _seeded(x * 131 + y, 3))
 			tone.a = 1.0
 			img.set_pixel(x, depth, tone if open == 0 else hole.lerp(tone, 0.25 / open))
-	if _proj_tex == null or _proj_tex.get_height() != h:
+	if _proj_tex == null or _proj_tex.get_height() != h or _proj_tex.get_width() != nv.wx():
 		_proj_tex = ImageTexture.create_from_image(img)
 	else:
 		_proj_tex.update(img)

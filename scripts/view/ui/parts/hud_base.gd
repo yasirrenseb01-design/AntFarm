@@ -64,6 +64,7 @@ var _colonies_body: PanelContainer
 var _report: AcceptDialog
 var _proj_tex: ImageTexture
 var _proj_air := -1
+var _proj_resized := -1          # (nest.resized when it was drawn: the box held grown, the same air - drawn again)
 var _spots_t := -10.0
 var _crop := Rect2i(0, 0, 1, 1)
 var nest_view

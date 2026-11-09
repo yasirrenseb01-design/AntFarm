@@ -14,9 +14,28 @@ var t0 := 0.0
 
 
 ## true: --follow-in has taken over (nothing else of --nest-after is done).
+## (also --grow-box=<voxels> with --nest-after: 1 s after the nest opened the box of soil held is grown that far every
+## way, as the planner does when a chamber is planned out past it - the view laying itself out again while open)
 static func start(game) -> bool:
 	var c = new()
 	c.g = game
+	if game._opts.has("grow-box"):
+		game.get_tree().create_timer(float(game._opts["nest-after"]) + 1.0).timeout.connect(func():
+			var n = game.sim.nest
+			var by := float(game._opts["grow-box"])
+			var t0 := Time.get_ticks_usec()
+			var d0: int = n.dirty.size()
+			var grew: bool = n.extend_xz(Vector2(n.x_lo - by, n.z_lo - by), Vector2(n.nx + by, n.nz + by))
+			print("grow-box: dirty %d -> %d" % [d0, n.dirty.size()])
+			print("grow-box: %s, box x %d..%d z %d..%d, %.1f ms" % [grew, n.x_lo, n.nx, n.z_lo, n.nz, (Time.get_ticks_usec() - t0) / 1000.0])
+			if game._opts.has("grow-shot"):
+				# (--grow-shot=<png>: the picture 8 s after it grew, the soil's pieces laid out again by then; how many were
+				# still waiting at 2 s and 8 s printed)
+				game.get_tree().create_timer(2.0).timeout.connect(func(): print("grow-box: %d soil pieces waiting at 2 s" % game.nest_view._queue.size()))
+				game.get_tree().create_timer(8.0).timeout.connect(func():
+					print("grow-box: %d soil pieces waiting at 8 s" % game.nest_view._queue.size())
+					await RenderingServer.frame_post_draw
+					game.get_viewport().get_texture().get_image().save_png(String(game._opts["grow-shot"]))))
 	if game._opts.has("follow-in"):
 		c.left = int(game._opts.get("follow-in", "3"))
 		game.get_tree().create_timer(2.0).timeout.connect(c._pick)

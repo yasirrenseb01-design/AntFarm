@@ -438,7 +438,7 @@ func _tank(parent: Node3D, at: Vector3, big: bool, farm: bool, slot: int, number
 			_box(Vector3(r, r, o.z), Vector3(o.x * 0.5, y, 0), rim, t)
 			_box(Vector3(r, r, o.z), Vector3(-o.x * 0.5, y, 0), rim, t)
 		if soil != null:
-			_soil_box(t, Vector3(f.x, Spec.SOIL, f.y), Vector3(0, g + Spec.SOIL * 0.5, 0), soil, nest_x0 - f.x * 0.5, Spec.NEST.x, Spec.NEST.y)
+			_soil_box(t, Vector3(f.x, Spec.SOIL, f.y), Vector3(0, g + Spec.SOIL * 0.5, 0), soil, nest_x0 - f.x * 0.5, float(Store.meta(slot).get("nest_w", Spec.NEST.x)), Spec.NEST.y)
 		t.set_meta("inside", Vector3(-f.x * 0.5, g, -f.y * 0.5))        # the box's floor, left back corner (keeper_room)
 		assert(tall > Spec.SOIL)
 	if soil != null:

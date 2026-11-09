@@ -21,6 +21,9 @@ func _nest_in_tank() -> void:
 		return
 	var px := 0.5 / nest.VOXEL_MM                    # voxels a px (1 px = 0.5 mm)
 	var tank := Vector2i(floori(WORLD.x * px), floori(WORLD.y * px))
+	if scenario == "keeper":
+		nest.tank = tank                             # (the box held grows sideways as far as the tank's sides: a keeper's
+		                                             # tank only - the garden's plot waits for PART 0.14, the user 2026-11-09)
 	var ox := clampi(roundi(nest_pos.x * px) - nest.entrance.x, 0, maxi(0, tank.x - nest.wx()))
 	var oz := clampi(roundi(nest_pos.y * px) - nest.entrance.z, 0, maxi(0, tank.y - nest.wz()))
 	nest.shift_xz(ox, oz)
@@ -263,6 +266,8 @@ func from_dict(d: Dictionary) -> void:
 	_food_dirty = true
 	if not (d.nest as Dictionary).has("x_lo"):
 		_nest_in_tank()                     # (saved before v0.12.18: the block from 0 - moved to where it lies in the tank)
+	elif scenario == "keeper" and not nest.slab:
+		nest.tank = Vector2i(floori(WORLD.x * 0.5 / nest.VOXEL_MM), floori(WORLD.y * 0.5 / nest.VOXEL_MM))
 
 
 ## A short summary for the save menu and the "while you were away" report.

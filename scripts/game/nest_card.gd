@@ -7,6 +7,7 @@ extends RefCounted
 
 const PngCheck := preload("res://scripts/game/png_check.gd")
 const MAX_BYTES := 512 * 1024
+const MAX_W := 640                   # columns: the box held, up to the bigger tank's whole soil (600: PART 0.12)
 
 
 static func path(dir: String, slot: int) -> String:
@@ -44,9 +45,9 @@ static func read(dir: String, slot: int) -> ImageTexture:
 	if f == null or f.get_length() > MAX_BYTES:
 		return null
 	var buf := f.get_buffer(f.get_length())
-	if not PngCheck.fits(buf, 512, 1024):      # (its size from the header, before it is decoded)
+	if not PngCheck.fits(buf, MAX_W, 1024):    # (its size from the header, before it is decoded)
 		return null
 	var img := Image.new()
-	if img.load_png_from_buffer(buf) != OK or img.get_width() > 512 or img.get_height() > 1024:
+	if img.load_png_from_buffer(buf) != OK or img.get_width() > MAX_W or img.get_height() > 1024:
 		return null
 	return ImageTexture.create_from_image(img)

@@ -43,6 +43,93 @@ func extend_down(y: int) -> bool:
 	return true
 
 
+## Takes in the tank's soil sideways (PART 0.12 step 5c) so the box held covers lo .. hi (x, z) with SIDE_ROOM to spare,
+## in whole chunks, never past the tank's sides (tank: 0 = the box cannot grow). The ants plan a chamber out there: the
+## soil is taken in first, as extend_down does below. Every per-voxel array is laid out again round the old (the new
+## soil solid, never dug). Returns whether anything was added. (No stones or roots in it yet: BACKLOG.)
+const SIDE_ROOM := 12
+var tank := Vector2i.ZERO               # the tank's soil, columns and slices (Simulation._nest_in_tank; not saved)
+
+func extend_xz(lo: Vector2, hi: Vector2) -> bool:
+	if tank == Vector2i.ZERO or slab:
+		return false
+	var c := CHUNK
+	var x0 := clampi(mini(x_lo, floori((lo.x - SIDE_ROOM) / c) * c), 0, x_lo)
+	var x1 := clampi(maxi(nx, ceili((hi.x + SIDE_ROOM) / c) * c), nx, tank.x)
+	var z0 := clampi(mini(z_lo, floori((lo.y - SIDE_ROOM) / c) * c), 0, z_lo)
+	var z1 := clampi(maxi(nz, ceili((hi.y + SIDE_ROOM) / c) * c), nz, tank.y)
+	if x0 == x_lo and x1 == nx and z0 == z_lo and z1 == nz:
+		return false
+	finish_work_paths()                  # (the search goes on in the soil it began with: finished first)
+	var h := hy()
+	var w0 := wx()
+	var d0 := wz()
+	var w1 := x1 - x0
+	var d1 := z1 - z0
+	var left := x_lo - x0
+	var front := z_lo - z0
+	# row by row, the old rows with new soil either side of them (append_array: the engine copies, ~nothing in GDScript)
+	var grow := func(a, blank):
+		var row_new = blank.duplicate()
+		row_new.resize(w1)
+		var fill_v = blank[0]
+		row_new.fill(fill_v)
+		var l = blank.duplicate()
+		l.resize(left)
+		l.fill(fill_v)
+		var r = blank.duplicate()
+		r.resize(w1 - left - w0)
+		r.fill(fill_v)
+		var b = blank.duplicate()
+		b.resize(0)
+		for z in d1:
+			var oz: int = z - front
+			for y in h:
+				if oz < 0 or oz >= d0:
+					b.append_array(row_new)
+				else:
+					var s: int = (oz * h + y) * w0
+					b.append_array(l)
+					b.append_array(a.slice(s, s + w0))
+					b.append_array(r)
+		return b
+	rho = grow.call(rho, PackedByteArray([255]))
+	dug_at = grow.call(dug_at, PackedInt32Array([-1000000]))
+	dist = grow.call(dist, PackedInt32Array([-1]))
+	if not work_dist.is_empty():
+		work_dist = grow.call(work_dist, PackedInt32Array([-1]))
+	var old := Rect2i(x_lo, z_lo, w0, d0)
+	x_lo = x0
+	nx = x1
+	z_lo = z0
+	nz = z1
+	_recount()
+	_stamp_hard()
+	# the soil's pieces that change (the mesher's chunks): the box's old sides and its new ones, all the way down, and
+	# the ground's surface over the soil taken in; the new soil under it is solid all through - nothing drawn there
+	# (every chunk of the new box: ~1,200 for a 1,260-ant nest grown 40 voxels, ~25 s before the view had laid them out)
+	var top := Vector2i(floori((ny - 2) / float(CHUNK)), floori(ny / float(CHUNK)))
+	var ylo := floori(y_lo / float(CHUNK)) - 1
+	var yhi := ceili(ny / float(CHUNK))
+	var side := func(v: int, a: int, b: int) -> bool:          # (a chunk along x or z that holds a side at a or b)
+		return absi(v - floori(a / float(CHUNK))) <= 1 or absi(v - floori((b - 1) / float(CHUNK))) <= 1
+	for cz in range(floori(z_lo / float(CHUNK)) - 1, ceili(nz / float(CHUNK)) + 1):
+		for cx in range(floori(x_lo / float(CHUNK)) - 1, ceili(nx / float(CHUNK)) + 1):
+			var in_old_x: bool = cx >= floori(old.position.x / float(CHUNK)) - 1 and cx <= floori((old.end.x - 1) / float(CHUNK)) + 1
+			var in_old_z: bool = cz >= floori(old.position.y / float(CHUNK)) - 1 and cz <= floori((old.end.y - 1) / float(CHUNK)) + 1
+			var at_side: bool = side.call(cx, x_lo, nx) or side.call(cz, z_lo, nz) \
+				or (in_old_z and side.call(cx, old.position.x, old.end.x)) or (in_old_x and side.call(cz, old.position.y, old.end.y))
+			var new_soil := not old.has_point(Vector2i(cx * CHUNK, cz * CHUNK)) or not old.has_point(Vector2i(cx * CHUNK + CHUNK - 1, cz * CHUNK + CHUNK - 1))
+			if at_side:
+				for cy in range(ylo, yhi + 1):
+					dirty[Vector3i(cx, cy, cz)] = true
+			elif new_soil:
+				for cy in range(top.x, top.y + 1):
+					dirty[Vector3i(cx, cy, cz)] = true
+	resized += 1
+	return true
+
+
 var resized := 0                        # counts extend_down (the view lays out its volumes again)
 
 
@@ -186,8 +273,8 @@ func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
 	dug_at = d.dug_at
 	dist = d.dist
 	excavated = d.excavated
-	chambers = d.chambers
-	diggers = d.diggers
+	chambers = d.chambers.duplicate(true)      # (copies: shift_xz moves them in place - a save's dictionary read twice,
+	diggers = d.diggers.duplicate(true)        # as the tests do, was moved twice: v0.12.19)
 	entrance = d.entrance
 	tick = d.tick
 	_dist_age = d.dist_age
@@ -207,7 +294,7 @@ func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
 			var rows := []
 			for row in sd.get(k, []) if sd.get(k) is Array else []:
 				if row is Array and row.size() == (4 if k == "stones" else 7) and row.all(func(v): return v is float or v is int):
-					rows.append(row)
+					rows.append(row.duplicate())
 			soil[k] = rows.slice(0, 64)
 	# nests dug before v0.8.2 left open voxels at half density, which drew as blocky steps
 	for i in rho.size():
