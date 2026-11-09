@@ -11,6 +11,9 @@ extends Control
 ## here as the time passes, not saved: before that, reckoned); ahead it is reckoned from today's weather, the rain
 ## while it lasts. None while the colony rests for the winter or has no workers yet - nobody goes out.
 ## Clouds are drawn, not simulated (the game has rain or no rain): white and few, or grey and many over the rain.
+## Along the ground, the season's plants (the keeper's four pictures, 2026-11-09: tools/ui/make_seasons.py), sliding with
+## the time like the ants, dimmed by night as the sky over them is, and passing from one season into the next over a few
+## days round each change (the seasons as sim.season_name has them).
 
 const Kit := preload("res://scripts/view/ui/draw_kit.gd")
 const Paper := preload("res://scripts/view/ui/paper.gd")
@@ -22,6 +25,13 @@ const HOURS_SHOWN := 5.2      # hours across the bar (the sketch: 10:00 to 14:00
 const SLOTS := 4              # ant places per hour
 const ANT_SCALE := 1.6        # (the sketch's ants are big: about a fifth of an hour long)
 const INK := Paper.INK
+const SCENE_H := 54.0         # the plants' height over the middle of the ground line (less towards the ends)
+const SCENE_PAD := 4.0 / 128.0      # the pictures' clear rows above and below (tools/ui/make_seasons.py PAD / H)
+const SEASON_FADE := 10.0     # days each side of a change of season the two pictures pass into each other
+# where the seasons change (day of the year, as sim.season_name): from, to
+const SEASON_TURNS := [[59.0, "winter", "spring"], [151.0, "spring", "summer"], [243.0, "summer", "autumn"],
+	[334.0, "autumn", "winter"]]
+static var _scenes := {}      # season -> its picture (loaded once)
 
 var sim
 var mono: Font
@@ -39,6 +49,7 @@ func setup(s, mono_font: Font) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP     # (not a click through to the camera; the tip says what it shows)
 	tooltip_text = tr("timebar_tip")
 	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS      # (the plants are drawn at ~0.4 of their pixels)
 
 
 ## Placed between the colony's bar on the left (left) and the side panel or the screen's edge (right).
@@ -142,6 +153,7 @@ func _draw() -> void:
 	var gnd := PackedFloat32Array()
 	var c_top := PackedColorArray()
 	var c_hor := PackedColorArray()
+	var c_scene := PackedColorArray()
 	for i in n + 1:
 		var x := w * i / n
 		top.append(0.0)
@@ -153,6 +165,7 @@ func _draw() -> void:
 		var sky: Array = _sky(sim.sun_height(fposmod(hm / 24.0, 1.0)), _rain_at(int(floor(hm * SLOTS)), now))
 		c_top.append(sky[0])
 		c_hor.append(sky[1])
+		c_scene.append(_scene_light(sim.sun_height(fposmod(hm / 24.0, 1.0)), _rain_at(int(floor(hm * SLOTS)), now)))
 	var shade := PackedColorArray()
 	shade.resize(n + 1)
 	shade.fill(Color(0, 0, 0, 0.28))
@@ -163,6 +176,8 @@ func _draw() -> void:
 	_strip(n, top, bot, white, white, Vector2.ZERO, Paper.texture())
 	_strip(n, top, gnd, c_top, c_hor, Vector2.ZERO)
 	_draw_sun(now)
+	for pair in _season_mix():
+		_draw_scene(n, pair[0], pair[1], now, c_scene)
 	_draw_clouds(now)
 	_draw_air()
 
@@ -204,7 +219,7 @@ func _draw() -> void:
 ## n columns from top to bottom (each n+1 long, at the column edges) as one batch of triangles: shaded, or the paper.
 ## (draw_colored_polygon worked the triangles out again every time it drew - most of the bar's time.)
 func _strip(n: int, top: PackedFloat32Array, bottom: PackedFloat32Array, c_top: PackedColorArray, c_bottom: PackedColorArray,
-		off: Vector2, tex: Texture2D = null) -> void:
+		off: Vector2, tex: Texture2D = null, uvs := PackedVector2Array()) -> void:
 	var pts := PackedVector2Array()
 	var cols := PackedColorArray()
 	var uv := PackedVector2Array()
@@ -215,13 +230,66 @@ func _strip(n: int, top: PackedFloat32Array, bottom: PackedFloat32Array, c_top: 
 		pts.append(Vector2(x, bottom[i]) + off)
 		cols.append(c_top[i])
 		cols.append(c_bottom[i])
-		if tex != null:
+		if tex != null and uvs.is_empty():       # (the paper: its texture tiled as it lies)
 			uv.append(pts[i * 2] / 512.0)
 			uv.append(pts[i * 2 + 1] / 512.0)
 		if i < n:
 			idx.append_array([i * 2, i * 2 + 2, i * 2 + 1, i * 2 + 1, i * 2 + 2, i * 2 + 3])
-	RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), idx, pts, cols, uv, PackedInt32Array(),
-		PackedFloat32Array(), tex.get_rid() if tex != null else RID())
+	RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), idx, pts, cols, uv if uvs.is_empty() else uvs,
+		PackedInt32Array(), PackedFloat32Array(), tex.get_rid() if tex != null else RID())
+
+
+## The season's pictures to draw now, [[season, opacity], ...]: one, or two either side of a change of season (each
+## at full strength over its own half of the passing, the newer on top).
+func _season_mix() -> Array:
+	var d: float = sim.doy_f()
+	for t in SEASON_TURNS:
+		var off := fposmod(d - t[0] + 182.5, 365.0) - 182.5          # days past this change (- before it)
+		if absf(off) < SEASON_FADE:
+			var k := smoothstep(-SEASON_FADE, SEASON_FADE, off)
+			return [[t[1], minf(1.0, 2.0 - 2.0 * k)], [t[2], minf(1.0, 2.0 * k)]]
+	var name := "winter"
+	for t in SEASON_TURNS:
+		if d >= t[0]:
+			name = t[2]
+	return [[name, 1.0]]
+
+
+## The plants under a sky: full colour by day, dark and blue at night, a little dim in the rain.
+static func _scene_light(sun: float, rain: bool) -> Color:
+	var c := Color(0.27, 0.31, 0.45).lerp(Color.WHITE, clampf((sun + 0.15) / 0.4, 0.0, 1.0))
+	return c.darkened(0.15) if rain else c
+
+
+## One season's plants along the ground line, the picture repeating, its bottom on the line and its top lower towards
+## the ends (where the sky is narrower). light: each column's light (_scene_light), alpha the picture's opacity.
+func _draw_scene(n: int, season: String, alpha: float, now: float, light: PackedColorArray) -> void:
+	if alpha <= 0.0:
+		return
+	if not _scenes.has(season):
+		_scenes[season] = load("res://assets/ui/seasons/%s.png" % season)
+	var tex: Texture2D = _scenes[season]
+	if tex == null:
+		return
+	var tile := tex.get_width() * SCENE_H / (tex.get_height() * (1.0 - 2.0 * SCENE_PAD))     # px across one on screen
+	var shift := fposmod(now * _pph, tile)                         # (it slides with the time, kept small)
+	var g_mid := _ground(size.x * 0.5)
+	var top := PackedFloat32Array()
+	var bot := PackedFloat32Array()
+	var cols := PackedColorArray()
+	var uv := PackedVector2Array()
+	for i in n + 1:
+		var x := size.x * i / n
+		var g := _ground(x)
+		var hh := SCENE_H * (0.65 + 0.35 * g / g_mid)
+		var pad := hh * SCENE_PAD / (1.0 - 2.0 * SCENE_PAD)
+		top.append(g - hh - pad)
+		bot.append(g + 1.0 + pad)
+		cols.append(Color(light[i], alpha))
+		var u := (x - size.x * 0.5 + shift) / tile
+		uv.append(Vector2(u, 0.0))
+		uv.append(Vector2(u, 1.0))
+	_strip(n, top, bot, cols, cols, Vector2.ZERO, tex, uv)
 
 
 ## The sun over now, high or low as it is; under the horizon, the moon.

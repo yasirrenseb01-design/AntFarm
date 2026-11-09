@@ -48,7 +48,7 @@ scripts/
                scenery_draw.gd (สร้างเมชของประดับจากผังใน ground_data; แยกจาก outworld_scene v0.11.37),
                keeper_room.gd (ห้อง Home รอบกล่องของรังตู้ หน่วยเมตรใต้โหนดที่ขยาย; v0.11.52–53)
     nest/      รังใต้ดิน 3 มิติ: nest_view.gd + parts/ (scene, camera, brood, lifecycle, bodies, mates), nest_mesher.gd
-    ui/        hud.gd + parts/ (base, colonies, enemies, controls, panel), draw_kit.gd (วาดมด 2 มิติในภาพตัดขวางของแผงข้าง), species_window.gd (เลือกชนิดมดตอนเริ่มรังใหม่), paper.gd (สไตล์สมุดบันทึก: กระดาษคราฟต์ ธีมหน้าต่าง เสียงดินสอ), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()), time_bar.gd (แถบเวลาโค้งด้านบน: วัน/เวลา ท้องฟ้า มดตามการออกหากินรายชั่วโมงจาก `sim.activity_at`),
+    ui/        hud.gd + parts/ (base, colonies, enemies, controls, panel), draw_kit.gd (วาดมด 2 มิติในภาพตัดขวางของแผงข้าง), species_window.gd (เลือกชนิดมดตอนเริ่มรังใหม่), paper.gd (สไตล์สมุดบันทึก: กระดาษคราฟต์ ธีมหน้าต่าง เสียงดินสอ), ant_tip.gd (คลิกเลือกมด: กล่องสถานะ — ฉากต่างๆ มี pick_ant()/info_for()), time_bar.gd (แถบเวลาโค้งด้านบน: วัน/เวลา ท้องฟ้า อุณหภูมิ ต้นไม้ตามฤดู `assets/ui/seasons/` ทำจาก `reference/seasons/` ด้วย `tools/ui/make_seasons.py`, มดตามการออกหากินรายชั่วโมงจาก `sim.activity_at`),
                sounds.gd (เสียงเตือน), music.gd (เพลงพื้นหลัง 2 เพลงจากไฟล์ `assets/audio/music/` เล่นสลับกัน)
 shaders/       ants/, creatures/, terrain/ (+ ground_h.gdshaderinc: ความสูงพื้นข้างนอก ใช้ร่วมพื้นกับสัตว์), plants/
 assets/models/ ants/, prey/, plants/   (ไฟล์ .antmesh/.json ที่ Blender สร้าง — ห้ามแก้มือ ให้รันสคริปต์ Blender ใหม่)
