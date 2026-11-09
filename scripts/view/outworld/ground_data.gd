@@ -7,6 +7,7 @@ const PHER_HOME := Color(0.5, 0.66, 1.0)
 const PHER_FOOD := Color(0.98, 0.68, 0.27)
 const PHER_ALARM := Color(1.0, 0.22, 0.18)
 const GardenLayout := preload("res://scripts/view/outworld/garden_layout.gd")
+const Mound := preload("res://scripts/sim/mound.gd")
 
 var sim
 var tool := "pan"          # "pan" = just look around; other tools place things
@@ -122,7 +123,7 @@ func _crater_and_midden(r: RandomNumberGenerator) -> void:
 	# a lone founding queen has dug only a little; an established nest has a proper crater
 	for i in (90 if sim.workers.is_empty() else 420):
 		var a := r.randf() * TAU
-		var d := 9.0 + absf(r.randfn(0, 1)) * 13.0
+		var d := Mound.drop_distance(sim.nest.excavated, r.randfn(0, 1))    # (where the diggers set theirs down: v0.12.10)
 		crater.append({"p": sim.nest_pos + Vector2.from_angle(a) * d, "r": r.randf_range(0.6, 1.8),
 			"c": Color(0.6, 0.48, 0.34).lerp(Color(0.82, 0.7, 0.52), r.randf())})
 	for i in 60:

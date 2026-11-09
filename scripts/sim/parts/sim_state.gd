@@ -8,6 +8,7 @@ const Field := preload("res://scripts/sim/pheromone_field.gd")
 const Climate := preload("res://scripts/sim/climate.gd")
 const Species := preload("res://scripts/sim/species/registry.gd")
 const NestVolume := preload("res://scripts/sim/nest_volume.gd")
+const Mound := preload("res://scripts/sim/mound.gd")         # the crater round the entrance (where pellets go)
 const T := preload("res://scripts/sim/text_th.gd")     # journal keys
 const L := preload("res://scripts/sim/lang.gd")        # words in the language in use
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")

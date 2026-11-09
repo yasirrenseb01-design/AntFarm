@@ -11,7 +11,7 @@ const NestCard := preload("res://scripts/game/nest_card.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const PropHeights := preload("res://scripts/view/outworld/prop_heights.gd")
-const Mound := preload("res://scripts/view/common/mound.gd")
+const Mound := preload("res://scripts/sim/mound.gd")
 var sel_kind := ""                # the ant the keeper clicked ("worker"), and its id
 var sel_id := -1
 var _sel_mm: MultiMesh            # its white outline
@@ -221,7 +221,7 @@ func _build_ground() -> void:
 
 ## The crater of excavated pellets grows with the nest below.
 func _update_mound() -> void:
-	var hr := Mound.size(sim.nest.excavated)      # (as big as the soil dug out: view/mound.gd)
+	var hr := Mound.size(sim.nest.excavated)      # (as big as the soil dug out: sim/mound.gd)
 	var m := hr.x
 	if absf(m - _mound) < 0.05:
 		return

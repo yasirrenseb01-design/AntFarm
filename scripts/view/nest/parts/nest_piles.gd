@@ -664,7 +664,7 @@ func _update_brood() -> void:
 		_spots.pupae_old if _pupa_group != _pupa_prev else [], _moved_p if _pupa_group != _pupa_prev else 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
 	_mark_brood_cells()
 	_brood_gen += 1
-	# the crater round the entrance on top of the block: a heap as big as the soil dug out (view/common/mound.gd, the same
+	# the crater round the entrance on top of the block: a heap as big as the soil dug out (sim/mound.gd, the same
 	# as the outworld's ground), pellets lying on its surface (until v0.12.8 only the pellets, at most 900 of them - a few
 	# per cent of what a big colony had dug)
 	if nest.excavated / 4 == _mound_n:

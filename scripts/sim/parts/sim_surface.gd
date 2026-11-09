@@ -25,7 +25,7 @@ func _worker_map() -> Dictionary:
 ## tunnels (nest.diggers) is one worker digging (TASK_DIG), kept by id ("wid"); one at the entrance with its pellet
 ## sends its worker out with it (Ant.DUMP) to set it down on the crater's ring and come back in, and only then digs on.
 ## [Lasius niger workers carry excavated soil out and drop it round the entrance, building the crater: field and
-## keepers' observations; the ring 4.5-10 mm out matches the crater drawn.]
+## keepers' observations; where on the ring: sim/mound.gd drop_distance, the crater the views draw - v0.12.10.]
 func _surface() -> void:
 	if nest.diggers.is_empty():
 		return
@@ -66,7 +66,8 @@ func _surface() -> void:
 		w.carry = Ant.SOIL
 		w.pos = nest_pos
 		var a := rng.randf() * TAU
-		_dumps[wid] = {"to": nest_pos + Vector2.from_angle(a) * (9.0 + absf(rng.randfn(0.0, 1.0)) * 7.0), "dig": int(d.id),
+		var far := Mound.drop_distance(nest.excavated, rng.randfn(0.0, 1.0))      # (on the crater's rim: sim/mound.gd)
+		_dumps[wid] = {"to": nest_pos + Vector2.from_angle(a) * far, "dig": int(d.id),
 			"dropped": false}
 		w.ang = a
 

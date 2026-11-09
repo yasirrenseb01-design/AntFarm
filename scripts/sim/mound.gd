@@ -35,6 +35,19 @@ static func radius(h: float) -> float:
 	return maxf(3.0 + 2.2 * h, 3.56 * h)
 
 
+const PX := 3.0                       # simulation px a voxel (docs/ARCHITECTURE.md units)
+
+
+## How far out (simulation px) a digger sets its pellet down, from a normal draw z (rng.randfn): about the ring's crest,
+## spread a quarter of the radius either way, never in the entrance's pit (v0.12.10, the keeper 2026-11-08: the crater
+## had grown to ~4 cm across while the diggers still dropped their soil 4.5-8 mm out, inside its inner slope).
+## [Lasius niger carry each pellet out of the entrance and drop it at the crater's rim, where it rolls down the outside:
+## field and keepers' observations, general; the quarter-radius spread is an inference to keep the ring's shape.]
+static func drop_distance(pellets: int, z: float) -> float:
+	var r := size(pellets).y * PX
+	return maxf(HOLE.y * PX, r * (1.0 + 0.25 * z))
+
+
 ## Height of the heap at distance d from the entrance (without the pit itself, which the ground adds).
 static func height(d: float, h: float, r: float) -> float:
 	var k := (d - r) / (r * 0.6)

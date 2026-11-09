@@ -142,7 +142,8 @@ func _step_ant(a: Ant) -> void:
 			var to: Vector2 = job.to
 			var d2 := pos.distance_squared_to(to)
 			_turn_toward(a, to, 0.3 if d2 > 16.0 else 0.6)
-			if d2 < 2.25:
+			# (out too long - its spot behind a stone, say: set down where it is, as the crater is all round it)
+			if d2 < 2.25 or a.trip > DUMP_GIVE_UP:
 				a.busy = 14
 				a.act = 2                              # head down, setting it down
 				a.carry = Ant.NONE
@@ -246,6 +247,7 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 # toward the nest, faster with more of them; at the entrance it is cut up and carried in in pieces. One alone
 # waits a while for help, then cuts a piece off instead (and its trail home brings the others).
 const DRAG_WAIT := 900           # ticks a lone ant holds on before it gives up and cuts a piece
+const DUMP_GIVE_UP := 1200       # ticks out with a pellet before it is set down where the ant is (v0.12.10)
 
 ## The glass walls of the box: workers climb smooth vertical glass on their adhesive foot pads (arolia; shown in
 ## other ants, e.g. Endlein & Federle 2015) and keepers report L. niger walking up the glass until it reaches the
