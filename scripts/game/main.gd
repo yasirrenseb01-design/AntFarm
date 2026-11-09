@@ -270,7 +270,7 @@ func _ready() -> void:
 		get_tree().create_timer(ra).timeout.connect(func():
 			desktop._log("dev reload-after: wallpaper on %s" % desktop.on)
 			_go_to(slot, ""))
-	if _opts.has("nest-after"):
+	if _opts.has("nest-after") or _opts.has("follow-in"):
 		_dev_nest_after()
 	if _opts.has("quit-after") and not _opts.has("shot"):
 		# (dev: close as the keeper would after that many seconds - desktop mode checked on the real desktop)

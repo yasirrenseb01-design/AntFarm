@@ -917,6 +917,7 @@ func _take_shot() -> void:
 ## (dev: --nest-after=<s> - the nest opened after that long, as the keeper's button does, for --hitch-log;
 ## --nest-kill-every=<s> - from then on a nestmate dies in it that often, the body and the undertaker played at 1x)
 func _dev_nest_after() -> void:
+	if preload("res://scripts/dev/in_check.gd").start(self): return      # (--follow-in, --in-check: dev/in_check.gd)
 	get_tree().create_timer(float(_opts["nest-after"])).timeout.connect(func():
 		print("nest opened at %.1f s" % (Time.get_ticks_msec() / 1000.0))
 		hud._apply_mode("nest")
@@ -1254,7 +1255,6 @@ func _selftest(days: int, autokeep: bool) -> void:
 	for e in sim.log_entries.slice(0, int(_opts.get("logs", "12"))):
 		print("  ", sim.L.stamp(e), "  ", sim.L.entry_text(e))
 	get_tree().quit()
-
 
 
 ## (dev --follow-undertaker, with --kill-inside: the camera rides with the nestmate that goes for the body, as soon as

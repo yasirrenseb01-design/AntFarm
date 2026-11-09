@@ -83,7 +83,31 @@ func _build_scenery() -> void:
 		GardenLayout.build(self, sim, r)          # grouped as a patch of garden looks (v0.11.37)
 	else:
 		_scatter(r, size)
+	_clear_mound()
 	_crater_and_midden(r)
+
+
+## Nothing standing on the crater of soil: a big nest's grows past the bare ground kept round the entrance (wild:
+## garden_layout NEST_CLEAR 3.5 cm; the keeper's box: none for moss and pebbles) - a colony of ~1,000 heaps it ~4 cm
+## out (sim/mound.gd), with grass, moss and stones drawn on it (BACKLOG v0.12.10). Taken out after all of it is laid
+## out, so the rest stays where it was. [The heap buries what was there: inference.] Worked out when the ground is
+## built - opening the colony: a crater that grows while it is open covers what is at its edge until the next time.
+const MOUND_CLEAR := 1.8          # of the ring's radius: the heap is down to ~1/6 of its height there (Mound.height)
+
+func _clear_mound() -> void:
+	var reach := MOUND_CLEAR * Mound.size(sim.nest.excavated).y * Mound.PX
+	var at: Vector2 = sim.nest_pos
+	var off := func(e) -> bool: return (e.p as Vector2).distance_to(at) >= reach
+	pebbles = pebbles.filter(off)
+	litter = litter.filter(off)
+	tufts = tufts.filter(off)
+	rosettes = rosettes.filter(off)
+	var kept := []
+	for m in moss:
+		var bl: Array = m.filter(func(b): return (b[0] as Vector2).distance_to(at) >= reach)
+		if not bl.is_empty():
+			kept.append(bl)
+	moss = kept
 
 
 ## The keeper's box: the scenery scattered evenly (as everywhere until v0.11.37).

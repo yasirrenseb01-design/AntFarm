@@ -1,0 +1,111 @@
+extends RefCounted
+## Dev checks of ants coming into the nest (v0.12.16; the keeper, 2026-10-24: an ant followed in from the ground
+## "warped" to the deepest chamber, not in by the entrance - nest_bind._bind_tick). Started from dev_tools._dev_nest_after.
+##   --follow-in[=<n>]   after 2 s on the ground, the keeper's "go to" pressed on a forager out there that had a body in
+##                       the nest before it went out (or any, if none has); once it goes in and the nest opens, where its
+##                       body is drawn - steps from the entrance - is printed, n times over (default 3), then it quits
+##   --in-check          (with --nest-after) 0.1 s after the nest opened, where the bodies of workers just in from
+##                       outside are drawn; all of them should be walking in from the entrance
+
+var g                    # the game (main.gd)
+var left := 0
+var wid := -1
+var t0 := 0.0
+
+
+## true: --follow-in has taken over (nothing else of --nest-after is done).
+static func start(game) -> bool:
+	var c = new()
+	c.g = game
+	if game._opts.has("follow-in"):
+		c.left = int(game._opts.get("follow-in", "3"))
+		game.get_tree().create_timer(2.0).timeout.connect(c._pick)
+		game.set_meta("in_check", c)           # (kept alive while its timers run)
+		return true
+	if game._opts.has("in-check"):
+		game.get_tree().create_timer(float(game._opts["nest-after"]) + 0.1).timeout.connect(c._report)
+		game.set_meta("in_check", c)
+	return false
+
+
+func _report() -> void:
+	var nv = g.nest_view
+	var ef: Dictionary = nv._fields.get(-1, {})
+	var near := 0
+	var far := []
+	for m in nv._mates:
+		var id := int(m.get("wid", -1))
+		if id < 0 or m.get("leaving", false):
+			continue
+		for w in g.sim.workers:
+			if w.id == id and nv._came_in_now(w):
+				var d := int(ef.get(m.cell, -1))
+				if d >= 0 and d <= 8:
+					near += 1
+				else:
+					far.append(d)
+	var latest := -1
+	for w in g.sim.workers:
+		latest = maxi(latest, int(w.came_in))
+	print("in-check: just in %d, by the entrance %d, elsewhere %d %s  io %s  (outside %d, last in %d ticks ago)" % [near + far.size(),
+		near, far.size(), str(far), str(nv.io), g.sim.outside.size(), g.sim.tick - latest])
+
+
+func _pick() -> void:
+	var had := {}
+	for m in g.nest_view._mates:
+		had[int(m.get("wid", -1))] = true
+	var best = null
+	for w in g.sim.outside:
+		if w.dead:
+			continue
+		if best == null or (had.has(w.id) and not had.has(best.id)):
+			best = w
+	if best == null:
+		g.get_tree().create_timer(1.0).timeout.connect(_pick)
+		return
+	wid = best.id
+	t0 = Time.get_ticks_msec() / 1000.0
+	print("follow-in: following %d (a body in the nest before: %s)" % [best.id, had.has(best.id)])
+	g.hud.go_to_ant(best.id)
+	_wait()
+
+
+func _wait() -> void:
+	var w = null
+	for x in g.sim.workers:
+		if x.id == wid:
+			w = x
+	if w == null or (Time.get_ticks_msec() / 1000.0 - t0) > 240.0:
+		print("follow-in: lost %d" % wid)
+		_next()
+		return
+	if w.state != g.sim.Ant.IN_NEST or g.mode != "nest":
+		g.get_tree().create_timer(0.1).timeout.connect(_wait)
+		return
+	g.get_tree().create_timer(0.3).timeout.connect(_measure)
+
+
+func _measure() -> void:
+	var ef: Dictionary = g.nest_view._fields.get(-1, {})
+	var d := -1
+	var role := ""
+	for m in g.nest_view._mates:
+		if int(m.get("wid", -1)) == wid:
+			d = int(ef.get(m.cell, -1))
+			role = String(m.role)
+	var deep := 0
+	for k in ef:
+		deep = maxi(deep, int(ef[k]))
+	print("follow-in: %d in; its body %d steps from the entrance (deepest %d), role %s, io %s" % [wid, d, deep, role, str(g.nest_view.io)])
+	_next()
+
+
+func _next() -> void:
+	left -= 1
+	if left <= 0:
+		g.get_tree().quit()
+		return
+	g.hud._apply_mode("outworld")
+	g._set_mode("outworld")
+	g.get_tree().create_timer(5.0).timeout.connect(_pick)

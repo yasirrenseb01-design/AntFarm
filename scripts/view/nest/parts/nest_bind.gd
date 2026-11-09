@@ -10,6 +10,7 @@ extends "res://scripts/view/nest/parts/nest_dead.gd"
 ## face (_dig_vis), and workers still climbing out of their cocoons by their eclosion.
 var draw_cap := 250                # nestmates drawn at most: by the graphics quality (game/graphics.gd NEST_DRAW; dev --draw-cap=<n>)
 var _io_was := {}                 # (dev --io: worker id -> in the nest at the last bind)
+var _bind_tick := -(1 << 60)      # sim.tick at the last bind (a worker that came in after it went out and back unseen)
 
 func _bind_workers() -> void:
 	var all := {}
@@ -60,6 +61,14 @@ func _bind_workers() -> void:
 				io.out_reached_far = int(io.get("out_reached_far", 0)) + 1       # (gone, but not at the entrance)
 			continue                                   # walked out through the entrance
 		if wid >= 0 and by_id.has(wid) and not m.get("leaving", false):
+			var w = by_id[wid]
+			if int(w.came_in) > _bind_tick and _came_in_now(w) and not m.has("script") and not m.has("deliver"):
+				# out and back in while the nest was not being watched (the camera out on the ground: the nest view stands
+				# still): its body is still where it rested before it went out - the deepest chamber, as like as not. It
+				# walks in from the entrance instead (the keeper, 2026-10-24: an ant followed in from the ground "warped" to
+				# the deepest chamber, not in by the entrance)
+				io.back_unseen = int(io.get("back_unseen", 0)) + 1
+				continue
 			bound[wid] = m
 			keep.append(m)
 		elif wid >= 0 and not m.has("script") and not m.has("deliver"):
@@ -109,10 +118,10 @@ func _bind_workers() -> void:
 		if bound.has(w.id):
 			continue
 		var m: Dictionary
-		if not free.is_empty():
-			m = free.pop_front()
+		if not free.is_empty() and not _came_in_now(w):
+			m = free.pop_front()                           # (a newborn's body: not one just in from outside - it walks in)
 		else:
-			var walking_in: bool = sim.tick - int(w.came_in) < int(sim.TPD * 0.05)
+			var walking_in: bool = _came_in_now(w)
 			var c := _entrance_cell() if walking_in else _any_spot()
 			var from_dig := false
 			if _back_at.has(w.id):
@@ -183,6 +192,12 @@ func _bind_workers() -> void:
 					m.item = "corpse"
 	_out_from.clear()
 	_bound_once = true
+	_bind_tick = sim.tick
+
+
+## Just in from outside (within a twentieth of a day): drawn walking in from the entrance.
+func _came_in_now(w) -> bool:
+	return sim.tick - int(w.came_in) < int(sim.TPD * 0.05)
 
 
 ## What a drawn nestmate does, from its worker: queen's retinue, nurse at the brood, walking in, or resting. (The nest
@@ -198,7 +213,7 @@ func _role_for(m: Dictionary, w, attends: bool) -> String:
 
 
 func _walking_in(m: Dictionary, w) -> bool:
-	return m.role == "traffic" and m.goal != -1 and sim.tick - int(w.came_in) < int(sim.TPD * 0.05)
+	return m.role == "traffic" and m.goal != -1 and _came_in_now(w)
 
 
 ## A worker the simulation has just sent out leaves from near the entrance: the inside nestmate drawn nearest the way

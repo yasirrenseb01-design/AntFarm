@@ -261,9 +261,17 @@ static func _scene_light(sun: float, rain: bool) -> Color:
 	return c.darkened(0.15) if rain else c
 
 
-## One season's plants along the ground line, the picture repeating, its bottom on the line and its top lower towards
-## the ends (where the sky is narrower). light: each column's light (_scene_light), alpha the picture's opacity.
-func _draw_scene(n: int, season: String, alpha: float, now: float, light: PackedColorArray) -> void:
+## One season's plants along the ground line, its bottom on the line and its top lower towards the ends (where the sky
+## is narrower). light: each column's light (_scene_light), alpha the picture's opacity.
+## Each picture is only ~1,000 px of the keeper's ground (tools/ui/make_seasons.py), ~126 px across on the bar: repeated
+## whole, the same clump came round six times along it (BACKLOG v0.12.14). So it is cut in SCENE_PIECES pieces, and
+## each place along the bar (a stretch of the time, so it slides with it) takes one of them by a hash of where it is,
+## sometimes turned round; each piece runs on a SCENE_FADE of a piece past its end, under the next one fading in.
+const SCENE_PIECES := 4
+const SCENE_FADE := 0.35
+const SCENE_COLS := 5           # columns a piece is drawn in (it follows the curve of the ground)
+
+func _draw_scene(_n: int, season: String, alpha: float, now: float, light: PackedColorArray) -> void:
 	if alpha <= 0.0:
 		return
 	if not _scenes.has(season):
@@ -272,24 +280,37 @@ func _draw_scene(n: int, season: String, alpha: float, now: float, light: Packed
 	if tex == null:
 		return
 	var tile := tex.get_width() * SCENE_H / (tex.get_height() * (1.0 - 2.0 * SCENE_PAD))     # px across one on screen
-	var shift := fposmod(now * _pph, tile)                         # (it slides with the time, kept small)
+	var sw := tile / SCENE_PIECES                                  # px across a piece's own place
+	var origin := now * _pph - size.x * 0.5                        # (the bar's left edge, in px of time)
 	var g_mid := _ground(size.x * 0.5)
-	var top := PackedFloat32Array()
-	var bot := PackedFloat32Array()
-	var cols := PackedColorArray()
-	var uv := PackedVector2Array()
-	for i in n + 1:
-		var x := size.x * i / n
-		var g := _ground(x)
-		var hh := SCENE_H * (0.65 + 0.35 * g / g_mid)
-		var pad := hh * SCENE_PAD / (1.0 - 2.0 * SCENE_PAD)
-		top.append(g - hh - pad)
-		bot.append(g + 1.0 + pad)
-		cols.append(Color(light[i], alpha))
-		var u := (x - size.x * 0.5 + shift) / tile
-		uv.append(Vector2(u, 0.0))
-		uv.append(Vector2(u, 1.0))
-	_strip(n, top, bot, cols, cols, Vector2.ZERO, tex, uv)
+	var k0 := int(floor(origin / sw)) - 1
+	var k1 := int(floor((origin + size.x) / sw))
+	for k in range(k0, k1 + 1):
+		var piece := int(_hash01(k, 11) * SCENE_PIECES) % SCENE_PIECES
+		var turned := _hash01(k, 12) < 0.5
+		var pts := PackedVector2Array()
+		var cols := PackedColorArray()
+		var uv := PackedVector2Array()
+		var idx := PackedInt32Array()
+		for c in SCENE_COLS + 1:
+			var x := clampf(k * sw + (1.0 + SCENE_FADE) * sw * c / SCENE_COLS - origin, 0.0, size.x)
+			var f := (x + origin - k * sw) / sw                     # along the piece, in its places (cut at the bar's ends)
+			var g := _ground(x)
+			var hh := SCENE_H * (0.65 + 0.35 * g / g_mid)
+			var pad := hh * SCENE_PAD / (1.0 - 2.0 * SCENE_PAD)
+			pts.append(Vector2(x, g - hh - pad))
+			pts.append(Vector2(x, g + 1.0 + pad))
+			var fade := smoothstep(0.0, SCENE_FADE, f) if k > k0 else 1.0     # (fading in over the one before)
+			var li: Color = light[clampi(int(roundf(x / size.x * (light.size() - 1))), 0, light.size() - 1)]
+			cols.append(Color(li, alpha * fade))
+			cols.append(Color(li, alpha * fade))
+			var u := (float(piece) + ((1.0 + SCENE_FADE - f) if turned else f)) / SCENE_PIECES
+			uv.append(Vector2(u, 0.0))
+			uv.append(Vector2(u, 1.0))
+			if c < SCENE_COLS:
+				idx.append_array([c * 2, c * 2 + 2, c * 2 + 1, c * 2 + 1, c * 2 + 2, c * 2 + 3])
+		RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), idx, pts, cols, uv, PackedInt32Array(),
+			PackedFloat32Array(), tex.get_rid())
 
 
 ## The sun over now, high or low as it is; under the horizon, the moon.
