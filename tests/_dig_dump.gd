@@ -11,7 +11,7 @@ func _init():
 		for i in s.TPD:
 			s.step()
 	var bites0: int = s.nest.excavated
-	var vv := Vector3(34, 65, 32)
+	var vv := Vector3(s.nest.x_lo + 34, 65, s.nest.z_lo + 32)      # (the tank's coordinates since v0.12.18)
 	var ea := Vector3(s.nest.entrance)
 	var eb: Vector3 = s.nest.chambers[0].c
 	var t := clampf((vv - ea).dot(eb - ea) / (eb - ea).length_squared(), 0.0, 1.0)

@@ -295,3 +295,46 @@ func _move(d: Dictionary, n: Vector3i) -> void:
 	d.dir = n - d.cell
 	d.prev = d.cell
 	d.cell = n
+
+
+## The whole nest moved dx columns and dz slices across, the soil held with it (PART 0.12 step 5a): the box's
+## coordinates become the tank's, the block where it lies in the tank (Simulation._nest_in_tank). Every position kept
+## by the nest goes with it - the entrance, the work face, the chambers and their ways, the diggers, the stones and the
+## roots; the per-voxel arrays count from the box's corner and stay as they are. The plans worked out are forgotten
+## (worked out again from the moved nest: the same answers, moved).
+func shift_xz(dx: int, dz: int) -> void:
+	if dx == 0 and dz == 0:
+		return
+	finish_work_paths()
+	var dv := Vector3i(dx, 0, dz)
+	var df := Vector3(dx, 0, dz)
+	x_lo += dx
+	nx += dx
+	z_lo += dz
+	nz += dz
+	entrance += dv
+	if work_at.x >= 0:
+		work_at += dv
+	for ch in chambers:
+		for k in ["c", "from", "via"]:
+			if ch.has(k):
+				ch[k] = ch[k] + (dv if ch[k] is Vector3i else df)
+	for dg in diggers:
+		for k in ["cell", "prev", "site"]:
+			if dg.has(k):
+				dg[k] = dg[k] + (dv if dg[k] is Vector3i else df)
+	for s in soil.get("stones", []):
+		s[0] += dx
+		s[2] += dz
+	for rt in soil.get("roots", []):
+		rt[0] += dx
+		rt[2] += dz
+		rt[3] += dx
+		rt[5] += dz
+	dirty.clear()
+	_plan_memo = {}
+	_plan_memo_sig = []
+	_plan_reach = []
+	_plan_reach_sig = []
+	_work_key = []
+	resized += 1

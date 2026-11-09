@@ -230,7 +230,7 @@ func _draw_nest() -> void:
 	c.draw_rect(Rect2(org.x, org.y - 4, size.x, 4), Color("587a33"))          # turf on top
 	c.draw_texture_rect_region(_proj_tex, Rect2(org, size), Rect2(cr))
 	var to_screen := func(p: Vector3) -> Vector2:
-		return org + Vector2(p.x + 0.5 - cr.position.x, nv.ny - 0.5 - p.y - cr.position.y) * s
+		return org + Vector2(p.x - nv.x_lo + 0.5 - cr.position.x, nv.ny - 0.5 - p.y - cr.position.y) * s      # (the image counts from the box's corner)
 
 	# brood where the 3D view puts it
 	if nest_view:

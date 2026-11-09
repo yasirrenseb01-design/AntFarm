@@ -5,6 +5,27 @@ extends "res://scripts/sim/parts/sim_duties.gd"
 ## (see docs/ARCHITECTURE.md).
 
 
+## A new colony's nest where its queen came down in the tank (PART 0.12 step 5a): set up as before, then moved to the
+## tank's coordinates.
+func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, scen := "keeper", big_box := false,
+		species := Species.DEFAULT) -> void:
+	super(seed_value, start_workers, glass_nest, scen, big_box, species)
+	_nest_in_tank()
+
+
+## The nest's block moved to where it lies in the tank: its entrance under nest_pos (3 px a voxel), as the Home's tank
+## and the outworld's soil have always drawn it (save_store nest_x0). Coordinates of the tank's soil from then on - the
+## box held can grow sideways as far as the tank's sides. A glass ant farm stays as it is (its own small frame).
+func _nest_in_tank() -> void:
+	if nest.slab:
+		return
+	var px := 0.5 / nest.VOXEL_MM                    # voxels a px (1 px = 0.5 mm)
+	var tank := Vector2i(floori(WORLD.x * px), floori(WORLD.y * px))
+	var ox := clampi(roundi(nest_pos.x * px) - nest.entrance.x, 0, maxi(0, tank.x - nest.wx()))
+	var oz := clampi(roundi(nest_pos.y * px) - nest.entrance.z, 0, maxi(0, tank.y - nest.wz()))
+	nest.shift_xz(ox, oz)
+
+
 # ---------------------------------------------------------------- main step
 
 func step() -> void:
@@ -240,6 +261,8 @@ func from_dict(d: Dictionary) -> void:
 	food_cell.resize(gw * gh)
 	food_cell.fill(-1)
 	_food_dirty = true
+	if not (d.nest as Dictionary).has("x_lo"):
+		_nest_in_tank()                     # (saved before v0.12.18: the block from 0 - moved to where it lies in the tank)
 
 
 ## A short summary for the save menu and the "while you were away" report.

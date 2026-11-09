@@ -325,8 +325,8 @@ func _build_soil_edge(w: float, d: float) -> void:
 	_soil_mat.shader = load("res://shaders/common/tank_soil.gdshader")
 	_soil_mat.set_shader_parameter("mpu", Spec.VOXEL)
 	_soil_mat.set_shader_parameter("soil_top", 0.0)
-	_soil_mat.set_shader_parameter("nest_x0", _nest_xz.x - float(sim.nest.entrance.x))
-	_soil_mat.set_shader_parameter("nest_w", float(sim.nest.nx))
+	_soil_mat.set_shader_parameter("nest_x0", _nest_xz.x - float(sim.nest.entrance.x - sim.nest.x_lo))
+	_soil_mat.set_shader_parameter("nest_w", float(sim.nest.wx()))
 	_soil_mat.set_shader_parameter("nest_h", float(sim.nest.hy()))
 	_soil_mat.set_shader_parameter("seed", float(sim.WORLD.x))
 	mi.material_override = _soil_mat
