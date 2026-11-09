@@ -48,6 +48,12 @@ func _new_day() -> void:
 
 # ---------------------------------------------------------------- colony physiology
 
+## How keen the foragers would be at a time of day (0..1; tod may run past 0..1): `activity`'s reckoning in _colony, by
+## today's weather and the sun at that hour, rain or not. Reads only (the HUD's time bar: the hours before and after now).
+func activity_at(tod: float, rain: bool) -> float:
+	return _activity(climate.surface_at(climate.air_at(tod, rain), daylight(tod))) * (0.1 if rain else 1.0)
+
+
 func _activity(t: float) -> float:
 	if t < sp["forage_min_c"]:
 		return 0.0

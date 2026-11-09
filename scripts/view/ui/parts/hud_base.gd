@@ -47,7 +47,7 @@ var _vals := {}
 var _log: RichTextLabel
 var _hum_bar: ProgressBar
 var _nest: Control
-var _clock: Label
+var time_bar                    # ui/time_bar.gd: the day and the time, along the top while the bar is open
 var _weather: Label
 var _date: Label                   # the year, the date and the season, small beside the days kept
 var _mono: SystemFont

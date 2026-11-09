@@ -7,6 +7,7 @@ const AntTip := preload("res://scripts/view/ui/ant_tip.gd")
 const Guide := preload("res://scripts/view/ui/guide.gd")
 const Sounds := preload("res://scripts/view/ui/sounds.gd")
 const Music := preload("res://scripts/view/ui/music.gd")
+const TimeBar := preload("res://scripts/view/ui/time_bar.gd")
 
 
 func setup(s, w) -> void:
@@ -24,6 +25,9 @@ func setup(s, w) -> void:
 	_paper_theme = Paper.theme(root.theme)
 	add_child(root)
 	_build_top(root)
+	time_bar = TimeBar.new()
+	root.add_child(time_bar)
+	time_bar.setup(sim, _mono)
 	_build_tools(root)
 	_build_panel(root)
 	_build_camera_pad(root)
@@ -47,6 +51,18 @@ func setup(s, w) -> void:
 	_build_banner(root)
 	_apply_mode("outworld")
 	refresh(1.0)
+
+
+## The time bar: shown while the colony's bar is open (the keeper, 2026-11-09), in the gap between it and the side panel.
+func _place_time_bar() -> void:
+	time_bar.visible = _top.visible
+	if not time_bar.visible:
+		return
+	var vw: float = get_viewport().get_visible_rect().size.x
+	var right: float = (vw - PANEL_W - 14.0) if _side.visible else vw
+	time_bar.place(_top.position.x + _top.size.x, right)
+	if time_bar.visible:
+		time_bar.tick_clock()
 
 
 func _on_logged(e: Dictionary) -> void:
@@ -74,7 +90,7 @@ func _build_banner(root: Control) -> void:
 	_banner.add_theme_stylebox_override("panel", bsb)
 	_banner.anchor_left = 0.5
 	_banner.anchor_right = 0.5
-	_banner.offset_top = 96
+	_banner.offset_top = 130                  # (under the time bar)
 	_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_banner.mouse_filter = Control.MOUSE_FILTER_STOP
 	_banner.visible = false
@@ -140,7 +156,7 @@ func refresh(delta: float) -> void:
 	_tick_banner(delta)
 	_tick_stars()
 	_fit_tools()
-	_clock.text = tr("clock_line") % [sim.day(), sim.clock_text()]
+	_place_time_bar()
 	_date.text = tr("date_line") % [sim.year(), sim.date_text(), sim.season_name()]
 	var sky := tr("sky_rain") if sim.climate.raining() else (tr("sky_night") if sim.sun_height() < -0.05 else tr("sky_clear"))
 	_weather.text = tr("weather_line") % [sim.climate.air, sky, int(sim.activity * 100)]

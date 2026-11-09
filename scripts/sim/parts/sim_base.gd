@@ -150,14 +150,14 @@ func clock_text() -> String:
 	return "%02d:%02d" % [m / 60, m % 60]
 
 
-## Height of the sun (-1..1 at noon); outdoors the days are longer in summer than in winter.
-func sun_height() -> float:
-	var c := sin(PI * (climate.day_hours() / 24.0 - 0.5))
-	return sin(TAU * (time_of_day() - 0.25)) + c
+## Height of the sun (-1..1 at noon), now or at another time of day today (tod; the HUD's time bar); outdoors the days
+## are longer in summer than in winter.
+func sun_height(tod := -1.0) -> float:
+	return sin(TAU * ((time_of_day() if tod < 0.0 else tod) - 0.25)) + sin(PI * (climate.day_hours() / 24.0 - 0.5))
 
 
-func daylight() -> float:
-	return clampf(sun_height() * 1.6 + 0.2, 0.0, 1.0)
+func daylight(tod := -1.0) -> float:
+	return clampf(sun_height(tod) * 1.6 + 0.2, 0.0, 1.0)
 
 
 # ---------------------------------------------------------------- calendar

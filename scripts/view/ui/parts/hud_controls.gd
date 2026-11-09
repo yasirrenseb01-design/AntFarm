@@ -41,16 +41,14 @@ func _build_top(root: Control) -> void:
 	col.add_child(title)
 	_top_title = title
 
-	# the days since the colony began, big, and the time; the year, date and season under them (the keeper,
-	# 2026-10-28: "show how many days I have kept them")
+	# the year, date and season, and the weather (the days kept and the time, big here from 2026-10-28 - "show how many
+	# days I have kept them" - are on the time bar along the top since v0.12.12: ui/time_bar.gd)
 	var clock := VBoxContainer.new()
 	clock.add_theme_constant_override("separation", 0)
-	_clock = _label("", 20, INK, _mono)
 	_date = _label("", 13, MUTED)
 	_date.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_weather = _label("", 12, MUTED)
 	_weather.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	clock.add_child(_clock)
 	clock.add_child(_date)
 	clock.add_child(_weather)
 	col.add_child(clock)

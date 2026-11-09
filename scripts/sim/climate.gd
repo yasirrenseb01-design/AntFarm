@@ -72,14 +72,24 @@ func _sun_k() -> float:
 ## Temperature on the ground where the ants walk: sunlit soil outdoors is well above the shade air,
 ## which is why ants are out on a sunny April day at 10 °C.
 func surface() -> float:
-	return air + sun * 8.0 * _sun_k()
+	return surface_at(air, sun)
+
+
+## The ground at an air temperature and a daylight (0..1): surface()'s reckoning, for another hour (the HUD's time bar).
+func surface_at(a: float, light: float) -> float:
+	return a + light * 8.0 * _sun_k()
+
+
+## The air at a time of day by today's weather: coolest around 03:00, warmest around 15:00 (update; the time bar).
+func air_at(tod: float, rain: bool) -> float:
+	var a := day_mean + day_amp * sin(TAU * (tod - 0.375)) - (3.0 if rain else 0.0)
+	if fridge > 0.0:
+		a = lerpf(a, FRIDGE_C, fridge)
+	return a
 
 
 func update(tod: float, heater: bool, ticks_per_day: int) -> void:
-	# coolest around 03:00, warmest around 15:00
-	air = day_mean + day_amp * sin(TAU * (tod - 0.375)) - (3.0 if raining() else 0.0)
-	if fridge > 0.0:
-		air = lerpf(air, FRIDGE_C, fridge)
+	air = air_at(tod, raining())
 	nest += (_nest_target(heater) - nest) / (ticks_per_day * 0.08)
 
 
