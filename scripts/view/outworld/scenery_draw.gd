@@ -5,6 +5,7 @@ extends RefCounted
 ## Split from outworld_scene.gd (_build_scenery) in v0.11.37.
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const WeedMesh := preload("res://scripts/view/common/weed_mesh.gd")
+const Lumps := preload("res://scripts/view/common/lumps.gd")
 const U := 1.0 / 3.0
 
 
@@ -131,16 +132,17 @@ static func build(v) -> void:
 		var b := Basis(Vector3.UP, -p.a).scaled(Vector3(r.x, minf(r.x, r.y) * 0.65, r.y))
 		stone.set_instance_transform(i, Transform3D(b, v._on_ground(p.p, 0.0)))
 		stone.set_instance_color(i, (p.c as Color).darkened(0.3).srgb_to_linear())
-	var moss: MultiMesh = v._multimesh(v._blob_mesh(Vector3.ONE), v._vc_mat(1.0, false, false), true)
-	var blobs := []
+	# moss in two shapes and the crater's grains in three, mixed (view/common/lumps.gd)
+	var moss_mat: Material = v._vc_mat(1.0, false, false)
+	var mosses: Array = range(Lumps.MOSSES).map(func(k): return v._multimesh(Lumps.moss(k), moss_mat, true))
+	var moss_xf := []
+	var moss_c := []
 	for m in ground.moss:
-		blobs.append_array(m)
-	moss.instance_count = blobs.size()
-	for i in blobs.size():
-		var b: Array = blobs[i]
-		var r: float = b[1] * U
-		moss.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(r, r * 0.42, r)), v._on_ground(b[0], 0.0)))
-		moss.set_instance_color(i, Color(0.2, 0.33, 0.1).lerp(Color(0.4, 0.53, 0.17), b[2]).srgb_to_linear())
+		for b in m:
+			var r: float = b[1] * U
+			moss_xf.append(Transform3D(Basis.from_scale(Vector3(r, r * 0.42, r)), v._on_ground(b[0], 0.0)))
+			moss_c.append(Color(0.2, 0.33, 0.1).lerp(Color(0.4, 0.53, 0.17), b[2]).srgb_to_linear())
+	Lumps.fill(mosses, moss_xf, moss_c)
 	var grass: MultiMesh = v._multimesh(Props.blade(), v._grass_mat, true)
 	var bl := []
 	var gr := RandomNumberGenerator.new()
@@ -183,16 +185,15 @@ static func build(v) -> void:
 		var basis := (Basis(Vector3.UP, b[1]) * Basis(Vector3.BACK, -b[3])).scaled(Vector3(b[2] * 0.8, b[2], 3.2))
 		grass.set_instance_transform(i, Transform3D(basis, v._on_ground(b[0], -0.15)))
 		grass.set_instance_color(i, (b[4] as Color).srgb_to_linear())
-	var grains: MultiMesh = v._multimesh(v._blob_mesh(Vector3.ONE), v._vc_mat(0.95, false, false), true)
-	var bits := []
-	bits.append_array(ground.crater)
-	bits.append_array(ground.midden_bits)
-	grains.instance_count = bits.size()
-	for i in bits.size():
-		var g: Dictionary = bits[i]
+	var grain_mat: Material = v._vc_mat(0.95, false, false)
+	var grains: Array = range(Lumps.PELLETS).map(func(k): return v._multimesh(Lumps.pellet(k), grain_mat, true))
+	var grain_xf := []
+	var grain_c := []
+	for g in ground.crater + ground.midden_bits:
 		var r: float = g.r * U
-		grains.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(r, r * 0.7, r)), v._on_ground(g.p, 0.0)))
-		grains.set_instance_color(i, (g.c as Color).darkened(0.2).srgb_to_linear())
+		grain_xf.append(Transform3D(Basis.from_scale(Vector3(r, r * 0.7, r)), v._on_ground(g.p, 0.0)))
+		grain_c.append((g.c as Color).darkened(0.2).srgb_to_linear())
+	Lumps.fill(grains, grain_xf, grain_c)
 
 
 ## A stone's height as a share of its radius: the same draw as mesh_kit_base rock() makes from its seed.

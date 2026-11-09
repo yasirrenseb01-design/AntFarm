@@ -9,6 +9,7 @@ const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const EventFeed := preload("res://scripts/view/common/event_feed.gd")
 const Mound := preload("res://scripts/sim/mound.gd")
+const Lumps := preload("res://scripts/view/common/lumps.gd")
 const CLUMP := 24                  # eggs stick together in packets of about this many
 const CH := 16
 const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0),
@@ -59,7 +60,7 @@ var _last_eggs := 0
 var _egg_mm: MultiMesh
 var _larva_mm: MultiMesh
 var _pupa_mm: MultiMesh
-var _pellet_mm: MultiMesh
+var _pellet_mm: Array                   # a MultiMesh for each shape of pellet (view/common/lumps.gd)
 var _mates: Array = []
 var _dig_vis := {}
 var _spots := {"eggs": [], "larvae": [], "larvae_old": [], "pupae": [], "pupae_old": [], "all": [], "queen": Vector3.ZERO}
@@ -576,7 +577,6 @@ func _pending(kind: String) -> int:
 		if a.k == kind and not a.get("done", false):
 			n += 1
 	return n
-
 
 func _fill(mm: MultiMesh, xs: Array) -> void:
 	mm.instance_count = xs.size()

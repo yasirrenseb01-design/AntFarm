@@ -664,9 +664,8 @@ func _update_brood() -> void:
 		_spots.pupae_old if _pupa_group != _pupa_prev else [], _moved_p if _pupa_group != _pupa_prev else 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
 	_mark_brood_cells()
 	_brood_gen += 1
-	# the crater round the entrance on top of the block: a heap as big as the soil dug out (sim/mound.gd, the same
-	# as the outworld's ground), pellets lying on its surface (until v0.12.8 only the pellets, at most 900 of them - a few
-	# per cent of what a big colony had dug)
+	# the crater round the entrance on top of the block: a heap as big as the soil dug out (sim/mound.gd, as the outworld's
+	# ground), pellets on its surface in three shapes (view/common/lumps.gd; until v0.12.8 the pellets alone, at most 900)
 	if nest.excavated / 4 == _mound_n:
 		return
 	_mound_n = nest.excavated / 4
@@ -674,7 +673,7 @@ func _update_brood() -> void:
 	var e: Vector3 = Vector3(nest.entrance) + Vector3(0, 0.6, 0)
 	_mound_mesh(e, hr)
 	var n := mini(nest.excavated / 2, 900)
-	_pellet_mm.instance_count = n
+	var xfs := []
 	var reach: float = hr.y * 1.8
 	for i in n:
 		var a := _hash(i, 5) * TAU
@@ -683,7 +682,8 @@ func _update_brood() -> void:
 		if p.x < -0.4 or p.z < -0.4 or p.x > nest.nx - 0.6 or p.z > nest.nz - 0.6:
 			continue                                  # (past the block's edge: the glass)
 		p.y += Mound.height(r, hr.x, hr.y) - 0.15 + 0.2 * _hash(i, 7)
-		_pellet_mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, a), p))
+		xfs.append(Transform3D(Basis(Vector3.UP, a), p))
+	Lumps.fill(_pellet_mm, xfs)
 
 
 ## The heap's surface as a mesh over the block's top round the entrance (cut off at the block's edges, as by the glass).
