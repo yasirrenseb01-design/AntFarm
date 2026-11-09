@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_dead.gd"
-## Nest view, layer 10 of 15 (split from parts/nest_rest.gd in v0.11.44): the one drawn nestmate per real worker
+## Nest view, layer 11 of 16 (split from parts/nest_rest.gd in v0.11.44): the one drawn nestmate per real worker
 ## inside - bound to it by id (`wid`), its role from the worker's, walked in from the entrance when it has just come
 ## in and up to the entrance when it goes out (from near the way out: _leave_from_near).
 

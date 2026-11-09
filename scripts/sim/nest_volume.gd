@@ -1,6 +1,6 @@
 extends "res://scripts/sim/parts/nest_chambers.gd"
-## Underground nest, layer 4 of 4 (top): the diggers — where they dig, bites, carrying the soil out.
-## Layers: parts/nest_voxels <- parts/nest_store <- parts/nest_chambers <- nest_volume (this file). Split in v0.8.5, v0.12.2.
+## Underground nest, layer 5 of 5 (top): the diggers — where they dig, bites, carrying the soil out.
+## Layers: parts/nest_voxels <- parts/nest_ground <- parts/nest_store <- parts/nest_chambers <- nest_volume (this file). Split in v0.8.5, v0.12.2, v0.12.17.
 
 
 # ---------------------------------------------------------------- digging
@@ -72,7 +72,7 @@ func _bite(s: Vector3i) -> void:
 	if rho[i] < AIR:
 		air += 1
 		dug += 1
-		proj[(s.y - y_lo) * nx + s.x] += 1
+		proj[(s.y - y_lo) * wx() + s.x - x_lo] += 1
 		if s.y < y_lo + 4 and y_lo > y_floor:
 			_extend_to = s.y - EXTEND_BY         # (near the bottom of the soil held: more of it, before the next step)
 		var best := -1

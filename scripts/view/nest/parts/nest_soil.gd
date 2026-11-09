@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_bind.gd"
-## Nest view, layer 11 of 15 (split from nest_contact.gd in v0.11.26): bodies out of the soil - an ant shifted and
+## Nest view, layer 12 of 16 (split from nest_contact.gd in v0.11.26): bodies out of the soil - an ant shifted and
 ## turned out of the walls of a bend, feeling ahead with its antennae, its head tipped up and its gaster lifted where
 ## they meet the surface.
 
@@ -63,7 +63,9 @@ func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 		_density_at(Vector3.ZERO)               # (lays it out)
 	if _native != null:
 		# (in C++ when the game has it: the same sums - bin/ant_native, native/src/ant_native.cpp; v0.12.6)
-		var r: Array = _native.soil_hits(_soft, _soft_dims(), t2, bp[0], up, side)
+		var t3 := t2
+		t3.origin -= _soft_off()                  # (the C++ part counts from the box held: nest_scene._soft_dims)
+		var r: Array = _native.soil_hits(_soft, _soft_dims(), t3, bp[0], up, side)
 		push = r[0]
 		torque = r[1]
 		hits = r[2]
@@ -192,21 +194,22 @@ func _soil_hits_gd(t2: Transform3D, pts: PackedVector3Array, up: Vector3, side: 
 	var sx := _sx
 	var sxy := _sx * _sy
 	var row0 := 1 - _sy0
+	var off := _soft_off()                  # (_soft counts x and z from the box held: nest_scene._soft_build)
 	var xlo := -1
 	var ylo: int = nest.y_lo - 1
-	var nxx: int = nest.nx
+	var nxx: int = nest.wx()
 	var nyy: int = nest.ny
-	var nzz: int = nest.nz
+	var nzz: int = nest.wz()
 	for q: Vector3 in pts:
 		var c: Vector3 = t2 * q
-		var x := floori(c.x)
+		var x := floori(c.x - off.x)
 		var y := floori(c.y)
-		var z := floori(c.z)
+		var z := floori(c.z - off.z)
 		if x < xlo or y < ylo or z < xlo or x >= nxx or y >= nyy or z >= nzz:
 			continue                               # (beyond the block and its first ring of air: 0)
-		var fx := c.x - x
+		var fx := c.x - off.x - x
 		var fy := c.y - y
-		var fz := c.z - z
+		var fz := c.z - off.z - z
 		var i := ((z + 1) * _sy + (y + row0)) * sx + (x + 1)
 		var j := i + sxy
 		var dc := lerpf(lerpf(lerpf(soft[i], soft[i + 1], fx), lerpf(soft[i + sx], soft[i + sx + 1], fx), fy),

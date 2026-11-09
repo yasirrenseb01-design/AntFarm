@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_camera.gd"
-## Nest view, layer 3 of 15: chambers and their floors, walking fields, where the brood piles go (eggs, larvae,
+## Nest view, layer 4 of 16: chambers and their floors, walking fields, where the brood piles go (eggs, larvae,
 ## cocoons) and the queen's pose.
 
 

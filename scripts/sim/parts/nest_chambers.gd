@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/nest_store.gd"
-## Nest volume, layer 3 of 4 (split from scripts/sim/nest_volume.gd in v0.8.5): the chamber plan
+## Nest volume, layer 4 of 5 (split from scripts/sim/nest_volume.gd in v0.8.5): the chamber plan
 ## (shapes, sizes, where new chambers go).
 
 # the colony's digging habit (sim_state.traits depth / spread; set by the simulation, not saved with the nest)
@@ -175,14 +175,15 @@ func _work_in_chamber(ch: Dictionary, best: Array) -> int:
 	var ox := ax.x * lm
 	var oz := ax.z * lm
 	var rows := ny - y_lo
+	var w := wx()
 	var has_hard := not hard.is_empty()
 	for y in range(maxi(y_lo, floori(c.y - ax.y - 1.0)), mini(ny, ceili(c.y + ax.y + 1.0) + 1)):
-		for z in range(maxi(0, floori(c.z - m)), mini(nz, ceili(c.z + m) + 1)):
+		for z in range(maxi(z_lo, floori(c.z - m)), mini(nz, ceili(c.z + m) + 1)):
 			if slab and z < nz - 3:
 				continue
-			var row := (z * rows + y - y_lo) * nx
+			var row := ((z - z_lo) * rows + y - y_lo) * w - x_lo
 			var dz := z - c.z
-			for x in range(maxi(0, floori(c.x - m)), mini(nx, ceili(c.x + m) + 1)):
+			for x in range(maxi(x_lo, floori(c.x - m)), mini(nx, ceili(c.x + m) + 1)):
 				var i := row + x
 				if rho[i] < AIR or has_hard and hard[i] == 1:
 					continue
@@ -206,8 +207,8 @@ func _work_on_line(a: Vector3, b: Vector3, r: float, first: bool, best: Array) -
 	var lo := Vector3i(floori(minf(a.x, b.x) - r - 1.0), floori(minf(a.y, b.y) - r - 1.0), floori(minf(a.z, b.z) - r - 1.0))
 	var hi := Vector3i(ceili(maxf(a.x, b.x) + r + 1.0), ceili(maxf(a.y, b.y) + r + 1.0), ceili(maxf(a.z, b.z) + r + 1.0))
 	for y in range(maxi(y_lo, lo.y), mini(ny, hi.y + 1)):
-		for z in range(maxi(0, lo.z), mini(nz, hi.z + 1)):
-			for x in range(maxi(0, lo.x), mini(nx, hi.x + 1)):
+		for z in range(maxi(z_lo, lo.z), mini(nz, hi.z + 1)):
+			for x in range(maxi(x_lo, lo.x), mini(nx, hi.x + 1)):
 				var v := Vector3i(x, y, z)
 				if rho[idx(v)] < AIR or (slab and z < nz - 3) or is_hard(v):
 					continue
@@ -452,7 +453,7 @@ func _plan_new(deeper: bool, workers: int, event: String) -> String:
 		if slab:
 			site = Vector3(src.c.x + (1.0 if cos(hd) >= 0.0 else -1.0) * Vector2(site.x - src.c.x, site.z - src.c.z).length(),
 				site.y, src.c.z)
-		if site.x < 8 or site.x > nx - 9 or site.y < y_floor + 6 or site.y > ny - 9 or site.z < (1 if slab else 8) or site.z > nz - (2 if slab else 9):
+		if site.x < x_lo + 8 or site.x > nx - 9 or site.y < y_floor + 6 or site.y > ny - 9 or site.z < (1 if slab else z_lo + 8) or site.z > nz - (2 if slab else 9):
 			continue
 		if site.y - 10.0 < float(y_lo):
 			extend_down(int(site.y) - 12)         # (the soil down there, taken in before it is planned in)

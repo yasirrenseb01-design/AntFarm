@@ -1,5 +1,5 @@
-extends "res://scripts/view/nest/parts/nest_scene.gd"
-## Nest view, layer 2 of 15: the orbit camera, the cut plane, x-ray and focusing on places.
+extends "res://scripts/view/nest/parts/nest_volumes.gd"
+## Nest view, layer 3 of 16: the orbit camera, the cut plane, x-ray and focusing on places.
 
 
 func snap_camera() -> void:
@@ -49,7 +49,7 @@ func _ease_camera(delta: float) -> void:
 		zoom_by(1.0 - 1.6 * delta)
 	if _key(KEY_MINUS) or _key(KEY_KP_SUBTRACT):
 		zoom_by(1.0 + 1.6 * delta)
-	var lo := Vector3(-30, nest.y_lo - 20, -30)
+	var lo := Vector3(nest.x_lo - 30, nest.y_lo - 20, nest.z_lo - 30)
 	var hi := Vector3(nest.nx + 30, nest.ny + 30, nest.nz + 30)
 	target_t = target_t.clamp(lo, hi)
 	var k := 1.0 - exp(-10.0 * delta)
@@ -73,7 +73,7 @@ func reset_view() -> void:
 		yaw_t = 0.0
 		pitch_t = 0.12
 		dist_t = 150.0
-		target_t = Vector3(nest.nx / 2.0, nest.ny / 2.0 + 6.0, nest.nz / 2.0)
+		target_t = Vector3((nest.x_lo + nest.nx) / 2.0, nest.ny / 2.0 + 6.0, (nest.z_lo + nest.nz) / 2.0)
 	elif nest.chambers.size() == 1:
 		# a lone founding queen: start close on her chamber, with the cut just in front of it
 		var c: Vector3 = nest.chambers[0].c
@@ -83,13 +83,13 @@ func reset_view() -> void:
 		target_t = c
 		# slice straight through her chamber
 		var dir := Vector3(sin(yaw_t), 0, cos(yaw_t))
-		cut_offset = clampf(dir.dot(c) - dir.dot(Vector3(nest.nx / 2.0, 0, nest.nz / 2.0)) + 1.0, -32, 32)
+		cut_offset = clampf(dir.dot(c) - dir.dot(Vector3((nest.x_lo + nest.nx) / 2.0, 0, (nest.z_lo + nest.nz) / 2.0)) + 1.0, -32, 32)
 		cut_changed.emit(cut_offset)
 	else:
 		yaw_t = 0.55
 		pitch_t = 0.22
 		dist_t = 75.0
-		target_t = Vector3(nest.nx / 2.0, nest.ny - 16.0, nest.nz / 2.0)
+		target_t = Vector3((nest.x_lo + nest.nx) / 2.0, nest.ny - 16.0, (nest.z_lo + nest.nz) / 2.0)
 
 
 ## Glide the camera to something worth looking at: "queen", "larvae", "pupae", "entrance".
@@ -127,7 +127,7 @@ func _cut_to(p: Vector3) -> void:
 	if not xray and not nest.slab:
 		# slide the cut so the spot sits just behind it
 		var dir := Vector3(sin(yaw_t), 0, cos(yaw_t))
-		cut_offset = clampf(dir.dot(p) - dir.dot(Vector3(nest.nx / 2.0, 0, nest.nz / 2.0)) + 1.5, -32, 32)
+		cut_offset = clampf(dir.dot(p) - dir.dot(Vector3((nest.x_lo + nest.nx) / 2.0, 0, (nest.z_lo + nest.nz) / 2.0)) + 1.5, -32, 32)
 		cut_changed.emit(cut_offset)
 
 
@@ -165,7 +165,7 @@ func _update_camera() -> void:
 		return
 	var h := Vector3(dir.x, 0, dir.z).normalized()
 	_plane_n = h
-	var centre := Vector3(nest.nx / 2.0, 0, nest.nz / 2.0)
+	var centre := Vector3((nest.x_lo + nest.nx) / 2.0, 0, (nest.z_lo + nest.nz) / 2.0)
 	_plane_w = h.dot(centre) + cut_offset
 
 

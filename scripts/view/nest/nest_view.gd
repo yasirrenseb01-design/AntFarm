@@ -11,7 +11,7 @@ func setup(s) -> void:
 	queen_scale = float(sim.sp.look.queen_scale)
 	nest = sim.nest
 	_feed = EventFeed.new(sim)
-	target = Vector3(nest.nx / 2.0, nest.ny - 16.0, nest.nz / 2.0)
+	target = Vector3((nest.x_lo + nest.nx) / 2.0, nest.ny - 16.0, (nest.z_lo + nest.nz) / 2.0)
 
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
@@ -81,7 +81,7 @@ func setup(s) -> void:
 	_xray_mat.set_shader_parameter("grain", grain)
 	_ghost = MeshInstance3D.new()
 	var gb := BoxMesh.new()
-	gb.size = Vector3(nest.nx, nest.ny, nest.nz)
+	gb.size = Vector3(nest.wx(), nest.ny, nest.wz())
 	_ghost.mesh = gb
 	var gm := StandardMaterial3D.new()
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -91,7 +91,7 @@ func setup(s) -> void:
 	gm.no_depth_test = false
 	gm.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	_ghost.material_override = gm
-	_ghost.position = Vector3(nest.nx / 2.0 - 0.5, nest.ny / 2.0 - 0.5, nest.nz / 2.0 - 0.5)
+	_ghost.position = Vector3((nest.x_lo + nest.nx) / 2.0 - 0.5, nest.ny / 2.0 - 0.5, (nest.z_lo + nest.nz) / 2.0 - 0.5)
 	_ghost.visible = false
 	add_child(_ghost)
 	_build_soil_things()
@@ -107,7 +107,7 @@ func setup(s) -> void:
 	sm.albedo_color = Color(0.07, 0.06, 0.06)
 	sm.roughness = 0.7
 	shelf.material_override = sm
-	shelf.position = Vector3(nest.nx / 2.0, nest.y_lo - 1.0, nest.nz / 2.0)
+	shelf.position = Vector3((nest.x_lo + nest.nx) / 2.0, nest.y_lo - 1.0, (nest.z_lo + nest.nz) / 2.0)
 	add_child(shelf)
 	shelf.visible = false                    # (under the soil round it now: _underground)
 	# round the block, the soil running on underground (the keeper, 2026-11-03: the block floated over a grey floor in
@@ -126,7 +126,7 @@ func setup(s) -> void:
 	bmat.set_shader_parameter("sand_top", nest.sand_top())
 	bd.material_override = bmat
 	bd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	bd.position = Vector3(nest.nx / 2.0, nest.ny / 2.0, nest.nz / 2.0)
+	bd.position = Vector3((nest.x_lo + nest.nx) / 2.0, nest.ny / 2.0, (nest.z_lo + nest.nz) / 2.0)
 	add_child(bd)
 	_underground = bd
 
@@ -206,16 +206,16 @@ func setup(s) -> void:
 		yaw = 0.0
 		pitch = 0.12
 		cam_dist = 150.0
-		target = Vector3(nest.nx / 2.0, nest.ny / 2.0 + 6.0, nest.nz / 2.0)
+		target = Vector3((nest.x_lo + nest.nx) / 2.0, nest.ny / 2.0 + 6.0, (nest.z_lo + nest.nz) / 2.0)
 	reset_view()
 	yaw = yaw_t
 	pitch = pitch_t
 	cam_dist = dist_t
 	target = target_t
 	# chunk -1 owns the block faces on the low sides (edges from outside into voxel 0)
-	for kz in range(-1, (nest.nz + CH - 1) / CH + 1):
+	for kz in range(floori(nest.z_lo / float(CH)) - 1, (nest.nz + CH - 1) / CH + 1):
 		for ky in range(floori(nest.y_lo / float(CH)) - 1, (nest.ny + CH - 1) / CH + 1):
-			for kx in range(-1, (nest.nx + CH - 1) / CH + 1):
+			for kx in range(floori(nest.x_lo / float(CH)) - 1, (nest.nx + CH - 1) / CH + 1):
 				_queue.append(Vector3i(kx, ky, kz))
 	nest.dirty.clear()
 	visible = false

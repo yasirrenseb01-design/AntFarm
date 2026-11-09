@@ -24,7 +24,7 @@ func _plain_in_chamber(nest, ch: Dictionary) -> int:
 
 func _plain_paths(nest) -> PackedInt32Array:
 	var d := PackedInt32Array()
-	d.resize(nest.nx * nest.hy() * nest.nz)
+	d.resize(nest.wx() * nest.hy() * nest.wz())
 	d.fill(-1)
 	if nest.work_at.x < 0 or not nest.inside(nest.work_at) or not nest.is_open(nest.work_at):
 		return d

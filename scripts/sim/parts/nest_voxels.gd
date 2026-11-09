@@ -10,9 +10,9 @@ extends RefCounted
 ## high, galleries 1.5–5 mm; Wang et al. 1995), with solid soil between them. Nobody plans them: they
 ## grow where workers crowd round brood (Römer & Roces 2014) — the plan here stands for that outcome.
 ## Each bite is carried up the tunnels and dropped on the surface, building the crater mound.
-## Nest volume, layer 1 of 3 (split from scripts/sim/nest_volume.gd in v0.8.5): the voxel block,
-## access, carving, the mesher's density, counting/distances, save and load.
-## Layers: parts/nest_voxels <- parts/nest_chambers <- nest_volume.
+## Nest volume, layer 1 of 5 (split from scripts/sim/nest_volume.gd in v0.8.5): the voxel block, access, carving, the
+## mesher's density, counting/distances.
+## Layers: parts/nest_voxels <- parts/nest_ground <- parts/nest_store <- parts/nest_chambers <- nest_volume.
 const VOXEL_MM := 1.5
 const AIR := 128            # density below this is open space
 const BITE := 128           # density removed per bite (two bites empty a voxel)
@@ -30,6 +30,11 @@ var nz := 64
 # as they are (the surface at ny - 1); a formicarium's soil ends at y = 0 (y_lo = y_floor = 0), as every nest's did.
 var y_lo := 0
 var y_floor := 0
+# Sideways the same (PART 0.12 step 5a): only the box x_lo .. nx - 1, z_lo .. nz - 1 of the tank's soil is held, the rest
+# is soil not yet dug near (solid). Coordinates are the tank's own - never below 0 (x < 0 / Vector3i(-1, ...) stand for
+# "none" in many places) - so the box grows sideways by taking in more, the coordinates staying as they are.
+var x_lo := 0
+var z_lo := 0
 const DEEP_LAYERS := 200                # how deep a garden nest's soil goes (voxels: 30 cm)
 const EXTEND_BY := 16                   # layers taken in at a time (one mesh chunk)
 var slab := false                       # true = thin glass ant-farm instead of a soil block
@@ -70,6 +75,8 @@ func setup(r: RandomNumberGenerator, glass_slab := false, founding := false) -> 
 		nz = 5
 	y_lo = 0
 	y_floor = 0
+	x_lo = 0
+	z_lo = 0
 	var n := nx * ny * nz
 	rho.resize(n)
 	rho.fill(255)
@@ -123,164 +130,9 @@ func setup(r: RandomNumberGenerator, glass_slab := false, founding := false) -> 
 	_bfs()
 
 
-# ---------------------------------------------------------------- what is in the soil
-
-## Stones, roots and the depth of the clay for this colony's patch of ground (a generator of its own). Kept clear of
-## what is dug already and of the entrance shaft. [inference: a garden's soil has pebbles and roots in it, and ants
-## dig round them; the layer depths are chosen to differ by a few cm] Roots only in the garden (wild): a keeper's box of
-## soil has none (the keeper, 2026-11-03: "the roots in the tank out - it is a plain box; and they did not look real").
-func lay_out_soil(seed_v: int, wild := false) -> void:
-	var g := RandomNumberGenerator.new()
-	g.seed = seed_v
-	var stones := []
-	var roots := []
-	var mid := Vector2(entrance.x, entrance.z)
-	var want := g.randi_range(12, 24)
-	for attempt in 200:
-		if stones.size() >= want:
-			break
-		var r := g.randf_range(1.6, 2.6) if g.randf() < 0.65 else g.randf_range(2.6, 4.8)       # 5-14 mm across
-		var c := Vector3(g.randf_range(r + 1.0, nx - 2.0 - r), g.randf_range(float(y_floor) + r + 2.0, ny - 4.0 - r),
-			(nz - 2.5) if slab else g.randf_range(r + 1.0, nz - 2.0 - r))
-		if g.randf() < 0.6:
-			# most where the nest is dug: within ~3 cm of the entrance shaft, in the top 8 cm
-			c.x = clampf(mid.x + g.randf_range(-22.0, 22.0), r + 1.0, nx - 2.0 - r)
-			c.y = g.randf_range(ny - 55.0, ny - 6.0 - r)
-			if not slab:
-				c.z = clampf(mid.y + g.randf_range(-22.0, 22.0), r + 1.0, nz - 2.0 - r)
-		if Vector2(c.x, c.z).distance_to(mid) < r + 5.0 and c.y > ny - 30:
-			continue                                   # (not in the way of the entrance shaft)
-		if _open_near(c, r + 3.0):
-			continue
-		var clear := true
-		for o in stones:
-			if c.distance_to(Vector3(o[0], o[1], o[2])) < r + float(o[3]) + 2.0:
-				clear = false
-		if clear:
-			stones.append([c.x, c.y, c.z, r])
-	if wild:
-		roots = _lay_out_roots(g, mid)
-	var clay := g.randf_range(9.0, 20.0)
-	soil = {"stones": stones, "roots": roots, "clay": clay, "sand": clay + g.randf_range(18.0, 34.0)}
-	_stamp_hard()
-
-
-const MAX_ROOTS := 32          # root segments held (soil.gdshader's arrays, nest_view's pieces)
-
-## A plant's roots in the garden's soil, as roots grow (the keeper's drawing of root systems, 2026-11-03): one to three
-## from the surface, each a tap root wandering down in a few segments that thin as they go, side roots branching off
-## it out and down, and on some of those finer ones again - segments [a.xyz, b.xyz, radius], up to MAX_ROOTS.
-## [inference: shapes after drawings of root systems; no measurement of a garden plant's roots by an ant nest]
-func _lay_out_roots(g: RandomNumberGenerator, mid: Vector2) -> Array:
-	var out := []
-	var lo := Vector3(2, 3, 1 if slab else 2)
-	var hi := Vector3(nx - 3, ny - 1, nz - 2 if slab else nz - 3)
-	var grow := func(from: Vector3, dir: Vector3, r: float, steps: int, seg_len: Vector2, spread: float) -> Array:
-		var segs := []
-		var p := from
-		var d := dir
-		for k in steps:
-			if out.size() + segs.size() >= MAX_ROOTS or r < 0.12:
-				break
-			d = (d + Vector3(g.randf_range(-spread, spread), g.randf_range(-spread * 0.6, spread * 0.2),
-				0.0 if slab else g.randf_range(-spread, spread))).normalized()
-			if d.y > -0.15:
-				d = (d + Vector3(0, -0.4, 0)).normalized()         # (roots go down)
-			var q: Vector3 = (p + d * g.randf_range(seg_len.x, seg_len.y)).clamp(lo, hi)
-			if q.distance_to(p) < 1.0 or _open_near(q, r + 1.5) or _open_near(p.lerp(q, 0.5), r + 1.5):
-				break
-			segs.append([p.x, p.y, p.z, q.x, q.y, q.z, r])
-			p = q
-			r *= 0.88
-		return segs
-	for i in g.randi_range(1, 3):
-		var a := Vector3(g.randf_range(4.0, nx - 5.0), ny - 1.0, (nz - 2.5) if slab else g.randf_range(4.0, nz - 5.0))
-		if Vector2(a.x, a.z).distance_to(mid) < 8.0:
-			continue
-		var tap: Array = grow.call(a, Vector3(g.randf_range(-0.3, 0.3), -1.0, 0.0 if slab else g.randf_range(-0.3, 0.3)).normalized(),
-			g.randf_range(0.6, 0.9), g.randi_range(6, 9), Vector2(3.5, 6.0), 0.45)
-		out.append_array(tap)
-		# side roots from the tap root's joints, out to either side and down, some with finer ones on them
-		for sg in tap:
-			if out.size() >= MAX_ROOTS or g.randf() > 0.8:
-				continue
-			var at := Vector3(sg[3], sg[4], sg[5])
-			var side := Vector3(g.randf_range(-1.0, 1.0), g.randf_range(-0.7, -0.2), 0.0 if slab else g.randf_range(-1.0, 1.0)).normalized()
-			var branch: Array = grow.call(at, side, float(sg[6]) * 0.65, g.randi_range(2, 4), Vector2(2.5, 4.5), 0.6)
-			out.append_array(branch)
-			if not branch.is_empty() and g.randf() < 0.5 and out.size() < MAX_ROOTS:
-				var b0: Array = branch[0]
-				var fine := Vector3(g.randf_range(-1.0, 1.0), -0.5, 0.0 if slab else g.randf_range(-1.0, 1.0)).normalized()
-				out.append_array(grow.call(Vector3(b0[3], b0[4], b0[5]), fine, float(b0[6]) * 0.65, 2, Vector2(2.0, 3.5), 0.7))
-	return out.slice(0, MAX_ROOTS)
-
-
-## Marks the stones' and roots' voxels hard (and solid) - in the layers held (y_lo up).
-func _stamp_hard() -> void:
-	hard.resize(nx * hy() * nz)
-	hard.fill(0)
-	for s in soil.get("stones", []):
-		var c := Vector3(s[0], s[1], s[2])
-		var r: float = s[3]
-		for y in range(maxi(y_lo, floori(c.y - r)), mini(ny, ceili(c.y + r) + 1)):
-			for z in range(maxi(0, floori(c.z - r)), mini(nz, ceili(c.z + r) + 1)):
-				for x in range(maxi(0, floori(c.x - r)), mini(nx, ceili(c.x + r) + 1)):
-					if Vector3(x, y, z).distance_to(c) <= r:
-						_harden(Vector3i(x, y, z))
-	for rt in soil.get("roots", []):
-		var a := Vector3(rt[0], rt[1], rt[2])
-		var b := Vector3(rt[3], rt[4], rt[5])
-		var r: float = rt[6]
-		var ab := b - a
-		var lo := Vector3i(floori(minf(a.x, b.x) - r), floori(minf(a.y, b.y) - r), floori(minf(a.z, b.z) - r))
-		var hi := Vector3i(ceili(maxf(a.x, b.x) + r), ceili(maxf(a.y, b.y) + r), ceili(maxf(a.z, b.z) + r))
-		for y in range(maxi(y_lo, lo.y), mini(ny, hi.y + 1)):
-			for z in range(maxi(0, lo.z), mini(nz, hi.z + 1)):
-				for x in range(maxi(0, lo.x), mini(nx, hi.x + 1)):
-					var p := Vector3(x, y, z)
-					var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
-					if p.distance_to(a + ab * t) <= r:
-						_harden(Vector3i(x, y, z))
-
-
-func _harden(v: Vector3i) -> void:
-	var i := idx(v)
-	if rho[i] >= AIR:                      # (never where it is dug already)
-		hard[i] = 1
-
-
+## Stones and roots (worked out in parts/nest_ground.gd): never dug through.
 func is_hard(v: Vector3i) -> bool:
 	return not hard.is_empty() and inside(v) and hard[idx(v)] == 1
-
-
-## Any stone or root within r of p.
-func hard_near(p: Vector3, r: float) -> bool:
-	if hard.is_empty():
-		return false
-	for y in range(maxi(y_lo, floori(p.y - r)), mini(ny, ceili(p.y + r) + 1)):
-		for z in range(maxi(0, floori(p.z - r)), mini(nz, ceili(p.z + r) + 1)):
-			for x in range(maxi(0, floori(p.x - r)), mini(nx, ceili(p.x + r) + 1)):
-				if hard[idx(Vector3i(x, y, z))] == 1 and Vector3(x, y, z).distance_to(p) <= r:
-					return true
-	return false
-
-
-func _open_near(p: Vector3, r: float) -> bool:
-	for y in range(maxi(y_lo, floori(p.y - r)), mini(ny, ceili(p.y + r) + 1)):
-		for z in range(maxi(0, floori(p.z - r)), mini(nz, ceili(p.z + r) + 1)):
-			for x in range(maxi(0, floori(p.x - r)), mini(nx, ceili(p.x + r) + 1)):
-				if is_open(Vector3i(x, y, z)) and Vector3(x, y, z).distance_to(p) <= r:
-					return true
-	return false
-
-
-## Where the stiff clay and the loose sand start (voxels below the surface).
-func clay_top() -> float:
-	return float(soil.get("clay", 14.0))
-
-
-func sand_top() -> float:
-	return float(soil.get("sand", 40.0))
 
 
 # ---------------------------------------------------------------- voxel access
@@ -290,12 +142,22 @@ func hy() -> int:
 	return ny - y_lo
 
 
+## The columns and rows held across: x_lo .. nx - 1, z_lo .. nz - 1.
+func wx() -> int:
+	return nx - x_lo
+
+
+func wz() -> int:
+	return nz - z_lo
+
+
 func idx(c: Vector3i) -> int:
-	return (c.z * (ny - y_lo) + c.y - y_lo) * nx + c.x   # z-major: each z slice is contiguous (a 3D texture layer)
+	# z-major: each z slice is contiguous (a 3D texture layer)
+	return ((c.z - z_lo) * (ny - y_lo) + c.y - y_lo) * (nx - x_lo) + c.x - x_lo
 
 
 func inside(c: Vector3i) -> bool:
-	return c.x >= 0 and c.y >= y_lo and c.z >= 0 and c.x < nx and c.y < ny and c.z < nz
+	return c.x >= x_lo and c.y >= y_lo and c.z >= z_lo and c.x < nx and c.y < ny and c.z < nz
 
 
 func is_open(c: Vector3i) -> bool:
@@ -313,9 +175,9 @@ func density(x: int, y: int, z: int) -> float:
 
 
 func _solid(x: int, y: int, z: int) -> float:
-	if x < 0 or y < y_lo or z < 0 or x >= nx or y >= ny or z >= nz:
+	if x < x_lo or y < y_lo or z < z_lo or x >= nx or y >= ny or z >= nz:
 		return 0.0
-	return 1.0 if rho[(z * (ny - y_lo) + y - y_lo) * nx + x] >= AIR else 0.0
+	return 1.0 if rho[((z - z_lo) * (ny - y_lo) + y - y_lo) * (nx - x_lo) + x - x_lo] >= AIR else 0.0
 
 
 func walkable(c: Vector3i) -> bool:
@@ -339,8 +201,8 @@ static func room_q(d: Vector3, ax: Vector3) -> float:
 ## Carve a whole chamber at once (setting up a nest).
 func carve_room(center: Vector3, r: Vector3) -> void:
 	for y in range(maxi(y_lo, int(center.y - r.y)), mini(ny, int(center.y + r.y) + 2)):
-		for z in range(maxi(0, int(center.z - r.z)), mini(nz, int(center.z + r.z) + 2)):
-			for x in range(maxi(0, int(center.x - r.x)), mini(nx, int(center.x + r.x) + 2)):
+		for z in range(maxi(z_lo, int(center.z - r.z)), mini(nz, int(center.z + r.z) + 2)):
+			for x in range(maxi(x_lo, int(center.x - r.x)), mini(nx, int(center.x + r.x) + 2)):
 				if room_q(Vector3(x, y, z) - center, r) <= 1.0:
 					rho[idx(Vector3i(x, y, z))] = 0
 					_mark(Vector3i(x, y, z))
@@ -348,8 +210,8 @@ func carve_room(center: Vector3, r: Vector3) -> void:
 
 func carve_ellipsoid(center: Vector3, r: Vector3) -> void:
 	for y in range(maxi(y_lo, int(center.y - r.y)), mini(ny, int(center.y + r.y) + 2)):
-		for z in range(maxi(0, int(center.z - r.z)), mini(nz, int(center.z + r.z) + 2)):
-			for x in range(maxi(0, int(center.x - r.x)), mini(nx, int(center.x + r.x) + 2)):
+		for z in range(maxi(z_lo, int(center.z - r.z)), mini(nz, int(center.z + r.z) + 2)):
+			for x in range(maxi(x_lo, int(center.x - r.x)), mini(nx, int(center.x + r.x) + 2)):
 				var q := (Vector3(x, y, z) - center) / r
 				if q.length_squared() <= 1.0:
 					rho[idx(Vector3i(x, y, z))] = 0
@@ -388,8 +250,8 @@ func widen_way(a: Vector3, b: Vector3, r: Vector3) -> int:
 	var c := to
 	while c != from:
 		for y in range(maxi(y_lo, int(c.y - r.y)), mini(ny - 1, int(c.y + r.y) + 1)):
-			for z in range(maxi(1, int(c.z - r.z)), mini(nz - 1, int(c.z + r.z) + 1)):
-				for x in range(maxi(1, int(c.x - r.x)), mini(nx - 1, int(c.x + r.x) + 1)):
+			for z in range(maxi(z_lo + 1, int(c.z - r.z)), mini(nz - 1, int(c.z + r.z) + 1)):
+				for x in range(maxi(x_lo + 1, int(c.x - r.x)), mini(nx - 1, int(c.x + r.x) + 1)):
 					var v := Vector3i(x, y, z)
 					var k := idx(v)
 					if rho[k] >= AIR and not is_hard(v) and ((Vector3(v) - Vector3(c)) / r).length_squared() <= 1.0:
@@ -414,14 +276,15 @@ func _mark(c: Vector3i) -> void:
 func _recount() -> void:
 	air = 0
 	var h := hy()
-	proj.resize(nx * h)                 # (row y - y_lo)
+	var w := wx()
+	proj.resize(w * h)                  # (row y - y_lo, column x - x_lo)
 	proj.fill(0)
-	for z in nz:
+	for z in wz():
 		for y in h:
-			for x in nx:
-				if rho[(z * h + y) * nx + x] < AIR:
+			for x in w:
+				if rho[(z * h + y) * w + x] < AIR:
 					air += 1
-					proj[y * nx + x] += 1
+					proj[y * w + x] += 1
 
 
 var dist_ver := 0                      # counts changes to dist (_bfs, a voxel opened: nest_volume._bite)
@@ -436,8 +299,10 @@ func _bfs() -> void:
 	dist_ver += 1
 	dist.fill(-1)
 	var rows := ny - y_lo
-	var up := nx
-	var back := rows * nx
+	var w := wx()
+	var deep := wz()
+	var up := w
+	var back := rows * w
 	var d := dist
 	var r := rho
 	var q := PackedInt32Array()
@@ -451,13 +316,13 @@ func _bfs() -> void:
 		var i: int = q[h]
 		h += 1
 		var dc: int = d[i] + 1
-		var x := i % nx
-		var row := i / nx
+		var x := i % w
+		var row := i / w
 		var yy := row % rows
 		var zz := row / rows
 		if t + 6 > q.size():
 			q.resize(q.size() * 2)          # (air counted short: never in a nest made by the game)
-		if x + 1 < nx and r[i + 1] < AIR and d[i + 1] < 0:
+		if x + 1 < w and r[i + 1] < AIR and d[i + 1] < 0:
 			d[i + 1] = dc
 			q[t] = i + 1
 			t += 1
@@ -473,7 +338,7 @@ func _bfs() -> void:
 			d[i - up] = dc
 			q[t] = i - up
 			t += 1
-		if zz + 1 < nz and r[i + back] < AIR and d[i + back] < 0:
+		if zz + 1 < deep and r[i + back] < AIR and d[i + back] < 0:
 			d[i + back] = dc
 			q[t] = i + back
 			t += 1

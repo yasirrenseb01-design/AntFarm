@@ -1,5 +1,5 @@
-extends "res://scripts/sim/parts/nest_voxels.gd"
-## Underground nest, layer 2 of 4: taking in more soil below as the ants dig deep (extend_down), the nest's size, the
+extends "res://scripts/sim/parts/nest_ground.gd"
+## Underground nest, layer 3 of 5: taking in more soil below as the ants dig deep (extend_down), the nest's size, the
 ## steps to the work face (_work_paths, work_d), saving and loading. Split from nest_voxels.gd in v0.12.2 (it had grown past ~500 lines).
 
 
@@ -15,14 +15,15 @@ func extend_down(y: int) -> bool:
 	var h1 := h0 + add
 	var grow := func(a, fill_v):
 		var b = a.duplicate()
-		b.resize(nx * h1 * nz)
+		var w := wx()
+		b.resize(w * h1 * wz())
 		b.fill(fill_v)
-		if a.size() == nx * h0 * nz:
-			for z in nz:
+		if a.size() == w * h0 * wz():
+			for z in wz():
 				for yy in h0:
-					var s0: int = (z * h0 + yy) * nx
-					var d0: int = (z * h1 + yy + add) * nx
-					for x in nx:
+					var s0: int = (z * h0 + yy) * w
+					var d0: int = (z * h1 + yy + add) * w
+					for x in w:
 						b[d0 + x] = a[s0 + x]
 		return b
 	rho = grow.call(rho, 255)
@@ -34,9 +35,9 @@ func extend_down(y: int) -> bool:
 	y_lo = to
 	_recount()
 	_stamp_hard()
-	for cz in range(0, ceili(nz / float(CHUNK)) + 1):
+	for cz in range(floori(z_lo / float(CHUNK)), ceili(nz / float(CHUNK)) + 1):
 		for cy in range(floori(to / float(CHUNK)) - 1, floori((to + add) / float(CHUNK)) + 1):
-			for cx in range(0, ceili(nx / float(CHUNK)) + 1):
+			for cx in range(floori(x_lo / float(CHUNK)), ceili(nx / float(CHUNK)) + 1):
 				dirty[Vector3i(cx, cy, cz)] = true
 	resized += 1
 	return true
@@ -67,11 +68,11 @@ var _wp_q := PackedInt32Array()          # the search's queue: _wp_h .. _wp_t st
 var _wp_h := 0
 var _wp_t := 0
 var _wp_rho := PackedByteArray()         # the soil it searches: a copy of rho as it was when the search began
-var _wp_dims := Vector3i.ZERO            # nx, rows, nz it began with
+var _wp_dims := Vector3i.ZERO            # columns, rows, slices held when it began (wx, hy, wz)
 
 
 func _work_paths() -> void:
-	work_dist.resize(nx * hy() * nz)
+	work_dist.resize(wx() * hy() * wz())
 	work_dist.fill(-1)
 	_wp_h = 0
 	_wp_t = 0
@@ -79,7 +80,7 @@ func _work_paths() -> void:
 	if work_at.x < 0 or not inside(work_at) or not is_open(work_at):
 		return
 	_wp_rho = rho.duplicate()             # (a copy: a packed array assigned is the same array, and the diggers bite on)
-	_wp_dims = Vector3i(nx, ny - y_lo, nz)
+	_wp_dims = Vector3i(wx(), ny - y_lo, wz())
 	_wp_q.resize(work_dist.size())
 	var first := idx(work_at)
 	work_dist[first] = 0
@@ -164,7 +165,7 @@ func _wp_more(until: int) -> void:
 ## Everything that affects how digging continues, so a loaded nest carries on exactly where it was.
 func to_dict() -> Dictionary:
 	finish_work_paths()
-	return {"nx": nx, "ny": ny, "nz": nz, "y_lo": y_lo, "y_floor": y_floor, "slab": slab, "rho": rho, "dug_at": dug_at, "dist": dist,
+	return {"nx": nx, "ny": ny, "nz": nz, "x_lo": x_lo, "z_lo": z_lo, "y_lo": y_lo, "y_floor": y_floor, "slab": slab, "rho": rho, "dug_at": dug_at, "dist": dist,
 		"excavated": excavated, "chambers": chambers, "diggers": diggers, "entrance": entrance, "tick": tick,
 		"dist_age": _dist_age, "next_id": _next_id, "entrance_r": entrance_r, "work_left": work_left, "work_at": work_at, "work_dist": work_dist, "entrance_done": entrance_done,
 		"soil": soil}
@@ -178,6 +179,8 @@ func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
 	# (saves before v0.11.29: the soil ended at y = 0)
 	y_lo = int(d.get("y_lo", 0))                      # (checked: save_check._sizes)
 	y_floor = int(d.get("y_floor", y_lo))
+	x_lo = int(d.get("x_lo", 0))                      # (saves before v0.12.17: the block from 0; checked: save_check._sizes)
+	z_lo = int(d.get("z_lo", 0))
 	slab = d.slab
 	rho = d.rho
 	dug_at = d.dug_at

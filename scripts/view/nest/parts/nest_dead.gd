@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_rest.gd"
-## Nest view, layer 9 of 15 (split from parts/nest_bind.gd in v0.11.46): the dead in the nest - lying there until an
+## Nest view, layer 10 of 16 (split from parts/nest_bind.gd in v0.11.46): the dead in the nest - lying there until an
 ## undertaker carries one out, a body the living keep clear of - and the prey carried down to the larvae; the extra
 ## distance fields (the dig face, a body to fetch) and the --io counts the binding layer above keeps.
 

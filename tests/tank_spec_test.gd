@@ -16,7 +16,7 @@ func _init() -> void:
 	r.seed = 1
 	var n := NestVolume.new()
 	n.setup(r)
-	_near("nest block", Vector3(n.nx, n.ny, n.nz) * Spec.VOXEL, Spec.NEST)
+	_near("nest block", Vector3(n.wx(), n.ny, n.wz()) * Spec.VOXEL, Spec.NEST)
 	var f := NestVolume.new()
 	f.setup(r, true)
 	_near("ant farm", Vector3(f.nx, f.ny, f.nz) * Spec.VOXEL, Spec.FARM)

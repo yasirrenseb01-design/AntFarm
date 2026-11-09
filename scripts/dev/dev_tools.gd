@@ -1196,19 +1196,19 @@ func _save_nest_png(path: String) -> void:
 	# side view: darker = more open space along the depth axis; chamber centres in red
 	var nv = sim.nest
 	var s := 4
-	var img := Image.create(nv.nx * s, nv.ny * s, false, Image.FORMAT_RGB8)
+	var img := Image.create(nv.wx() * s, nv.ny * s, false, Image.FORMAT_RGB8)
 	for y in nv.ny:
-		for x in nv.nx:
+		for x in range(nv.x_lo, nv.nx):
 			var open := 0
-			for z in nv.nz:
+			for z in range(nv.z_lo, nv.nz):
 				if nv.is_open(Vector3i(x, y, z)):
 					open += 1
 			var depth: float = float(nv.ny - y) / nv.ny
 			var soil: Color = Color(0.55, 0.42, 0.3).lerp(Color(0.62, 0.45, 0.32), depth)
 			var c: Color = soil.lerp(Color(0.05, 0.03, 0.02), clampf(open / 3.0, 0.0, 1.0))
-			img.fill_rect(Rect2i(x * s, (nv.ny - 1 - y) * s, s, s), c)
+			img.fill_rect(Rect2i((x - nv.x_lo) * s, (nv.ny - 1 - y) * s, s, s), c)
 	for ch in nv.chambers:
-		img.fill_rect(Rect2i(int(ch.c.x) * s - 2, (nv.ny - 1 - int(ch.c.y)) * s - 2, 5, 5), Color.RED)
+		img.fill_rect(Rect2i((int(ch.c.x) - nv.x_lo) * s - 2, (nv.ny - 1 - int(ch.c.y)) * s - 2, 5, 5), Color.RED)
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	img.save_png(path)
 	print("saved ", path)

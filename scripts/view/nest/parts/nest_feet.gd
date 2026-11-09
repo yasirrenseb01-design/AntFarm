@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_lifecycle.gd"
-## Nest view, layer 6 of 15 (split from parts/nest_bodies.gd in v0.11.33): the legs - the gait stepped as far as the
+## Nest view, layer 7 of 16 (split from parts/nest_bodies.gd in v0.11.33): the legs - the gait stepped as far as the
 ## drawn body really goes, the feet's reach, and where each tripod was set down (remembered: sent to the shader as feet_tex).
 
 
@@ -235,6 +235,8 @@ func _foot_at(p: Vector3) -> float:
 	var ny: int = nest.ny
 	var nz: int = nest.nz
 	var y_lo: int = nest.y_lo
+	var x_lo: int = nest.x_lo
+	var z_lo: int = nest.z_lo
 	var x0 := floori(p.x)
 	var y0 := floori(p.y)
 	var z0 := floori(p.z)
@@ -243,13 +245,13 @@ func _foot_at(p: Vector3) -> float:
 	var fz := p.z - z0
 	var v := 0.0
 	for dz in 2:
-		var z := clampi(z0 + dz, 0, nz - 1)
+		var z := clampi(z0 + dz, z_lo, nz - 1)
 		var wz := fz if dz == 1 else 1.0 - fz
 		for dy in 2:
 			var y := clampi(y0 + dy, y_lo, ny - 1)
 			var wy := (fy if dy == 1 else 1.0 - fy) * wz
-			var row := (z * (ny - y_lo) + y - y_lo) * nx
-			v += wy * ((1.0 - fx) * rho[row + clampi(x0, 0, nx - 1)] + fx * rho[row + clampi(x0 + 1, 0, nx - 1)])
+			var row := ((z - z_lo) * (ny - y_lo) + y - y_lo) * (nx - x_lo) - x_lo
+			v += wy * ((1.0 - fx) * rho[row + clampi(x0, x_lo, nx - 1)] + fx * rho[row + clampi(x0 + 1, x_lo, nx - 1)])
 	return v / 255.0
 
 

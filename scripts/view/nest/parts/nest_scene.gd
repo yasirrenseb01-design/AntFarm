@@ -1,8 +1,8 @@
 extends Node3D
 ## 3D view of the underground nest: the soil block sliced open by a camera-facing cut plane,
 ## with diggers from the simulation, resting nestmates, brood piles and the queen.
-## Nest view, layer 1 of 15: state and the building blocks of the scene (soil chunks, materials,
-## meshes, the glass case). Layers: nest_scene <- nest_camera <- nest_brood <- nest_lifecycle <- nest_bodies <- nest_mates <- nest_view.
+## Nest view, layer 1 of 16: state and the building blocks of the scene (soil chunks, materials,
+## meshes, the glass case). Layers: nest_scene <- nest_volumes <- nest_camera <- nest_brood <- nest_lifecycle <- nest_bodies <- nest_mates <- nest_view.
 const Ant := preload("res://scripts/sim/ant.gd")
 const Mesher := preload("res://scripts/view/nest/nest_mesher.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
@@ -179,16 +179,16 @@ var _egg_spots: Array = []         # floor beside the queen (not under her) wher
 ## The soil density at a point (trilinear between voxels, as the soil mesh is built from it).
 func _density_at(p: Vector3) -> float:
 	if _soft.is_empty():
-		_soft_build(Vector3i(-1, nest.y_lo - 1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
+		_soft_build(Vector3i(nest.x_lo - 1, nest.y_lo - 1, nest.z_lo - 1), Vector3i(nest.nx, nest.ny, nest.nz))
 	var x := floori(p.x)
 	var y := floori(p.y)
 	var z := floori(p.z)
-	if x < -1 or y < nest.y_lo - 1 or z < -1 or x >= nest.nx or y >= nest.ny or z >= nest.nz:
+	if x < nest.x_lo - 1 or y < nest.y_lo - 1 or z < nest.z_lo - 1 or x >= nest.nx or y >= nest.ny or z >= nest.nz:
 		return 0.0                                 # (beyond the block and its first ring of air)
 	var fx := p.x - x
 	var fy := p.y - y
 	var fz := p.z - z
-	var i := ((z + 1) * _sy + (y - _sy0 + 1)) * _sx + (x + 1)
+	var i := ((z - _sz0 + 1) * _sy + (y - _sy0 + 1)) * _sx + (x - _sx0 + 1)
 	var d00 := lerpf(_soft[i], _soft[i + 1], fx)
 	var d10 := lerpf(_soft[i + _sx], _soft[i + _sx + 1], fx)
 	var j := i + _sx * _sy
@@ -206,28 +206,39 @@ var _soft := PackedFloat32Array()
 var _native = ClassDB.instantiate("AntNative") if ClassDB.class_exists("AntNative") and not OS.get_cmdline_user_args().has("--no-native") else null
 
 
-## _soft's layout for the C++ part: [sx, sy, sy0, nx, ny, nz, y_lo].
+## _soft's layout for the C++ part: [sx, sy, sy0, nx, ny, nz, y_lo] - x and z counted from the box held (x_lo, z_lo:
+## the C++ part reads points moved back by _soft_off(), as it did when the box began at 0).
 func _soft_dims() -> PackedInt32Array:
-	return PackedInt32Array([_sx, _sy, _sy0, nest.nx, nest.ny, nest.nz, nest.y_lo])
+	return PackedInt32Array([_sx, _sy, _sy0, nest.wx(), nest.ny, nest.wz(), nest.y_lo])
+
+
+func _soft_off() -> Vector3:
+	return Vector3(_sx0, 0, _sz0)
 
 
 var _sx := 0
 var _sy := 0
 var _sy0 := 0                       # (the layer _soft starts at: nest.y_lo when it was laid out)
+var _sx0 := 0                       # (the column and the slice it starts at: nest.x_lo, nest.z_lo)
+var _sz0 := 0
 func _soft_build(a: Vector3i, b: Vector3i) -> void:
-	if _soft.is_empty() or _sy0 != nest.y_lo:
-		_sx = nest.nx + 2
+	var lo := Vector3i(nest.x_lo - 1, nest.y_lo - 1, nest.z_lo - 1)
+	var hi := Vector3i(nest.nx, nest.ny, nest.nz)
+	if _soft.is_empty() or _sy0 != nest.y_lo or _sx0 != nest.x_lo or _sz0 != nest.z_lo or _sx != nest.wx() + 2 or _soft.size() != _sx * (nest.hy() + 2) * (nest.wz() + 2):
+		_sx = nest.wx() + 2
 		_sy = nest.hy() + 2
 		_sy0 = nest.y_lo
+		_sx0 = nest.x_lo
+		_sz0 = nest.z_lo
 		_soft = PackedFloat32Array()
-		_soft.resize(_sx * _sy * (nest.nz + 2))
-		a = Vector3i(-1, nest.y_lo - 1, -1)        # (laid out again whole: the soil was taken in deeper)
-		b = Vector3i(nest.nx, nest.ny, nest.nz)
-	a = a.clamp(Vector3i(-1, nest.y_lo - 1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
-	b = b.clamp(Vector3i(-1, nest.y_lo - 1, -1), Vector3i(nest.nx, nest.ny, nest.nz))
+		_soft.resize(_sx * _sy * (nest.wz() + 2))
+		a = lo                                     # (laid out again whole: the soil was taken in deeper)
+		b = hi
+	a = a.clamp(lo, hi)
+	b = b.clamp(lo, hi)
 	for z in range(a.z, b.z + 1):
 		for y in range(a.y, b.y + 1):
-			var row := ((z + 1) * _sy + (y - _sy0 + 1)) * _sx + 1
+			var row := ((z - _sz0 + 1) * _sy + (y - _sy0 + 1)) * _sx + 1 - _sx0
 			for x in range(a.x, b.x + 1):
 				_soft[row + x] = nest.density(x, y, z)
 
@@ -351,100 +362,6 @@ func _box(size: Vector3, pos: Vector3, mat: Material) -> void:
 	add_child(mi)
 
 
-## The soil voxels as a 3D texture: the cut face (which parts of it are solid soil) and the ants' feet (the floor
-## under them) read it.
-func _upload_volume() -> void:
-	_vol_dirty = false
-	_vol_timer = 0.5
-	var layers: Array[Image] = []
-	var h: int = nest.hy()
-	var slice: int = nest.nx * h
-	for z in nest.nz:
-		layers.append(Image.create_from_data(nest.nx, h, false, Image.FORMAT_R8, nest.rho.slice(z * slice, (z + 1) * slice)))
-	if _vol == null or _vol.get_height() != h:
-		_vol = ImageTexture3D.new()           # (new, or the soil taken in deeper: a volume of the new size)
-		_vol.create(Image.FORMAT_R8, nest.nx, h, nest.nz, false, layers)
-		_mat.set_shader_parameter("vol", _vol)
-	else:
-		_vol.update(layers)
-	_set_vol_shape()
-	_upload_foot_volume()
-
-
-## Where the soil volumes sit (the layers held: nest.y_lo up), for every shader that reads them.
-func _set_vol_shape() -> void:
-	var size := Vector3(nest.nx, nest.hy(), nest.nz)
-	var org := Vector3(0.0, nest.y_lo, 0.0)
-	for m in [_mat] + _vol_mats:
-		if m != null:
-			m.set_shader_parameter("vol_size", size)
-			m.set_shader_parameter("vol_org", org)
-	if _xray_mat != null:
-		_xray_mat.set_shader_parameter("box_min_y", float(nest.y_lo))
-	if _shelf != null:
-		# (it stayed at the first block's foot: chambers dug below it were hidden under it, seen only from below - the
-		# keeper, 2026-10-29)
-		_shelf.position.y = nest.y_lo - 1.0
-	if _ghost != null:
-		(_ghost.mesh as BoxMesh).size = size
-		_ghost.position = Vector3(nest.nx / 2.0 - 0.5, nest.y_lo + nest.hy() / 2.0 - 0.5, nest.nz / 2.0 - 0.5)
-
-
-var _resized_seen := 0             # nest.resized when the volumes were last laid out
-var _shelf: MeshInstance3D          # the dark shelf under the soil block (nest_view)
-var _vol_mats: Array = []          # the ants' materials reading the feet's volume (nest_view setup)
-
-
-## What the ants' feet stand on (the ant shaders' `vol`): the soil, and the brood lying on it - an ant crossing the
-## pile had its feet set down on the soil under the cocoons, through them (or, out of reach, hanging in the air).
-## The brood's bodies (nest_piles: as drawn) are stamped in as solid voxels. Again at most twice a second.
-func _upload_foot_volume() -> void:
-	_foot_timer = 0.5 if _foot_climbs == 0 else 0.2
-	_foot_rho = nest.rho.duplicate()
-	var nx: int = nest.nx
-	var ny: int = nest.ny
-	var nz: int = nest.nz
-	var y_lo: int = nest.y_lo
-	var h: int = ny - y_lo
-	var all_sph := []
-	for bin in _brood_occ.values():
-		for o in bin:
-			all_sph.append(o[5] if o.size() >= 6 else ([[o[0], 0.25]] if o.size() == 2 else []))
-	# and the nestmates someone is climbing over: the climber's feet stand on their backs
-	_foot_climbs = 0
-	for m in _mates:
-		var o = m.get("over_on")
-		if o != null and o.has("xf") and float(m.get("over", 0.0)) > 0.2:
-			all_sph.append(call("_body_spheres", o))
-			_foot_climbs += 1
-	for sph in all_sph:
-		if true:
-			for q in sph:
-				# (a density falling off across a voxel at the body's surface: read trilinearly, as the shader reads it,
-				# it crosses one half right at the surface - stamped solid, the feet stood up to half a voxel off it)
-				var c: Vector3 = q[0]
-				var r: float = float(q[1])
-				var e := r + 0.8
-				for z in range(maxi(0, floori(c.z - e)), mini(nz, ceili(c.z + e) + 1)):
-					for y in range(maxi(y_lo, floori(c.y - e)), mini(ny, ceili(c.y + e) + 1)):
-						for x in range(maxi(0, floori(c.x - e)), mini(nx, ceili(c.x + e) + 1)):
-							var v := int(clampf(0.6 + (r - Vector3(x, y, z).distance_to(c)), 0.0, 1.0) * 255.0)     # (0.6: its surface a touch outside the body - the feet on it, not in it)
-							var ix := (z * h + y - y_lo) * nx + x
-							if v > _foot_rho[ix]:
-								_foot_rho[ix] = v
-	var layers: Array[Image] = []
-	var slice: int = nx * h
-	for z in nz:
-		layers.append(Image.create_from_data(nx, h, false, Image.FORMAT_R8, _foot_rho.slice(z * slice, (z + 1) * slice)))
-	if _foot_vol == null or _foot_vol.get_height() != h:
-		_foot_vol = ImageTexture3D.new()
-		_foot_vol.create(Image.FORMAT_R8, nx, h, nz, false, layers)
-		for m in _vol_mats:
-			m.set_shader_parameter("vol", _foot_vol)
-	else:
-		_foot_vol.update(layers)
-
-
 func _build_chunk(k: Vector3i) -> void:
 	_set_chunk(k, Mesher.build(nest, k))
 
@@ -508,9 +425,9 @@ func _walkable(c: Vector3i) -> bool:
 		var n: Vector3i = c + d
 		if n.y >= ny:
 			continue                     # (the sky)
-		if n.x < 0 or n.y < y_lo or n.z < 0 or n.x >= nx or n.z >= nz:
+		if n.x < nest.x_lo or n.y < y_lo or n.z < nest.z_lo or n.x >= nx or n.z >= nz:
 			return true                  # (the block's sides and bottom)
-		if rho[(n.z * (ny - y_lo) + n.y - y_lo) * nx + n.x] >= nest.AIR:
+		if rho[((n.z - nest.z_lo) * (ny - y_lo) + n.y - y_lo) * (nx - nest.x_lo) + n.x - nest.x_lo] >= nest.AIR:
 			return true
 	return false
 

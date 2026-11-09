@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_brood.gd"
-## Nest view, layer 4 of 15: the brood piles - each egg, larva and cocoon laid down like a real object on the
+## Nest view, layer 5 of 16: the brood piles - each egg, larva and cocoon laid down like a real object on the
 ## floor (or on the heap), clear of the chamber walls and the queen, and left exactly where it lies until
 ## nurses carry its pile elsewhere.
 
@@ -679,7 +679,7 @@ func _update_brood() -> void:
 		var a := _hash(i, 5) * TAU
 		var r: float = lerpf(Mound.HOLE.y - 0.6, reach, sqrt(_hash(i, 6)))
 		var p := e + Vector3(cos(a) * r, 0.0, sin(a) * r)
-		if p.x < -0.4 or p.z < -0.4 or p.x > nest.nx - 0.6 or p.z > nest.nz - 0.6:
+		if p.x < nest.x_lo - 0.4 or p.z < nest.z_lo - 0.4 or p.x > nest.nx - 0.6 or p.z > nest.nz - 0.6:
 			continue                                  # (past the block's edge: the glass)
 		p.y += Mound.height(r, hr.x, hr.y) - 0.15 + 0.2 * _hash(i, 7)
 		xfs.append(Transform3D(Basis(Vector3.UP, a), p))
@@ -701,8 +701,8 @@ func _mound_mesh(e: Vector3, hr: Vector2) -> void:
 	var pts := []
 	for j in g + 1:
 		for i in g + 1:
-			var x := clampf(e.x + lerpf(-reach, reach, float(i) / g), -0.5, nest.nx - 0.5)
-			var z := clampf(e.z + lerpf(-reach, reach, float(j) / g), -0.5, nest.nz - 0.5)
+			var x := clampf(e.x + lerpf(-reach, reach, float(i) / g), nest.x_lo - 0.5, nest.nx - 0.5)
+			var z := clampf(e.z + lerpf(-reach, reach, float(j) / g), nest.z_lo - 0.5, nest.nz - 0.5)
 			var d := Vector2(x - e.x, z - e.z).length()
 			pts.append(Vector3(x, e.y - 0.35 + Mound.height(d, hr.x, hr.y), z))
 	for j in g:

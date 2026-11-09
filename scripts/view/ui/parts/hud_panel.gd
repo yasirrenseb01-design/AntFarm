@@ -161,7 +161,7 @@ func _refresh_nest_image() -> void:
 		return
 	_proj_air = nv.air
 	var h: int = nv.hy()                       # (the soil held: a deep garden nest's from y_lo, below 0)
-	var img := Image.create(nv.nx, h, false, Image.FORMAT_RGBA8)
+	var img := Image.create(nv.wx(), h, false, Image.FORMAT_RGBA8)
 	var loam := Color(0.3, 0.2, 0.12)
 	var clay := Color(0.55, 0.34, 0.2)
 	var sand := Color(0.72, 0.59, 0.4)
@@ -170,8 +170,8 @@ func _refresh_nest_image() -> void:
 		var y: int = nv.y_lo + yy
 		var depth: int = nv.ny - 1 - y
 		var soil := loam.lerp(clay, clampf((depth - 11) / 6.0, 0.0, 1.0)).lerp(sand, clampf((depth - 37) / 8.0, 0.0, 1.0))
-		for x in nv.nx:
-			var open: int = nv.proj[yy * nv.nx + x]
+		for x in nv.wx():
+			var open: int = nv.proj[yy * nv.wx() + x]
 			var tone := soil * (0.9 + 0.2 * _seeded(x * 131 + y, 3))
 			tone.a = 1.0
 			img.set_pixel(x, depth, tone if open == 0 else hole.lerp(tone, 0.25 / open))
@@ -180,16 +180,16 @@ func _refresh_nest_image() -> void:
 	else:
 		_proj_tex.update(img)
 	# frame the dug part of the block (plus the surface above it) so the nest fills the panel
-	var lo := Vector2i(nv.nx, nv.ny)
+	var lo := Vector2i(nv.wx(), nv.ny)
 	var hi := Vector2i(-1, nv.y_lo - 1)
 	for yy in h:
 		var y: int = nv.y_lo + yy
-		for x in nv.nx:
-			if nv.proj[yy * nv.nx + x] > 0:
+		for x in nv.wx():
+			if nv.proj[yy * nv.wx() + x] > 0:
 				lo = Vector2i(mini(lo.x, x), mini(lo.y, y))
 				hi = Vector2i(maxi(hi.x, x), maxi(hi.y, y))
 	if hi.x < 0:
-		_crop = Rect2i(0, 0, nv.nx, h)
+		_crop = Rect2i(0, 0, nv.wx(), h)
 		return
 	var cx: int = (lo.x + hi.x) / 2
 	var half_w: int = maxi(16, (hi.x - lo.x) / 2 + 7)
@@ -198,8 +198,8 @@ func _refresh_nest_image() -> void:
 	var height: int = maxi(top - bottom + 1, 24)
 	# keep roughly the panel's aspect (about 1.5 wide : 1 tall)
 	half_w = maxi(half_w, int(height * 0.75))
-	var x0: int = clampi(cx - half_w, 0, maxi(0, nv.nx - 2 * half_w))
-	_crop = Rect2i(x0, nv.ny - 1 - top, mini(2 * half_w, nv.nx), mini(height, h))
+	var x0: int = clampi(cx - half_w, 0, maxi(0, nv.wx() - 2 * half_w))
+	_crop = Rect2i(x0, nv.ny - 1 - top, mini(2 * half_w, nv.wx()), mini(height, h))
 
 
 func _draw_nest() -> void:
