@@ -164,6 +164,7 @@ func _draw() -> void:
 	_strip(n, top, gnd, c_top, c_hor, Vector2.ZERO)
 	_draw_sun(now)
 	_draw_clouds(now)
+	_draw_air()
 
 	# the ground line, the hours on the paper under it
 	var line := PackedVector2Array()
@@ -252,6 +253,16 @@ func _draw_sun(now: float) -> void:
 		draw_polyline(moon, INK, 1.2, true)
 
 
+## The air's temperature beside the sun or the moon, in red (the keeper, 2026-11-09: "move the temperature from the left
+## bar next to the sun and the moon, in red" - in the bar's weather line until v0.12.13), on a pale rim to read on the
+## day's sky and the night's.
+func _draw_air() -> void:
+	var text := "%.1f°C" % float(sim.climate.air)
+	var at := Vector2(size.x * 0.5 + 29.0, _sun_y() + 6.0)
+	draw_string_outline(mono, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, 5, Color(1.0, 0.96, 0.86, 0.9))
+	draw_string(mono, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, Color(0.78, 0.08, 0.05))
+
+
 ## Where the sun (or the moon) stands over now: high at noon, down on the line at dawn and dusk.
 func _sun_y() -> float:
 	var g := _ground(size.x * 0.5)
@@ -296,7 +307,8 @@ func _draw_ants(now: float) -> void:
 		if _hash01(slot, 7) >= _act_at(slot, now):
 			continue
 		var x := _x_of((float(slot) + 0.2 + _hash01(slot, 8) * 0.6) / SLOTS, now)
-		if x < 20.0 or x > size.x - 20.0 or absf(x - size.x * 0.5) < 26.0:
+		if x < 20.0 or x > size.x - 20.0:      # (and on under the sun: they kept out of the middle in v0.12.12 - vanishing and
+			# showing up again on the other side, the keeper, 2026-11-09)
 			continue
 		var slope := (_ground(x + 1.0) - _ground(x - 1.0)) * 0.5
 		var phase := (x - _x_of(0.0, now)) * 0.45 + float(slot) * 1.3     # (legs move as the strip slides)

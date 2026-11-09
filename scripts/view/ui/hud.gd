@@ -159,7 +159,7 @@ func refresh(delta: float) -> void:
 	_place_time_bar()
 	_date.text = tr("date_line") % [sim.year(), sim.date_text(), sim.season_name()]
 	var sky := tr("sky_rain") if sim.climate.raining() else (tr("sky_night") if sim.sun_height() < -0.05 else tr("sky_clear"))
-	_weather.text = tr("weather_line") % [sim.climate.air, sky, int(sim.activity * 100)]
+	_weather.text = tr("weather_line") % [sky, int(sim.activity * 100)]     # (the air's temperature: on the time bar)
 	_place_tab()
 	_harmony_row.visible = harmony >= 0.0
 	if _frame % 30 == 0:

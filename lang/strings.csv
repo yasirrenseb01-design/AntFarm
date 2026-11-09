@@ -493,7 +493,7 @@ date_line,ปีที่ %d · %s · %s,Year %d · %s · %s
 sky_rain,ฝนตก,rain
 sky_night,กลางคืน,night
 sky_clear,แจ่มใส,clear
-weather_line,อากาศ %.1f°C · %s · มดออกหากิน %d%%,Air %.1f°C · %s · foraging %d%%
+weather_line,%s · มดออกหากิน %d%%,%s · foraging %d%%
 timebar_tip,"แถบเวลา: ตรงกลางคือตอนนี้ ซ้ายคือชั่วโมงที่ผ่านมา ขวาคือชั่วโมงข้างหน้า
 มดบนเส้นคือการออกหากิน ยิ่งมดหนาแน่นยิ่งออกหากินมาก (ข้างหน้าคาดจากอากาศวันนี้)","The time bar: now is the middle, the hours gone by to the left, the hours to come to the right.
 The ants on the line are the foraging: the thicker they walk, the more go out (ahead: reckoned from today's weather)."
