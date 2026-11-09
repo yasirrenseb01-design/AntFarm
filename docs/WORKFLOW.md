@@ -9,7 +9,8 @@
 5. **ดูด้วยตา** — ถ่ายภาพด้วย `tools/dev/gd.sh --path . -- --shot=...` (ตัวเลือกอยู่หัว `scripts/game/main.gd`) แล้วเปิดดูจริงทุกครั้ง
    - ของที่เคลื่อนไหว: ภาพต่อเนื่อง `--seq=9 --seq-every=3 --seq-speed=0.5` (+ `--at-ant=walker`) แล้ว `python tools/dev/strip.py`
    - ของชิ้นใหม่: ดูทั้งมุมต่ำและมุมบน, เทียบขนาดกับตาราง "ขนาดจริง" ใน BIOLOGY.md
-   - ระบบที่กระทบการอยู่รอดของรัง: `tests/year_run.gd -- wild 0 1100 alone <seed>` อย่างน้อย 2 seed + แบบดูแล
+   - ระบบที่กระทบการอยู่รอดของรัง: `tests/year_run.gd -- wild 0 1100 alone <seed>` และ `-- keeper 0 1100 kept <seed>`
+     อย่างน้อย 3 seed ต่อแบบ เทียบกับโค้ดก่อนแก้ (LESSONS 37)
 6. **ปล่อยเวอร์ชัน** — เพิ่ม `config/version` ใน `project.godot`, เขียน `CHANGELOG.md`, รัน `tools/build.ps1`, commit + push
 7. **ของที่ยังไม่ทำ** — ลง `docs/roadmap/BACKLOG.md` ทันที อย่าเก็บไว้ในหัว; PART เสร็จ → ย้ายรายละเอียดไป `docs/roadmap/DONE.md`
 
