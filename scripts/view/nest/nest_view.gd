@@ -248,9 +248,9 @@ func follow_ant(id: int) -> void:
 
 
 func _follow_ant(delta: float) -> void:
-	if follow_wid < 0:
+	if follow_wid < 0 and follow_wid != FOLLOW_QUEEN:
 		return
-	var p := mate_pos(follow_wid)
+	var p: Vector3 = (_spots.queen if sim.queen.alive and _spots.queen != Vector3.ZERO else Vector3.INF) if follow_wid == FOLLOW_QUEEN else mate_pos(follow_wid)
 	if p == Vector3.INF:
 		_follow_lost += delta
 		if _follow_lost > 2.0:

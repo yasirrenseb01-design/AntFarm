@@ -36,6 +36,49 @@ static func start(game) -> bool:
 					print("grow-box: %d soil pieces waiting at 8 s" % game.nest_view._queue.size())
 					await RenderingServer.frame_post_draw
 					game.get_viewport().get_texture().get_image().save_png(String(game._opts["grow-shot"]))))
+	if game._opts.has("queen-watch"):
+		# (--queen-watch=<s> with --nest-after and --queen-to: 0.5 s after the nest opened, the "Queen" button pressed;
+		# then each frame for s seconds, while she walks, whether she is drawn - the keeper, 2026-11-10: the camera sent to
+		# her, she walked to another chamber and turned invisible)
+		var w := {"walk": 0, "shown": 0, "frames": 0}
+		game.get_tree().create_timer(float(game._opts["nest-after"]) + 0.5).timeout.connect(func():
+			game.nest_view.focus("queen")
+			var sim = game.sim
+			var qt := clampi(int(game._opts.get("queen-to", "0")), 0, sim.nest.chambers.size() - 1)
+			if qt == sim.queen_at:
+				qt = (qt + sim.nest.chambers.size() / 2) % sim.nest.chambers.size()
+			sim.nest.widen_way(sim.nest.chambers[sim.queen_at].c, sim.nest.chambers[qt].c, sim.QUEEN_WAY)   # (as the colony sends her)
+			print("queen-watch: chamber %d -> %d" % [sim.queen_at, qt])
+			sim.queen_at = qt
+			sim._queen_stay = 0.0
+			game.nest_view._refresh_spots()
+			var t_end := Time.get_ticks_msec() + int(float(game._opts["queen-watch"]) * 1000.0)
+			var tick := func():
+				if Time.get_ticks_msec() > t_end:
+					return
+				w.frames += 1
+				if not game.nest_view._queen_path.is_empty():
+					w.walk += 1
+					if game.nest_view._queen_mm.instance_count > 0:
+						w.shown += 1
+			game.get_tree().process_frame.connect(tick)
+			if game._opts.has("queen-shot"):
+				# (--queen-shot=<base>: pictures 3, 8 and 14 s after she set off, <base>_3.png ...)
+				if game._opts.has("queen-speed"):
+					game.speed = float(game._opts["queen-speed"])     # (--queen-speed=<x>: the game's pace while she is watched)
+				for sec in ([3, 8, 14] if not game._opts.has("queen-shots") else Array(String(game._opts["queen-shots"]).split(",")).map(func(v): return int(v))):
+					game.get_tree().create_timer(float(sec)).timeout.connect(func():
+						await RenderingServer.frame_post_draw
+						var nv = game.nest_view
+						var mt: Transform3D = nv._queen_mm.get_instance_transform(0) if nv._queen_mm.instance_count > 0 else Transform3D()
+						print("queen-shot %d s: drawn %s at %s (drawn %s, scale %.2f, on screen %s, behind %s), spot %s, busy %s, path %d, target %s, x-ray %s" % [sec,
+							nv._queen_mm.instance_count > 0, str(nv._queen_xf.origin.snapped(Vector3.ONE * 0.1)), str(mt.origin.snapped(Vector3.ONE * 0.1)),
+							mt.basis.get_scale().x, str(nv._cam.unproject_position(mt.origin).round()), nv._cam.is_position_behind(mt.origin),
+							str((nv._spots.queen as Vector3).snapped(Vector3.ONE * 0.1)), nv._queen_busy(), nv._queen_path.size(), str(nv.target.snapped(Vector3.ONE * 0.1)), nv.xray])
+						game.get_viewport().get_texture().get_image().save_png("%s_%d.png" % [game._opts["queen-shot"], sec]))
+			game.get_tree().create_timer(float(game._opts["queen-watch"]) + 0.2).timeout.connect(func():
+				print("queen-watch: %d frames, walking %d, drawn while walking %d (%.0f%%), following %s" % [w.frames, w.walk, w.shown,
+					100.0 * w.shown / maxi(1, w.walk), game.nest_view.follow_wid == -2])))
 	if game._opts.has("follow-in"):
 		c.left = int(game._opts.get("follow-in", "3"))
 		game.get_tree().create_timer(2.0).timeout.connect(c._pick)

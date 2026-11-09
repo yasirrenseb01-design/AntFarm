@@ -83,7 +83,7 @@ func reset_view() -> void:
 		target_t = c
 		# slice straight through her chamber
 		var dir := Vector3(sin(yaw_t), 0, cos(yaw_t))
-		cut_offset = clampf(dir.dot(c) - dir.dot(Vector3((nest.x_lo + nest.nx) / 2.0, 0, (nest.z_lo + nest.nz) / 2.0)) + 1.0, -32, 32)
+		cut_offset = clampf(dir.dot(c) - dir.dot(Vector3((nest.x_lo + nest.nx) / 2.0, 0, (nest.z_lo + nest.nz) / 2.0)) + 1.0, -cut_reach(), cut_reach())
 		cut_changed.emit(cut_offset)
 	else:
 		yaw_t = 0.55
@@ -114,6 +114,8 @@ func focus(what: String) -> void:
 	if what != "entrance":
 		dist_t = minf(dist_t, 26.0)
 	_cut_to(p)
+	if what == "queen":
+		follow_wid = FOLLOW_QUEEN              # (and stays with her: nest_view._follow_ant)
 
 
 ## Glide to a point and slide the cut so it shows (the title screen's camera tour follows an ant with it).
@@ -123,11 +125,17 @@ func aim_at(p: Vector3, dist: float) -> void:
 	_cut_to(p)
 
 
+## How far the cut slides either way from the box's middle: its half-width (the box held grows sideways: PART 0.12 -
+## ±32 voxels, half the first block, left a queen in a wider nest out of its reach).
+func cut_reach() -> float:
+	return maxf(32.0, maxf(nest.wx(), nest.wz()) * 0.5 + 4.0)
+
+
 func _cut_to(p: Vector3) -> void:
 	if not xray and not nest.slab:
 		# slide the cut so the spot sits just behind it
 		var dir := Vector3(sin(yaw_t), 0, cos(yaw_t))
-		cut_offset = clampf(dir.dot(p) - dir.dot(Vector3((nest.x_lo + nest.nx) / 2.0, 0, (nest.z_lo + nest.nz) / 2.0)) + 1.5, -32, 32)
+		cut_offset = clampf(dir.dot(p) - dir.dot(Vector3((nest.x_lo + nest.nx) / 2.0, 0, (nest.z_lo + nest.nz) / 2.0)) + 1.5, -cut_reach(), cut_reach())
 		cut_changed.emit(cut_offset)
 
 

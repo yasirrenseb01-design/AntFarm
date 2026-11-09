@@ -38,7 +38,9 @@ var _underground: MeshInstance3D     # the soil round the block (a backdrop: nes
 var _soil_things: Node3D             # its stones and roots, drawn when the soil is seen through
 var _mat: ShaderMaterial
 var _xray_mat: ShaderMaterial
-var follow_wid := -1            # a worker the camera keeps in view (the HUD's star ants panel; nest_view.refresh), -1 = none
+var follow_wid := -1            # a worker the camera keeps in view (the HUD's star ants panel; nest_view.refresh), -1 = none,
+const FOLLOW_QUEEN := -2         # FOLLOW_QUEEN: the queen (the "Queen" button, her star) wherever she walks - sent to where she
+                                 # was once, she walked out of sight to another chamber: the keeper, 2026-11-10 "she turned invisible"
 var xray := false                 # "see through the soil": tunnels drawn as a translucent cast
 var _ghost: MeshInstance3D        # faint outline of the soil block in x-ray view
 var _ant_meshes := {}             # "hi"/"lo" -> [pose A, pose B]

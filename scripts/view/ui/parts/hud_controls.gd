@@ -414,6 +414,8 @@ func _build_camera_pad(root: Control) -> void:
 
 func set_cut(v: float) -> void:
 	if _cut_slider:
+		_cut_slider.min_value = -nest_view.cut_reach() if nest_view else -32.0    # (as wide as the nest's box)
+		_cut_slider.max_value = -_cut_slider.min_value
 		_cut_slider.set_value_no_signal(v)
 
 
