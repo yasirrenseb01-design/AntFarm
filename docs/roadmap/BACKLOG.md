@@ -39,6 +39,7 @@
     **ทำแล้ว v0.12.25 (ขั้น 1):** `bend_probe` (ตรวจดินของหัว/ท้องใน `_soil_bend`) ไป C++; สูง 23→25, กลาง 31→36, ต่ำ 50→51 fps (exe, slot 3).
     **วัดละเอียดแล้ว:** "keep apart" ในตัวจับเวลาเดิมรวม ground fit + soil push + climb; `_keep_apart` เองแค่ ~0.3 ms ไม่คุ้มพอร์ต.
     ที่เหลือบนสูง (ms): bind 6.4, activity+route 5.0, settle 4.4, soil push 3.7 (soil_hits รอบ ๆ ~2.9), look ahead 2.7, ground fit 1.5, clearance 0.4, gap_under 0.4.
+    **v0.12.26:** `gap_scan` (look ahead) ไป C++: สูง 25→27 fps แต่ look ahead 2.7→2.5 ms เท่านั้น — **ลูปไม่ใช่ตัวหนัก; ตัวหนักคือการอ่าน/เขียน Dictionary ของมดจำนวนมาก** การย้ายลูปทีละส่วนได้ผลน้อย ต้องแพ็กสถานะมด (ตำแหน่ง ท่า แฟล็ก) เป็นอาร์เรย์ให้ C++ ถือ.
     ต่อไป: `_gap_ahead` (look ahead), `_ground_off`/`_fit_at` (ground fit), `_bind_workers` (อ่านวัตถุ worker 861 ตัวหลายรอบ — ต้องคิดวิธีแพ็ก/แคชก่อน);
     สลับทีละส่วนด้วย `--no-native-bend` (ส่วนอื่นให้ใช้แบบเดียวกัน) เทียบ `--view-hash` ได้ตรง
   - กระตุก ~90 ms ทุก ~1.5 วิในวิวรัง: `camera/spots` ~42 ms + `brood layout` ~38 ms ในเฟรมเดียวกัน (ทั้งสองการ์ด)
