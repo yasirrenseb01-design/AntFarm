@@ -110,7 +110,19 @@ func ground_h(x: float, z: float) -> float:
 	var d := Vector2(x - _nest_xz.x, z - _nest_xz.y).length()
 	h += Mound.height(d, maxf(_mound, 0.0), _mound_r)
 	h -= 1.6 * (1.0 - smoothstep(0.6, 1.9, d))
+	for hx in _holes_xz:
+		h += hole_h(Vector2(x - hx.x, z - hx.y).length())
 	return h
+
+
+## A way out the nest dug up (nest_exits.gd): a small pit with a low rim (as shaders/terrain/ground_h.gdshaderinc).
+static func hole_h(d: float) -> float:
+	var k := (d - 2.2) / 0.9
+	return 0.35 * exp(-k * k) - 1.2 * (1.0 - smoothstep(0.5, 1.5, d))
+
+
+var _holes_xz: Array[Vector2] = []     # the ways out on the ground (units), two at most
+var _holes_ver := -1
 
 
 func ground_n(x: float, z: float) -> Vector3:
@@ -223,8 +235,21 @@ func _build_ground() -> void:
 func _update_mound() -> void:
 	var hr := Mound.size(sim.nest.excavated)      # (as big as the soil dug out: sim/mound.gd)
 	var m := hr.x
-	if absf(m - _mound) < 0.05:
+	if absf(m - _mound) < 0.05 and _holes_ver == sim.nest.exits_ver:
 		return
+	_holes_ver = sim.nest.exits_ver
+	_holes_xz.clear()
+	var hv := Vector4(-1000, -1000, -1000, -1000)
+	for ex in sim.nest.exits:
+		if ex.open and _holes_xz.size() < 2:
+			var p := _nest_xz + Vector2(ex.b.x - sim.nest.entrance.x, ex.b.z - sim.nest.entrance.z)    # (units = voxels across)
+			_holes_xz.append(p)
+			if _holes_xz.size() == 1:
+				hv.x = p.x
+				hv.y = p.y
+			else:
+				hv.z = p.x
+				hv.w = p.y
 	_mound = m
 	_mound_r = hr.y
 	var mats: Array = [_ground_mat] + _creature_views.values().map(func(cv): return cv.mat)
@@ -234,6 +259,7 @@ func _update_mound() -> void:
 		mat.set_shader_parameter("mound_h", _mound)
 		mat.set_shader_parameter("mound_r", _mound_r)
 		mat.set_shader_parameter("nest_xz", _nest_xz)
+		mat.set_shader_parameter("holes_xz", hv)
 
 
 func _build_box() -> void:

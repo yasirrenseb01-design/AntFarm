@@ -32,7 +32,8 @@ func _send_out(a: Ant, state: int) -> void:
 		outside.append(a)
 		_out_ver += 1
 	a.state = state
-	a.pos = nest_pos + Vector2.from_angle(rng.randf() * TAU) * 3.0
+	var hs := _holes()
+	a.pos = (nest_pos if hs.size() == 1 else hs[rng.randi() % hs.size()]) + Vector2.from_angle(rng.randf() * TAU) * 3.0
 	a.ang = rng.randf() * TAU
 	a.trip = 0
 	a.since = 0
@@ -165,16 +166,17 @@ func _step_ant(a: Ant) -> void:
 		a.since += n
 		if drop_now and (a.carry == Ant.SUGAR or a.carry == Ant.PROTEIN):
 			food.deposit_i(ci, 1.2 * drop_p * maxf(0.05, 1.0 - a.since / 3000.0))
-		var d2 := pos.distance_squared_to(nest_pos)
+		var hp := _home_at(pos)
+		var d2 := pos.distance_squared_to(hp)
 		if d2 < NEST_R * NEST_R:
 			_arrive(a)
 			return
 		if d2 < 6400.0:
-			_turn_toward(a, nest_pos, 0.2)
+			_turn_toward(a, hp, 0.2)
 		else:
 			if sense_now:
 				_steer(a, home, sense_p)
-			_turn_toward(a, nest_pos, 0.03)  # path integration keeps them oriented
+			_turn_toward(a, hp, 0.03)  # path integration keeps them oriented
 	var ang: float = a.ang + rng.randf_range(-0.16, 0.16) * _noise_k
 	a.ang = ang
 	if a.follow > 0:
@@ -329,7 +331,8 @@ func _step_drags() -> void:
 		if crew.size() >= need:
 			# pulled home: about a third of walking pace with the crew it needs, a little faster with more
 			var spd: float = _spd / maxi(1, ant_substep) * 0.35 * minf(1.6, float(crew.size()) / need)   # (every tick)
-			var dir: Vector2 = (nest_pos - f.pos).normalized()
+			var hp := _home_at(f.pos)
+			var dir: Vector2 = (hp - f.pos).normalized()
 			var np: Vector2 = f.pos
 			for turn in [0.0, 0.6, -0.6, 1.2, -1.2]:
 				var q: Vector2 = f.pos + dir.rotated(turn) * spd
@@ -340,7 +343,7 @@ func _step_drags() -> void:
 			if f.pos.distance_squared_to(f.get("grid_at", f.pos)) > 9.0:
 				f.grid_at = f.pos
 				_food_dirty = true                # foragers smell it where it is now
-			if f.pos.distance_squared_to(nest_pos) < pow(NEST_R + f.r, 2.0):
+			if f.pos.distance_squared_to(hp) < pow(NEST_R + f.r, 2.0):
 				# at the entrance: too big for the narrow way in, it is cut up here and carried in piece by
 				# piece (the haulers start on it, and their trail brings nestmates)
 				f.hauled = true
@@ -458,3 +461,31 @@ func _turn_toward(a: Ant, target: Vector2, k: float) -> void:
 	# k is per tick; with substepping the same turn per distance needs a larger step
 	var kk := 1.0 - pow(1.0 - k, ant_substep)
 	a.ang += wrapf((target - a.pos).angle() - a.ang, -PI, PI) * kk
+
+
+## The ways into the nest on the ground (px): the entrance (nest_pos), and every way out the nest has dug up since
+## (nest_exits.gd; 3 px a voxel) - laid out again only when one opens. A forager sets out from one of them and comes
+## home to the nearest. [inference: as the ways out themselves - see nest_exits.gd]
+var _hole_list: Array[Vector2] = []
+var _holes_ver := -1
+
+func _holes() -> Array[Vector2]:
+	if _holes_ver != nest.exits_ver or _hole_list.is_empty() or _hole_list[0] != nest_pos:
+		_holes_ver = nest.exits_ver
+		_hole_list = [nest_pos]
+		for ex in nest.exits:
+			if ex.open:
+				_hole_list.append(nest_pos + Vector2(ex.b.x - nest.entrance.x, ex.b.z - nest.entrance.z) * (2.0 * nest.VOXEL_MM))
+	return _hole_list
+
+
+func _home_at(p: Vector2) -> Vector2:
+	var hs := _holes()
+	if hs.size() == 1:
+		return nest_pos
+	var best := nest_pos
+	for h in hs:
+		if p.distance_squared_to(h) < p.distance_squared_to(best):
+			best = h
+	return best
+

@@ -97,14 +97,18 @@ const MOUND_CLEAR := 1.8          # of the ring's radius: the heap is down to ~1
 func _clear_mound() -> void:
 	var reach := MOUND_CLEAR * Mound.size(sim.nest.excavated).y * Mound.PX
 	var at: Vector2 = sim.nest_pos
-	var off := func(e) -> bool: return (e.p as Vector2).distance_to(at) >= reach
+	var holes := []                       # (and round the ways out the nest has dug up: nest_exits.gd, 12 px = 6 mm)
+	for ex in sim.nest.exits:
+		if ex.open:
+			holes.append(at + Vector2(ex.b.x - sim.nest.entrance.x, ex.b.z - sim.nest.entrance.z) * Mound.PX)
+	var off := func(e) -> bool: return (e.p as Vector2).distance_to(at) >= reach and holes.all(func(h): return (e.p as Vector2).distance_to(h) >= 12.0)
 	pebbles = pebbles.filter(off)
 	litter = litter.filter(off)
 	tufts = tufts.filter(off)
 	rosettes = rosettes.filter(off)
 	var kept := []
 	for m in moss:
-		var bl: Array = m.filter(func(b): return (b[0] as Vector2).distance_to(at) >= reach)
+		var bl: Array = m.filter(func(b): return (b[0] as Vector2).distance_to(at) >= reach and holes.all(func(h): return (b[0] as Vector2).distance_to(h) >= 12.0))
 		if not bl.is_empty():
 			kept.append(bl)
 	moss = kept

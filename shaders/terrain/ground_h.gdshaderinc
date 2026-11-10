@@ -3,6 +3,13 @@
 uniform vec2 nest_xz = vec2(160.0, 133.3);
 uniform float mound_h = 0.5;
 uniform float mound_r = 4.0;
+uniform vec4 holes_xz = vec4(-1000.0);    // the nest's ways out besides the entrance (two at most: xy, zw; nest_exits.gd)
+
+// A way out: a small pit with a low rim of the soil carried out of it (OutworldView.hole_h).
+float hole_h(float d) {
+	float k = (d - 2.2) / 0.9;
+	return 0.35 * exp(-k * k) - 1.2 * (1.0 - smoothstep(0.5, 1.5, d));
+}
 
 float ground_h(vec2 p) {
 	// (v0.11.71, the keeper: "a little more up and down" - broad swells up to ~1 cm, smaller rises and dips between;
@@ -14,6 +21,7 @@ float ground_h(vec2 p) {
 	// (the crater: scripts/view/mound.gd - as big as the soil dug out from v0.12.8, the entrance's pit kept clear of it)
 	h += (mound_h * exp(-k * k) + mound_h * 0.5 * (1.0 - smoothstep(0.0, mound_r, d))) * smoothstep(1.2, 3.0, d);
 	h -= 1.6 * (1.0 - smoothstep(0.6, 1.9, d));
+	h += hole_h(length(p - holes_xz.xy)) + hole_h(length(p - holes_xz.zw));
 	return h;
 }
 

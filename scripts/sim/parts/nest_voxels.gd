@@ -10,7 +10,7 @@ extends RefCounted
 ## high, galleries 1.5–5 mm; Wang et al. 1995), with solid soil between them. Nobody plans them: they
 ## grow where workers crowd round brood (Römer & Roces 2014) — the plan here stands for that outcome.
 ## Each bite is carried up the tunnels and dropped on the surface, building the crater mound.
-## Nest volume, layer 1 of 5 (split from scripts/sim/nest_volume.gd in v0.8.5): the voxel block, access, carving, the
+## Nest volume, layer 1 of 6 (split from scripts/sim/nest_volume.gd in v0.8.5): the voxel block, access, carving, the
 ## mesher's density, counting/distances.
 ## Layers: parts/nest_voxels <- parts/nest_ground <- parts/nest_store <- parts/nest_chambers <- nest_volume.
 const VOXEL_MM := 1.5
@@ -55,6 +55,11 @@ var excavated := 0                      # bites dumped on the surface
 var chambers: Array = []                # {"c": Vector3, "r": float, "goal": float, "kind": String}
 var diggers: Array = []                 # {"cell", "prev", "carry", "dir", "id"}
 var entrance := Vector3i.ZERO
+# More ways out a big nest digs for itself (PART 0.12 step 5d, nest_exits.gd): a shaft up from a chamber far from the
+# entrance - {"a": Vector3 its foot, "b": Vector3 its top (the surface), "open": dug through}. The open ones are entrances
+# as the first is: the distances run from every one, a digger comes out of the nearest.
+var exits: Array = []
+var exits_ver := 0                      # counts ways out opened or moved (the outworld's list of holes: sim_foragers)
 var entrance_r := 1.0                   # how wide the entrance shaft is meant to be (widened as traffic grows; daily)
 var entrance_done := 1.0                # the width the entrance shaft was last found dug out to
 var work_left := 0                      # planned soil still to dig (a new chamber, its shaft, a wider shaft; daily)
@@ -158,6 +163,22 @@ func idx(c: Vector3i) -> int:
 
 func inside(c: Vector3i) -> bool:
 	return c.x >= x_lo and c.y >= y_lo and c.z >= z_lo and c.x < nx and c.y < ny and c.z < nz
+
+
+static func _near_line(p: Vector3, a: Vector3, b: Vector3, r: float) -> bool:
+	var ab := b - a
+	var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+	return p.distance_to(a + ab * t) <= r
+
+
+## Whether the surface crust may be broken at column (x, z): round the entrance (r) or the top of a way out.
+func _hole_at(x: float, z: float, r: float) -> bool:
+	if Vector2(x - entrance.x, z - entrance.z).length() <= r:
+		return true
+	for ex in exits:
+		if Vector2(x - ex.b.x, z - ex.b.z).length() <= 1.5:
+			return true
+	return false
 
 
 func is_open(c: Vector3i) -> bool:
@@ -295,7 +316,7 @@ var _bfs_key := []                     # (what the last _bfs saw: the same open 
 ## loop, as _work_paths: ~6x faster than walking DIRS with idx()/inside() (v0.12.2; the same distances, which do not
 ## depend on the order).
 func _bfs() -> void:
-	_bfs_key = [air, y_lo, entrance, dist.size()]
+	_bfs_key = [air, y_lo, entrance, dist.size(), _open_exits()]
 	dist_ver += 1
 	dist.fill(-1)
 	var rows := ny - y_lo
@@ -312,6 +333,12 @@ func _bfs() -> void:
 	q[0] = first
 	var h := 0
 	var t := 1
+	for ex in exits:
+		var e := Vector3i(ex.b)
+		if ex.open and inside(e) and rho[idx(e)] < AIR and d[idx(e)] < 0:
+			d[idx(e)] = 0                   # (a way out: the steps run from it too)
+			q[t] = idx(e)
+			t += 1
 	while h < t:
 		var i: int = q[h]
 		h += 1
@@ -351,5 +378,13 @@ func _bfs() -> void:
 
 ## The periodic recount of distances, skipped while the open space is as it was (openings only ever add to `air`).
 func _bfs_if_changed() -> void:
-	if _bfs_key != [air, y_lo, entrance, dist.size()]:
+	if _bfs_key != [air, y_lo, entrance, dist.size(), _open_exits()]:
 		_bfs()
+
+
+func _open_exits() -> int:
+	var n := 0
+	for ex in exits:
+		if ex.open:
+			n += 1
+	return n

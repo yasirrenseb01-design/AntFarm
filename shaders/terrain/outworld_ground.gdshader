@@ -63,6 +63,7 @@ void fragment() {
 	float pa = ph.a * pher_on * inside;
 	c = mix(c, ph.rgb * 0.75, pa * 0.55);
 	c *= mix(0.08, 1.0, smoothstep(0.9, 2.2, dn));     // the dark mouth of the nest
+	c *= mix(0.12, 1.0, smoothstep(0.5, 1.4, length(wp - holes_xz.xy))) * mix(0.12, 1.0, smoothstep(0.5, 1.4, length(wp - holes_xz.zw)));    // and of its ways out (narrower: nest_exits.gd)
 	// standing water collects in the hollows after a while of rain
 	float hole = 1.0 - smoothstep(1.5, 4.0, dn);
 	float puddle = smoothstep(0.45, 1.0, wet) * smoothstep(-0.45, -0.85, gh) * (1.0 - hole);

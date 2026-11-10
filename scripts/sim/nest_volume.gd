@@ -1,6 +1,6 @@
-extends "res://scripts/sim/parts/nest_chambers.gd"
-## Underground nest, layer 5 of 5 (top): the diggers — where they dig, bites, carrying the soil out.
-## Layers: parts/nest_voxels <- parts/nest_ground <- parts/nest_store <- parts/nest_chambers <- nest_volume (this file). Split in v0.8.5, v0.12.2, v0.12.17.
+extends "res://scripts/sim/parts/nest_exits.gd"
+## Underground nest, layer 6 of 6 (top): the diggers — where they dig, bites, carrying the soil out.
+## Layers: parts/nest_voxels <- parts/nest_ground <- parts/nest_store <- parts/nest_chambers <- parts/nest_exits <- nest_volume (this file). Split in v0.8.5, v0.12.2, v0.12.17, v0.12.21.
 
 
 # ---------------------------------------------------------------- digging
@@ -21,7 +21,7 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 	if slab and s.z < nz - 3:
 		return 0.0
 	# never break through the surface except around the entrance shaft
-	if s.y >= ny - 2 and Vector2(s.x - entrance.x, s.z - entrance.z).length() > maxf(1.5, entrance_r):      # (the hole as wide as the shaft is meant to be: v0.12.8)
+	if s.y >= ny - 2 and not _hole_at(s.x, s.z, maxf(1.5, entrance_r)):      # (the hole as wide as the shaft is meant to be: v0.12.8; ways out)
 		return 0.0
 	# loam near the surface is soft, the clay band below is stiff, sand deeper is loose
 	var depth := ny - s.y
@@ -34,7 +34,7 @@ func _dig_chance(s: Vector3i, from: Vector3i, humidity: float) -> float:
 	var plan := _plan_at(s)
 	var k := 0.03                                      # unplanned digging is rare: soil stays solid between chambers
 	var from_room := plan == 0 and _plan_at(from) == 2   # the walls and floor of a finished chamber stay smooth
-	if depth < 6 and Vector2(s.x - entrance.x, s.z - entrance.z).length() > 2.0:
+	if depth < 6 and not _hole_at(s.x, s.z, 2.0):
 		k = 0.1                                        # the surface crust is left intact around the shaft
 	elif plan == 2:
 		k = 4.0                                        # hollowing out a chamber
@@ -313,6 +313,10 @@ func shift_xz(dx: int, dz: int) -> void:
 	z_lo += dz
 	nz += dz
 	entrance += dv
+	for ex in exits:
+		ex.a = (ex.a as Vector3) + df
+		ex.b = (ex.b as Vector3) + df
+	exits_ver += 1
 	if work_at.x >= 0:
 		work_at += dv
 	for ch in chambers:

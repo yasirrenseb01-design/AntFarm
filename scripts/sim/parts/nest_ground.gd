@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/nest_voxels.gd"
-## Nest volume, layer 2 of 5 (split from parts/nest_voxels.gd in v0.12.17): what the soil holds besides earth - stones and
+## Nest volume, layer 2 of 6 (split from parts/nest_voxels.gd in v0.12.17): what the soil holds besides earth - stones and
 ## roots the ants dig round, the clay and sand layers - laid out from the plot's seed and stamped into `hard`.
 ## Layers: parts/nest_voxels <- parts/nest_ground <- parts/nest_store <- parts/nest_chambers <- nest_volume.
 

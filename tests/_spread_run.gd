@@ -53,6 +53,6 @@ func _line(s, day: int) -> void:
 					lo = Vector2i(mini(lo.x, x), mini(lo.y, z))
 					hi = Vector2i(maxi(hi.x, x), maxi(hi.y, z))
 					break
-	print("day %3d %s workers %4d | box x %d..%d z %d..%d (%dx%d of tank %dx%d) | open x %d..%d z %d..%d = %.1f x %.1f cm | %d chambers, %.1f cm3, depth %.1f cm" % [
+	print("day %3d %s workers %4d | box x %d..%d z %d..%d (%dx%d of tank %dx%d) | open x %d..%d z %d..%d = %.1f x %.1f cm | %d chambers, %.1f cm3, depth %.1f cm | ways out %s" % [
 		day, s.date_text(), s.workers.size(), n.x_lo, n.nx, n.z_lo, n.nz, n.wx(), n.wz(), n.tank.x, n.tank.y,
-		lo.x, hi.x, lo.y, hi.y, (hi.x - lo.x + 1) * 0.15, (hi.y - lo.y + 1) * 0.15, n.chambers.size(), n.volume_cm3(), n.depth_cm()])
+		lo.x, hi.x, lo.y, hi.y, (hi.x - lo.x + 1) * 0.15, (hi.y - lo.y + 1) * 0.15, n.chambers.size(), n.volume_cm3(), n.depth_cm(), str(n.exits.map(func(e): return "%s%s" % ["open " if e.open else "digging ", str(Vector3i((e.b as Vector3).round()))]))])

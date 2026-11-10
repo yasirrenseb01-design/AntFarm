@@ -17,7 +17,7 @@ const MAX_VOXELS := 16500000         # the bigger tank's soil held whole: 600 x 
 ## read with a default by the loader (saves older than these keys)
 const OPTIONAL := ["sim.water", "sim.nest.entrance_r", "sim.nest.work_left", "sim.nest.work_at", "sim.nest.work_dist",
 	"sim.nest.entrance_done", "sim.plot_seed", "sim.nest_pos", "sim.midden_pos", "sim.traits", "sim.nest.soil",
-	"sim.brood_at", "sim.queen_at", "sim.queen_stay", "sim.ch_mean", "sim.nest.y_lo", "sim.nest.y_floor", "sim.nest.x_lo", "sim.nest.z_lo",
+	"sim.brood_at", "sim.queen_at", "sim.queen_stay", "sim.ch_mean", "sim.nest.y_lo", "sim.nest.y_floor", "sim.nest.x_lo", "sim.nest.z_lo", "sim.nest.exits",
 	"sim.surf_mean", "sim.world", "sim.dumps"]
 ## read key by key with defaults by the loader (colony_trait(), soil.get()): what they hold is checked, nothing in them
 ## is required. (A save from before them holds {} there, and is saved again so; requiring their keys, the keeper's

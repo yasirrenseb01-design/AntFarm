@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/nest_store.gd"
-## Nest volume, layer 4 of 5 (split from scripts/sim/nest_volume.gd in v0.8.5): the chamber plan
+## Nest volume, layer 4 of 6 (split from scripts/sim/nest_volume.gd in v0.8.5): the chamber plan
 ## (shapes, sizes, where new chambers go).
 
 # the colony's digging habit (sim_state.traits depth / spread; set by the simulation, not saved with the nest)
@@ -22,7 +22,7 @@ var _plan_memo_sig := []
 
 ## What _plan_at and count_work_left depend on besides the soil: the entrance shaft and every chamber's plan.
 func plan_sig() -> Array:
-	var sig := [entrance_r, entrance, ny, slab, chambers.size()]
+	var sig := [entrance_r, entrance, ny, slab, chambers.size(), exits.size(), _open_exits()]
 	for ch in chambers:
 		sig.append(ch.goal)
 		sig.append(ch.get("open", true))
@@ -84,6 +84,8 @@ func _plan_now(c: Vector3i) -> int:
 		var et := clampf((p - ea).dot(eab) / maxf(eab.length_squared(), 0.001), 0.0, 1.0)
 		if p.distance_to(ea + eab * et) <= entrance_r and p.y < ny:          # (the top layer too, within the hole: v0.12.8)
 			on_shaft = true
+	for ex in exits:                       # (a way out being dug up to the surface: a gallery - nest_exits.gd)
+		on_shaft = on_shaft or (not ex.open and _near_line(p, ex.a, ex.b, 1.3))
 	var reach := _reach()
 	for k in chambers.size():
 		var ch: Dictionary = chambers[k]
@@ -135,6 +137,9 @@ func count_work_left() -> int:
 		if left == 0:
 			entrance_done = entrance_r
 		n += left
+	for ex in exits:
+		if not ex.open:
+			n += _work_on_line(ex.a, ex.b, 1.3, true, best)
 	_work_paths()
 	_work_key = key
 	_work_n = n
@@ -214,7 +219,7 @@ func _work_on_line(a: Vector3, b: Vector3, r: float, first: bool, best: Array) -
 					continue
 				# (the surface crust is never broken but at the entrance - _dig_chance; planned all the same, the top of
 				# a slanting entrance shaft kept its diggers standing there a whole year, the nest never dug)
-				if y >= ny - 2 and Vector2(x - entrance.x, z - entrance.z).length() > maxf(1.5, entrance_r):
+				if y >= ny - 2 and not _hole_at(x, z, maxf(1.5, entrance_r)):
 					continue
 				var p := Vector3(v)
 				var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)

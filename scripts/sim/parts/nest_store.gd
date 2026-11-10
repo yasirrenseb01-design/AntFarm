@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/nest_ground.gd"
-## Underground nest, layer 3 of 5: taking in more soil below as the ants dig deep (extend_down), the nest's size, the
+## Underground nest, layer 3 of 6: taking in more soil below as the ants dig deep (extend_down), the nest's size, the
 ## steps to the work face (_work_paths, work_d), saving and loading. Split from nest_voxels.gd in v0.12.2 (it had grown past ~500 lines).
 
 
@@ -255,7 +255,7 @@ func to_dict() -> Dictionary:
 	return {"nx": nx, "ny": ny, "nz": nz, "x_lo": x_lo, "z_lo": z_lo, "y_lo": y_lo, "y_floor": y_floor, "slab": slab, "rho": rho, "dug_at": dug_at, "dist": dist,
 		"excavated": excavated, "chambers": chambers, "diggers": diggers, "entrance": entrance, "tick": tick,
 		"dist_age": _dist_age, "next_id": _next_id, "entrance_r": entrance_r, "work_left": work_left, "work_at": work_at, "work_dist": work_dist, "entrance_done": entrance_done,
-		"soil": soil}
+		"soil": soil, "exits": exits}
 
 
 func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
@@ -275,6 +275,11 @@ func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
 	excavated = d.excavated
 	chambers = d.chambers.duplicate(true)      # (copies: shift_xz moves them in place - a save's dictionary read twice,
 	diggers = d.diggers.duplicate(true)        # as the tests do, was moved twice: v0.12.19)
+	exits = []                                 # (saves before v0.12.21 have none; each one checked - a save is not trusted)
+	var de = d.get("exits", [])
+	for ex in de if de is Array else []:
+		if ex is Dictionary and ex.get("a") is Vector3 and ex.get("b") is Vector3 and ex.get("open") is bool and exits.size() < 4 				and (ex.a as Vector3).is_finite() and (ex.b as Vector3).is_finite():
+			exits.append({"a": ex.a, "b": ex.b, "open": ex.open})
 	entrance = d.entrance
 	tick = d.tick
 	_dist_age = d.dist_age
