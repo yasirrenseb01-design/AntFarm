@@ -114,9 +114,10 @@ func _bind_workers() -> void:
 			free.append(m)                             # a newborn from an eclosion: takes the youngest worker
 		else:
 			keep.append(m)                             # busy in a life-cycle moment: let it finish
-	for w in by_id.values():
-		if bound.has(w.id):
+	for wi in by_id:
+		if bound.has(wi):                    # (by its key: the worker's own id - not read off the worker, v0.12.27)
 			continue
+		var w = by_id[wi]
 		var m: Dictionary
 		if not free.is_empty() and not _came_in_now(w):
 			m = free.pop_front()                           # (a newborn's body: not one just in from outside - it walks in)
@@ -155,14 +156,21 @@ func _bind_workers() -> void:
 		keep.append(m)
 	_mates = keep
 	# each one's job follows its worker's (unless it is in the middle of carrying or a life-cycle moment)
+	# (the size and who waits for a digger looked up once, not for each of 600 drawn: _dig_pending went through all the
+	# diggers for each - ~1.5 ms a frame; the same answers, v0.12.27)
+	var wscale := float(sim.sp.look.worker_scale)
+	var pend := {}                        # worker id -> as _dig_pending: the first digger paired with it is not live yet
+	for id in _dig_wid:
+		if not pend.has(_dig_wid[id]):
+			pend[_dig_wid[id]] = not _dig_live.has(id)
 	for wid in bound:
 		var m: Dictionary = bound[wid]
 		var w = by_id[wid]
-		m.size = w.size * float(sim.sp.look.worker_scale)       # (the species' size: docs/SPECIES.md)
+		m.size = w.size * wscale       # (the species' size: docs/SPECIES.md)
 		m.born = sim.tick - int(w.age * sim.TPD)
 		if m.carry or m.has("script") or m.has("deliver") or m.role == "carry":
 			continue
-		var want := "todig" if _dig_pending(wid) else _role_for(m, w, attend.has(wid))
+		var want := "todig" if pend.get(wid, false) else _role_for(m, w, attend.has(wid))
 		if want != m.role:
 			m.role = want
 			m.goal = -2 if want == "todig" else (_queen_room() if want == "attend" else (_brood_room(_larva_group) if want == "nurse" else _random_room()))
@@ -233,10 +241,12 @@ func _leave_from_near(all: Dictionary, by_id: Dictionary) -> void:
 		return
 	for m in _mates:
 		var wid: int = m.get("wid", -1)
-		if wid < 0 or not _free_body(m):
+		if wid < 0:
 			continue
+		# (its worker still inside - nearly all of them - before the body's own checks: the same answer, ~0.5 ms less a
+		# frame with 600 drawn, v0.12.27)
 		var w = all.get(wid)
-		if w == null or w.state == Ant.IN_NEST:
+		if w == null or w.state == Ant.IN_NEST or not _free_body(m):
 			continue
 		var f := ef
 		if w.carry == Ant.CORPSE:
