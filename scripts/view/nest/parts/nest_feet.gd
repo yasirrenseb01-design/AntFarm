@@ -209,7 +209,12 @@ func _feet_mode(v: Dictionary) -> int:
 
 ## How far below the body the floor is (along its up, up to 1.5): where the feet's own map of the floor (the soil and the
 ## brood on it, nest_scene._foot_rho, read as the shader reads it) turns solid.
+var _no_native_soil: bool = OS.get_cmdline_user_args().has("--no-native-soil")     # (dev: these parts in GDScript - and nest_soil's)
 func _gap_under(xf: Transform3D) -> float:
+	if _native != null and not _no_native_soil:
+		# (in C++ when the game has it: the same sums - native/src/ant_soil.cpp, v0.12.29)
+		return _native.gap_under(_foot_rho if _foot_rho.size() == nest.rho.size() else nest.rho,
+			PackedInt32Array([nest.x_lo, nest.y_lo, nest.z_lo, nest.nx, nest.ny, nest.nz]), xf)
 	# (as the shader's ground_dy: from just above the feet down to the first solid, or up out of it)
 	var up := xf.basis.y.normalized()
 	var fw := xf.origin

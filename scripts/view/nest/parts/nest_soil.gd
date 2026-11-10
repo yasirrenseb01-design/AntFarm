@@ -143,7 +143,7 @@ func _soil_push(m: Dictionary, tr: Transform3D, md: float) -> Transform3D:
 			if yaw * k_back != 0.0:
 				tb.basis = tb.basis.rotated(up, yaw * k_back)
 			tb.origin += off * k_back
-			if _body_touches(tb, bend, lat) or _feels(tb, bend, lat):
+			if _touches_or_feels(tb, bend, lat):
 				k_back = 1.0                       # (it would be back in the wall: it stays as it is)
 		elif not moving:
 			m.relax_t = 0.0                        # (standing: it stays as the wall left it - it eases back walking on)
@@ -254,6 +254,17 @@ func _bent_pts(m: Dictionary, bend: Vector2, lat: float) -> Array:
 	bp = [sp, fp, bend, lat]
 	m.bp = bp
 	return bp
+
+
+## _body_touches or _feels (in C++ when the game has it: the same sums - native/src/ant_soil.cpp, v0.12.29).
+var _SOIL_PTS_P := PackedVector3Array(_SOIL_PTS)
+var _FEEL_PTS_P := PackedVector3Array(_FEEL_PTS)
+func _touches_or_feels(t: Transform3D, bend: Vector2, lat: float) -> bool:
+	if _native != null and not _no_native_soil:
+		if _soft.is_empty():
+			_density_at(Vector3.ZERO)
+		return _native.body_feels(_soft, _soft_dims(), t, _soft_off(), bend, lat, _SOIL_PTS_P, _FEEL_PTS_P)
+	return _body_touches(t, bend, lat) or _feels(t, bend, lat)
 
 
 ## Whether its antennae (_FEEL_PTS) would touch the soil with it at t.
