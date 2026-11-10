@@ -222,20 +222,6 @@ func setup(s) -> void:
 
 # ---------------------------------------------------------------- per frame
 
-## Where a worker is drawn in the nest now (INF if it is not: outside, or not drawn as a nestmate) - the title
-## screen's camera follows it. The queen: "queen" spot.
-func mate_pos(wid: int) -> Vector3:
-	for m in _mates:
-		if int(m.get("wid", -1)) == wid and m.has("xf"):
-			return (m.xf as Transform3D).origin
-	# a worker at the dig face is drawn as its digger (nest_bind: _dug_by)
-	if _dug_by.has(wid):
-		var v: Dictionary = _dig_vis.get(_dug_by[wid], {})
-		if v.has("xf"):
-			return (v.xf as Transform3D).origin
-	return Vector3.INF
-
-
 ## Keeps the camera on a worker (follow_wid, from the HUD's star ants panel) - its drawn body, wherever it goes in the
 ## nest; a moment to find it after switching here (the nest places its ants over the first frames), then it stops.
 var _follow_lost := 0.0
@@ -365,6 +351,7 @@ func warm() -> void:
 
 func refresh(delta: float) -> void:
 	if not active:
+		_pump_chunks(_queue)       # (the soil's chunks made unseen meanwhile: all made as it opened, ~6 s in a big nest, v0.12.24)
 		return
 	_t += delta
 	_follow_ant(delta)

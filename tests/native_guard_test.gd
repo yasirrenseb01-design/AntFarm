@@ -1,7 +1,7 @@
 extends SceneTree
 ## The C++ part (bin/ant_native, native/src/ant_native.cpp) given wrong sizes: it must answer "air" / no hits and go
 ## on - never read past its arrays (in C++ that could crash the game rather than stop with an error). v0.12.9.
-## Also: a right-sized block gives the same density as reading the array by hand.
+## Also: a right-sized block gives the same density as reading the array by hand; chunk_sample the mesher's own values.
 ##   godot --headless --path . --script res://tests/native_guard_test.gd     -> "NATIVE GUARD TEST PASSED"
 
 var ok := true
@@ -44,8 +44,42 @@ func _init() -> void:
 	_check("soil_hits with wrong sizes: no hits", r.size() == 3 and int(r[2]) == 0)
 	r = nat.soil_hits(soft, dims, Transform3D(), pts, Vector3.UP, Vector3.RIGHT)
 	_check("soil_hits in a solid block: answers", r.size() == 3)
+	_chunks_same(nat)
 	print("NATIVE GUARD TEST PASSED" if ok else "NATIVE GUARD TEST FAILED")
 	quit(0 if ok else 1)
+
+
+## chunk_sample (v0.12.24) against nest_mesher.sample, every chunk of a nest with tunnels cut at random through it and
+## the chunks round its sides; and wrong sizes answered with nothing.
+func _chunks_same(nat: Object) -> void:
+	var Mesher = load("res://scripts/view/nest/nest_mesher.gd")
+	var s = load("res://scripts/sim/simulation.gd").new()
+	s.setup(3, 14, false, "keeper", false, "lasius_niger")
+	var nest = s.nest
+	var r := RandomNumberGenerator.new()
+	r.seed = 7
+	for i in 3000:                          # (open cells scattered, and runs of them: surfaces in many chunks)
+		var c := Vector3i(r.randi_range(nest.x_lo, nest.nx - 1), r.randi_range(nest.y_lo, nest.ny - 1), r.randi_range(nest.z_lo, nest.nz - 1))
+		for j in 6:
+			var d := c + Vector3i(j, 0, 0)
+			if d.x < nest.nx:
+				nest.rho[((d.z - nest.z_lo) * (nest.ny - nest.y_lo) + d.y - nest.y_lo) * (nest.nx - nest.x_lo) + d.x - nest.x_lo] = 0
+	var box := PackedInt32Array([nest.x_lo, nest.y_lo, nest.z_lo, nest.nx, nest.ny, nest.nz, nest.AIR])
+	var n := 0
+	var same := 0
+	var CH: int = Mesher.CH
+	for kz in range(floori(nest.z_lo / float(CH)) - 1, (nest.nz + CH - 1) / CH + 1):
+		for ky in range(floori(nest.y_lo / float(CH)) - 1, (nest.ny + CH - 1) / CH + 1):
+			for kx in range(floori(nest.x_lo / float(CH)) - 1, (nest.nx + CH - 1) / CH + 1):
+				var k := Vector3i(kx, ky, kz)
+				n += 1
+				if Mesher.sample(nest, k) == nat.chunk_sample(nest.rho, box, k, CH):
+					same += 1
+	_check("chunk_sample = nest_mesher.sample in every chunk (%d of %d)" % [same, n], same == n and n > 20)
+	_check("chunk_sample, rho too short: nothing", nat.chunk_sample(nest.rho.slice(0, 100), box, Vector3i.ZERO, CH).is_empty())
+	_check("chunk_sample, box too few: nothing", nat.chunk_sample(nest.rho, PackedInt32Array([0, 0]), Vector3i.ZERO, CH).is_empty())
+	_check("chunk_sample, chunk size 0: nothing", nat.chunk_sample(nest.rho, box, Vector3i.ZERO, 0).is_empty())
+	_check("chunk_sample, far outside: nothing", nat.chunk_sample(nest.rho, box, Vector3i(100000, 5, -100000), CH).is_empty())
 
 
 func _check(what: String, good: bool) -> void:

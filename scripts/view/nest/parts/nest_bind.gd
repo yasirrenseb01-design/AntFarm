@@ -445,3 +445,17 @@ func digger_worker(id: int):
 ## it goes at a run: out here it has already left. [Lasius workers do run - 3-4 body lengths a second and more when
 ## alarmed or hurrying; the factor is chosen so the deepest chambers take ~5 s at 1x instead of 20-25.]
 const LEAVE_HURRY := 4.0
+
+
+## Where a worker is drawn in the nest now (INF if it is not: outside, or not drawn as a nestmate) - the title
+## screen's camera follows it. The queen: "queen" spot.
+func mate_pos(wid: int) -> Vector3:
+	for m in _mates:
+		if int(m.get("wid", -1)) == wid and m.has("xf"):
+			return (m.xf as Transform3D).origin
+	# a worker at the dig face is drawn as its digger (nest_bind: _dug_by)
+	if _dug_by.has(wid):
+		var v: Dictionary = _dig_vis.get(_dug_by[wid], {})
+		if v.has("xf"):
+			return (v.xf as Transform3D).origin
+	return Vector3.INF

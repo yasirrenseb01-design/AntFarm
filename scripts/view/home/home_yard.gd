@@ -29,7 +29,12 @@ static var _made: Node3D             # the yard built once (it is the same every
 ## keeper, 2026-10-28: "Esc back to the Home hangs". Built once now and copied: the copies share its meshes.)
 static func build(parent: Node3D) -> void:
 	if _made == null:
-		_made = _make()
+		# (kept on the engine too: the scene loads again for every other colony opened, and the scripts with it - the
+		# keeper, 2026-11-10: "each colony I had not opened yet hangs before the time-away page": ~2 s, built again)
+		_made = Engine.get_meta("home_yard") if Engine.has_meta("home_yard") else null
+		if _made == null:
+			_made = _make()
+			Engine.set_meta("home_yard", _made)
 	parent.add_child(_made.duplicate())
 
 
@@ -77,10 +82,11 @@ static func _make() -> Node3D:
 ## All the plain-coloured pieces merged into one mesh, coloured by vertex (hundreds of boxes, a draw call each, slowed
 ## the Home: 35 fps on the Intel UHD) - the clapboard, the trees, the glowing lamps stay as they are.
 static func _bake(root: Node3D) -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var any := false
-	var inv := root.global_transform.affine_inverse() if root.is_inside_tree() else Transform3D()
+	# (packed arrays moved whole, not a SurfaceTool call per corner, and the boxes worked out here: 1.4 s -> 0.25 s, v0.12.24)
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var cols := PackedColorArray()
+	var tris := PackedInt32Array()
 	for mi in root.find_children("*", "MeshInstance3D", true, false):
 		var m: Material = mi.material_override
 		if not (m is StandardMaterial3D) or (m as StandardMaterial3D).emission_enabled or (m as StandardMaterial3D).transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
@@ -88,28 +94,83 @@ static func _bake(root: Node3D) -> void:
 		if mi.mesh is ArrayMesh:
 			continue                                  # (the trees: their own vertex colours and sway)
 		var xf: Transform3D = _local(mi, root)
-		var col: Color = (m as StandardMaterial3D).albedo_color
-		var arr: Array = mi.mesh.surface_get_arrays(0)
+		var arr: Array = _box_arrays((mi.mesh as BoxMesh).size) if mi.mesh is BoxMesh else (mi.mesh as PrimitiveMesh).get_mesh_arrays()
 		var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 		var n: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
 		var idx = arr[Mesh.ARRAY_INDEX]
-		var nb := xf.basis.inverse().transposed()
-		var order: PackedInt32Array = idx if idx != null and (idx as PackedInt32Array).size() > 0 else PackedInt32Array(range(v.size()))
-		for i in order:
-			st.set_color(col)
-			st.set_normal((nb * n[i]).normalized())
-			st.add_vertex(xf * v[i])
-		any = true
+		var base := verts.size()
+		verts.append_array(xf * v)
+		norms.append_array(Transform3D(xf.basis.inverse().transposed(), Vector3.ZERO) * n)     # (the fragment normalizes)
+		var c := PackedColorArray()
+		c.resize(v.size())
+		c.fill((m as StandardMaterial3D).albedo_color)
+		cols.append_array(c)
+		if idx != null and (idx as PackedInt32Array).size() > 0:
+			for i in (idx as PackedInt32Array):
+				tris.append(base + i)
+		else:
+			for i in v.size():
+				tris.append(base + i)
 		mi.queue_free()
-	if not any:
+	if verts.is_empty():
 		return
+	var a := []
+	a.resize(Mesh.ARRAY_MAX)
+	a[Mesh.ARRAY_VERTEX] = verts
+	a[Mesh.ARRAY_NORMAL] = norms
+	a[Mesh.ARRAY_COLOR] = cols
+	a[Mesh.ARRAY_INDEX] = tris
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
 	mat.roughness = 0.85
 	var out := MeshInstance3D.new()
-	out.mesh = st.commit()
+	out.mesh = mesh
 	out.material_override = mat
 	root.add_child(out)
+
+
+## A box's corners and normals as BoxMesh makes them, worked out here: a BoxMesh asked for its arrays is built on the
+## graphics card first (~1 ms each with a renderer, 728 of them: 0.7 s - v0.12.24).
+static func _box_arrays(size: Vector3) -> Array:
+	# (Godot's BoxMesh.create_mesh_array, no subdivision, point for point: the same corners in the same order and the same
+	# diagonals - the streets' boxes overlap flat, and another split of a face striped them)
+	var v := PackedVector3Array()
+	var n := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var s0 := size * -0.5
+	for face in 3:
+		var thisrow := v.size()
+		var prevrow := 0
+		for j in 2:
+			for i in 2:
+				var a := s0[0] + size.x * i if face != 1 else s0.z + size.z * i
+				var c := s0.y + size.y * j if face != 2 else s0.z + size.z * j
+				match face:
+					0:                                    # front (+z) and back
+						v.append(Vector3(a, -c, -s0.z)); n.append(Vector3(0, 0, 1))
+						v.append(Vector3(-a, -c, s0.z)); n.append(Vector3(0, 0, -1))
+					1:                                    # right (+x) and left
+						v.append(Vector3(-s0.x, -c, -a)); n.append(Vector3(1, 0, 0))
+						v.append(Vector3(s0.x, -c, a)); n.append(Vector3(-1, 0, 0))
+					2:                                    # top and bottom
+						v.append(Vector3(-a, -s0.y, -c)); n.append(Vector3(0, 1, 0))
+						v.append(Vector3(a, s0.y, -c)); n.append(Vector3(0, -1, 0))
+				if i > 0 and j > 0:
+					var i2 := i * 2
+					idx.append_array(PackedInt32Array([prevrow + i2 - 2, prevrow + i2, thisrow + i2 - 2,
+						prevrow + i2, thisrow + i2, thisrow + i2 - 2,
+						prevrow + i2 - 1, prevrow + i2 + 1, thisrow + i2 - 1,
+						prevrow + i2 + 1, thisrow + i2 + 1, thisrow + i2 - 1]))
+			prevrow = thisrow
+			thisrow = v.size()
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = v
+	arr[Mesh.ARRAY_NORMAL] = n
+	arr[Mesh.ARRAY_INDEX] = idx
+	return arr
 
 
 ## mi's transform relative to root (the yard is built before the room is in the tree).
@@ -313,6 +374,8 @@ static func _shrub(room: Node3D, at: Vector3, r: float) -> void:
 		var rr := r * rng.randf_range(0.55, 0.8)
 		sm.radius = rr
 		sm.height = rr * 1.6
+		sm.radial_segments = 16          # (half a metre across, metres away: the default 64 x 32 was 2,000 corners each,
+		sm.rings = 8                     # 140 of them - 300,000 corners - v0.12.24)
 		mi.mesh = sm
 		mi.material_override = Kit.flat(Color(0.18, 0.33, 0.12).lerp(Color(0.28, 0.42, 0.16), rng.randf()), 0.9)
 		mi.position = at + Vector3(rng.randfn(0.0, r * 0.3), rr * 0.75, rng.randfn(0.0, r * 0.4))

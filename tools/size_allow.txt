@@ -9,9 +9,8 @@
 648 scripts/view/nest/parts/nest_brood.gd
 690 scripts/view/outworld/parts/outworld_creatures.gd
 683 scripts/dev/body_check.gd
-650 scripts/view/nest/nest_view.gd
+637 scripts/view/nest/nest_view.gd
 636 scripts/game/home.gd
-502 scripts/view/nest/parts/nest_scene.gd
 540 scripts/sim/parts/sim_base.gd
 514 scripts/view/nest/parts/nest_bodies.gd
 512 scripts/game/main.gd

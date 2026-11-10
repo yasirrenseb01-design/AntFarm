@@ -47,6 +47,13 @@ void fragment() {
 			|| w.y > box_max.y + 0.05) {
 		discard;
 	}
+	// ...and where its sides meet, the mesher rounds that skin in by up to about half a voxel (the keeper, 2026-11-10: dashed
+	// lines along the block's edges): skin facing out within 0.7 of a side goes too. A tunnel's own wall there faces in.
+	vec3 lo = vec3(box_min_xz.x, box_min_y, box_min_xz.y);
+	if ((w.x < lo.x + 0.7 && wn.x < -0.3) || (w.x > box_max.x - 0.7 && wn.x > 0.3) || (w.z < lo.z + 0.7 && wn.z < -0.3)
+			|| (w.z > box_max.z - 0.7 && wn.z > 0.3) || (w.y < lo.y + 0.7 && wn.y < -0.3)) {
+		discard;
+	}
 	vec3 c = soil(w, wn);
 	// floors read lighter than ceilings, helping the eye tell up from down inside the rooms
 	c *= 0.85 + 0.25 * clamp(wn.y, 0.0, 1.0);

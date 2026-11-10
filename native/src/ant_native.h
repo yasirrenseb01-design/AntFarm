@@ -22,6 +22,7 @@ protected:
 public:
 	static double density_at(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Vector3 &p);
 	static PackedFloat32Array soft_build(const PackedByteArray &rho, const PackedInt32Array &box);
+	static PackedFloat32Array chunk_sample(const PackedByteArray &rho, const PackedInt32Array &box, const Vector3i &k, int64_t ch);
 	static Dictionary field_from(const PackedByteArray &rho, const PackedInt32Array &box, const Array &starts);
 	static Array soil_hits(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &t2,
 			const PackedVector3Array &pts, const Vector3 &up, const Vector3 &side);

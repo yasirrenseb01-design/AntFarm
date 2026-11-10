@@ -9,6 +9,7 @@ using namespace godot;
 void AntNative::_bind_methods() {
 	ClassDB::bind_static_method("AntNative", D_METHOD("density_at", "soft", "dims", "p"), &AntNative::density_at);
 	ClassDB::bind_static_method("AntNative", D_METHOD("soft_build", "rho", "box"), &AntNative::soft_build);
+	ClassDB::bind_static_method("AntNative", D_METHOD("chunk_sample", "rho", "box", "k", "ch"), &AntNative::chunk_sample);
 	ClassDB::bind_static_method("AntNative", D_METHOD("field_from", "rho", "box", "starts"), &AntNative::field_from);
 	ClassDB::bind_static_method("AntNative", D_METHOD("soil_hits", "soft", "dims", "t2", "pts", "up", "side"), &AntNative::soil_hits);
 }
@@ -143,6 +144,65 @@ PackedFloat32Array AntNative::soft_build(const PackedByteArray &rho, const Packe
 		}
 	}
 	return out;
+}
+
+// nest_mesher.sample (v0.12.24): chunk k's soil for the mesher, samples o-1 .. o+ch+1 (o = k*ch), each solid or open
+// softened with its six neighbours, solid read one voxel further out; outside the box counts as air. The same values in
+// the same order (a double, stored as a float). ~1.3 ms a chunk in GDScript on the main thread: a big nest's 441 chunks
+// came up over 6 s as the nest view opened. An empty array back: no surface in it, or the box does not fit rho.
+PackedFloat32Array AntNative::chunk_sample(const PackedByteArray &rho, const PackedInt32Array &box, const Vector3i &k, int64_t ch) {
+	PackedFloat32Array dens;
+	if (box.size() < 7 || ch < 1 || ch > 64) {
+		return dens;
+	}
+	const int64_t xl = box[0], yl = box[1], zl = box[2], nx = box[3], ny = box[4], nz = box[5], air = box[6];
+	const int64_t wx = nx - xl, hy = ny - yl, wz = nz - zl;
+	if (wx <= 0 || hy <= 0 || wz <= 0 || rho.size() < wx * hy * wz) {
+		return dens;
+	}
+	const int64_t S = ch + 3, B = S + 2, B2 = B * B;
+	const int64_t ox = (int64_t)k.x * ch, oy = (int64_t)k.y * ch, oz = (int64_t)k.z * ch;
+	std::vector<float> solid(B * B * B, 0.0f);
+	const uint8_t *r = rho.ptr();
+	for (int64_t z = 0; z < B; z++) {
+		const int64_t vz = oz + z - 2;
+		for (int64_t y = 0; y < B; y++) {
+			const int64_t vy = oy + y - 2;
+			if (vz < zl || vy < yl || vz >= nz || vy >= ny) {
+				continue;
+			}
+			const int64_t row = (z * B + y) * B;
+			const int64_t base = ((vz - zl) * hy + vy - yl) * wx - xl;
+			for (int64_t x = 0; x < B; x++) {
+				const int64_t vx = ox + x - 2;
+				if (vx >= xl && vx < nx && r[base + vx] >= air) {
+					solid[row + x] = 1.0f;
+				}
+			}
+		}
+	}
+	dens.resize(S * S * S);
+	float *d = dens.ptrw();
+	bool any_air = false, any_solid = false;
+	for (int64_t z = 0; z < S; z++) {
+		for (int64_t y = 0; y < S; y++) {
+			for (int64_t x = 0; x < S; x++) {
+				const int64_t i = ((z + 1) * B + (y + 1)) * B + (x + 1);
+				const double nb = (double)solid[i - 1] + solid[i + 1] + solid[i - B] + solid[i + B] + solid[i - B2] + solid[i + B2];
+				const double v = solid[i] > 0.5f ? 0.4 + 0.1 * nb : 0.05 * nb;
+				d[(z * S + y) * S + x] = (float)v;
+				if (v >= 0.5) {
+					any_solid = true;
+				} else {
+					any_air = true;
+				}
+			}
+		}
+	}
+	if (!(any_air && any_solid)) {
+		return PackedFloat32Array();
+	}
+	return dens;
 }
 
 // nest_brood._field_from (v0.12.23): steps from the start cells through the open nest, a step on a wall 1, one across

@@ -363,49 +363,6 @@ func _box(size: Vector3, pos: Vector3, mat: Material) -> void:
 	add_child(mi)
 
 
-func _build_chunk(k: Vector3i) -> void:
-	_set_chunk(k, Mesher.build(nest, k))
-
-
-## Rebuild changed chunks without stalling the frame: the soil is sampled here (fast), the mesh is made on a
-## worker thread, and finished meshes are swapped in on a later frame. At most a few milliseconds a frame.
-func _pump_chunks(queue: Array) -> void:
-	for k in _meshing.keys():
-		var job: Dictionary = _meshing[k]
-		if WorkerThreadPool.is_task_completed(job.task):
-			WorkerThreadPool.wait_for_task_completion(job.task)
-			_meshing.erase(k)
-			_set_chunk(k, job.out[0] if not job.out.is_empty() else null)
-	var t0 := Time.get_ticks_usec()
-	while not queue.is_empty() and _meshing.size() < 6 and Time.get_ticks_usec() - t0 < 3000:
-		var k: Vector3i = queue[0]
-		if _meshing.has(k):
-			break                         # still being made: wait for it, then remake with the newer soil
-		queue.pop_front()
-		var dens := Mesher.sample(nest, k)
-		if dens.is_empty():
-			_set_chunk(k, null)
-			continue
-		var out := []
-		var task := WorkerThreadPool.add_task(func(): out.append(Mesher.mesh_from(dens, k)))
-		_meshing[k] = {"task": task, "out": out}
-
-
-func _set_chunk(k: Vector3i, mesh: ArrayMesh) -> void:
-	var mi: MeshInstance3D = _chunks.get(k)
-	if mesh == null:
-		if mi:
-			mi.queue_free()
-			_chunks.erase(k)
-		return
-	if mi == null:
-		mi = MeshInstance3D.new()
-		mi.material_override = _xray_mat if xray else _mat
-		add_child(mi)
-		_chunks[k] = mi
-	mi.mesh = mesh
-
-
 func _hash(i: int, s: int) -> float:
 	var x := sin(i * 12.9898 + s * 78.233) * 43758.5453
 	return x - floor(x)

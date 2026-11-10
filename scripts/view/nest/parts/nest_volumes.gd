@@ -197,3 +197,52 @@ func _field_run(job: Dictionary, until_us: int) -> bool:
 	job.cur = cur
 	job.left = left
 	return left <= 0
+
+
+# ---- the soil's mesh, chunk by chunk (moved from nest_scene, v0.12.24)
+
+## Mesher.sample, in C++ when it is there (the same values: ~1.3 ms a chunk in GDScript, v0.12.24).
+func _sample(k: Vector3i) -> PackedFloat32Array:
+	if _native != null:
+		return _native.chunk_sample(nest.rho, PackedInt32Array([nest.x_lo, nest.y_lo, nest.z_lo, nest.nx, nest.ny, nest.nz,
+			nest.AIR]), k, Mesher.CH)
+	return Mesher.sample(nest, k)
+
+
+## Rebuild changed chunks without stalling the frame: the soil is sampled here (fast), the mesh is made on a
+## worker thread, and finished meshes are swapped in on a later frame. At most a few milliseconds a frame.
+func _pump_chunks(queue: Array) -> void:
+	for k in _meshing.keys():
+		var job: Dictionary = _meshing[k]
+		if WorkerThreadPool.is_task_completed(job.task):
+			WorkerThreadPool.wait_for_task_completion(job.task)
+			_meshing.erase(k)
+			_set_chunk(k, job.out[0] if not job.out.is_empty() else null)
+	var t0 := Time.get_ticks_usec()
+	while not queue.is_empty() and _meshing.size() < 6 and Time.get_ticks_usec() - t0 < 3000:
+		var k: Vector3i = queue[0]
+		if _meshing.has(k):
+			break                         # still being made: wait for it, then remake with the newer soil
+		queue.pop_front()
+		var dens := _sample(k)
+		if dens.is_empty():
+			_set_chunk(k, null)
+			continue
+		var out := []
+		var task := WorkerThreadPool.add_task(func(): out.append(Mesher.mesh_from(dens, k)))
+		_meshing[k] = {"task": task, "out": out}
+
+
+func _set_chunk(k: Vector3i, mesh: ArrayMesh) -> void:
+	var mi: MeshInstance3D = _chunks.get(k)
+	if mesh == null:
+		if mi:
+			mi.queue_free()
+			_chunks.erase(k)
+		return
+	if mi == null:
+		mi = MeshInstance3D.new()
+		mi.material_override = _xray_mat if xray else _mat
+		add_child(mi)
+		_chunks[k] = mi
+	mi.mesh = mesh

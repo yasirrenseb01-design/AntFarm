@@ -47,7 +47,7 @@ func _ready() -> void:
 		_opts[kv[0]] = kv[1] if kv.size() > 1 else "1"
 	if _opts.has("view-hash"):
 		seed(int(_opts["view-hash"]))       # (dev: the views' own random draws the same every run - with godot --fixed-fps)
-	if OS.has_feature("template"):
+	if OS.has_feature("template") and not OS.has_feature("measure"):    # (the measuring copy keeps them: tools/build_measure.ps1)
 		# (PART EA-R R5) the released game takes only what it passes itself when it starts again as the wallpaper and back
 		# (_enter_desktop, desktop_mode.gd) - none of the developer's options: some write files wherever they are told
 		# (--shot, --csv, --nestpng), others change the colony or open a test one

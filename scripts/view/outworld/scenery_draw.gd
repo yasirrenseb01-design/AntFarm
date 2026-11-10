@@ -227,6 +227,14 @@ static func _clear_litter(ground, sim) -> Array:
 		for r in sim.rocks:
 			if ok and p.distance_to(r.pos) < reach + float(r.r) + 2.0:
 				ok = false
+		# (and the moss and the pebbles: a leaf lay through them - the keeper, 2026-11-10, v0.12.24)
+		for pb in ground.pebbles:
+			if ok and p.distance_to(pb.p) < reach + maxf(pb.r.x, pb.r.y) + 1.0:
+				ok = false
+		for m in ground.moss:
+			for b in m:
+				if ok and p.distance_to(b[0]) < reach + float(b[1]) + 1.0:
+					ok = false
 		for k in keep:
 			if ok and p.distance_to(k.p) < reach + float(k.l) * (1.0 if k.twig else 0.55):
 				ok = false
