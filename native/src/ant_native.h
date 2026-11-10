@@ -12,6 +12,7 @@
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
+#include <godot_cpp/variant/vector3i.hpp>
 
 namespace godot {
 
@@ -30,6 +31,10 @@ public:
 			const Vector2 &b, const Vector2 &lowered, const Vector2 &sb, const PackedVector3Array &head_pts, const PackedVector3Array &gaster_pts);
 	static Array gap_scan(const Dictionary &m, const Dictionary &near, const Vector3 &head, const Vector3 &up, const Vector3 &f,
 			double s, double lag, const Variant &on, const Array &offs, const PackedVector3Array &parts, const PackedFloat64Array &radii);
+	static Array settle_find(const Dictionary &m, const Vector3i &start, const Vector3 &near_to, const Array &ctx);
+	static bool body_feels(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &t, const Vector3 &off,
+			const Vector2 &bend, double lat, const PackedVector3Array &soil_pts, const PackedVector3Array &feel_pts);
+	static double gap_under(const PackedByteArray &rho, const PackedInt32Array &box, const Transform3D &xf);
 	static Array soil_hits(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &t2,
 			const PackedVector3Array &pts, const Vector3 &up, const Vector3 &side);
 };

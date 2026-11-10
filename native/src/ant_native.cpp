@@ -15,6 +15,9 @@ void AntNative::_bind_methods() {
 	ClassDB::bind_static_method("AntNative", D_METHOD("field_from", "rho", "box", "starts"), &AntNative::field_from);
 	ClassDB::bind_static_method("AntNative", D_METHOD("bend_probe", "soft", "dims", "tr", "off", "b", "lowered", "sb", "head_pts", "gaster_pts"), &AntNative::bend_probe);
 	ClassDB::bind_static_method("AntNative", D_METHOD("gap_scan", "m", "near", "head", "up", "f", "s", "lag", "on", "offs", "parts", "radii"), &AntNative::gap_scan);
+	ClassDB::bind_static_method("AntNative", D_METHOD("settle_find", "m", "start", "near_to", "ctx"), &AntNative::settle_find);
+	ClassDB::bind_static_method("AntNative", D_METHOD("body_feels", "soft", "dims", "t", "off", "bend", "lat", "soil_pts", "feel_pts"), &AntNative::body_feels);
+	ClassDB::bind_static_method("AntNative", D_METHOD("gap_under", "rho", "box", "xf"), &AntNative::gap_under);
 	ClassDB::bind_static_method("AntNative", D_METHOD("soil_hits", "soft", "dims", "t2", "pts", "up", "side"), &AntNative::soil_hits);
 }
 
@@ -134,7 +137,7 @@ static inline double tod(const Variant &v) {
 // units); the rest of the function stays in GDScript (it draws random numbers). Returns [k, by] (by null if none).
 Array AntNative::gap_scan(const Dictionary &m, const Dictionary &near, const Vector3 &head, const Vector3 &up, const Vector3 &f,
 		double s, double lag, const Variant &on, const Array &offs, const PackedVector3Array &parts, const PackedFloat64Array &radii) {
-	static const StringName K_XF("xf"), K_OVER_ON("over_on"), K_OVER("over");
+	const StringName K_XF("xf"), K_OVER_ON("over_on"), K_OVER("over");
 	const double hr = (double)radii[0] * s;
 	const Vector3i key((int32_t)std::floor((double)head.x / 3.0), (int32_t)std::floor((double)head.y / 3.0), (int32_t)std::floor((double)head.z / 3.0));
 	double k = 1.0;

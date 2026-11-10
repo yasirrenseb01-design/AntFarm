@@ -47,6 +47,8 @@ func _init() -> void:
 	_chunks_same(nat)
 	_bend_same(nat)
 	_gap_same(nat)
+	_settle_same(nat)
+	_soil_same(nat)
 	print("NATIVE GUARD TEST PASSED" if ok else "NATIVE GUARD TEST FAILED")
 	quit(0 if ok else 1)
 
@@ -264,3 +266,121 @@ func _gap_same(nat: Object) -> void:
 				same += 1
 	print("gap_scan: %d of %d same, %d held up by something" % [same, n, held])
 	_check("gap_scan = the GDScript pass in %d of %d bodies (%d held up)" % [same, n, held], same == n and held > 200)
+
+
+## settle_find (v0.12.28) against nest_rest._settle_on's search (tests/native_settle_case.gd: the same lines, in a nest
+## with tunnels cut at random, bodies about it, the queen and the brood).
+func _settle_same(nat: Object) -> void:
+	var s = load("res://scripts/sim/simulation.gd").new()
+	s.setup(4, 14, false, "keeper", false, "lasius_niger")
+	var res: Array = load("res://tests/native_settle_case.gd").new().run(nat, s)
+	print("settle_find: %d of %d same (%d walk to a spot, %d find no room; C++ asked the view about %d cells)" % [res[1], res[0], res[2], res[3], res[4]])
+	_check("settle_find = the GDScript search in %d of %d" % [res[1], res[0]], res[1] == res[0] and res[2] > 100 and res[0] > 1000 and res[4] > 1000)
+	var short: Array = nat.settle_find({}, Vector3i.ZERO, Vector3.INF, [])
+	_check("settle_find, no context: nothing found", short.size() == 3 and not short[0])
+
+
+## body_feels and gap_under (v0.12.29) against nest_soil._body_touches/_feels and nest_feet._gap_under (the same lines
+## here): random density and random voxels, bodies turned every way, bent and swung into a turn (lat).
+func _soil_same(nat: Object) -> void:
+	var Soil = load("res://scripts/view/nest/parts/nest_soil.gd")
+	var r := RandomNumberGenerator.new()
+	r.seed = 13
+	var nx := 14
+	var ny := 10
+	var nz := 14
+	var sx := nx + 2
+	var sy := ny + 2
+	var soft := PackedFloat32Array()
+	soft.resize(sx * sy * (nz + 2))
+	for i in soft.size():
+		soft[i] = 1.0 if r.randf() < 0.3 else r.randf() * 0.35
+	var dims := PackedInt32Array([sx, sy, 0, nx, ny, nz, 0])
+	var off := Vector3(37, 0, 211)
+	var sp := PackedVector3Array(Soil._SOIL_PTS)
+	var fp := PackedVector3Array(Soil._FEEL_PTS)
+	var box := PackedInt32Array([37, -3, 211, 37 + nx, ny, 211 + nz])
+	var rho := PackedByteArray()
+	rho.resize(nx * (ny + 3) * nz)
+	for i in rho.size():
+		rho[i] = 255 if r.randf() < 0.4 else r.randi_range(0, 200)
+	var n := 0
+	var same := 0
+	var hit := 0
+	var gsame := 0
+	var gmid := 0
+	for k in 20000:
+		var up := Vector3(r.randf_range(-1, 1), r.randf_range(-1, 1), r.randf_range(-1, 1)).normalized()
+		var fwd := up.cross(Vector3(r.randf_range(-1, 1), r.randf_range(-1, 1), r.randf_range(-1, 1))).normalized()
+		var sz := r.randf_range(0.8, 1.3)
+		var tr := Transform3D(Basis(fwd * sz, up * sz, fwd.cross(up) * sz), off + Vector3(r.randf_range(-1, nx + 1), r.randf_range(-3, ny + 1), r.randf_range(-1, nz + 1)))
+		var b := Vector2(r.randf_range(-0.6, 0.6), r.randf_range(-0.6, 0.6))
+		var lat := r.randf_range(-0.6, 0.6) if r.randf() < 0.7 else 0.0
+		var want := false
+		for q0 in Soil._SOIL_PTS:
+			if _dens(soft, dims, off, tr * Soil._bent(q0, b, lat)) >= 0.45:
+				want = true
+				break
+		if not want:
+			for q0 in Soil._FEEL_PTS:
+				if _dens(soft, dims, off, tr * Soil._bent(q0, b, lat)) >= 0.45:
+					want = true
+					break
+		n += 1
+		if want:
+			hit += 1
+		if nat.body_feels(soft, dims, tr, off, b, lat, sp, fp) == want:
+			same += 1
+		var g := _gap_under_gd(rho, box, tr)
+		if g > 0.0 and g < 1.5:
+			gmid += 1
+		if nat.gap_under(rho, box, tr) == g:
+			gsame += 1
+	print("body_feels: %d of %d same (%d touching); gap_under: %d of %d same (%d between 0 and 1.5)" % [same, n, hit, gsame, n, gmid])
+	_check("body_feels = _body_touches or _feels (%d of %d)" % [same, n], same == n and hit > 2000 and hit < n - 2000)
+	_check("gap_under = nest_feet._gap_under (%d of %d)" % [gsame, n], gsame == n and gmid > 2000)
+	_check("gap_under, box too few: 1.5", nat.gap_under(rho, PackedInt32Array([0, 0]), Transform3D()) == 1.5)
+	_check("gap_under, rho too short: 1.5", nat.gap_under(rho.slice(0, 10), box, Transform3D()) == 1.5)
+
+
+## nest_feet._gap_under and _foot_at (the same lines), over rho in the box x_lo, y_lo, z_lo, nx, ny, nz.
+func _gap_under_gd(rho: PackedByteArray, box: PackedInt32Array, xf: Transform3D) -> float:
+	var up := xf.basis.y.normalized()
+	var fw := xf.origin
+	var prev := 0.5
+	var dprev := _foot_gd(rho, box, fw + up * prev)
+	if dprev >= 0.5:
+		return 0.0
+	for i in range(1, 9):
+		var s := 0.5 - 0.25 * i
+		var d := _foot_gd(rho, box, fw + up * s)
+		if d >= 0.5:
+			return maxf(0.0, -lerpf(prev, s, clampf((0.5 - dprev) / maxf(d - dprev, 0.001), 0.0, 1.0)))
+		prev = s
+		dprev = d
+	return 1.5
+
+
+func _foot_gd(rho: PackedByteArray, box: PackedInt32Array, p: Vector3) -> float:
+	var x_lo := box[0]
+	var y_lo := box[1]
+	var z_lo := box[2]
+	var nx := box[3]
+	var ny := box[4]
+	var nz := box[5]
+	var x0 := floori(p.x)
+	var y0 := floori(p.y)
+	var z0 := floori(p.z)
+	var fx := p.x - x0
+	var fy := p.y - y0
+	var fz := p.z - z0
+	var v := 0.0
+	for dz in 2:
+		var z := clampi(z0 + dz, z_lo, nz - 1)
+		var wz := fz if dz == 1 else 1.0 - fz
+		for dy in 2:
+			var y := clampi(y0 + dy, y_lo, ny - 1)
+			var wy := (fy if dy == 1 else 1.0 - fy) * wz
+			var row := ((z - z_lo) * (ny - y_lo) + y - y_lo) * (nx - x_lo) - x_lo
+			v += wy * ((1.0 - fx) * rho[row + clampi(x0, x_lo, nx - 1)] + fx * rho[row + clampi(x0 + 1, x_lo, nx - 1)])
+	return v / 255.0

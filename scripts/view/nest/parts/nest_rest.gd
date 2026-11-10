@@ -384,6 +384,7 @@ func _settle(m: Dictionary) -> bool:
 	return r
 
 
+var _no_native_settle: bool = OS.get_cmdline_user_args().has("--no-native-settle")     # (dev: this part in GDScript)
 func _settle_on(m: Dictionary) -> bool:
 	m.settle = []
 	var start: Vector3i = m.cell
@@ -392,6 +393,17 @@ func _settle_on(m: Dictionary) -> bool:
 		"nurse": near_to = _nearest_spot(Vector3(start), _spots.larvae) if not _spots.larvae.is_empty() else Vector3.INF
 		"attend": near_to = _spots.queen if _spots.queen != Vector3.ZERO else Vector3.INF
 		"giver", "groomer": near_to = m.get("near_to", Vector3.INF)       # (its partner: nest_duties)
+	if _native != null and not _no_native_settle:
+		# (the search below in C++: the same steps and sums, ~4 ms a frame in GDScript with 600 drawn - v0.12.28)
+		var r: Array = _native.settle_find(m, start, near_to, [nest.rho, PackedInt32Array([nest.x_lo, nest.y_lo, nest.z_lo,
+			nest.nx, nest.ny, nest.nz, nest.AIR]), _queen_cells, _queen_mm.instance_count > 0, _queen_xf * QUEEN_HEAD,
+			_queen_xf * QUEEN_TAIL, QUEEN_R, _fit_cache, _brood_wide, _mate_cells, _near_bins, self])
+		if not r[0]:
+			return false
+		if not (r[2] as Array).is_empty():
+			m.settle = r[2]
+			_mate_cells[r[1]] = m                    # spoken for: the next ant looks elsewhere
+		return true
 	# a resting ant settles on the floor: walls and the ceiling only if nothing else is free nearby (ants do
 	# walk on them, but a chamber full of ants resting upside down looked chaotic)
 	var score := func(c: Vector3i, depth: int) -> float:
