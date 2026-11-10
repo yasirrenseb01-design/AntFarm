@@ -54,9 +54,21 @@ func _surface() -> void:
 		var w = by_id.get(wid)
 		var job = _dumps.get(wid)
 		if job != null:
-			if job.get("dropped", false) and (w == null or w.dead or w.state == Ant.IN_NEST):
+			var gone: bool = w == null or w.dead
+			if not job.get("dropped", false) and (gone or w.state != Ant.DUMP):
+				# v0.12.31: its worker died outside (or was taken off the job) before setting the pellet down: the
+				# job never came to "dropped" and the digger waited for ever, still counted as one of the diggers
+				# (the keeper's colony of 812: 5 of its 6). The pellet falls by the way out it came up instead.
+				_drop_at_hole(job)
+				if not gone and w.carry == Ant.SOIL:
+					w.carry = Ant.NONE
+				job.dropped = true
+				job.lost = true                        # (the digger does not wait for this worker to come back in)
+			if job.get("dropped", false) and (gone or w.state == Ant.IN_NEST or job.get("lost", false)):
 				_dumps.erase(wid)
 				nest.finish_surface(d)
+				if gone:
+					d.wid = -1                         # another digging worker takes it on
 			continue
 		if w == null or w.dead or w.state != Ant.IN_NEST:
 			nest.excavated += 1                        # no worker to carry it: dropped at the entrance (as before v0.11.57)
@@ -72,6 +84,37 @@ func _surface() -> void:
 		_dumps[wid] = {"to": hole + Vector2.from_angle(a) * far, "dig": int(d.id),
 			"dropped": false, "hole": hi}
 		w.ang = a
+	if not _dumps.is_empty():
+		_drop_orphans()
+
+
+## A pellet set down by the way out it came up (sim_foragers._step_ant does the same at its spot on the ring).
+func _drop_at_hole(job: Dictionary) -> void:
+	var hv = job.get("hole", -1)
+	var hi := int(hv) if hv is int or hv is float else -1
+	if hi >= 0 and hi < nest.exits.size():
+		nest.exits[hi].soil = int(nest.exits[hi].get("soil", 0)) + 1
+	else:
+		nest.excavated += 1
+
+
+## Jobs no surfacing digger waits on any more (not made now; kept from a save of before v0.12.31 in case): a pellet
+## still carried by a worker that is gone falls by its hole, and the job goes.
+func _drop_orphans() -> void:
+	var waited := {}
+	for d in nest.diggers:
+		if d.get("surfacing", false):
+			waited[int(d.get("wid", -1))] = true
+	var by_id := _worker_map()
+	for wid in _dumps.keys():
+		if waited.has(int(wid)):
+			continue
+		var w = by_id.get(int(wid))
+		if w == null or w.dead or w.state != Ant.DUMP:
+			var job: Dictionary = _dumps[wid]
+			if not job.get("dropped", false):
+				_drop_at_hole(job)
+			_dumps.erase(wid)
 
 
 # who stands in each 6 px square this round (_encounters): a square holds an ant while _meet_at[it] is this round's
