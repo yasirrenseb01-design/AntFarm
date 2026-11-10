@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector3.hpp>
 
 namespace godot {
@@ -24,6 +25,8 @@ public:
 	static PackedFloat32Array soft_build(const PackedByteArray &rho, const PackedInt32Array &box);
 	static PackedFloat32Array chunk_sample(const PackedByteArray &rho, const PackedInt32Array &box, const Vector3i &k, int64_t ch);
 	static Dictionary field_from(const PackedByteArray &rho, const PackedInt32Array &box, const Array &starts);
+	static int64_t bend_probe(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &tr, const Vector3 &off,
+			const Vector2 &b, const Vector2 &lowered, const Vector2 &sb, const PackedVector3Array &head_pts, const PackedVector3Array &gaster_pts);
 	static Array soil_hits(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &t2,
 			const PackedVector3Array &pts, const Vector3 &up, const Vector3 &side);
 };

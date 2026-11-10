@@ -45,6 +45,7 @@ func _init() -> void:
 	r = nat.soil_hits(soft, dims, Transform3D(), pts, Vector3.UP, Vector3.RIGHT)
 	_check("soil_hits in a solid block: answers", r.size() == 3)
 	_chunks_same(nat)
+	_bend_same(nat)
 	print("NATIVE GUARD TEST PASSED" if ok else "NATIVE GUARD TEST FAILED")
 	quit(0 if ok else 1)
 
@@ -86,3 +87,88 @@ func _check(what: String, good: bool) -> void:
 	if not good:
 		ok = false
 		print("FAIL: ", what)
+
+
+## bend_probe (v0.12.25) against nest_soil._soil_bend's own passes (_bent and _density_at, as GDScript sums them), over
+## a block of random density, random bodies (turned every way, bent, some stood in the soil) and shifted block origins.
+func _bend_same(nat: Object) -> void:
+	var Soil = load("res://scripts/view/nest/parts/nest_soil.gd")
+	var r := RandomNumberGenerator.new()
+	r.seed = 11
+	var nx := 14
+	var ny := 10
+	var nz := 14
+	var sx := nx + 2
+	var sy := ny + 2
+	var soft := PackedFloat32Array()
+	soft.resize(sx * sy * (nz + 2))
+	for i in soft.size():
+		soft[i] = 1.0 if r.randf() < 0.45 else r.randf() * 0.3
+	var dims := PackedInt32Array([sx, sy, 0, nx, ny, nz, 0])
+	var off := Vector3(37, 0, 211)               # (the block starts at a column and a slice that are not 0: nest_scene._soft_off)
+	var head := PackedVector3Array(Soil._HEAD_PTS)
+	var gaster := PackedVector3Array(Soil._GASTER_PTS)
+	var n := 0
+	var same := 0
+	var hit := 0
+	for k in 20000:
+		var up := Vector3(r.randf_range(-1, 1), r.randf_range(-1, 1), r.randf_range(-1, 1)).normalized()
+		var fwd := up.cross(Vector3(r.randf_range(-1, 1), r.randf_range(-1, 1), r.randf_range(-1, 1))).normalized()
+		var sz := r.randf_range(0.8, 1.3)
+		var tr := Transform3D(Basis(fwd * sz, up * sz, fwd.cross(up) * sz), off + Vector3(r.randf_range(-1, nx + 1), r.randf_range(-1, ny + 1), r.randf_range(-1, nz + 1)))
+		var b := Vector2(r.randf_range(-0.6, 0.6), r.randf_range(-0.6, 0.6))
+		var sb := Vector2(r.randf_range(-0.2, 0.6), r.randf_range(-0.2, 0.6))
+		var lowered := (b - Vector2(0.12, 0.12)).clamp(Vector2(-0.6, -0.6), Vector2(0.6, 0.6))
+		var want := 0
+		var head_in := false
+		var gaster_in := false
+		for q in Soil._HEAD_PTS:
+			if _dens(soft, dims, off, tr * Soil._bent(q, b, 0.0)) >= 0.5:
+				head_in = true
+				break
+		for q in Soil._GASTER_PTS:
+			if _dens(soft, dims, off, tr * Soil._bent(q, b, 0.0)) >= 0.5:
+				gaster_in = true
+				break
+		want = (1 if head_in else 0) | (2 if gaster_in else 0)
+		if not head_in and sb.y > 0.0:
+			for q in Soil._HEAD_PTS:
+				if _dens(soft, dims, off, tr * Soil._bent(q, Vector2(b.x, lowered.y), 0.0)) >= 0.5:
+					want |= 4
+					break
+		if not gaster_in and sb.x > 0.0:
+			for q in Soil._GASTER_PTS:
+				if _dens(soft, dims, off, tr * Soil._bent(q, Vector2(lowered.x, b.y), 0.0)) >= 0.5:
+					want |= 8
+					break
+		n += 1
+		if want != 0:
+			hit += 1
+		if nat.bend_probe(soft, dims, tr, off, b, lowered, sb, head, gaster) == want:
+			same += 1
+	print("bend_probe: %d of %d same, %d with something in the soil" % [same, n, hit])
+	_check("bend_probe = the GDScript passes in %d of %d bodies (%d with something in the soil)" % [same, n, hit], same == n and hit > 2000)
+	_check("bend_probe, no dims: nothing in the soil", nat.bend_probe(soft, PackedInt32Array(), Transform3D(), off, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, head, gaster) == 0)
+	_check("bend_probe, array too short: nothing in the soil", nat.bend_probe(soft.slice(0, 50), dims, Transform3D(Basis(), off + Vector3(5, 5, 5)), off, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, head, gaster) == 0)
+
+
+## nest_scene._density_at over a block counted from `off` (the same lines).
+func _dens(soft: PackedFloat32Array, dims: PackedInt32Array, off: Vector3, p0: Vector3) -> float:
+	var p := p0
+	var x := floori(p.x - off.x)
+	var y := floori(p.y)
+	var z := floori(p.z - off.z)
+	if x < -1 or y < dims[6] - 1 or z < -1 or x >= dims[3] or y >= dims[4] or z >= dims[5]:
+		return 0.0
+	var fx := p.x - off.x - x
+	var fy := p.y - y
+	var fz := p.z - off.z - z
+	var sx := dims[0]
+	var sy := dims[1]
+	var i := ((z + 1) * sy + (y - dims[2] + 1)) * sx + (x + 1)
+	var d00 := lerpf(soft[i], soft[i + 1], fx)
+	var d10 := lerpf(soft[i + sx], soft[i + sx + 1], fx)
+	var j := i + sx * sy
+	var d01 := lerpf(soft[j], soft[j + 1], fx)
+	var d11 := lerpf(soft[j + sx], soft[j + sx + 1], fx)
+	return lerpf(lerpf(d00, d10, fy), lerpf(d01, d11, fy), fz)

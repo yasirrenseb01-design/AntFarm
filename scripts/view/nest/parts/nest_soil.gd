@@ -278,6 +278,9 @@ func _body_touches(t: Transform3D, bend: Vector2, lat: float) -> bool:
 ## to the bend the ground fit gives it (m.bend: x gaster, y head; + = up), eased, at most 0.6 in all.
 const _HEAD_PTS := [Vector3(1.01, 0.4, 0.0), Vector3(0.95, 0.26, 0.0), Vector3(0.85, 0.24, 0.0)]
 const _GASTER_PTS := [Vector3(-1.05, 0.13, 0.0), Vector3(-1.5, 0.36, 0.0), Vector3(-1.35, 0.21, 0.0), Vector3(-0.6, 0.12, 0.0)]
+var _no_native_bend: bool = OS.get_cmdline_user_args().has("--no-native-bend")      # (dev: this part in GDScript, the rest in C++ - to compare the two)
+var _HEAD_PTS_P := PackedVector3Array([Vector3(1.01, 0.4, 0.0), Vector3(0.95, 0.26, 0.0), Vector3(0.85, 0.24, 0.0)])
+var _GASTER_PTS_P := PackedVector3Array([Vector3(-1.05, 0.13, 0.0), Vector3(-1.5, 0.36, 0.0), Vector3(-1.35, 0.21, 0.0), Vector3(-0.6, 0.12, 0.0)])
 func _soil_bend(m: Dictionary, tr: Transform3D, md: float) -> void:
 	var sb: Vector2 = m.get("sbend", Vector2.ZERO)
 	if float(m.get("over", 0.0)) > 0.05:
@@ -290,31 +293,40 @@ func _soil_bend(m: Dictionary, tr: Transform3D, md: float) -> void:
 		var dt := float(m.sb_t)
 		m.sb_t = 0.0
 		var b := (base + sb).clamp(Vector2(-0.6, -0.6), Vector2(0.6, 0.6))
-		var head_in := false
-		for q in _HEAD_PTS:
-			if _density_at(tr * _bent(q, b, 0.0)) >= 0.5:
-				head_in = true
-				break
-		var gaster_in := false
-		for q in _GASTER_PTS:
-			if _density_at(tr * _bent(q, b, 0.0)) >= 0.5:
-				gaster_in = true
-				break
-		# (up quickly while in the soil, back down slowly once clear: checked again as it bends, it would flicker)
-		# (and down only as far as it stays clear lowered: let straight down it touched again and nodded up and down)
+		# (lowered: down only as far as it stays clear lowered: let straight down it touched again and nodded up and down)
 		var lowered := (base + sb - Vector2(0.12, 0.12)).clamp(Vector2(-0.6, -0.6), Vector2(0.6, 0.6))
+		var head_in := false
+		var gaster_in := false
 		var head_low := false
 		var gaster_low := false
-		if not head_in and sb.y > 0.0:
+		if _native != null and not _no_native_bend:
+			# (the four passes over the head's and the gaster's points in C++: the same sums as the GDScript below, v0.12.25)
+			if _soft.is_empty():
+				_density_at(Vector3.ZERO)
+			var bits: int = _native.bend_probe(_soft, _soft_dims(), tr, _soft_off(), b, lowered, sb, _HEAD_PTS_P, _GASTER_PTS_P)
+			head_in = bits & 1 != 0
+			gaster_in = bits & 2 != 0
+			head_low = bits & 4 != 0
+			gaster_low = bits & 8 != 0
+		else:
 			for q in _HEAD_PTS:
-				if _density_at(tr * _bent(q, Vector2(b.x, lowered.y), 0.0)) >= 0.5:
-					head_low = true
+				if _density_at(tr * _bent(q, b, 0.0)) >= 0.5:
+					head_in = true
 					break
-		if not gaster_in and sb.x > 0.0:
 			for q in _GASTER_PTS:
-				if _density_at(tr * _bent(q, Vector2(lowered.x, b.y), 0.0)) >= 0.5:
-					gaster_low = true
+				if _density_at(tr * _bent(q, b, 0.0)) >= 0.5:
+					gaster_in = true
 					break
+			if not head_in and sb.y > 0.0:
+				for q in _HEAD_PTS:
+					if _density_at(tr * _bent(q, Vector2(b.x, lowered.y), 0.0)) >= 0.5:
+						head_low = true
+						break
+			if not gaster_in and sb.x > 0.0:
+				for q in _GASTER_PTS:
+					if _density_at(tr * _bent(q, Vector2(lowered.x, b.y), 0.0)) >= 0.5:
+						gaster_low = true
+						break
 		# (standing still it holds the pose it took: it relaxes only as it walks on)
 		var still := float(m.get("mv", 0.0)) < 0.3
 		sb.y = minf(sb.y + 5.0 * dt, 0.6) if head_in else (sb.y if head_low or still else maxf(sb.y - 0.6 * dt, 0.0))

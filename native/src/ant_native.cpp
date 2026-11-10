@@ -11,6 +11,7 @@ void AntNative::_bind_methods() {
 	ClassDB::bind_static_method("AntNative", D_METHOD("soft_build", "rho", "box"), &AntNative::soft_build);
 	ClassDB::bind_static_method("AntNative", D_METHOD("chunk_sample", "rho", "box", "k", "ch"), &AntNative::chunk_sample);
 	ClassDB::bind_static_method("AntNative", D_METHOD("field_from", "rho", "box", "starts"), &AntNative::field_from);
+	ClassDB::bind_static_method("AntNative", D_METHOD("bend_probe", "soft", "dims", "tr", "off", "b", "lowered", "sb", "head_pts", "gaster_pts"), &AntNative::bend_probe);
 	ClassDB::bind_static_method("AntNative", D_METHOD("soil_hits", "soft", "dims", "t2", "pts", "up", "side"), &AntNative::soil_hits);
 }
 
@@ -58,6 +59,53 @@ double AntNative::density_at(const PackedFloat32Array &soft, const PackedInt32Ar
 
 static inline double signd(double v) {
 	return v > 0.0 ? 1.0 : (v < 0.0 ? -1.0 : 0.0);
+}
+
+// nest_soil._bent for lat = 0 (the neck and the waist of the body turned as drawn): NECK, WAIST, GASTER_CURL of nest_rest.gd.
+static inline Vector3 bent0(const Vector3 &q, const Vector2 &bend) {
+	static const Vector2 NECK((real_t)0.46, (real_t)0.39), WAIST((real_t)-0.31, (real_t)0.36);
+	if (q.x > NECK.x) {
+		const Vector2 h = (Vector2(q.x, q.y) - NECK).rotated(bend.y) + NECK;
+		return Vector3(h.x, h.y, q.z);
+	}
+	if (q.x < WAIST.x) {
+		const Vector2 g = (Vector2(q.x, q.y) - WAIST).rotated((real_t)(0.1 - (double)bend.x)) + WAIST;
+		return Vector3(g.x, g.y, q.z);
+	}
+	return q;
+}
+
+static inline bool any_in(const float *s, int64_t n, const int32_t *dm, const Transform3D &tr, const Vector3 &off, const PackedVector3Array &pts, const Vector2 &bend) {
+	for (int64_t k = 0; k < pts.size(); k++) {
+		Vector3 c = tr.xform(bent0(pts[k], bend));
+		c.x -= off.x;
+		c.z -= off.z;
+		if (dens(s, n, dm, c) >= 0.5) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// nest_soil._soil_bend's four probes of the head's and the gaster's points against the soil: bit 1 head in, 2 gaster in,
+// 4 head in when lowered (only asked if it is not in and sb.y > 0), 8 gaster in when lowered (not in and sb.x > 0).
+// off: the column and slice the array starts at (nest_scene._soft_off), taken off after the transform as _density_at does.
+int64_t AntNative::bend_probe(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &tr, const Vector3 &off,
+		const Vector2 &b, const Vector2 &lowered, const Vector2 &sb, const PackedVector3Array &head_pts, const PackedVector3Array &gaster_pts) {
+	if (!dims_ok(dims)) {
+		return 0;
+	}
+	const float *s = soft.ptr();
+	const int64_t n = soft.size();
+	const int32_t *dm = dims.ptr();
+	int64_t r = 0;
+	const bool head_in = any_in(s, n, dm, tr, off, head_pts, b);
+	const bool gaster_in = any_in(s, n, dm, tr, off, gaster_pts, b);
+	if (head_in) r |= 1;
+	if (gaster_in) r |= 2;
+	if (!head_in && sb.y > 0.0f && any_in(s, n, dm, tr, off, head_pts, Vector2(b.x, lowered.y))) r |= 4;
+	if (!gaster_in && sb.x > 0.0f && any_in(s, n, dm, tr, off, gaster_pts, Vector2(lowered.x, b.y))) r |= 8;
+	return r;
 }
 
 // nest_soil._soil_push's pass over the body's points (bent as drawn): for each in the soil, out along the soil's slope
