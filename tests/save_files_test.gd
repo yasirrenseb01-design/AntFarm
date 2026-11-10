@@ -123,6 +123,8 @@ func _texts() -> void:
 	_is("home.json cut short: the tanks from its .bak", again.tanks, tanks)
 	# a write that cannot be put in place leaves the file as it was
 	_check("write_text: a folder in the way - false", not SafeFile.write_text(DIR + "nofile/", "x"))
+	DirAccess.remove_absolute(DIR + "nofile/.tmp")
+	DirAccess.remove_absolute(DIR + "nofile")
 
 
 ## A nest of the most soil a save may hold, saved and read back whole (the save's two limits from one set of numbers).
@@ -196,6 +198,7 @@ func _clear() -> void:
 			for fn in dir.get_files():
 				dir.remove(fn)
 	DirAccess.remove_absolute(DIR + "saves")
+	DirAccess.remove_absolute(DIR.trim_suffix("/"))
 
 
 func _is(what: String, got, want) -> void:
