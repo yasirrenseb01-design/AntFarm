@@ -104,82 +104,6 @@ func _upload_foot_volume() -> void:
 		_foot_vol.update(layers)
 
 
-# ---------------------------------------------------------------- the heaps on top of the block (moved from nest_piles, v0.12.22)
-
-## The crater round the entrance on top of the block: a heap as big as the soil dug out (sim/mound.gd, as the outworld's
-## ground), pellets on its surface in three shapes (view/common/lumps.gd; until v0.12.8 the pellets alone, at most 900) -
-## and one round each way out the nest has dug up, as big as the soil carried out of that one (nest_exits.gd, v0.12.22).
-var _crater_key := []
-var _mound_mis: Array = []              # a heap's mesh for each way out (the entrance's: _mound_mi)
-
-func _craters() -> void:
-	var heaps := [[Vector3(nest.entrance) + Vector3(0, 0.6, 0), nest.excavated]]
-	var key := [nest.excavated / 4, nest.exits_ver]
-	for ex in nest.exits:
-		if ex.open:
-			heaps.append([Vector3(ex.b.x, nest.ny - 1, ex.b.z).round() + Vector3(0, 0.6, 0), int(ex.get("soil", 0))])
-			key.append(int(ex.get("soil", 0)) / 4)
-	if key == _crater_key:
-		return
-	_crater_key = key
-	var xfs := []
-	for k in heaps.size():
-		var e: Vector3 = heaps[k][0]
-		var soil: int = heaps[k][1]
-		var hr := Mound.size(soil)
-		_mound_mesh(k, e, hr)
-		var reach: float = hr.y * 1.8
-		for i in mini(soil / 2, 900 if k == 0 else 420):
-			var a := _hash(i + k * 5003, 5) * TAU
-			var r: float = lerpf(Mound.HOLE.y - 0.6, reach, sqrt(_hash(i + k * 5003, 6)))
-			var p := e + Vector3(cos(a) * r, 0.0, sin(a) * r)
-			if p.x < nest.x_lo - 0.4 or p.z < nest.z_lo - 0.4 or p.x > nest.nx - 0.6 or p.z > nest.nz - 0.6:
-				continue                                  # (past the block's edge: the glass)
-			p.y += Mound.height(r, hr.x, hr.y) - 0.15 + 0.2 * _hash(i + k * 5003, 7)
-			xfs.append(Transform3D(Basis(Vector3.UP, a), p))
-	Lumps.fill(_pellet_mm, xfs)
-
-
-## Heap k's surface as a mesh over the block's top round its hole (cut off at the block's edges, as by the glass).
-func _mound_mesh(k: int, e: Vector3, hr: Vector2) -> void:
-	while _mound_mis.size() <= k:
-		var mi := MeshInstance3D.new()
-		var mm := _mat_simple(Color(0.36, 0.26, 0.17), 1.0)
-		mm.cull_mode = BaseMaterial3D.CULL_DISABLED      # (seen from its top; its underside is never in view but through the soil)
-		mi.material_override = mm
-		add_child(mi)
-		_mound_mis.append(mi)
-		if _mound_mis.size() == 1:
-			_mound_mi = mi
-	var reach: float = hr.y * 2.0
-	var g := 48
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var pts := []
-	for j in g + 1:
-		for i in g + 1:
-			var x := clampf(e.x + lerpf(-reach, reach, float(i) / g), nest.x_lo - 0.5, nest.nx - 0.5)
-			var z := clampf(e.z + lerpf(-reach, reach, float(j) / g), nest.z_lo - 0.5, nest.nz - 0.5)
-			var d := Vector2(x - e.x, z - e.z).length()
-			pts.append(Vector3(x, e.y - 0.35 + Mound.height(d, hr.x, hr.y), z))
-	for j in g:
-		for i in g:
-			var a: Vector3 = pts[j * (g + 1) + i]
-			var b: Vector3 = pts[j * (g + 1) + i + 1]
-			var c: Vector3 = pts[(j + 1) * (g + 1) + i]
-			var d2: Vector3 = pts[(j + 1) * (g + 1) + i + 1]
-			if maxf(maxf(a.y, b.y), maxf(c.y, d2.y)) < e.y - 0.3:
-				continue                              # (flat ground: the block's own top is there)
-			st.add_vertex(a)
-			st.add_vertex(b)
-			st.add_vertex(c)
-			st.add_vertex(b)
-			st.add_vertex(d2)
-			st.add_vertex(c)
-	st.generate_normals()
-	_mound_mis[k].mesh = st.commit()
-
-
 # ---------------------------------------------------------------- the ways in (v0.12.22, sim/parts/nest_exits.gd)
 
 ## The cells the nest opens to the surface by: the entrance, and every way out dug up since. The steps out (field -1)
@@ -216,3 +140,60 @@ func _seed_job(start) -> Dictionary:
 		f[c] = 0
 	return {"f": f, "buckets": {0: ss.duplicate()}, "cur": 0, "left": ss.size()}
 
+
+# ---------------------------------------------------------------- distance fields (moved from nest_brood, v0.12.23)
+
+## Breadth-first distances from one cell through open space: lets nest ants walk the real tunnels.
+func _field_from(start) -> Dictionary:
+	# Steps to `start` through the open nest, a step along a wall costing 1 and one across open air (the middle
+	# of a wide shaft) 3: ants keep to the walls, but can still get everywhere (a field along the walls only
+	# left parts of the nest cut off; one through the air ignored that ants walk on surfaces, and a widened
+	# shaft then sent them sideways for ever beside its open middle)
+	if _native != null:                 # (the same steps in C++: ~0.3 s a field here in a nest of 800, v0.12.23)
+		var nf: Dictionary = _native.field_from(nest.rho, PackedInt32Array([nest.x_lo, nest.y_lo, nest.z_lo, nest.nx, nest.ny,
+			nest.nz, nest.AIR]), start if start is Array else [start])
+		if not nf.is_empty():
+			return nf
+	var job := _field_job(start)
+	_field_run(job, 0)
+	return job.f
+
+
+## A distance field to be worked out over several frames (_field_run): until v0.11.87 every room's was redone in one
+## frame each time ~25 cells were dug, ~1.2 s with the game standing still in the keeper's 12-chamber nest.
+func _field_job(start) -> Dictionary:
+	return _seed_job(start)                 # (a cell, or several: the entrance and the ways out - nest_volumes)
+
+
+## Works the job on, step by step as _field_from did, until it is done (true) or the clock passes until_us (0: no limit).
+func _field_run(job: Dictionary, until_us: int) -> bool:
+	var f: Dictionary = job.f
+	var buckets: Dictionary = job.buckets
+	var cur: int = job.cur
+	var left: int = job.left
+	var rounds := 0
+	while left > 0:
+		var b: Array = buckets.get(cur, [])
+		buckets.erase(cur)
+		for c in b:
+			left -= 1
+			if int(f[c]) != cur:
+				continue
+			for d in DIRS:
+				var n: Vector3i = c + d
+				if not nest.is_open(n):
+					continue
+				var nd := cur + (1 if _walkable(n) else 12)     # (12: round the rim of a shaft's mouth, not over it - drawn there it hung in the air)
+				if nd < int(f.get(n, 1 << 30)):
+					f[n] = nd
+					if not buckets.has(nd):
+						buckets[nd] = []
+					buckets[nd].append(n)
+					left += 1
+		cur += 1
+		rounds += 1
+		if until_us > 0 and rounds % 4 == 0 and Time.get_ticks_usec() > until_us:
+			break
+	job.cur = cur
+	job.left = left
+	return left <= 0

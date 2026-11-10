@@ -8,8 +8,6 @@ const Mesher := preload("res://scripts/view/nest/nest_mesher.gd")
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 const EventFeed := preload("res://scripts/view/common/event_feed.gd")
-const Mound := preload("res://scripts/sim/mound.gd")
-const Lumps := preload("res://scripts/view/common/lumps.gd")
 const CLUMP := 24                  # eggs stick together in packets of about this many
 const CH := 16
 const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0),
@@ -62,7 +60,6 @@ var _last_eggs := 0
 var _egg_mm: MultiMesh
 var _larva_mm: MultiMesh
 var _pupa_mm: MultiMesh
-var _pellet_mm: Array                   # a MultiMesh for each shape of pellet (view/common/lumps.gd)
 var _mates: Array = []
 var _dig_vis := {}
 var _spots := {"eggs": [], "larvae": [], "larvae_old": [], "pupae": [], "pupae_old": [], "all": [], "queen": Vector3.ZERO}
@@ -96,7 +93,6 @@ var _frustum: Array[Plane] = []   # the camera's view, refreshed with it: off-sc
 var _t := 0.0
 signal cut_changed(value: float)
 var _brood_sig: Array = []
-var _mound_mi: MeshInstance3D           # the heap itself (v0.12.8): the pellets are only its surface
 var _vol: ImageTexture3D
 var _vol_timer := 0.0
 var _foot_vol: ImageTexture3D       # the soil with the brood in it, for the ants' feet (they stand on eggs, larvae, cocoons)
@@ -231,6 +227,10 @@ func _soft_build(a: Vector3i, b: Vector3i) -> void:
 		_sy0 = nest.y_lo
 		_sx0 = nest.x_lo
 		_sz0 = nest.z_lo
+		if _native != null:                      # (the same sums in C++: ~1.2 s here for a tank full of soil, v0.12.23)
+			_soft = _native.soft_build(nest.rho, PackedInt32Array([nest.x_lo, nest.y_lo, nest.z_lo, nest.nx, nest.ny, nest.nz, nest.AIR]))
+			if _soft.size() == _sx * _sy * (nest.wz() + 2):
+				return
 		_soft = PackedFloat32Array()
 		_soft.resize(_sx * _sy * (nest.wz() + 2))
 		a = lo                                     # (laid out again whole: the soil was taken in deeper)

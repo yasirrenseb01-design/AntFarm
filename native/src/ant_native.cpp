@@ -1,11 +1,15 @@
 #include "ant_native.h"
 #include <godot_cpp/core/class_db.hpp>
 #include <cmath>
+#include <vector>
+#include <godot_cpp/variant/vector3i.hpp>
 
 using namespace godot;
 
 void AntNative::_bind_methods() {
 	ClassDB::bind_static_method("AntNative", D_METHOD("density_at", "soft", "dims", "p"), &AntNative::density_at);
+	ClassDB::bind_static_method("AntNative", D_METHOD("soft_build", "rho", "box"), &AntNative::soft_build);
+	ClassDB::bind_static_method("AntNative", D_METHOD("field_from", "rho", "box", "starts"), &AntNative::field_from);
 	ClassDB::bind_static_method("AntNative", D_METHOD("soil_hits", "soft", "dims", "t2", "pts", "up", "side"), &AntNative::soil_hits);
 }
 
@@ -103,4 +107,136 @@ Array AntNative::soil_hits(const PackedFloat32Array &soft, const PackedInt32Arra
 	r.append(torque);
 	r.append(hits);
 	return r;
+}
+
+// nest_scene._soft_build over the whole block (v0.12.23): the soil's density at every voxel and a ring of one round it,
+// as nest_voxels.density sums it (a double, stored as a float). box: x_lo, y_lo, z_lo, nx, ny, nz, AIR. ~1.2 s in GDScript
+// for a tank full of soil, the first time the nest was laid out. An empty array back: the box does not fit rho.
+PackedFloat32Array AntNative::soft_build(const PackedByteArray &rho, const PackedInt32Array &box) {
+	PackedFloat32Array out;
+	if (box.size() < 7) {
+		return out;
+	}
+	const int64_t xl = box[0], yl = box[1], zl = box[2], nx = box[3], ny = box[4], nz = box[5], air = box[6];
+	const int64_t wx = nx - xl, hy = ny - yl, wz = nz - zl;
+	if (wx <= 0 || hy <= 0 || wz <= 0 || rho.size() < wx * hy * wz) {
+		return out;
+	}
+	const int64_t sx = wx + 2, sy = hy + 2, sz = wz + 2;
+	out.resize(sx * sy * sz);
+	float *o = out.ptrw();
+	const uint8_t *r = rho.ptr();
+	auto solid = [&](int64_t x, int64_t y, int64_t z) -> double {
+		if (x < xl || y < yl || z < zl || x >= nx || y >= ny || z >= nz) {
+			return 0.0;
+		}
+		return r[((z - zl) * hy + y - yl) * wx + x - xl] >= air ? 1.0 : 0.0;
+	};
+	for (int64_t z = zl - 1; z <= nz; z++) {
+		for (int64_t y = yl - 1; y <= ny; y++) {
+			const int64_t row = ((z - zl + 1) * sy + (y - yl + 1)) * sx + 1 - xl;
+			for (int64_t x = xl - 1; x <= nx; x++) {
+				const double n = solid(x - 1, y, z) + solid(x + 1, y, z) + solid(x, y - 1, z) + solid(x, y + 1, z) +
+						solid(x, y, z - 1) + solid(x, y, z + 1);
+				o[row + x] = (float)(solid(x, y, z) > 0.5 ? 0.4 + 0.1 * n : 0.05 * n);
+			}
+		}
+	}
+	return out;
+}
+
+// nest_brood._field_from (v0.12.23): steps from the start cells through the open nest, a step on a wall 1, one across
+// open air 12 - the same buckets taken in the same order, so the dictionary comes back with the same keys in the same
+// order and the same values. ~0.3 s a field in GDScript in a nest of 800; the first opening worked out 24 of them.
+// box: x_lo, y_lo, z_lo, nx, ny, nz, AIR. An empty dictionary back: the box does not fit rho, or a start is outside it.
+Dictionary AntNative::field_from(const PackedByteArray &rho, const PackedInt32Array &box, const Array &starts) {
+	Dictionary f;
+	if (box.size() < 7) {
+		return f;
+	}
+	const int64_t xl = box[0], yl = box[1], zl = box[2], nx = box[3], ny = box[4], nz = box[5], air = box[6];
+	const int64_t wx = nx - xl, hy = ny - yl, wz = nz - zl;
+	if (wx <= 0 || hy <= 0 || wz <= 0 || rho.size() < wx * hy * wz) {
+		return f;
+	}
+	const uint8_t *r = rho.ptr();
+	auto inside = [&](int64_t x, int64_t y, int64_t z) {
+		return x >= xl && y >= yl && z >= zl && x < nx && y < ny && z < nz;
+	};
+	auto at = [&](int64_t x, int64_t y, int64_t z) -> int64_t {
+		return ((z - zl) * hy + y - yl) * wx + x - xl;
+	};
+	static const int DX[6] = { 1, -1, 0, 0, 0, 0 }, DY[6] = { 0, 0, 1, -1, 0, 0 }, DZ[6] = { 0, 0, 0, 0, 1, -1 };
+	auto walkable = [&](int64_t x, int64_t y, int64_t z) {        // (nest_scene._walkable, of an open cell)
+		for (int d = 0; d < 6; d++) {
+			const int64_t ax = x + DX[d], ay = y + DY[d], az = z + DZ[d];
+			if (ay >= ny) {
+				continue;
+			}
+			if (!inside(ax, ay, az) || r[at(ax, ay, az)] >= air) {
+				return true;
+			}
+		}
+		return false;
+	};
+	const int64_t total = wx * hy * wz;
+	std::vector<int64_t> dist(total, -1);
+	std::vector<int64_t> order;                                      // (the cells in the order they were first reached)
+	std::vector<std::vector<int64_t>> buckets(1);
+	for (int64_t i = 0; i < starts.size(); i++) {
+		if (starts[i].get_type() != Variant::VECTOR3I) {
+			return Dictionary();
+		}
+		const Vector3i c = starts[i];
+		if (!inside(c.x, c.y, c.z)) {
+			return Dictionary();
+		}
+		const int64_t k = at(c.x, c.y, c.z);
+		if (dist[k] < 0) {
+			order.push_back(k);
+		}
+		dist[k] = 0;
+		buckets[0].push_back(k);
+	}
+	int64_t left = (int64_t)buckets[0].size();
+	for (int64_t cur = 0; left > 0; cur++) {
+		if (cur >= (int64_t)buckets.size()) {
+			break;
+		}
+		std::vector<int64_t> b;
+		b.swap(buckets[cur]);
+		for (const int64_t k : b) {
+			left--;
+			if (dist[k] != cur) {
+				continue;
+			}
+			const int64_t x = k % wx + xl, y = (k / wx) % hy + yl, z = k / (wx * hy) + zl;
+			for (int d = 0; d < 6; d++) {
+				const int64_t ax = x + DX[d], ay = y + DY[d], az = z + DZ[d];
+				if (!inside(ax, ay, az)) {
+					continue;
+				}
+				const int64_t n = at(ax, ay, az);
+				if (r[n] >= air) {
+					continue;
+				}
+				const int64_t nd = cur + (walkable(ax, ay, az) ? 1 : 12);
+				if (dist[n] < 0 || nd < dist[n]) {
+					if (dist[n] < 0) {
+						order.push_back(n);
+					}
+					dist[n] = nd;
+					if (nd >= (int64_t)buckets.size()) {
+						buckets.resize(nd + 1);
+					}
+					buckets[nd].push_back(n);
+					left++;
+				}
+			}
+		}
+	}
+	for (const int64_t k : order) {
+		f[Vector3i((int32_t)(k % wx + xl), (int32_t)((k / wx) % hy + yl), (int32_t)(k / (wx * hy) + zl))] = dist[k];
+	}
+	return f;
 }

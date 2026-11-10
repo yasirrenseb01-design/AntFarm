@@ -664,7 +664,6 @@ func _update_brood() -> void:
 		_spots.pupae_old if _pupa_group != _pupa_prev else [], _moved_p if _pupa_group != _pupa_prev else 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
 	_mark_brood_cells()
 	_brood_gen += 1
-	_craters()                             # (the heaps round the entrance and the ways out on top of the block: nest_volumes)
 
 
 ## (dev, body_check --trace-crowd) how the item drawn at p was laid: on top, forced, where from.

@@ -122,57 +122,6 @@ func _near_drop_now(v: Vector3i) -> bool:
 	return false
 
 
-## Breadth-first distances from one cell through open space: lets nest ants walk the real tunnels.
-func _field_from(start) -> Dictionary:
-	# Steps to `start` through the open nest, a step along a wall costing 1 and one across open air (the middle
-	# of a wide shaft) 3: ants keep to the walls, but can still get everywhere (a field along the walls only
-	# left parts of the nest cut off; one through the air ignored that ants walk on surfaces, and a widened
-	# shaft then sent them sideways for ever beside its open middle)
-	var job := _field_job(start)
-	_field_run(job, 0)
-	return job.f
-
-
-## A distance field to be worked out over several frames (_field_run): until v0.11.87 every room's was redone in one
-## frame each time ~25 cells were dug, ~1.2 s with the game standing still in the keeper's 12-chamber nest.
-func _field_job(start) -> Dictionary:
-	return _seed_job(start)                 # (a cell, or several: the entrance and the ways out - nest_volumes)
-
-
-## Works the job on, step by step as _field_from did, until it is done (true) or the clock passes until_us (0: no limit).
-func _field_run(job: Dictionary, until_us: int) -> bool:
-	var f: Dictionary = job.f
-	var buckets: Dictionary = job.buckets
-	var cur: int = job.cur
-	var left: int = job.left
-	var rounds := 0
-	while left > 0:
-		var b: Array = buckets.get(cur, [])
-		buckets.erase(cur)
-		for c in b:
-			left -= 1
-			if int(f[c]) != cur:
-				continue
-			for d in DIRS:
-				var n: Vector3i = c + d
-				if not nest.is_open(n):
-					continue
-				var nd := cur + (1 if _walkable(n) else 12)     # (12: round the rim of a shaft's mouth, not over it - drawn there it hung in the air)
-				if nd < int(f.get(n, 1 << 30)):
-					f[n] = nd
-					if not buckets.has(nd):
-						buckets[nd] = []
-					buckets[nd].append(n)
-					left += 1
-		cur += 1
-		rounds += 1
-		if until_us > 0 and rounds % 4 == 0 and Time.get_ticks_usec() > until_us:
-			break
-	job.cur = cur
-	job.left = left
-	return left <= 0
-
-
 var _fields_todo := []             # the rooms' fields being worked out again: [[key, start], ...] (_fields_step)
 var _fields_next := {}
 var _fields_job := {}

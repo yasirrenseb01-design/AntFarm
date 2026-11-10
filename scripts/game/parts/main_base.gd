@@ -222,10 +222,14 @@ func _run_catchup() -> void:
 		if not _refill_ticks.is_empty():
 			sim.add_water()
 			_refill_ticks = []
-		_warm_nest()
 		_overlay.queue_free()
-		_save_now()
 		_report_away()
+		# the nest made ready (1-2.5 s in a colony of 800) once the summary is on screen, read meanwhile: before, the full
+		# bar stood that long first (the keeper, 2026-11-10: "2-3 seconds"); then saved, the card drawn with the nest ready
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_warm_nest()
+		_save_now()
 
 
 ## The nest made ready while the loading is still on screen, so its first opening does not stand still (nest_view.warm).

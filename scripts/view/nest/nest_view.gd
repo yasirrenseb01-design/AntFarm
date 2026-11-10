@@ -149,7 +149,6 @@ func setup(s) -> void:
 	var cocoon_mat := _mat_vc(0.85)
 	_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	_pupa_mm = _multimesh(cocoon_mesh, cocoon_mat, true)
-	_pellet_mm = range(3).map(func(k): return _multimesh(Lumps.sized(Lumps.pellet(k), Vector3(0.42, 0.34, 0.34)), _mat_simple(Color(0.42, 0.3, 0.2), 0.95), false, false))
 	_carry_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	_carry_pellet_mm = _multimesh(_ellipsoid(0.8, 0.65), _mat_simple(Color(0.45, 0.32, 0.2), 0.95), false)
 	_fx_egg_mm = _multimesh(_ellipsoid(0.32, 0.2), egg_mat, false)
@@ -353,6 +352,7 @@ func warm() -> void:
 		return
 	active = true
 	_refresh_spots()
+	_feed.skip()                       # (the time away's eggs and cocoons not acted out unseen: 1.3 s, v0.12.23)
 	refresh(1.0 / 60.0)
 	active = false
 	# (a way to the dig face to go on with: the first one worked out when a digger is sent, ~120 ms, would be the only one

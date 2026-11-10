@@ -3,6 +3,8 @@
 #pragma once
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
@@ -19,6 +21,8 @@ protected:
 
 public:
 	static double density_at(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Vector3 &p);
+	static PackedFloat32Array soft_build(const PackedByteArray &rho, const PackedInt32Array &box);
+	static Dictionary field_from(const PackedByteArray &rho, const PackedInt32Array &box, const Array &starts);
 	static Array soil_hits(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &t2,
 			const PackedVector3Array &pts, const Vector3 &up, const Vector3 &side);
 };
