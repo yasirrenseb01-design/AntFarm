@@ -2,7 +2,8 @@ extends SceneTree
 ## Runs a colony through whole years (seasons, winters) with a simple keeper who waters, feeds while
 ## the weather is warm and, indoors, puts the formicarium in the fridge from mid-November to January.
 ## Slow (minutes per year), so not part of tools/check.ps1. Prints a line every 10 days.
-##   godot --headless --path . --script res://tests/year_run.gd -- <wild|keeper> <workers> <days> [alone|kept] [seed] [save-name]
+##   godot --headless --path . --script res://tests/year_run.gd -- <wild|keeper> <workers> <days> [alone|kept] [seed] [save-name] [big]
+## big: the Home's bigger tank (90 x 56 cm, keeper only - v0.12.23, the nest spreading in it)
 ## "alone": nobody waters or feeds (outdoors the colony must live on rain, aphids and what it hunts).
 ## save-name: the colony is saved at the end of each year to user://growtest/<save-name>/ (slot = year), to open
 ## in the game with --testsave=<save-name> [--slot=<year>] (performance and nest-shape checks on a grown colony).
@@ -18,7 +19,7 @@ func _init():
 	if save_name != "":
 		Store.base = "user://growtest/%s/" % save_name
 	var s = Sim.new()
-	s.setup(int(args[4]) if args.size() > 4 else 5, workers, false, scen)
+	s.setup(int(args[4]) if args.size() > 4 else 5, workers, false, scen, args.size() > 6 and args[6] == "big")
 	var r := RandomNumberGenerator.new(); r.seed = 3
 	print("%s start %s  workers %d" % [scen, s.date_text(), workers])
 	for d in days:
