@@ -46,6 +46,7 @@ func _init() -> void:
 	_check("soil_hits in a solid block: answers", r.size() == 3)
 	_chunks_same(nat)
 	_bend_same(nat)
+	_gap_same(nat)
 	print("NATIVE GUARD TEST PASSED" if ok else "NATIVE GUARD TEST FAILED")
 	quit(0 if ok else 1)
 
@@ -172,3 +173,94 @@ func _dens(soft: PackedFloat32Array, dims: PackedInt32Array, off: Vector3, p0: V
 	var d01 := lerpf(soft[j], soft[j + 1], fx)
 	var d11 := lerpf(soft[j + sx], soft[j + sx + 1], fx)
 	return lerpf(lerpf(d00, d10, fy), lerpf(d01, d11, fy), fz)
+
+
+## gap_scan (v0.12.26) against the pass over the bodies near its head in nest_contact._gap_ahead (the same lines here), over
+## dictionaries like the nestmates': random bodies in bins, some up on another's back, some on a wall, some with no body yet.
+func _gap_same(nat: Object) -> void:
+	var Contact = load("res://scripts/view/nest/parts/nest_contact.gd")
+	var parts: Array = Contact.CLIMB_PARTS
+	var pts := PackedVector3Array(parts)
+	var rad := PackedFloat64Array([parts[0].z, parts[1].z, parts[2].z, parts[3].z, parts[4].z])
+	var near_offs := [Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+		Vector3i(1, 0, 1), Vector3i(1, 0, -1), Vector3i(-1, 0, 1), Vector3i(-1, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]
+	var r := RandomNumberGenerator.new()
+	r.seed = 5
+	var n := 0
+	var same := 0
+	var held := 0
+	for round in 300:
+		var bodies := []
+		var near := {}
+		for i in 40:
+			var up := Vector3(r.randf_range(-0.3, 0.3), 1, r.randf_range(-0.3, 0.3)).normalized() if r.randf() < 0.9 else Vector3.RIGHT
+			var f := up.cross(Vector3(r.randf_range(-1, 1), r.randf_range(-1, 1), r.randf_range(-1, 1))).normalized()
+			var sz := r.randf_range(0.9, 1.2)
+			var o := Vector3(r.randf_range(0, 8), r.randf_range(0, 3), r.randf_range(0, 8))
+			var d := {"size": sz}
+			if r.randf() < 0.95:
+				d["xf"] = Transform3D(Basis(f * sz, up * sz, f.cross(up) * sz), o)
+			if r.randf() < 0.2:
+				d["over"] = r.randf_range(0, 0.5) if r.randf() < 0.5 else 1
+			bodies.append(d)
+		for d in bodies:
+			if d.has("xf"):
+				var oo: Vector3 = d.xf.origin
+				var key := Vector3i(floori(oo.x / 3.0), floori(oo.y / 3.0), floori(oo.z / 3.0))
+				if not near.has(key):
+					near[key] = []
+				near[key].append(d)
+		for t in 12:
+			var m: Dictionary = bodies[r.randi() % 40]
+			if not m.has("xf"):
+				continue
+			if r.randf() < 0.3:
+				m["over_on"] = bodies[r.randi() % 40]
+			var other: Dictionary = bodies[r.randi() % 40]
+			if r.randf() < 0.3:
+				other["over_on"] = m
+			var x: Transform3D = m.xf
+			var up := x.basis.y.normalized()
+			var f := x.basis.x.normalized()
+			var s := float(m.size)
+			var head := x * Vector3(pts[0].x, pts[0].y, 0.0)
+			var lag := r.randf_range(0, 0.8) if r.randf() < 0.7 else 0.0
+			var on = m.get("over_on")
+			var hr: float = parts[0].z * s
+			var key := Vector3i(floori(head.x / 3.0), floori(head.y / 3.0), floori(head.z / 3.0))
+			var k := 1.0
+			var by = null
+			for off in near_offs:
+				var bin = near.get(key + off)
+				if bin == null:
+					continue
+				for o in bin:
+					if is_same(o, m) or not o.has("xf") or is_same(o, on) or is_same(o.get("over_on"), m) or float(o.get("over", 0.0)) > 0.1:
+						continue
+					var ox: Transform3D = o.xf
+					if ox.origin.distance_squared_to(head) > 9.0 or ox.basis.y.normalized().dot(up) < 0.5:
+						continue
+					var os := ox.basis.x.length()
+					for q in parts:
+						var to: Vector3 = ox * Vector3(q.x, q.y, 0.0) - head
+						to -= up * to.dot(up)
+						var ahead := to.dot(f)
+						if ahead < 0.0:
+							continue
+						var reach: float = hr + q.z * os + 0.06
+						var lat := (to - f * ahead).length()
+						if lat >= reach:
+							continue
+						var gap := ahead - sqrt(reach * reach - lat * lat) - lag
+						var kk := clampf(gap / (0.7 * s), 0.0, 1.0)
+						if kk < k:
+							k = kk
+							by = o
+			var got: Array = nat.gap_scan(m, near, head, up, f, s, lag, on, near_offs, pts, rad)
+			n += 1
+			if k < 1.0:
+				held += 1
+			if got[0] == k and is_same(got[1], by):
+				same += 1
+	print("gap_scan: %d of %d same, %d held up by something" % [same, n, held])
+	_check("gap_scan = the GDScript pass in %d of %d bodies (%d held up)" % [same, n, held], same == n and held > 200)

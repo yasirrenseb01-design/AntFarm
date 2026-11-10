@@ -1,6 +1,8 @@
 #include "ant_native.h"
 #include <godot_cpp/core/class_db.hpp>
 #include <cmath>
+#include <cstring>
+#include <godot_cpp/variant/string_name.hpp>
 #include <vector>
 #include <godot_cpp/variant/vector3i.hpp>
 
@@ -12,6 +14,7 @@ void AntNative::_bind_methods() {
 	ClassDB::bind_static_method("AntNative", D_METHOD("chunk_sample", "rho", "box", "k", "ch"), &AntNative::chunk_sample);
 	ClassDB::bind_static_method("AntNative", D_METHOD("field_from", "rho", "box", "starts"), &AntNative::field_from);
 	ClassDB::bind_static_method("AntNative", D_METHOD("bend_probe", "soft", "dims", "tr", "off", "b", "lowered", "sb", "head_pts", "gaster_pts"), &AntNative::bend_probe);
+	ClassDB::bind_static_method("AntNative", D_METHOD("gap_scan", "m", "near", "head", "up", "f", "s", "lag", "on", "offs", "parts", "radii"), &AntNative::gap_scan);
 	ClassDB::bind_static_method("AntNative", D_METHOD("soil_hits", "soft", "dims", "t2", "pts", "up", "side"), &AntNative::soil_hits);
 }
 
@@ -105,6 +108,81 @@ int64_t AntNative::bend_probe(const PackedFloat32Array &soft, const PackedInt32A
 	if (gaster_in) r |= 2;
 	if (!head_in && sb.y > 0.0f && any_in(s, n, dm, tr, off, head_pts, Vector2(b.x, lowered.y))) r |= 4;
 	if (!gaster_in && sb.x > 0.0f && any_in(s, n, dm, tr, off, gaster_pts, Vector2(lowered.x, b.y))) r |= 8;
+	return r;
+}
+
+// Whether two Dictionary values are the one dictionary (GDScript is_same): the handle holds the pointer to it.
+static inline bool same_dict(const Dictionary &a, const Dictionary &b) {
+	return std::memcmp(a._native_ptr(), b._native_ptr(), 8) == 0;
+}
+static inline bool same_var(const Variant &v, const Dictionary &d) {
+	return v.get_type() == Variant::DICTIONARY && same_dict((Dictionary)v, d);
+}
+// float(v) of GDScript for an int or a float value (the default if there is none)
+static inline double tod(const Variant &v) {
+	if (v.get_type() == Variant::INT) {
+		return (double)(int64_t)v;
+	}
+	if (v.get_type() == Variant::FLOAT) {
+		return (double)v;
+	}
+	return 0.0;
+}
+
+// nest_contact._gap_ahead's pass over the bodies near its head (the nestmates' bins by the cells round it): how far it may
+// walk on before its head touches one (1: free) and which one stops it. parts/radii: CLIMB_PARTS (x, y, z = radius in model
+// units); the rest of the function stays in GDScript (it draws random numbers). Returns [k, by] (by null if none).
+Array AntNative::gap_scan(const Dictionary &m, const Dictionary &near, const Vector3 &head, const Vector3 &up, const Vector3 &f,
+		double s, double lag, const Variant &on, const Array &offs, const PackedVector3Array &parts, const PackedFloat64Array &radii) {
+	static const StringName K_XF("xf"), K_OVER_ON("over_on"), K_OVER("over");
+	const double hr = (double)radii[0] * s;
+	const Vector3i key((int32_t)std::floor((double)head.x / 3.0), (int32_t)std::floor((double)head.y / 3.0), (int32_t)std::floor((double)head.z / 3.0));
+	double k = 1.0;
+	Variant by;
+	for (int64_t oi = 0; oi < offs.size(); oi++) {
+		const Vector3i kk = key + (Vector3i)offs[oi];
+		const Variant bv = near.get(kk, Variant());
+		if (bv.get_type() != Variant::ARRAY) {
+			continue;
+		}
+		const Array bin = bv;
+		for (int64_t bi = 0; bi < bin.size(); bi++) {
+			const Dictionary o = bin[bi];
+			if (same_dict(o, m) || !o.has(K_XF) || (on.get_type() == Variant::DICTIONARY && same_dict(o, (Dictionary)on)) ||
+					same_var(o.get(K_OVER_ON, Variant()), m) || tod(o.get(K_OVER, 0.0)) > 0.1) {
+				continue;
+			}
+			const Transform3D ox = o[K_XF];
+			if (ox.origin.distance_squared_to(head) > 9.0 || (double)ox.basis.get_column(1).normalized().dot(up) < 0.5) {
+				continue;
+			}
+			const double os = (double)ox.basis.get_column(0).length();
+			for (int64_t qi = 0; qi < parts.size(); qi++) {
+				const Vector3 q = parts[qi];
+				Vector3 to = ox.xform(Vector3(q.x, q.y, 0.0f)) - head;
+				to -= up * to.dot(up);
+				const double ahead = (double)to.dot(f);
+				if (ahead < 0.0) {
+					continue;
+				}
+				const double reach = hr + radii[qi] * os + 0.06;
+				const double lat = (double)(to - f * (real_t)ahead).length();
+				if (lat >= reach) {
+					continue;
+				}
+				const double gap = ahead - std::sqrt(reach * reach - lat * lat) - lag;
+				double c = gap / (0.7 * s);
+				c = c < 0.0 ? 0.0 : (c > 1.0 ? 1.0 : c);
+				if (c < k) {
+					k = c;
+					by = o;
+				}
+			}
+		}
+	}
+	Array r;
+	r.append(k);
+	r.append(by);
 	return r;
 }
 

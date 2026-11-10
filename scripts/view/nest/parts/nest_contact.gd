@@ -186,33 +186,39 @@ func _gap_ahead(m: Dictionary, near: Dictionary, dt: float) -> float:
 	var k := 1.0
 	var by = null
 	var on = m.get("over_on")
-	for off in _NEAR:
-		var bin = near.get(key + off)
-		if bin == null:
-			continue
-		for o in bin:
-			if is_same(o, m) or not o.has("xf") or is_same(o, on) or is_same(o.get("over_on"), m) or float(o.get("over", 0.0)) > 0.1:
-				continue                     # (the one it is on, one climbing over it, one up on another's back)
-			var ox: Transform3D = o.xf
-			if ox.origin.distance_squared_to(head) > 9.0 or ox.basis.y.normalized().dot(up) < 0.5:
+	if _native != null and not _no_native_gap:
+		# (the pass over the bodies near its head in C++: the same sums as the GDScript below, v0.12.26)
+		var sc: Array = _native.gap_scan(m, near, head, up, f, s, lag, on, _NEAR, _CLIMB_PTS_P, _CLIMB_RAD_P)
+		k = sc[0]
+		by = sc[1]
+	else:
+		for off in _NEAR:
+			var bin = near.get(key + off)
+			if bin == null:
 				continue
-			var os := ox.basis.x.length()
-			for q in CLIMB_PARTS:
-				var to: Vector3 = ox * Vector3(q.x, q.y, 0.0) - head
-				to -= up * to.dot(up)
-				var ahead := to.dot(f)
-				if ahead < 0.0:
-					continue                 # (beside or behind its head: not in its way)
-				var reach: float = hr + q.z * os + 0.06
-				var lat := (to - f * ahead).length()
-				if lat >= reach:
+			for o in bin:
+				if is_same(o, m) or not o.has("xf") or is_same(o, on) or is_same(o.get("over_on"), m) or float(o.get("over", 0.0)) > 0.1:
+					continue                     # (the one it is on, one climbing over it, one up on another's back)
+				var ox: Transform3D = o.xf
+				if ox.origin.distance_squared_to(head) > 9.0 or ox.basis.y.normalized().dot(up) < 0.5:
 					continue
-				# how far it can go on before its head touches that part (slowing over the last ~half a body)
-				var gap := ahead - sqrt(reach * reach - lat * lat) - lag
-				var kk := clampf(gap / (0.7 * s), 0.0, 1.0)
-				if kk < k:
-					k = kk
-					by = o
+				var os := ox.basis.x.length()
+				for q in CLIMB_PARTS:
+					var to: Vector3 = ox * Vector3(q.x, q.y, 0.0) - head
+					to -= up * to.dot(up)
+					var ahead := to.dot(f)
+					if ahead < 0.0:
+						continue                 # (beside or behind its head: not in its way)
+					var reach: float = hr + q.z * os + 0.06
+					var lat := (to - f * ahead).length()
+					if lat >= reach:
+						continue
+					# how far it can go on before its head touches that part (slowing over the last ~half a body)
+					var gap := ahead - sqrt(reach * reach - lat * lat) - lag
+					var kk := clampf(gap / (0.7 * s), 0.0, 1.0)
+					if kk < k:
+						k = kk
+						by = o
 	# held up: a while later it climbs over the one in its way
 	if k < 0.15 and by != null:
 		m.blocked_t = float(m.get("blocked_t", 0.0)) + dt
@@ -242,6 +248,9 @@ func _gap_ahead(m: Dictionary, near: Dictionary, dt: float) -> float:
 
 
 const OUT_SQUEEZE := 2.0
+var _no_native_gap: bool = OS.get_cmdline_user_args().has("--no-native-gap")      # (dev: this part in GDScript, the rest in C++)
+var _CLIMB_PTS_P := PackedVector3Array(CLIMB_PARTS)
+var _CLIMB_RAD_P := PackedFloat64Array([CLIMB_PARTS[0].z, CLIMB_PARTS[1].z, CLIMB_PARTS[2].z, CLIMB_PARTS[3].z, CLIMB_PARTS[4].z])
 
 
 ## The heading (in its floor's plane) in which an ant drawn at `tr` lies clear of the walls - and not with its

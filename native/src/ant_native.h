@@ -6,6 +6,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
+#include <godot_cpp/variant/packed_float64_array.hpp>
 #include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_vector3_array.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
@@ -27,6 +28,8 @@ public:
 	static Dictionary field_from(const PackedByteArray &rho, const PackedInt32Array &box, const Array &starts);
 	static int64_t bend_probe(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &tr, const Vector3 &off,
 			const Vector2 &b, const Vector2 &lowered, const Vector2 &sb, const PackedVector3Array &head_pts, const PackedVector3Array &gaster_pts);
+	static Array gap_scan(const Dictionary &m, const Dictionary &near, const Vector3 &head, const Vector3 &up, const Vector3 &f,
+			double s, double lag, const Variant &on, const Array &offs, const PackedVector3Array &parts, const PackedFloat64Array &radii);
 	static Array soil_hits(const PackedFloat32Array &soft, const PackedInt32Array &dims, const Transform3D &t2,
 			const PackedVector3Array &pts, const Vector3 &up, const Vector3 &side);
 };
