@@ -246,3 +246,28 @@ func _set_chunk(k: Vector3i, mesh: ArrayMesh) -> void:
 		add_child(mi)
 		_chunks[k] = mi
 	mi.mesh = mesh
+
+
+## Every chunk still waiting made at once, the meshes on every core (nest_view.warm: behind the time-away summary or
+## the first frame; ~0.3 s for a big nest's 441). Each job writes only its own array (distinct objects across threads).
+func _make_all_chunks() -> void:
+	for k in _meshing.keys():
+		WorkerThreadPool.wait_for_task_completion(_meshing[k].task)
+	_pump_chunks([])                       # (the ones in flight set in)
+	var ks: Array = []
+	var ds: Array = []
+	for k in _queue:
+		var d := _sample(k)
+		if d.is_empty():
+			_set_chunk(k, null)
+		else:
+			ks.append(k)
+			ds.append(d)
+	_queue.clear()
+	var outs: Array = []
+	for i in ks.size():
+		outs.append([])
+	var g := WorkerThreadPool.add_group_task(func(i: int): outs[i].append(Mesher.mesh_from(ds[i], ks[i])), ks.size())
+	WorkerThreadPool.wait_for_group_task_completion(g)
+	for i in ks.size():
+		_set_chunk(ks[i], outs[i][0] if not outs[i].is_empty() else null)

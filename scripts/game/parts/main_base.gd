@@ -110,8 +110,19 @@ static func quitdbg(what: String) -> void:
 		f.close()
 
 
+var _going := false             # (a colony being opened: a second click waits)
 ## Switch to another slot, or start a fresh colony in one: save the current colony, then reload.
 func _go_to(target_slot: int, kind: String) -> void:
+	if _going:
+		return
+	_going = true
+	# (a page saying so on screen at once, then the work: the Home stood still ~2 s from the click until the time-away
+	# page, the colony saved and the scene loaded behind it - the keeper, 2026-11-10, v0.12.30)
+	_show_catchup_overlay()
+	_overlay_label.text = tr("opening_tank")
+	_overlay_bar.visible = false
+	await get_tree().process_frame
+	await get_tree().process_frame
 	_save_now()
 	if kind != "":
 		Store.delete(target_slot)

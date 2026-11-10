@@ -339,10 +339,10 @@ func warm() -> void:
 	active = true
 	_refresh_spots()
 	_feed.skip()                       # (the time away's eggs and cocoons not acted out unseen: 1.3 s, v0.12.23)
+	_make_all_chunks()                 # (the soil's walls all made now, on every core: they came up over 1-2 s, v0.12.30)
 	refresh(1.0 / 60.0)
 	active = false
-	# (a way to the dig face to go on with: the first one worked out when a digger is sent, ~120 ms, would be the only one
-	# done all at once - the next are worked out over several frames with this one in use meanwhile, _pair_diggers)
+	# (a way to the dig face to go on with, worked out now: ~120 ms all at once when a digger is sent - _pair_diggers)
 	if not _xfields.has(-2):
 		var face: Vector3i = nest.work_at if nest.work_at.x >= 0 else nest.entrance
 		_xfields[-2] = _field_from(face)

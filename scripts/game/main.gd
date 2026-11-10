@@ -68,7 +68,7 @@ func _ready() -> void:
 	# one game at a time: a game running already (maybe as the wallpaper) is told to come forward, and this copy goes
 	var one_port: int = SingleInstance.PORT + (1 if _opts.has("sandbox") else 0)
 	if _persist and not _opts.has("testsave"):
-		if not _opts.has("desktop") and SingleInstance.tell_running(one_port):
+		if not _opts.has("desktop") and not _window_set and SingleInstance.tell_running(one_port):     # (not again on a reload: ~0.4 s)
 			_persist = false              # (this copy never saves: the one running has the colony)
 			get_tree().quit()
 			return
