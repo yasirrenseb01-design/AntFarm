@@ -32,7 +32,7 @@
 ## โฟลเดอร์
 ```
 scripts/
-  game/        main.gd (จุดเริ่ม), save_store.gd, home_store.gd (ช่องเซฟของตู้ใน Home/โหมดป่า), home.gd (ห้อง Home: กล้อง มือ คลิกตู้),
+  game/        main.gd (จุดเริ่ม), save_store.gd, safe_file.gd (เขียนไฟล์ปลอดภัย .tmp/.bak), home_store.gd (ช่องเซฟของตู้ใน Home/โหมดป่า), home.gd (ห้อง Home: กล้อง มือ คลิกตู้),
                harmony.gd (แต้ม Colony Harmony), desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), title.gd (หน้าแรก + กล้องเดินชมรัง),
                single_instance.gd (เกมเดียวต่อเครื่อง: ตัวที่สองบอกตัวแรกให้ขึ้นมา, พอร์ต 47815), parts/ (main_base, main_camera)
   dev/         dev_tools.gd (--shot, --selftest), ตัวเลือกบรรทัดคำสั่งอยู่หัว main.gd
@@ -134,11 +134,16 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
   **สายพันธุ์: `scripts/sim/species/registry.gd`** (เพิ่มพันธุ์ใหม่ = ไฟล์ใหม่ในโฟลเดอร์นั้น + ใส่ใน `ALL`; ค่าภาพอยู่ใน `DATA.look`;
   `tests/species_test.gd`); เตือนอาหาร `sim.food_days()` → `hud_controls.food_warning()` / `home._check_food()` (meta `sugar_days`, `protein_days`)
   ครั้งแรก: ตู้ 1 = ช่องว่างใหม่, โหมดป่า = ช่องสวนเลขต่ำสุดที่มี (`tests/home_test.gd`); ห้อง 3 มิติ `scripts/view/home/home_room.gd`
-- `scripts/game/save_store.gd`: ช่อง 1–32 (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนไฟล์ชั่วคราวก่อนแทนที่
+- `scripts/game/save_store.gd`: ช่อง 1–32 (`user://saves/slotN.antfarm` บีบอัด zstd + `slotN.json` สรุปสำหรับเมนู), เขียนผ่าน `game/safe_file.gd` (v0.12.32)
+  - **เขียน:** `<ไฟล์>.tmp` → อ่านกลับตรวจ (เซฟ: หัวไฟล์บีบอัดบอกความยาวตรงกับไฟล์ + อ่านได้ครบตามที่บอก; ข้อความ: อ่านกลับได้ตรง) →
+    ของเดิมเป็น `<ไฟล์>.bak` → เปลี่ยนชื่อ `.tmp`; อ่าน: ไฟล์ → `.tmp` → `.bak`; ไฟล์ที่อ่านไม่ได้เก็บเป็น `.bad` (ไม่ทับ `.bak` ที่ดี)
+    ใช้กับเซฟ, `slotN.json`, `harmony.json`, `home.json`, ชุดกราฟ (`stats_chart`); `Store.exists` นับช่องที่เหลือแค่ `.tmp`/`.bak` ด้วย,
+    `Store.delete` ลบทุกชิ้น, `Store.backup` คัดลอกทุกชิ้นและคืน false ถ้าไม่สำเร็จ (main.gd แล้วเปิดรังทดลองไม่บันทึกทับ)
+  - **ขนาด:** `scripts/sim/save_limits.gd` ชุดเดียวทั้งตัวอ่านไฟล์และตัวตรวจ: voxel สูงสุด 16.5 ล้าน × 13 ไบต์ + 96 MB ส่วนอื่น
 - เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 11)
 - **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
-  และ**ไม่บันทึกทับ**; อ่านไม่ได้ → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (บอกผู้เล่นทุกกรณี)
+  และ**ไม่บันทึกทับ**; อ่านไม่ได้ (ทั้งไฟล์, `.tmp`, `.bak`) → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (สำรองไม่สำเร็จ: รังทดลอง ไม่บันทึกทับ; บอกผู้เล่นทุกกรณี)
 - ความปลอดภัย (v0.11.14, `docs/release/SECURITY_REVIEW.md`): ไฟล์ใน `user://` ถือว่าใครก็แก้ได้ — เซฟอ่านด้วย `bytes_to_var` (ไม่สร้าง object)
   จำกัดขนาด แล้วผ่าน `scripts/sim/save_check.gd` (หลังแปลง: ค่าครบ ชนิดตรงกับรังที่เกมสร้างเอง ขนาด voxel/กริด/แถวมดลงตัว) ก่อน `from_dict`;
   `settings.cfg` อ่านเป็นข้อความก่อน (`Store._settings_file`); เพิ่มค่าใหม่ในเซฟ → ถ้าตัวโหลดอ่านด้วย `d.get(...)` ให้ใส่ใน `SaveCheck.OPTIONAL`

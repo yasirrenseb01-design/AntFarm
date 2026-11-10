@@ -8,6 +8,7 @@ extends RefCounted
 ## x1 for the time away worked out on return, and x0.3 in the wild mode (the garden) either way.
 
 # (a tenth of the first values, v0.11.39 - the keeper, 2026-10-27: smaller numbers, not inflated; the prices too)
+const SafeFile := preload("res://scripts/game/safe_file.gd")
 const BORN := 1.0
 const SURVIVED := 0.6
 const FED := 0.05
@@ -53,16 +54,13 @@ func collect(sim, game_days_per_hour: float, live: bool) -> void:
 	points = minf(MAX_POINTS, points + raw * mult * GAME_DAYS_PER_HOUR_1X / game_days_per_hour)
 
 
+## (v0.12.32: written and read through game/safe_file.gd - a file cut short is read from its .bak, not taken as 0 points
+## and saved over)
 func load_purse() -> void:
 	points = 0.0
-	var path := base + "harmony.json"
-	if not FileAccess.file_exists(path):
-		return
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null or f.get_length() > 4096:
-		return
-	var d = JSON.parse_string(f.get_as_text())          # (only a number is taken from it: nothing in the file is run)
-	if d is Dictionary and (d.get("points") is float or d.get("points") is int):
+	# (only a number is taken from it: nothing in the file is run)
+	var d = SafeFile.read_text(base + "harmony.json", 4096, _purse_of)
+	if d != null:
 		points = clampf(float(d.points), 0.0, MAX_POINTS)
 		if not (d.get("v") is float or d.get("v") is int):
 			points /= 10.0                              # (earned at v0.11.39's ten-times values)
@@ -74,10 +72,13 @@ func load_purse() -> void:
 					water_paid[k] = float(wp[k])
 
 
+static func _purse_of(text: String) -> Variant:
+	var d = JSON.parse_string(text)
+	return d if d is Dictionary and (d.get("points") is float or d.get("points") is int) else null
+
+
 func save_purse() -> void:
-	var f := FileAccess.open(base + "harmony.json", FileAccess.WRITE)
-	if f != null:
-		f.store_string(JSON.stringify({"points": points, "v": 2, "water_paid": water_paid}))
+	SafeFile.write_text(base + "harmony.json", JSON.stringify({"points": points, "v": 2, "water_paid": water_paid}))
 
 
 ## The keeper filled that tank's water, which held `before` (0..1): the points it earns (0 if none), added to the purse.

@@ -133,8 +133,8 @@ func _ready() -> void:
 					push_warning("slot %d cannot be loaded: %s" % [slot, why])
 					v = 0
 			if v < 1 and Store.exists(slot):
-				Store.backup(slot, "unreadable-%d" % int(Time.get_unix_time_from_system()))
-				_load_note = tr("save_unreadable") % [slot, slot]
+				var kept := Store.backup(slot, "unreadable-%d" % int(Time.get_unix_time_from_system()))     # (false: not saved over, Store)
+				_load_note = tr("save_unreadable") % [slot, slot] if kept else tr("save_unreadable_nocopy") % slot
 		_settings["slot"] = slot
 		Store.save_settings(_settings)
 	if not loaded:

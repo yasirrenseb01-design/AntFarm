@@ -160,6 +160,7 @@ desk_failed,ตั้งเป็นวอลเปเปอร์ไม่ไ�
 # saves and wallpaper,,
 save_newer,รัง %d ถูกบันทึกด้วยเกมเวอร์ชันใหม่กว่านี้ (รูปแบบเซฟ %d) เกมนี้จึงเปิดรังทดลองให้แทน\nและจะไม่บันทึกทับรังนั้น — อัปเดตเกมแล้วรังจะกลับมาเหมือนเดิม,"Colony %d was saved by a newer version of the game (save format %d), so this one opens a trial colony instead\nand will not save over it — update the game and the colony will be back as it was"
 save_unreadable,อ่านเซฟรัง %d ไม่ได้ เก็บไฟล์เดิมไว้ในโฟลเดอร์เซฟแล้ว (slot%d.unreadable-…) และเริ่มรังใหม่,Could not read the save of colony %d. The file is kept in the save folder (slot%d.unreadable-…) and a new colony starts
+save_unreadable_nocopy,อ่านเซฟรัง %d ไม่ได้ และเก็บสำเนาไว้ไม่สำเร็จ (ดิสก์เต็ม?) เกมจึงเปิดรังทดลองให้แทน\nและจะไม่บันทึกทับเซฟนั้น,"Could not read the save of colony %d, nor keep a copy of it (is the disk full?), so a trial colony opens instead\nand will not save over it"
 desk_title,โหมดเดสก์ท็อป,Desktop mode
 save_title,เซฟ,Save
 wallpaper,วอลเปเปอร์,Wallpaper

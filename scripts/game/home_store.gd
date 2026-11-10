@@ -11,6 +11,7 @@ extends RefCounted
 ## (only somewhere to put tanks; up to MAX_SHELVES against the walls). Kept with the rest: {"big": slot, "shelves": [2, 4]}.
 
 const Store := preload("res://scripts/game/save_store.gd")
+const SafeFile := preload("res://scripts/game/safe_file.gd")
 const MAX_TEXT := 4096
 const PRICES := {"small": 600.0, "farm": 80.0, "big": 1500.0, "shelf2": 3500.0, "shelf4": 18000.0}
 const SCREEN_REFUND := 4000.0      # (the wall screen, sold in v0.11.92 and taken out: the keeper, 2026-11-07)
@@ -41,28 +42,26 @@ func load_layout() -> void:
 	shelves = []
 	farms = []
 	screen_refund = false
-	var path := _path()
-	if FileAccess.file_exists(path):
-		var f := FileAccess.open(path, FileAccess.READ)
-		if f != null and f.get_length() <= MAX_TEXT:
-			var d = JSON.parse_string(f.get_as_text())      # (only numbers are taken from it: nothing in the file is run)
-			if d is Dictionary:
-				tanks = _slots(d.get("tanks"))
-				wild = _slots(d.get("wild"))
-				for s in tanks:
-					wild.erase(s)
-				var b = d.get("big")
-				if (b is float or b is int) and tanks.has(int(b)):
-					big = int(b)
-				screen_refund = d.get("screen") == true
-				var sh = d.get("shelves")
-				if sh is Array:
-					for c in sh:
-						if (c is float or c is int) and (int(c) == 2 or int(c) == 4) and shelves.size() < MAX_SHELVES:
-							shelves.append(int(c))
-				for s in _slots(d.get("farms")):
-					if tanks.has(s) and s != big:
-						farms.append(s)
+	# (only numbers are taken from it: nothing in the file is run; v0.12.32: a file cut short is read from its .bak - else
+	# the tanks were worked out again and written over it at once, the bigger tank and the shelves bought gone)
+	var d = SafeFile.read_text(_path(), MAX_TEXT, _layout_of)
+	if d is Dictionary:
+		tanks = _slots(d.get("tanks"))
+		wild = _slots(d.get("wild"))
+		for s in tanks:
+			wild.erase(s)
+		var b = d.get("big")
+		if (b is float or b is int) and tanks.has(int(b)):
+			big = int(b)
+		screen_refund = d.get("screen") == true
+		var sh = d.get("shelves")
+		if sh is Array:
+			for c in sh:
+				if (c is float or c is int) and (int(c) == 2 or int(c) == 4) and shelves.size() < MAX_SHELVES:
+					shelves.append(int(c))
+		for s in _slots(d.get("farms")):
+			if tanks.has(s) and s != big:
+				farms.append(s)
 	if tanks.is_empty():
 		_first_time()
 	while wild.size() < tanks.size():
@@ -85,6 +84,11 @@ static func _slots(v) -> Array:
 	return out
 
 
+static func _layout_of(text: String) -> Variant:
+	var d = JSON.parse_string(text)
+	return d if d is Dictionary and not _slots(d.get("tanks")).is_empty() else null
+
+
 func _first_time() -> void:
 	var garden := 0
 	for s in range(1, Store.SLOTS + 1):
@@ -98,10 +102,7 @@ func _first_time() -> void:
 func save_layout() -> void:
 	if dry:
 		return
-	DirAccess.make_dir_recursive_absolute(Store.base)
-	var f := FileAccess.open(_path(), FileAccess.WRITE)
-	if f != null:
-		f.store_string(JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves, "farms": farms}))
+	SafeFile.write_text(_path(), JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves, "farms": farms}))
 
 
 ## Another tank: one more colony at home and one more in the wild mode; its slot (0 if there can be no more).

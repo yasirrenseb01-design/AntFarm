@@ -7,6 +7,7 @@ extends VBoxContainer
 ## own}]} - only names and keys from the list below are taken from it.
 
 const Paper := preload("res://scripts/view/ui/paper.gd")
+const SafeFile := preload("res://scripts/game/safe_file.gd")
 const Store := preload("res://scripts/game/save_store.gd")
 const MAX_SETS := 40
 const MAX_TEXT := 65536
@@ -314,13 +315,11 @@ func _delete_set() -> void:
 
 func _load_sets() -> void:
 	sets = []
-	if not FileAccess.file_exists(path()):
-		return
-	var f := FileAccess.open(path(), FileAccess.READ)
-	if f == null or f.get_length() > MAX_TEXT:
-		return
-	var d = JSON.parse_string(f.get_as_text())          # (only names and known keys are taken: nothing in it is run)
-	if not d is Dictionary or not d.get("sets") is Array:
+	# (only names and known keys are taken: nothing in it is run; a file cut short: its .bak - game/safe_file.gd)
+	var d = SafeFile.read_text(path(), MAX_TEXT, func(t: String):
+		var v = JSON.parse_string(t)
+		return v if v is Dictionary and v.get("sets") is Array else null)
+	if d == null:
 		return
 	var known := KEYS.map(func(k): return k[0])
 	for st in d.sets:
@@ -341,7 +340,4 @@ func _load_sets() -> void:
 
 
 func _write_sets() -> void:
-	DirAccess.make_dir_recursive_absolute(Store.base)
-	var f := FileAccess.open(path(), FileAccess.WRITE)
-	if f != null:
-		f.store_string(JSON.stringify({"v": 1, "sets": sets}))
+	SafeFile.write_text(path(), JSON.stringify({"v": 1, "sets": sets}))

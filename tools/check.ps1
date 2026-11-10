@@ -88,6 +88,10 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/duty_test
 Report "duties in the nest: repeatable, counted, run while closed" ($r -match "DUTY TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/save_fuzz_test.gd") 300
 Report "broken or changed saves, settings and port messages: no code run, no hang, no script error" ($r -match "SAVE FUZZ TEST PASSED")
+$saveFilesArgs = @("--headless", "--path", ".", "--script", "res://tests/save_files_test.gd")
+if (-not $Quick) { $saveFilesArgs += @("--", "big") }      # (+ a nest of the most soil a save may hold: ~7 s)
+$r = Run-Godot $saveFilesArgs 300
+Report "saves, slotN.json, harmony.json, home.json cut off mid-write: the last good copy read, never written over$(if (-not $Quick) { ', the biggest nest saved and read back' })" ($r -match "SAVE FILES TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/dump_test.gd") 300
 Report "the diggers carry their soil out themselves (laying a trail, back in)" ($r -match "DUMP TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/species_test.gd") 120

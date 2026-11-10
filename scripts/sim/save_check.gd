@@ -9,10 +9,11 @@ extends RefCounted
 const Sim := preload("res://scripts/sim/simulation.gd")
 const Ant := preload("res://scripts/sim/ant.gd")
 const NestVoxels := preload("res://scripts/sim/parts/nest_voxels.gd")
+const SaveLimits := preload("res://scripts/sim/save_limits.gd")
 
 const MAX_ITEMS := 200000          # longest list (ants, eggs, journal lines ...) a save may hold
 const MAX_SIDE := 1024             # voxels along one side of the nest
-const MAX_VOXELS := 16500000         # the bigger tank's soil held whole: 600 x 72 x 375 = 16.2 million (PART 0.12)
+const MAX_VOXELS := SaveLimits.MAX_VOXELS    # (one set of numbers with the file reader's: sim/save_limits.gd, v0.12.32)
 
 ## read with a default by the loader (saves older than these keys)
 const OPTIONAL := ["sim.water", "sim.nest.entrance_r", "sim.nest.work_left", "sim.nest.work_at", "sim.nest.work_dist",

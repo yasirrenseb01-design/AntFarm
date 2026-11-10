@@ -4,8 +4,11 @@ extends RefCounted
 ## menu never has to load a whole colony just to show what is in a slot.
 
 const NestCard := preload("res://scripts/game/nest_card.gd")
+const SafeFile := preload("res://scripts/game/safe_file.gd")
+const SaveLimits := preload("res://scripts/sim/save_limits.gd")
 const SLOTS := 32                 # the highest slot number (home_store.gd says which are shown: the tanks and the wild mode's)
 static var base := "user://"      # tests point this at a sandbox folder so they never touch real saves
+static var _kept_off := {}        # slot -> true: unreadable and no copy of it could be made (backup): never written over
 
 ## Game days that pass per real hour while the game is closed (0 = time stops); the words are keys of lang/strings.csv.
 const AWAY_RATES := [
@@ -16,10 +19,11 @@ const AWAY_RATES := [
 	["away_15m", 4.0],
 ]
 const MAX_AWAY_DAYS := 120.0   # longest absence simulated on return
-# (PART EA-R R8) a save is ~0.1 MB on disk and ~5 MB unpacked: anything far bigger is not one of ours, and is not read
-# (a file can claim any length, and the reader would set that much memory aside first)
-const MAX_FILE := 32 * 1024 * 1024
-const MAX_RAW := 64 * 1024 * 1024
+# (PART EA-R R8) anything bigger than a save can be is not one of ours, and is not read (a file can claim any length,
+# and the reader would set that much memory aside first). How big: sim/save_limits.gd, the same numbers the loading
+# checks use (v0.12.32: 32 / 64 MB before, while the checks took soil that saves to ~210 MB)
+const MAX_FILE := SaveLimits.MAX_FILE
+const MAX_RAW := SaveLimits.MAX_RAW
 const MAX_TEXT := 1024 * 1024    # settings.cfg, slotN.json
 # what each setting is, and the value it has when the file has none or something else there
 const SETTINGS := {"slot": 1, "away": 3, "care": true, "lang": "", "view": "outworld", "desk_told": false, "show_fps": false,
@@ -46,17 +50,16 @@ static func _meta_path(slot: int) -> String:
 	return "%s/slot%d.json" % [_dir(), slot]
 
 
+## A colony in the slot: its save, or what is left of one cut off mid-write (.tmp, .bak: game/safe_file.gd).
 static func exists(slot: int) -> bool:
-	return FileAccess.file_exists(_path(slot))
+	return SafeFile.any(_path(slot))
 
 
-## Write the colony. The data goes to a temporary file first and replaces the old save only once
-## it is complete, so a crash or power cut mid-save never destroys the previous save.
+## Write the colony. The data goes to a temporary file first, is read back and checked, and only then takes the old
+## save's place - the old one kept as slotN.antfarm.bak (game/safe_file.gd) - so a crash, a power cut or a full disk
+## mid-save never costs the previous save.
 static func save(slot: int, sim, extra: Dictionary = {}) -> bool:
-	DirAccess.make_dir_recursive_absolute(_dir())
-	var tmp := _path(slot) + ".tmp"
-	var f := FileAccess.open_compressed(tmp, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
-	if f == null:
+	if _kept_off.has(slot):
 		return false
 	var meta: Dictionary = sim.summary()
 	meta.merge(extra, true)
@@ -65,39 +68,95 @@ static func save(slot: int, sim, extra: Dictionary = {}) -> bool:
 	# where the nest's block lies along the box, from its left inside (metres: the Home draws it there on the glass)
 	meta["nest_x0"] = sim.nest_pos.x * 0.0005 - (sim.nest.entrance.x - sim.nest.x_lo) * 0.0015
 	meta["nest_w"] = sim.nest.wx() * 0.0015         # (and how wide: the box held, grown sideways - PART 0.12)
-	f.store_var({"meta": meta, "sim": sim.to_dict()})
-	f.close()
-	if FileAccess.file_exists(_path(slot)):
-		DirAccess.remove_absolute(_path(slot))
-	if DirAccess.rename_absolute(tmp, _path(slot)) != OK:
+	if not write_slot(slot, {"meta": meta, "sim": sim.to_dict()}):
 		return false
-	var m := FileAccess.open(_meta_path(slot), FileAccess.WRITE)
-	if m:
-		m.store_string(JSON.stringify(meta))
-		m.close()
+	SafeFile.write_text(_meta_path(slot), JSON.stringify(meta))
 	NestCard.write(_dir(), slot, sim.nest)              # (the nest, for the Home's tank glass)
 	return true
 
 
-## {"meta": {...}, "sim": {...}} or {} if the slot is empty or unreadable.
-static func load_slot(slot: int) -> Dictionary:
-	if not exists(slot) or _size(_path(slot)) > MAX_FILE:
-		return {}
-	var f := FileAccess.open_compressed(_path(slot), FileAccess.READ, FileAccess.COMPRESSION_ZSTD)
+## The save written (save() above): to .tmp, read back whole, then in the save's place. False if it could not be: the
+## save there is left as it was.
+static func write_slot(slot: int, data: Dictionary) -> bool:
+	DirAccess.make_dir_recursive_absolute(_dir())
+	var path := _path(slot)
+	var tmp := path + ".tmp"
+	var f := FileAccess.open_compressed(tmp, FileAccess.WRITE, FileAccess.COMPRESSION_ZSTD)
 	if f == null:
-		return {}
-	# (as get_var() reads it, with the length checked first; objects are never decoded - bytes_to_var, not _with_objects)
-	var n := f.get_32()
-	if n == 0 or n > MAX_RAW:
-		return {}
-	var bytes := f.get_buffer(n)
+		return false
+	f.store_var(data)
 	f.close()
-	if bytes.size() != n:
+	# (read back: the length it says and that many bytes there - not decoded again, which would cost the save's time over)
+	if _bytes(tmp).is_empty():
+		DirAccess.remove_absolute(tmp)
+		return false
+	return SafeFile.replace(tmp, path)
+
+
+## {"meta": {...}, "sim": {...}} or {} if the slot is empty or unreadable: the save, else what a save cut off mid-write
+## left (its .tmp, then its .bak - game/safe_file.gd). Reads only.
+static func load_slot(slot: int) -> Dictionary:
+	var path := _path(slot)
+	for p in SafeFile.candidates(path):
+		var d := read_file(p)
+		if not d.is_empty():
+			if p != path:
+				push_warning("slot %d: read from %s" % [slot, p.get_file()])
+			return d
+		if p == path:
+			SafeFile.mark_bad(path)          # (the next save keeps it as .bad, not over the good .bak)
+	return {}
+
+
+## One save file read: {"meta", "sim"} or {}.
+static func read_file(path: String) -> Dictionary:
+	var bytes := _bytes(path)
+	if bytes.is_empty():
 		return {}
 	var d = bytes_to_var(bytes)
 	if not d is Dictionary or not d.get("sim") is Dictionary or not d.get("meta") is Dictionary:
 		return {}
 	return d
+
+
+## The unpacked bytes of a save file, or none if it is not whole (or too big to be one of ours).
+static func _bytes(path: String) -> PackedByteArray:
+	if not FileAccess.file_exists(path) or _size(path) > MAX_FILE or not _whole(path):
+		return PackedByteArray()
+	var f := FileAccess.open_compressed(path, FileAccess.READ, FileAccess.COMPRESSION_ZSTD)
+	if f == null:
+		return PackedByteArray()
+	# (as get_var() reads it, with the length checked first; objects are never decoded - bytes_to_var, not _with_objects)
+	var n := f.get_32()
+	if n == 0 or n > MAX_RAW:
+		return PackedByteArray()
+	var bytes := f.get_buffer(n)
+	f.close()
+	return bytes if bytes.size() == n else PackedByteArray()
+
+
+## The packed file is as long as its header says (Godot's FileAccessCompressed: "GCPF", mode, block size, length
+## unpacked, then one packed size per block, the blocks and "GCPF" again). A file cut short is otherwise read on past its end as
+## zeros, the length it claims "read" whole (v0.12.32, tests/save_files_test.gd).
+static func _whole(path: String) -> bool:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null or f.get_length() < 16 or f.get_buffer(4).get_string_from_ascii() != "GCPF":
+		return false
+	f.get_32()                                   # (the packing)
+	var block := f.get_32()
+	var total := f.get_32()
+	if block == 0:
+		return false
+	var blocks := total / block + 1
+	if blocks * 4 > f.get_length() - 16:
+		return false
+	var want := 16 + blocks * 4
+	for i in blocks:
+		want += f.get_32()
+	if f.get_length() != want + 4:
+		return false
+	f.seek(want)
+	return f.get_buffer(4).get_string_from_ascii() == "GCPF"       # (and "GCPF" again at its very end)
 
 
 static func _size(path: String) -> int:
@@ -106,10 +165,8 @@ static func _size(path: String) -> int:
 
 
 static func meta(slot: int) -> Dictionary:
-	if not FileAccess.file_exists(_meta_path(slot)) or _size(_meta_path(slot)) > MAX_TEXT:
-		return {}
-	var d = JSON.parse_string(FileAccess.get_file_as_string(_meta_path(slot)))
-	if not d is Dictionary:
+	var d = SafeFile.read_text(_meta_path(slot), MAX_TEXT, _json_dict)
+	if d == null:
 		return {}
 	# the menu puts these in words with %d and %s: a value of the wrong kind is left out (JSON has no objects)
 	var out := {}
@@ -121,22 +178,22 @@ static func meta(slot: int) -> Dictionary:
 	return out
 
 
+static func _json_dict(text: String) -> Variant:
+	var d = JSON.parse_string(text)
+	return d if d is Dictionary else null
+
+
 ## The keeper filled this colony's water tank from the Home (the keeper, 2026-11-03: "fill the tanks from the Home, many at
 ## once"): the time goes in its slotN.json, "refills" (unix seconds, comma-separated); the colony fills it at that moment
 ## of the time away worked out when it is opened next (main_base.gd), and the next save leaves it out again.
 static func add_refill(slot: int, unix: float) -> void:
-	if not FileAccess.file_exists(_meta_path(slot)) or _size(_meta_path(slot)) > MAX_TEXT:
-		return
-	var d = JSON.parse_string(FileAccess.get_file_as_string(_meta_path(slot)))
-	if not d is Dictionary:
+	var d = SafeFile.read_text(_meta_path(slot), MAX_TEXT, _json_dict)
+	if d == null:
 		return
 	var times := refills(d)
 	times.append(unix)
 	d["refills"] = ",".join(times.slice(-MAX_REFILLS).map(func(t): return "%.0f" % t))
-	var m := FileAccess.open(_meta_path(slot), FileAccess.WRITE)
-	if m:
-		m.store_string(JSON.stringify(d))
-		m.close()
+	SafeFile.write_text(_meta_path(slot), JSON.stringify(d))
 
 
 ## The refill times in a slot's meta, oldest first (only numbers are taken from it).
@@ -169,18 +226,28 @@ static func water_now(m: Dictionary, days_per_hour: float, care: bool) -> float:
 	return clampf(level, 0.0, 1.0)
 
 
-## Keep a copy of the slot as slotN.<tag>.antfarm (+ .json) before it is migrated or given up on.
-## An existing copy with the same tag is left alone, so the oldest one survives.
-static func backup(slot: int, tag: String) -> void:
-	var dst := "%s/slot%d.%s.antfarm" % [_dir(), slot, tag]
-	if FileAccess.file_exists(_path(slot)) and not FileAccess.file_exists(dst):
-		DirAccess.copy_absolute(_path(slot), dst)
-		if FileAccess.file_exists(_meta_path(slot)):
-			DirAccess.copy_absolute(_meta_path(slot), "%s/slot%d.%s.json" % [_dir(), slot, tag])
+## Keep a copy of the slot as slotN.<tag>.antfarm (+ .json, and the .tmp/.bak a save cut off left) before it is
+## migrated or given up on. An existing copy with the same tag is left alone, so the oldest one survives. False if a
+## copy could not be made: save() then never writes over that slot in this run, until delete() (v0.12.32).
+static func backup(slot: int, tag: String) -> bool:
+	var ok := true
+	for side in ["", ".tmp", ".bak"]:
+		for pair in [[_path(slot), "%s/slot%d.%s.antfarm" % [_dir(), slot, tag]], [_meta_path(slot), "%s/slot%d.%s.json" % [_dir(), slot, tag]]]:
+			var src: String = pair[0] + side
+			var dst: String = pair[1] + side
+			if FileAccess.file_exists(src) and not FileAccess.file_exists(dst):
+				ok = DirAccess.copy_absolute(src, dst) == OK and ok
+	if not ok:
+		_kept_off[slot] = true
+	return ok
 
 
+## (a new colony started there by the keeper: Store writes there again)
 static func delete(slot: int) -> void:
-	for p in [_path(slot), _meta_path(slot), NestCard.path(_dir(), slot), "%s/slot%d_outworld.png" % [_dir(), slot]]:
+	_kept_off.erase(slot)
+	SafeFile.remove(_path(slot))
+	SafeFile.remove(_meta_path(slot))
+	for p in [NestCard.path(_dir(), slot), "%s/slot%d_outworld.png" % [_dir(), slot]]:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(p)
 
