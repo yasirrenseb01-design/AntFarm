@@ -397,9 +397,9 @@ func _open_at(p: Vector3, up: Vector3) -> bool:
 	return nest.is_open(Vector3i(roundi(c.x), roundi(c.y), roundi(c.z)))
 
 
-## A walkable cell just inside the entrance (where foragers come in), or (-1, 0, 0).
-func _entrance_cell() -> Vector3i:
-	var c := Vector3i(nest.entrance)
+## A walkable cell just inside the entrance (where foragers come in) - the way in worker w came by - or (-1, 0, 0).
+func _entrance_cell(w = null) -> Vector3i:
+	var c: Vector3i = _hole_for(w)
 	for k in 10:
 		if _walkable(c):
 			return c

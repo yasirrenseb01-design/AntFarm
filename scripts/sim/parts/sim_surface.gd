@@ -64,14 +64,13 @@ func _surface() -> void:
 			continue
 		_send_out(w, Ant.DUMP)
 		w.carry = Ant.SOIL
-		var hole := nest_pos + nest.hole_off(d.cell) * (2.0 * nest.VOXEL_MM)    # (out of the way out it came up: nest_exits)
+		var hi: int = nest.hole_index(d.cell)            # (out of the way out it came up, onto its own heap: nest_exits)
+		var hole := nest_pos + nest.hole_off(hi) * (2.0 * nest.VOXEL_MM)
 		w.pos = hole
 		var a := rng.randf() * TAU
-		var far := Mound.drop_distance(nest.excavated, rng.randfn(0.0, 1.0))      # (on the crater's rim: sim/mound.gd)
-		if hole != nest_pos:
-			far = minf(far, 14.0)                      # (round a way out: a small heap of its own, 7 mm out [inference])
+		var far := Mound.drop_distance(nest.hole_soil(hi), rng.randfn(0.0, 1.0))      # (on the crater's rim: sim/mound.gd)
 		_dumps[wid] = {"to": hole + Vector2.from_angle(a) * far, "dig": int(d.id),
-			"dropped": false}
+			"dropped": false, "hole": hi}
 		w.ang = a
 
 

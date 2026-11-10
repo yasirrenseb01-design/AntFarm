@@ -122,7 +122,9 @@ func _bind_workers() -> void:
 			m = free.pop_front()                           # (a newborn's body: not one just in from outside - it walks in)
 		else:
 			var walking_in: bool = _came_in_now(w)
-			var c := _entrance_cell() if walking_in else _any_spot()
+			var c := _entrance_cell(w) if walking_in else _any_spot()
+			if walking_in and _hole_for(w) != Vector3i(nest.entrance):
+				io.in_exit = int(io.get("in_exit", 0)) + 1          # (dev --io: in by a way out the nest dug up)
 			var from_dig := false
 			if _back_at.has(w.id):
 				# back from the dig face: its body goes on from where its digger was

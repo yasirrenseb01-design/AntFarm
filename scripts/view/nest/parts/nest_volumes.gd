@@ -102,3 +102,117 @@ func _upload_foot_volume() -> void:
 			m.set_shader_parameter("vol", _foot_vol)
 	else:
 		_foot_vol.update(layers)
+
+
+# ---------------------------------------------------------------- the heaps on top of the block (moved from nest_piles, v0.12.22)
+
+## The crater round the entrance on top of the block: a heap as big as the soil dug out (sim/mound.gd, as the outworld's
+## ground), pellets on its surface in three shapes (view/common/lumps.gd; until v0.12.8 the pellets alone, at most 900) -
+## and one round each way out the nest has dug up, as big as the soil carried out of that one (nest_exits.gd, v0.12.22).
+var _crater_key := []
+var _mound_mis: Array = []              # a heap's mesh for each way out (the entrance's: _mound_mi)
+
+func _craters() -> void:
+	var heaps := [[Vector3(nest.entrance) + Vector3(0, 0.6, 0), nest.excavated]]
+	var key := [nest.excavated / 4, nest.exits_ver]
+	for ex in nest.exits:
+		if ex.open:
+			heaps.append([Vector3(ex.b.x, nest.ny - 1, ex.b.z).round() + Vector3(0, 0.6, 0), int(ex.get("soil", 0))])
+			key.append(int(ex.get("soil", 0)) / 4)
+	if key == _crater_key:
+		return
+	_crater_key = key
+	var xfs := []
+	for k in heaps.size():
+		var e: Vector3 = heaps[k][0]
+		var soil: int = heaps[k][1]
+		var hr := Mound.size(soil)
+		_mound_mesh(k, e, hr)
+		var reach: float = hr.y * 1.8
+		for i in mini(soil / 2, 900 if k == 0 else 420):
+			var a := _hash(i + k * 5003, 5) * TAU
+			var r: float = lerpf(Mound.HOLE.y - 0.6, reach, sqrt(_hash(i + k * 5003, 6)))
+			var p := e + Vector3(cos(a) * r, 0.0, sin(a) * r)
+			if p.x < nest.x_lo - 0.4 or p.z < nest.z_lo - 0.4 or p.x > nest.nx - 0.6 or p.z > nest.nz - 0.6:
+				continue                                  # (past the block's edge: the glass)
+			p.y += Mound.height(r, hr.x, hr.y) - 0.15 + 0.2 * _hash(i + k * 5003, 7)
+			xfs.append(Transform3D(Basis(Vector3.UP, a), p))
+	Lumps.fill(_pellet_mm, xfs)
+
+
+## Heap k's surface as a mesh over the block's top round its hole (cut off at the block's edges, as by the glass).
+func _mound_mesh(k: int, e: Vector3, hr: Vector2) -> void:
+	while _mound_mis.size() <= k:
+		var mi := MeshInstance3D.new()
+		var mm := _mat_simple(Color(0.36, 0.26, 0.17), 1.0)
+		mm.cull_mode = BaseMaterial3D.CULL_DISABLED      # (seen from its top; its underside is never in view but through the soil)
+		mi.material_override = mm
+		add_child(mi)
+		_mound_mis.append(mi)
+		if _mound_mis.size() == 1:
+			_mound_mi = mi
+	var reach: float = hr.y * 2.0
+	var g := 48
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pts := []
+	for j in g + 1:
+		for i in g + 1:
+			var x := clampf(e.x + lerpf(-reach, reach, float(i) / g), nest.x_lo - 0.5, nest.nx - 0.5)
+			var z := clampf(e.z + lerpf(-reach, reach, float(j) / g), nest.z_lo - 0.5, nest.nz - 0.5)
+			var d := Vector2(x - e.x, z - e.z).length()
+			pts.append(Vector3(x, e.y - 0.35 + Mound.height(d, hr.x, hr.y), z))
+	for j in g:
+		for i in g:
+			var a: Vector3 = pts[j * (g + 1) + i]
+			var b: Vector3 = pts[j * (g + 1) + i + 1]
+			var c: Vector3 = pts[(j + 1) * (g + 1) + i]
+			var d2: Vector3 = pts[(j + 1) * (g + 1) + i + 1]
+			if maxf(maxf(a.y, b.y), maxf(c.y, d2.y)) < e.y - 0.3:
+				continue                              # (flat ground: the block's own top is there)
+			st.add_vertex(a)
+			st.add_vertex(b)
+			st.add_vertex(c)
+			st.add_vertex(b)
+			st.add_vertex(d2)
+			st.add_vertex(c)
+	st.generate_normals()
+	_mound_mis[k].mesh = st.commit()
+
+
+# ---------------------------------------------------------------- the ways in (v0.12.22, sim/parts/nest_exits.gd)
+
+## The cells the nest opens to the surface by: the entrance, and every way out dug up since. The steps out (field -1)
+## run from all of them: a nestmate walking out goes to the nearest.
+func _holes_in() -> Array:
+	var out := [Vector3i(nest.entrance)]
+	for ex in nest.exits:
+		if ex.open:
+			out.append(Vector3i((ex.b as Vector3).round()))
+	return out
+
+
+## The way in worker w came by: the one nearest where it stood on the ground when it went in (sim_foragers: its pos is
+## kept; the outworld's holes are 3 px a voxel across from the entrance). The entrance for none.
+func _hole_for(w) -> Vector3i:
+	var best := Vector3i(nest.entrance)
+	if w == null:
+		return best
+	var bd: float = (w.pos as Vector2).distance_to(sim.nest_pos)
+	for ex in nest.exits:
+		if ex.open:
+			var at: Vector2 = sim.nest_pos + Vector2(ex.b.x - nest.entrance.x, ex.b.z - nest.entrance.z) * (2.0 * nest.VOXEL_MM)
+			if (w.pos as Vector2).distance_to(at) < bd:
+				bd = (w.pos as Vector2).distance_to(at)
+				best = Vector3i((ex.b as Vector3).round())
+	return best
+
+
+## A distance field's first cells, at step 0 (nest_brood._field_job): one cell, or several.
+func _seed_job(start) -> Dictionary:
+	var ss: Array = start if start is Array else [start]
+	var f := {}
+	for c in ss:
+		f[c] = 0
+	return {"f": f, "buckets": {0: ss.duplicate()}, "cur": 0, "left": ss.size()}
+

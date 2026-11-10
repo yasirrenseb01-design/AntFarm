@@ -97,18 +97,19 @@ const MOUND_CLEAR := 1.8          # of the ring's radius: the heap is down to ~1
 func _clear_mound() -> void:
 	var reach := MOUND_CLEAR * Mound.size(sim.nest.excavated).y * Mound.PX
 	var at: Vector2 = sim.nest_pos
-	var holes := []                       # (and round the ways out the nest has dug up: nest_exits.gd, 12 px = 6 mm)
+	var holes := []                       # (and round the ways out the nest has dug up, by their own heaps: nest_exits.gd)
 	for ex in sim.nest.exits:
 		if ex.open:
-			holes.append(at + Vector2(ex.b.x - sim.nest.entrance.x, ex.b.z - sim.nest.entrance.z) * Mound.PX)
-	var off := func(e) -> bool: return (e.p as Vector2).distance_to(at) >= reach and holes.all(func(h): return (e.p as Vector2).distance_to(h) >= 12.0)
+			holes.append([at + Vector2(ex.b.x - sim.nest.entrance.x, ex.b.z - sim.nest.entrance.z) * Mound.PX,
+				maxf(12.0, MOUND_CLEAR * Mound.size(int(ex.get("soil", 0))).y * Mound.PX)])
+	var off := func(e) -> bool: return (e.p as Vector2).distance_to(at) >= reach and holes.all(func(h): return (e.p as Vector2).distance_to(h[0]) >= h[1])
 	pebbles = pebbles.filter(off)
 	litter = litter.filter(off)
 	tufts = tufts.filter(off)
 	rosettes = rosettes.filter(off)
 	var kept := []
 	for m in moss:
-		var bl: Array = m.filter(func(b): return (b[0] as Vector2).distance_to(at) >= reach and holes.all(func(h): return (b[0] as Vector2).distance_to(h) >= 12.0))
+		var bl: Array = m.filter(func(b): return (b[0] as Vector2).distance_to(at) >= reach and holes.all(func(h): return (b[0] as Vector2).distance_to(h[0]) >= h[1]))
 		if not bl.is_empty():
 			kept.append(bl)
 	moss = kept
@@ -157,6 +158,16 @@ func _crater_and_midden(r: RandomNumberGenerator) -> void:
 	for i in 60:
 		midden_bits.append({"p": sim.midden_pos + Vector2(r.randfn(0, 7), r.randfn(0, 5)), "r": r.randf_range(0.6, 2.0),
 			"c": Color(0.18, 0.12, 0.08).lerp(Color(0.38, 0.27, 0.16), r.randf())})
+	# round each way out the nest dug up, as much as was carried out of it (after the rest: those draws stay as they were)
+	for ex in sim.nest.exits:
+		if not ex.open:
+			continue
+		var soil := int(ex.get("soil", 0))
+		var at: Vector2 = sim.nest_pos + Vector2(ex.b.x - sim.nest.entrance.x, ex.b.z - sim.nest.entrance.z) * Mound.PX
+		for i in mini(420, 12 + soil / 3):
+			var a := r.randf() * TAU
+			crater.append({"p": at + Vector2.from_angle(a) * Mound.drop_distance(soil, r.randfn(0, 1)), "r": r.randf_range(0.6, 1.8),
+				"c": Color(0.6, 0.48, 0.34).lerp(Color(0.82, 0.7, 0.52), r.randf())})
 
 
 ## Keeps the trail texture current while the outworld is on screen: about PHER_CELLS cells a frame - all of a small

@@ -149,7 +149,12 @@ func _step_ant(a: Ant) -> void:
 				a.act = 2                              # head down, setting it down
 				a.carry = Ant.NONE
 				a.state = Ant.HOME
-				nest.excavated += 1                    # (the crater grows by it: the views)
+				var hv = job.get("hole", -1)             # (the crater grows by it - or a way out's own heap: the views)
+				var hi := int(hv) if hv is int or hv is float else -1
+				if hi >= 0 and hi < nest.exits.size():
+					nest.exits[hi].soil = int(nest.exits[hi].get("soil", 0)) + 1
+				else:
+					nest.excavated += 1
 				job.dropped = true
 				return
 	elif st == Ant.UNDERTAKER:

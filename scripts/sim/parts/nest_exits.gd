@@ -32,6 +32,12 @@ func _plan_exits(workers: int) -> void:
 			if is_open(Vector3i((ex.b as Vector3).round())):
 				ex.open = true
 				exits_ver += 1
+				# (the soil of the shaft was carried up the old way while it was shut; dug from below up to the surface it
+				# would have been pushed out of the new hole: its share moved to the heap there [inference] - a shaft
+				# 1.3 voxels round, 1.5 voxels a pellet as Mound.VOXELS_A_PELLET)
+				var moved := mini(excavated, int((ex.b as Vector3).distance_to(ex.a) * PI * 1.3 * 1.3 / 1.5))
+				excavated -= moved
+				ex.soil = int(ex.get("soil", 0)) + moved
 				_bfs()
 			else:
 				digging = true
@@ -61,18 +67,29 @@ func _plan_exits(workers: int) -> void:
 	for k in 9:
 		if hard_near(a.lerp(b, k / 8.0), 2.0):
 			return
-	exits.append({"a": a, "b": b, "open": false})
+	exits.append({"a": a, "b": b, "open": false, "soil": 0})
 
 
-## Where the way out a digger at `cell` comes up through lies from the entrance, across (voxels; zero: the entrance) -
-## the open one nearest it. (sim_surface: its worker comes out there and drops its pellet round it.)
-func hole_off(cell: Vector3i) -> Vector2:
-	var best := Vector2.ZERO
+## The way out a digger at `cell` comes up through: the open one nearest it (-1: the entrance). (sim_surface: its worker
+## comes out there and drops its pellet round it - on that way out's own heap, exits[i].soil.)
+func hole_index(cell: Vector3i) -> int:
+	var best := -1
 	var bd := Vector2(cell.x - entrance.x, cell.z - entrance.z).length()
-	for ex in exits:
+	for i in exits.size():
+		var ex: Dictionary = exits[i]
 		if ex.open:
 			var d := Vector2(cell.x - ex.b.x, cell.z - ex.b.z).length()
 			if d < bd:
 				bd = d
-				best = Vector2(ex.b.x - entrance.x, ex.b.z - entrance.z)
+				best = i
 	return best
+
+
+## Where way out i lies from the entrance, across (voxels; -1: the entrance itself, zero).
+func hole_off(i: int) -> Vector2:
+	return Vector2.ZERO if i < 0 else Vector2(exits[i].b.x - entrance.x, exits[i].b.z - entrance.z)
+
+
+## The soil heaped round way out i so far (pellets; -1: the entrance's crater).
+func hole_soil(i: int) -> int:
+	return excavated if i < 0 else int(exits[i].get("soil", 0))

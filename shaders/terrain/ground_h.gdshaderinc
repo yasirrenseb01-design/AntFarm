@@ -4,11 +4,13 @@ uniform vec2 nest_xz = vec2(160.0, 133.3);
 uniform float mound_h = 0.5;
 uniform float mound_r = 4.0;
 uniform vec4 holes_xz = vec4(-1000.0);    // the nest's ways out besides the entrance (two at most: xy, zw; nest_exits.gd)
+uniform vec4 holes_hr = vec4(0.25, 3.55, 0.25, 3.55);   // each one's heap: height, radius (as mound_h, mound_r)
 
-// A way out: a small pit with a low rim of the soil carried out of it (OutworldView.hole_h).
-float hole_h(float d) {
-	float k = (d - 2.2) / 0.9;
-	return 0.35 * exp(-k * k) - 1.2 * (1.0 - smoothstep(0.5, 1.5, d));
+// A way out: a narrow pit in a heap of the soil carried out of it, as big as that soil (OutworldView.hole_h; the crater's
+// shape, scripts/sim/mound.gd).
+float hole_h(float d, float h, float r) {
+	float k = (d - r) / (r * 0.6);
+	return (h * exp(-k * k) + h * 0.5 * (1.0 - smoothstep(0.0, r, d))) * smoothstep(1.2, 3.0, d) - 1.2 * (1.0 - smoothstep(0.5, 1.5, d));
 }
 
 float ground_h(vec2 p) {
@@ -21,7 +23,7 @@ float ground_h(vec2 p) {
 	// (the crater: scripts/view/mound.gd - as big as the soil dug out from v0.12.8, the entrance's pit kept clear of it)
 	h += (mound_h * exp(-k * k) + mound_h * 0.5 * (1.0 - smoothstep(0.0, mound_r, d))) * smoothstep(1.2, 3.0, d);
 	h -= 1.6 * (1.0 - smoothstep(0.6, 1.9, d));
-	h += hole_h(length(p - holes_xz.xy)) + hole_h(length(p - holes_xz.zw));
+	h += hole_h(length(p - holes_xz.xy), holes_hr.x, holes_hr.y) + hole_h(length(p - holes_xz.zw), holes_hr.z, holes_hr.w);
 	return h;
 }
 

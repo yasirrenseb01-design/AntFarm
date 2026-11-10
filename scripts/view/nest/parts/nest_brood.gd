@@ -123,7 +123,7 @@ func _near_drop_now(v: Vector3i) -> bool:
 
 
 ## Breadth-first distances from one cell through open space: lets nest ants walk the real tunnels.
-func _field_from(start: Vector3i) -> Dictionary:
+func _field_from(start) -> Dictionary:
 	# Steps to `start` through the open nest, a step along a wall costing 1 and one across open air (the middle
 	# of a wide shaft) 3: ants keep to the walls, but can still get everywhere (a field along the walls only
 	# left parts of the nest cut off; one through the air ignored that ants walk on surfaces, and a widened
@@ -135,8 +135,8 @@ func _field_from(start: Vector3i) -> Dictionary:
 
 ## A distance field to be worked out over several frames (_field_run): until v0.11.87 every room's was redone in one
 ## frame each time ~25 cells were dug, ~1.2 s with the game standing still in the keeper's 12-chamber nest.
-func _field_job(start: Vector3i) -> Dictionary:
-	return {"f": {start: 0}, "buckets": {0: [start]}, "cur": 0, "left": 1}
+func _field_job(start) -> Dictionary:
+	return _seed_job(start)                 # (a cell, or several: the entrance and the ways out - nest_volumes)
 
 
 ## Works the job on, step by step as _field_from did, until it is done (true) or the clock passes until_us (0: no limit).
@@ -271,14 +271,14 @@ func _refresh_spots() -> void:
 	if absi(nest.air - _fields_air) > 25 or _fields.size() != _rooms.size() + 1:
 		if _fields.is_empty():
 			_fields_air = nest.air
-			_fields[-1] = _field_from(nest.entrance)
+			_fields[-1] = _field_from(_holes_in())
 			for i in _rooms.size():
 				_fields[i] = _field_from(_rooms[i].cell)
 		elif _fields_todo.is_empty():
 			_fields_air = nest.air
 			_fields_next = {}
 			_fields_job = {}
-			_fields_todo = [[-1, nest.entrance]]
+			_fields_todo = [[-1, _holes_in()]]
 			for i in _rooms.size():
 				_fields_todo.append([i, _rooms[i].cell])
 	_update_larva_group()

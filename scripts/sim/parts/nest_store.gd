@@ -279,7 +279,9 @@ func from_dict(r: RandomNumberGenerator, d: Dictionary) -> void:
 	var de = d.get("exits", [])
 	for ex in de if de is Array else []:
 		if ex is Dictionary and ex.get("a") is Vector3 and ex.get("b") is Vector3 and ex.get("open") is bool and exits.size() < 4 				and (ex.a as Vector3).is_finite() and (ex.b as Vector3).is_finite():
-			exits.append({"a": ex.a, "b": ex.b, "open": ex.open})
+			var soil_n = ex.get("soil", 0)
+			exits.append({"a": ex.a, "b": ex.b, "open": ex.open,
+				"soil": clampi(int(soil_n), 0, 100000000) if (soil_n is int or soil_n is float) and is_finite(float(soil_n)) else 0})
 	entrance = d.entrance
 	tick = d.tick
 	_dist_age = d.dist_age

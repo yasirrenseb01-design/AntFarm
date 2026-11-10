@@ -664,63 +664,7 @@ func _update_brood() -> void:
 		_spots.pupae_old if _pupa_group != _pupa_prev else [], _moved_p if _pupa_group != _pupa_prev else 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
 	_mark_brood_cells()
 	_brood_gen += 1
-	# the crater round the entrance on top of the block: a heap as big as the soil dug out (sim/mound.gd, as the outworld's
-	# ground), pellets on its surface in three shapes (view/common/lumps.gd; until v0.12.8 the pellets alone, at most 900)
-	if nest.excavated / 4 == _mound_n:
-		return
-	_mound_n = nest.excavated / 4
-	var hr := Mound.size(nest.excavated)
-	var e: Vector3 = Vector3(nest.entrance) + Vector3(0, 0.6, 0)
-	_mound_mesh(e, hr)
-	var n := mini(nest.excavated / 2, 900)
-	var xfs := []
-	var reach: float = hr.y * 1.8
-	for i in n:
-		var a := _hash(i, 5) * TAU
-		var r: float = lerpf(Mound.HOLE.y - 0.6, reach, sqrt(_hash(i, 6)))
-		var p := e + Vector3(cos(a) * r, 0.0, sin(a) * r)
-		if p.x < nest.x_lo - 0.4 or p.z < nest.z_lo - 0.4 or p.x > nest.nx - 0.6 or p.z > nest.nz - 0.6:
-			continue                                  # (past the block's edge: the glass)
-		p.y += Mound.height(r, hr.x, hr.y) - 0.15 + 0.2 * _hash(i, 7)
-		xfs.append(Transform3D(Basis(Vector3.UP, a), p))
-	Lumps.fill(_pellet_mm, xfs)
-
-
-## The heap's surface as a mesh over the block's top round the entrance (cut off at the block's edges, as by the glass).
-func _mound_mesh(e: Vector3, hr: Vector2) -> void:
-	if _mound_mi == null:
-		_mound_mi = MeshInstance3D.new()
-		var mm := _mat_simple(Color(0.36, 0.26, 0.17), 1.0)
-		mm.cull_mode = BaseMaterial3D.CULL_DISABLED      # (seen from its top; its underside is never in view but through the soil)
-		_mound_mi.material_override = mm
-		add_child(_mound_mi)
-	var reach: float = hr.y * 2.0
-	var g := 48
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var pts := []
-	for j in g + 1:
-		for i in g + 1:
-			var x := clampf(e.x + lerpf(-reach, reach, float(i) / g), nest.x_lo - 0.5, nest.nx - 0.5)
-			var z := clampf(e.z + lerpf(-reach, reach, float(j) / g), nest.z_lo - 0.5, nest.nz - 0.5)
-			var d := Vector2(x - e.x, z - e.z).length()
-			pts.append(Vector3(x, e.y - 0.35 + Mound.height(d, hr.x, hr.y), z))
-	for j in g:
-		for i in g:
-			var a: Vector3 = pts[j * (g + 1) + i]
-			var b: Vector3 = pts[j * (g + 1) + i + 1]
-			var c: Vector3 = pts[(j + 1) * (g + 1) + i]
-			var d2: Vector3 = pts[(j + 1) * (g + 1) + i + 1]
-			if maxf(maxf(a.y, b.y), maxf(c.y, d2.y)) < e.y - 0.3:
-				continue                              # (flat ground: the block's own top is there)
-			st.add_vertex(a)
-			st.add_vertex(b)
-			st.add_vertex(c)
-			st.add_vertex(b)
-			st.add_vertex(d2)
-			st.add_vertex(c)
-	st.generate_normals()
-	_mound_mi.mesh = st.commit()
+	_craters()                             # (the heaps round the entrance and the ways out on top of the block: nest_volumes)
 
 
 ## (dev, body_check --trace-crowd) how the item drawn at p was laid: on top, forced, where from.

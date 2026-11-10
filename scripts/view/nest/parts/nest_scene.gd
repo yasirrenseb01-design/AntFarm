@@ -96,7 +96,6 @@ var _frustum: Array[Plane] = []   # the camera's view, refreshed with it: off-sc
 var _t := 0.0
 signal cut_changed(value: float)
 var _brood_sig: Array = []
-var _mound_n := -1
 var _mound_mi: MeshInstance3D           # the heap itself (v0.12.8): the pellets are only its surface
 var _vol: ImageTexture3D
 var _vol_timer := 0.0
