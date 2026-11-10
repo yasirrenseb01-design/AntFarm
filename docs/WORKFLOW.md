@@ -61,6 +61,23 @@
   หลังผู้ใช้อัปโหลด ติดป้าย `store-v<ver>` และรวมสายงานเข้า `main` (ผู้ใช้ 2026-11-08)
 - รายการรอลงร้านอยู่หัว BACKLOG; ข้อความถึงชุมชนต้องยึดสิ่งที่อยู่ในร้านจริง
 
+## วัดความเร็วบน exe (เครื่อง dev, 2026-11-10)
+- **เครื่อง:** i5-12450H, การ์ดจอสองตัว — Intel UHD (ในตัว) และ **NVIDIA RTX 3050 Laptop**
+  - ตัว editor (`tools/dev/gd.sh`, ตัวตรวจ `check.ps1`) วิ่งบน **Intel UHD** (Windows ตั้งให้) และช้ากว่า exe — ใช้ตรวจความถูกต้อง ไม่ใช้ตัดสินสเปก
+  - exe ของผู้เล่น (`build/AntFarm.exe`) วิ่งบน **RTX 3050** (device #0; ดู `Using Device` ใน `user://logs/godot.log`)
+  - ผู้ใช้ตั้งกราฟิก "สูง" (มดที่วาดในรัง 600 ตัว) และเพดาน 30 fps (`fps_cap=0`) ใน `settings.cfg`
+- **exe สำหรับวัด:** `powershell -ExecutionPolicy Bypass -File tools/build_measure.ps1` → `build/measure/AntFarm-measure.exe`
+  - ตัวเกมเดียวกับของผู้เล่น (ชุด export "Windows Measure", feature `measure`) แต่รับตัวเลือก dev ได้ — ไม่แจกผู้เล่น ไม่อยู่ใน zip
+  - build ใหม่ทุกครั้งก่อนวัด (ตัวเก่าคือโค้ดเก่า)
+- **รังที่ใช้วัด:** สำเนาเซฟผู้ใช้ที่ `user://growtest/usercopy/saves/` (ช่อง 3 = ~830 ตัว) เปิดด้วย `--testsave=usercopy --slot=3` (อ่านอย่างเดียว);
+  คัดลอกใหม่จาก `saves/slot3.*` เมื่ออยากได้รังล่าสุด
+- **คำสั่ง** (600 เฟรม, เกมเดินจริง; Intel ใส่ `--gpu-index 1` หน้า `--`):
+  `build/measure/AntFarm-measure.exe --gpu-index 0 -- --testsave=usercopy --slot=3 --view=nest --quality=high --perf --frames=600 --live --shot=<png>`
+  - ซูมออกเห็นทั้งรังแบบที่ผู้ใช้ดู: เพิ่ม `--xray --dist=200 --pitch=0.3` (ใช้ `--frames=300`, ช้า)
+  - อ่านบรรทัด `perf:` (fps เฉลี่ย, p95) และ `perf parts` (เวลาแต่ละส่วนต่อเฟรม)
+- **ผล v0.12.30** (สูง): กล้องปกติ 32 fps, ซูมออกเห็นทั้งรัง 14 (กลาง 21, ต่ำ 34) — ในรังติดที่ CPU ไม่ใช่การ์ดจอ (CHANGELOG v0.12.24, v0.12.30)
+- exe วัดพังตอนปิดผ่านทาง dev แบบสุ่ม ~10–25% (หลังพิมพ์ผลแล้ว) — ไม่กระทบผู้เล่น (BACKLOG)
+
 ## ผลงานที่ส่งให้ผู้ใช้
 - ปิดเกมก่อน build ถ้าเกมเปิดอยู่ `build.ps1` จะสลับทางลัดให้หลังปิดเกม — บอกผู้ใช้ให้ปิดแล้วเปิดใหม่
 - `build.ps1` ลบ build เก่าเอง (เก็บ 5 เวอร์ชันล่าสุด + x.y.0 ของทุก PART) — ห้ามลบใน `build/versions` ด้วยมือ
