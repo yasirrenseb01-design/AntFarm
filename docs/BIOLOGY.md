@@ -23,6 +23,7 @@
 - เหยื่อโปรตีนสำหรับตัวอ่อน; เหยื่อใหญ่ (เช่นจิ้งหรีด) **กินตรงที่อยู่**: กัดเข้าทางเยื่อนิ่มตรงข้อต่อ ดูดของเหลว ตัดเนื้อนิ่มเป็นชิ้นเล็ก
   เปลือกแข็งยังอยู่ครบ ท้องแฟบลง ขาอาจหลุดตอนท้าย เหลือซากเปลือกกลวง; มดมักเอาดินและเศษของมากลบเหยื่อใหญ่
 - เก็บน้ำหวานในกระเพาะพัก (crop) แล้วป้อนกันในรัง (trophallaxis) — ไม่มีห้องเก็บอาหาร
+  **รายละเอียด (ความจุ 1.8 µl, ความหิวรายตัว, ใครป้อนราชินี, ฟีโรโมนราชินี, ไขมัน) อยู่ที่ `docs/biology/crop_and_hunger.md`** (ค้น 2026-11-11 สำหรับ `docs/roadmap/PLAN_CROP.md`)
 - ชวนพวกด้วยเส้นทางกลิ่น (recruitment)
 
 ### การเดิน
@@ -319,8 +320,8 @@
 | ป้อนปากต่อปาก: ความถี่ | ชนิดอาหาร (ซูโครส / โปรตีน / เมเลซิโทส) เปลี่ยน **จำนวนครั้ง** ที่ป้อน แต่ **ไม่เปลี่ยนความนาน** ของแต่ละครั้ง → รังคุมการแจกอาหารด้วยความถี่ | [Ln] | Buffin et al. 2011 [5] |
 | ป้อน: ความนาน | โอกาสเลิกป้อนต่อหน่วยเวลาคงที่ (ความนานเป็นแบบ exponential); ผู้ให้ที่อิ่ม → ผู้รับที่หิว ป้อนนานกว่า ⚠ | [Ln] | Buffin et al. 2011 [5] |
 | ป้อน: ปริมาณ | ต่อครั้ง ~0.9 µl (ซูโครส), ~0.5 (โปรตีน), ~0.6 (เมเลซิโทส) ไม่ต่างกันทางสถิติ ⚠ | [Ln] | สรุปของ [5] |
-| ใครให้ใครรับ | มดหาอาหารเริ่มให้ก่อน (ครั้งแรกที่ให้: มัธยฐาน ~41.6 นาที เทียบมดในรัง ~66 นาที); มดในรัง **ให้มากกว่า**มดหาอาหารเล็กน้อย (p = 0.067) | [Ln] | Quque et al. 2019 [6] |
-| อาหารกระจาย | ครึ่งหนึ่งของมดหาอาหารได้รับครั้งแรกใน ~45 นาที มดในรัง ~57 นาที (รังอด 4 วัน, ซูโครส 1 M); เร็วกว่าเครือข่ายสุ่ม ~50% | [Ln] | Quque et al. 2019 [6] |
+| ใครให้ใครรับ | มดหาอาหารเริ่มให้ก่อน (ครั้งแรกที่ให้: มัธยฐาน ~41.6 นาที เทียบมดในรัง ~66 นาที); มดในรัง **ให้มากกว่า**มดหาอาหารเล็กน้อย (p = 0.067) | [Ln] | Planckaert et al. 2019 [6] |
+| อาหารกระจาย | ครึ่งหนึ่งของมดหาอาหารได้รับครั้งแรกใน ~45 นาที มดในรัง ~57 นาที (รังอด 4 วัน, ซูโครส 1 M); เร็วกว่าเครือข่ายสุ่ม ~50% | [Ln] | Planckaert et al. 2019 [6] |
 | เครือข่าย | เป็นลำดับชั้น: มดในรังบางตัวเป็น "คนกลาง" ระหว่างมดหาอาหารกับมดในรังตัวอื่น; มีลูกมดแล้วเครือข่ายแข็งแรงขึ้น (ตัวอ่อนต้องกิน) | [Ln] | Quque et al. 2021 [7] |
 | อาหารกระจายเร็วแค่ไหน | กระจายเสร็จภายในไม่ถึง 1 ชม. (โค้ง 1 − e^(−0.036t)) | [ญาติ] *Camponotus sanctus* | Greenwald et al. 2015 [8] |
 | ป้อนตัวอ่อน | ปริมาณต่อครั้งน้อยและเกือบคงที่ → มดคุมด้วย **ความถี่**; ตัวอ่อนที่หิวได้ป้อนถี่ขึ้น; ต้องป้อน ~8 ชม. จนอิ่ม (*Solenopsis invicta*) | [ญาติ] | Cassill & Tschinkel 1995 [9] |
@@ -370,7 +371,7 @@
 [4] Activity cycles in ant colonies: worker interactions and decentralized control https://www.researchgate.net/publication/301232902
 [5] Buffin A., Mailleux A.-C., Detrain C., Deneubourg J.-L. (2011) Trophallaxis in *Lasius niger*: a variable frequency and constant duration for three food types. Insectes Soc 58:177–183
     https://link.springer.com/article/10.1007/s00040-010-0133-y ; สรุป: https://www.academia.edu/100448203
-[6] Quque M. et al. (2019) A spatiotemporal analysis of the food dissemination process and the trophallactic network in the ant *Lasius niger*. Sci Rep https://www.nature.com/articles/s41598-019-52019-6
+[6] Planckaert J., Nicolis S.C., Deneubourg J.-L., Sueur C., Bles O. (2019) (เดิมเขียนผิดเป็น Quque: แก้ 2026-11-11; รังย่อยไม่มีราชินี/ลูกมด) A spatiotemporal analysis of the food dissemination process and the trophallactic network in the ant *Lasius niger*. Sci Rep https://www.nature.com/articles/s41598-019-52019-6
 [7] Quque M. et al. (2021) Hierarchical networks of food exchange in the black garden ant *Lasius niger*. Insect Sci https://onlinelibrary.wiley.com/doi/10.1111/1744-7917.12792
 [8] Greenwald E. et al. (2015) Ant trophallactic networks: simultaneous measurement of interaction patterns and food dissemination. Sci Rep https://www.nature.com/articles/srep12496
 [9] Cassill D.L., Tschinkel W.R. (1995) Allocation of liquid food to larvae via trophallaxis in colonies of the fire ant. https://www.bio.fsu.edu/~tschink/publications/1995-1.pdf
