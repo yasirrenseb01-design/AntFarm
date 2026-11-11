@@ -1,7 +1,6 @@
-extends "res://scripts/sim/parts/sim_state.gd"
-## Simulation, layer 2 of 10: setup, time, the keeper's actions, shared helpers (log, warnings, deaths).
-## Layers: sim_state <- sim_base <- sim_foragers <- sim_surface <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties <- simulation.
-
+extends "res://scripts/sim/parts/sim_crops.gd"
+## Simulation, layer 3 of 11: setup, time, the keeper's actions, shared helpers (log, warnings, deaths).
+## Layers: sim_state <- sim_crops <- sim_base <- sim_foragers <- sim_surface <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties <- simulation.
 
 # ---------------------------------------------------------------- setup
 
@@ -65,6 +64,7 @@ func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, sc
 	for i in int(4 * k):
 		pupae.append({"p": rng.randf(), "s": clampf(rng.randfn(0.84, 0.04), 0.75, 0.95)})
 	sugar = sugar_cap() * 0.5 if start_workers > 0 else 0.0
+	ledger_start()
 	protein = 3.0 * k
 	# a young colony starts out earning comfortably more than it eats (a week's worth of each)
 	sugar_spend = 7.0 * (start_workers * sp["sugar_worker"] + sp["sugar_queen"])

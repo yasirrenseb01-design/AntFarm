@@ -11,7 +11,12 @@ func fingerprint(s) -> String:
 	for a in s.workers:
 		px += a.pos.x * 0.37 + a.pos.y
 		age += a.age
-	return "tick %d  workers %d  out %d  eggs %d larvae %d pupae %d  sugar %.4f fat %.4f nest %.3f fridge %.3f protein %.4f  hum %.5f  air %d dug %d  pos %.3f age %.4f  log %d  rng %d" % [
+	var cr: float = s.queen.crop
+	var bf := 0.0
+	for a in s.workers:
+		cr += a.crop * 1.0
+		bf += a.body_fat
+	return "crop %.9f bfat %.9f " % [cr, bf] + "tick %d  workers %d  out %d  eggs %d larvae %d pupae %d  sugar %.4f fat %.4f nest %.3f fridge %.3f protein %.4f  hum %.5f  air %d dug %d  pos %.3f age %.4f  log %d  rng %d" % [
 		s.tick, s.workers.size(), s.outside.size(), s.eggs.size(), s.larvae.size(), s.pupae.size(), s.sugar,
 		s.fat, s.climate.nest, s.climate.fridge, s.protein, s.humidity, s.nest.air, s.nest.excavated, px, age, s.log_entries.size(), s.rng.state]
 

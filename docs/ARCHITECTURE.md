@@ -36,7 +36,7 @@ scripts/
                harmony.gd (แต้ม Colony Harmony), desktop_mode.gd (โหมดวอลเปเปอร์ PART 11), title.gd (หน้าแรก + กล้องเดินชมรัง),
                single_instance.gd (เกมเดียวต่อเครื่อง: ตัวที่สองบอกตัวแรกให้ขึ้นมา, พอร์ต 47815), parts/ (main_base, main_camera)
   dev/         dev_tools.gd (--shot, --selftest), ตัวเลือกบรรทัดคำสั่งอยู่หัว main.gd
-  sim/         simulation.gd + parts/ (sim_state, sim_base, sim_foragers, sim_enemies, sim_warmth, sim_colony, sim_duties), lang.gd (ภาษา),
+  sim/         simulation.gd + parts/ (sim_state, sim_crops, sim_base, sim_foragers, sim_enemies, sim_warmth, sim_colony, sim_duties), lang.gd (ภาษา),
                ant.gd, climate.gd, nest_volume.gd (+ parts/nest_voxels, nest_chambers), pheromone_field.gd, species/
   view/
     common/    ant_model3d.gd (โหลด .antmesh ของมด + ค่าการก้าว), mesh_kit.gd + parts/mesh_kit_base (โมเดลของในกล่อง + โหลด asset),
@@ -65,7 +65,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 ไฟล์ชั้นบนสุดอยู่ที่ path เดิม คนอื่น preload ไฟล์นี้
 | ระบบ | ลำดับชั้น (ล่าง → บน) |
 |---|---|
-| การจำลอง | `sim_state` (ค่าคงที่ ตัวแปร รูปแบบเซฟ; แยก v0.11.8) ← `sim_base` (setup, เวลา, การกระทำของผู้เล่น, ชื่อ) ← `sim_foragers` ← `sim_surface` (ก้อนดินที่มดขุดขนออก, ตาราง id→มด, มดเจอกัน, คิวเดินตาม substep; แยก v0.12.2) ← `sim_enemies` ← `sim_warmth` (อุณหภูมิแต่ละห้องตามความลึก ห้องของลูกมดและราชินี; v0.11.19) ← `sim_brood` (ราชินีวางไข่ ลูกมดโต เพดานรัง; แยก v0.12.1) ← `sim_colony` ← `sim_duties` (เวรในรังทุกครึ่งชั่วโมง, `top_ants`, `duty_of`; ใหม่ v0.11.8) ← `simulation` (step, เซฟ) |
+| การจำลอง | `sim_state` (ค่าคงที่ ตัวแปร รูปแบบเซฟ; แยก v0.11.8) ← `sim_crops` (บัญชีกระเพาะ/ไขมันรายตัว `Ant.crop`, `Ant.body_fat`, `queen.crop` ให้ผลรวมเท่า `sugar`/`fat` ของรัง: `ledger_sync/arrive/set_sugar/start`; ใหม่ v0.13.0 PART 0.13 ขั้น 1) ← `sim_base` (setup, เวลา, การกระทำของผู้เล่น, ชื่อ) ← `sim_foragers` ← `sim_surface` (ก้อนดินที่มดขุดขนออก, ตาราง id→มด, มดเจอกัน, คิวเดินตาม substep; แยก v0.12.2) ← `sim_enemies` ← `sim_warmth` (อุณหภูมิแต่ละห้องตามความลึก ห้องของลูกมดและราชินี; v0.11.19) ← `sim_brood` (ราชินีวางไข่ ลูกมดโต เพดานรัง; แยก v0.12.1) ← `sim_colony` ← `sim_duties` (เวรในรังทุกครึ่งชั่วโมง, `top_ants`, `duty_of`; ใหม่ v0.11.8) ← `simulation` (step, เซฟ) |
 | ส่วน C++ (v0.12.6) | `native/src/*.cpp` → `bin/ant_native.*.dll` (`bin/ant_native.gdextension`, build `tools/native.sh`); GDScript เรียกผ่าน `nest_scene._native` (null = ไม่มี dll → ใช้ GDScript ที่คิดเหมือนกัน); มี `density_at`, `soil_hits` (v0.12.6), `soft_build` (แผนที่ดินทั้งตู้), `field_from` (แผนที่ระยะทางในรัง; v0.12.23) |
 | รัง (การจำลอง) | `nest_voxels` (ช่องดิน, ขุดทั้งห้อง, ความหนาแน่นให้ mesher, ระยะถึงปากรัง) ← `nest_ground` (หิน ราก ชั้นดินเหนียว/ทราย; แยก v0.12.17) ← `nest_store` (ดินชั้นล่างเพิ่ม `extend_down`, ทางไปหน้างาน `work_d`, เซฟ; แยก v0.12.2) ← `nest_chambers` (แผนห้อง) ← `nest_exits` (ทางออกเพิ่มของรังใหญ่; v0.12.21) ← `nest_volume` (มดขุด) — แยก v0.8.5 |
 | รัง 3 มิติ | `nest_scene` ← `nest_volumes` (texture ดินให้ shader; แยก v0.12.17) ← `nest_camera` ← `nest_brood` ← `nest_piles` (กองลูกมด: ของแต่ละชิ้นอยู่ที่เดิม; แยก v0.8.31) ← `nest_lifecycle` ← `nest_feet` (ขา: ก้าวตามระยะที่ตัวไปจริง, จำที่วางเท้าของแต่ละกลุ่มขาส่งให้ shader เป็น `feet_tex`; แยก v0.11.33) ← `nest_bodies` (เดินตามทาง, ตัวกันชน; แยก v0.8.5) ← `nest_rest` (ที่หยุดพัก, ตัวพ้นดิน/ผนัง, ก้าวหลบเมื่อถูกเบียด; แยก v0.8.55) ← `nest_dead` (ศพในรัง + ตัวคาบออก, ศพเป็นร่างในตัวกันชน, ชิ้นเหยื่อที่คาบลงรัง; แยก v0.11.46) ← `nest_bind` (ผูกมดที่วาดกับมดงานจริง, เดินเข้าจากปากรัง/ออกจากร่างที่ใกล้ปากรังสุด; แยก v0.11.44; มดขุด = ร่างของมดตัวจริง `_dig_wid` v0.11.45) ← `nest_soil` (ตัวพ้นดิน: ดันออกจากผนัง, คลำด้วยหนวด, เชิดหัว/ยกท้อง; แยก v0.11.26) ← `nest_contact` (มองข้างหน้าแล้วชะลอ/หยุด, ปีนข้ามมดและลูกมดจากรูปทรงจริง, หันหนีผนังและขอบที่ไม่มีพื้น, ดันออกจากผนังอุโมงค์; ใหม่ v0.8.63) ← `nest_duties` (มดเล่นตามเวรของการจำลอง: บทบาท, คู่ป้อนน้ำหวาน/เลียตัว; ใหม่ v0.11.9) ← `nest_mates` ← `nest_view` (setup, refresh, input) |
@@ -140,7 +140,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
     ใช้กับเซฟ, `slotN.json`, `harmony.json`, `home.json`, ชุดกราฟ (`stats_chart`); `Store.exists` นับช่องที่เหลือแค่ `.tmp`/`.bak` ด้วย,
     `Store.delete` ลบทุกชิ้น, `Store.backup` คัดลอกทุกชิ้นและคืน false ถ้าไม่สำเร็จ (main.gd แล้วเปิดรังทดลองไม่บันทึกทับ)
   - **ขนาด:** `scripts/sim/save_limits.gd` ชุดเดียวทั้งตัวอ่านไฟล์และตัวตรวจ: voxel สูงสุด 16.5 ล้าน × 13 ไบต์ + 96 MB ส่วนอื่น
-- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 11)
+- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 12)
 - **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
   และ**ไม่บันทึกทับ**; อ่านไม่ได้ (ทั้งไฟล์, `.tmp`, `.bak`) → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (สำรองไม่สำเร็จ: รังทดลอง ไม่บันทึกทับ; บอกผู้เล่นทุกกรณี)
@@ -154,6 +154,9 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 - รูปแบบ v4→v5 (v0.7.1): `sugar_income`, `sugar_spend` (ค่าเฉลี่ยราวหนึ่งสัปดาห์ของน้ำตาลที่หามาได้/ที่กิน — ราชินีวางไข่ตามนี้)
 - รูปแบบ v5→v6 (v0.7.3): `stats.dead` = มดงานเท่านั้น + `stats.dead_by` (starve/thirst/old/out/enemy/other),
   `stats.brood_dead` = ไข่/ตัวอ่อน/ดักแด้ที่ตาย (เซฟเก่า: ยอดเดิมทั้งหมดเป็น `other`)
+- รูปแบบ v11→v12 (v0.13.0, PART 0.13 ขั้น 1): `ANT_FIELDS` ต่อท้าย `crop`, `body_fat` (ส่วนแบ่งน้ำตาล/ไขมันของรังรายตัว), `queen.crop`, `queen.fed`;
+  ขั้นแปลง `_v11_to_v12` แบ่งน้ำตาลเท่ากันตัวละ ≤ 2.5 ที่เหลือเข้า `queen.crop`, ไขมันเท่ากัน — ผลรวมเท่าเดิมทุกค่า; ตอนนี้เป็นแค่บัญชี ไม่มีสูตรใดอ่าน
+  (`sugar`/`fat` ของรังยังเป็นตัวจริง); ทุกที่ที่เขียน `sugar`/`fat` ต้องผ่านตัวช่วยใน `sim_crops.gd` หรือเรียก `ledger_sync()` ต่อ (`tests/crop_ledger_test.gd` จับ)
 - ไฟล์เซฟตัวอย่างของแต่ละรูปแบบอยู่ใน `tests/fixtures/` (สร้างจากโค้ดเวอร์ชันนั้น) — เปลี่ยนรูปแบบครั้งใหม่ให้เพิ่มไฟล์ของรูปแบบล่าสุดก่อนเปลี่ยน
 - ทดสอบโดยไม่แตะเซฟจริง: `--sandbox` ใช้ `user://sandbox/`
 

@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_brood.gd"
-## Simulation, layer 8 of 10: colony physiology (days, roles, feeding, moisture, the outworld's food and weather).
+## Simulation, layer 9 of 11: colony physiology (days, roles, feeding, moisture, the outworld's food and weather).
 
 
 func _new_day() -> void:
@@ -271,6 +271,7 @@ func _metabolism(dt: float) -> void:
 		var store := minf(minf(sugar - keep, fat_cap() - fat), workers.size() * 0.15 * dt)
 		fat += store
 		sugar -= store
+	ledger_sync()
 	var dry := humidity < 0.1
 	var starve_k: float = dt * heat * (1.0 - fed) / sp["starve_days_worker"]
 	var risk: float = sp["forager_daily_risk"] * dt

@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_foragers.gd"
-## Simulation, layer 4 of 10: the diggers' pellets carried out of the nest (_surface), the id -> worker map, foragers
+## Simulation, layer 5 of 11: the diggers' pellets carried out of the nest (_surface), the id -> worker map, foragers
 ## meeting head-on (_encounters) and whose turn it is to walk at a substep (_turn_of).
 ## Split from sim_foragers.gd in v0.12.2 (it had grown past ~500 lines).
 

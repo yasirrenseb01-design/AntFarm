@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_base.gd"
-## Simulation, layer 3 of 10: foragers in the outworld (trails, food, obstacles; their meetings: sim_surface.gd).
+## Simulation, layer 4 of 11: foragers in the outworld (trails, food, obstacles; their meetings: sim_surface.gd).
 
 
 func _rebuild_food_grid() -> void:
@@ -371,7 +371,7 @@ func _step_drags() -> void:
 func _arrive(a: Ant) -> void:
 	var had: bool = a.carry != Ant.NONE
 	if a.carry == Ant.SUGAR:
-		sugar = minf(sugar_cap(), sugar + 1.0)
+		ledger_arrive(a, minf(sugar_cap(), sugar + 1.0))
 		sugar_income += 1.0
 		if humidity < 0.8:
 			humidity = minf(0.8, humidity + 0.004)  # honeydew is mostly water (the ants get rid of any excess)

@@ -1,7 +1,7 @@
 extends "res://scripts/sim/parts/sim_duties.gd"
 ## Colony + outworld simulation. Pure data and no nodes, so it can run headless (self-tests,
 ## offline catch-up). This file is the top of the chain: the main step, saving/loading and summaries.
-## Layers: parts/sim_state <- sim_base <- sim_foragers <- sim_surface <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties <- simulation
+## Layers: parts/sim_state <- sim_crops <- sim_base <- sim_foragers <- sim_surface <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties <- simulation
 ## (see docs/ARCHITECTURE.md).
 
 
@@ -97,6 +97,7 @@ func step() -> void:
 		_step_creatures()
 	if _any_dead:
 		workers = workers.filter(func(w): return not w.dead)
+		ledger_sync(true)                             # (their shares stay in the colony)
 		outside = outside.filter(func(w): return not w.dead)
 		_out_ver += 1
 		_any_dead = false
@@ -223,6 +224,9 @@ func from_dict(d: Dictionary) -> void:
 	larvae = d.larvae
 	pupae = d.pupae
 	queen = d.queen
+	if not queen.has("crop"):
+		queen["crop"] = 0.0
+		queen["fed"] = sp["sugar_queen"]
 	sugar = d.sugar
 	fat = d.fat
 	sugar_income = d.sugar_income
@@ -268,6 +272,7 @@ func from_dict(d: Dictionary) -> void:
 		_nest_in_tank()                     # (saved before v0.12.18: the block from 0 - moved to where it lies in the tank)
 	elif scenario == "keeper" and not nest.slab:
 		nest.tank = Vector2i(floori(WORLD.x * 0.5 / nest.VOXEL_MM), floori(WORLD.y * 0.5 / nest.VOXEL_MM))
+	ledger_sync(true)                   # (the shares of sugar and fat added up again: nothing of the colony's moves)
 
 
 ## A short summary for the save menu and the "while you were away" report.

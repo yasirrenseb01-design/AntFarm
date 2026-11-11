@@ -1,5 +1,5 @@
 extends "res://scripts/sim/parts/sim_colony.gd"
-## Simulation, layer 9 of 10 (PART EA3a): duties in the nest. Every half hour of game time each worker inside is given
+## Simulation, layer 10 of 11 (PART EA3a): duties in the nest. Every half hour of game time each worker inside is given
 ## a duty - feeding larvae, carrying brood, giving honeydew to a nestmate (giver and taker paired one by one),
 ## attending the queen, cleaning, digging, standing still or walking about - from the colony's needs, its task
 ## (sim_colony._colony) and its own leanings (Ant.threshold), drawing only on duty_rng (its own generator, seeded from the

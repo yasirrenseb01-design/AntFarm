@@ -72,6 +72,8 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/save_test
 Report "save round trip" ($r -match "SAVE TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/migration_test.gd") 300
 Report "older save formats load and play on identically" ($r -match "MIGRATION TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/crop_ledger_test.gd") 1500
+Report "workers' crops and body fat add up to the colony's sugar and fat" ($r -match "CROP LEDGER TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/reach_test.gd") 300
 Report "ants reach food walled by stones" ($r -match "reached 8/8")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/enemy_test.gd") 300

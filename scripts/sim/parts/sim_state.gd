@@ -1,6 +1,6 @@
 extends RefCounted
-## Simulation, layer 1 of 10: all colony and outworld state - constants, variables, the save format (split from
-## sim_base.gd in v0.11.8). Layers: sim_state <- sim_base <- sim_foragers <- sim_surface <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties
+## Simulation, layer 1 of 11: all colony and outworld state - constants, variables, the save format (split from
+## sim_base.gd in v0.11.8). Layers: sim_state <- sim_crops <- sim_base <- sim_foragers <- sim_surface <- sim_enemies <- sim_warmth <- sim_brood <- sim_colony <- sim_duties
 ## <- simulation.
 
 const Ant := preload("res://scripts/sim/ant.gd")
@@ -56,7 +56,7 @@ var eggs: Array = []
 var larvae: Array = []
 var pupae: Array = []
 var water := 1.0               # the nest's water tank (keeper's formicarium), 0..1: keeps the nest damp while it lasts
-var queen := {"alive": true, "starve": 0.0, "reserve": 0.0, "name": ""}   # reserve: fat body + dissolved wing muscle; name: the keeper's
+var queen := {"alive": true, "starve": 0.0, "reserve": 0.0, "name": "", "crop": 0.0, "fed": 0.0}   # reserve: fat body + dissolved wing muscle; name: the keeper's
 var sugar := 6.0
 var sugar_income := 0.0             # sugar brought home, averaged over about a week (units per week)
 var sugar_spend := 0.0              # sugar eaten by the colony, averaged the same way
@@ -151,7 +151,7 @@ var _unloaded: Array = []                # foragers (ids) who brought honeydew h
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 11             # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 12             # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
 	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt", "name",
-	"duty", "partner", "sweet", "n_larvae", "n_brood", "n_mates", "rest_h", "dig_h", "n_sugar", "n_prey", "n_corpses", "n_fights", "task"]
+	"duty", "partner", "sweet", "n_larvae", "n_brood", "n_mates", "rest_h", "dig_h", "n_sugar", "n_prey", "n_corpses", "n_fights", "task", "crop", "body_fat"]

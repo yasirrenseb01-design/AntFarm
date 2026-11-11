@@ -10,7 +10,7 @@ const FIXTURES := ["res://tests/fixtures/save_v1.antfarm", "res://tests/fixtures
 	"res://tests/fixtures/save_v4.antfarm",
 	"res://tests/fixtures/save_v5.antfarm", "res://tests/fixtures/save_v6.antfarm", "res://tests/fixtures/save_v7.antfarm",
 	"res://tests/fixtures/save_v8.antfarm", "res://tests/fixtures/save_v9.antfarm",
-	"res://tests/fixtures/save_v10.antfarm"]
+	"res://tests/fixtures/save_v10.antfarm", "res://tests/fixtures/save_v11.antfarm"]
 
 
 func _read(path: String) -> Dictionary:
@@ -30,6 +30,16 @@ func _print(sim) -> String:
 		sim.eggs.size(), sim.sugar, sim.humidity, pos, sim.creatures.size(), sim.rng.state]
 
 
+## How far the workers' shares of sugar and fat are from the colony's sums (PART 0.13).
+func _ledger_off(sim) -> float:
+	var c: float = sim.queen.crop
+	var f := 0.0
+	for w in sim.workers:
+		c += w.crop
+		f += w.body_fat
+	return maxf(absf(c - sim.sugar), absf(f - sim.fat))
+
+
 func _init() -> void:
 	var Sim = load(SIM)
 	var M = load(MIGRATIONS)
@@ -46,7 +56,7 @@ func _init() -> void:
 		var had_spider: bool = not d.get("spider", {}).is_empty() or not d.get("creatures", []).is_empty()
 		var sim = Sim.new()
 		sim.from_dict(M.migrate(d, Sim.SAVE_VERSION))
-		var kept: bool = sim.workers.size() == workers and (sim.creatures.size() > 0) == had_spider
+		var kept: bool = sim.workers.size() == workers and (sim.creatures.size() > 0) == had_spider and _ledger_off(sim) < 1e-6
 		# play on for two days (the spider gets its fight), then a save/load round trip must match
 		for i in sim.TPD * 2:
 			sim.step()
@@ -55,7 +65,7 @@ func _init() -> void:
 		for i in sim.TPD:
 			sim.step()
 			copy.step()
-		var same: bool = _print(sim) == _print(copy)
+		var same: bool = _print(sim) == _print(copy) and _ledger_off(sim) < 1e-6 and _ledger_off(copy) < 1e-6
 		print("%s  v%d -> v%d  workers kept %s  spider kept %s  plays on + round trip identical %s" % [path.get_file(), from_v,
 			Sim.SAVE_VERSION, kept, had_spider, same])
 		print("   ", _print(sim))

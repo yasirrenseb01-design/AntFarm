@@ -78,7 +78,7 @@ func _take_shot() -> void:
 	if _opts.has("food"):
 		# (dev: --food=<sugar>,<protein>: the stores set so, the food lying in the box taken away - the keeper's warnings)
 		var fp: PackedStringArray = String(_opts["food"]).split(",")
-		sim.sugar = float(fp[0])
+		sim.ledger_set_sugar(float(fp[0]))
 		sim.protein = float(fp[1]) if fp.size() > 1 else sim.protein
 		sim.foods.clear()
 		print("food days: ", sim.food_days())

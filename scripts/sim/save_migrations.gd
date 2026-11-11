@@ -1,4 +1,6 @@
 extends RefCounted
+
+const Species := preload("res://scripts/sim/species/registry.gd")
 ## Brings a saved colony from an older version of the game up to the current format, one step at a
 ## time, so a keeper's colony survives every update. When the save format changes:
 ##   1. raise SAVE_VERSION in parts/sim_state.gd,
@@ -31,6 +33,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				_v9_to_v10(d)
 			10:
 				pass        # v0.11.12: journal lines are {key, args} now; the older ones keep their Thai text and show as saved
+			11:
+				_v11_to_v12(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -118,3 +122,21 @@ static func _v9_to_v10(d: Dictionary) -> void:
 	d["carry_due"] = 0
 	d["unloaded"] = []
 	d["duty_rng"] = [int(d.rng_seed) ^ 0x2B992DDF]       # (DUTY_SEED: a fresh generator for the duties)
+
+
+## v0.13.0 (PART 0.13 step 1): every worker gets its own share of the colony's sugar and fat (the ANT_FIELDS "crop",
+## "body_fat"), a ledger kept equal to the colony's sugar and fat; the queen gets a crop and what she is fed. The shares
+## are even (a crop holds at most 2.5 units; what does not fit, the +10 of the colony's cap, goes to the queen's crop).
+const CROP_CAP := 2.5
+
+
+static func _v11_to_v12(d: Dictionary) -> void:
+	var n: int = d.workers.size()
+	var sugar := float(d.sugar)
+	var crop := minf(sugar / n, CROP_CAP) if n > 0 else 0.0
+	var each_fat := float(d.fat) / n if n > 0 else 0.0
+	for row in d.workers:
+		row.append(crop)
+		row.append(each_fat)
+	d.queen["crop"] = maxf(0.0, sugar - crop * n)
+	d.queen["fed"] = float(Species.data(String(d.get("species", Species.DEFAULT)))["sugar_queen"])

@@ -85,6 +85,8 @@ var name := ""            # what the keeper calls it ("" = no name; saved, never
 var duty := D_OUT        # what it does this half hour inside (D_*; parts/sim_duties.gd)
 var partner := 0         # who it gives honeydew to / gets it from (worker id), 0 = nobody
 var sweet := 0.0         # honeydew in its crop to pass on, 0..1 (fills when it brings sugar home or is given some)
+var crop := 0.0          # its share of the colony's sugar (units; PART 0.13 step 1: a ledger only, the sum is sim.sugar - parts/sim_crops.gd)
+var body_fat := 0.0      # its share of the colony's fat (the same: the sum is sim.fat)
 # what it has done in its life (the star ants panel; never read by the simulation)
 var n_larvae := 0        # times it fed a larva
 var n_brood := 0         # eggs, larvae and cocoons carried
