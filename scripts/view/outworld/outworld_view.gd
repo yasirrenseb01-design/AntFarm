@@ -81,6 +81,7 @@ func setup(s) -> void:
 	_spider_mat = sp_mat
 	_creature_views["wolf_spider"] = {"mm": _multimesh(Props.spider(), sp_mat, false, true), "mat": sp_mat,
 		"scale": 0.85, "gait": 0.5}
+	CreatureRig.setup(_creature_views["wolf_spider"], "creatures/wolf_spider")
 	var ce_mat := ShaderMaterial.new()
 	ce_mat.shader = load("res://shaders/creatures/centipede.gdshader")
 	_creature_views["centipede"] = {"mm": _multimesh(Props.asset("creatures/centipede"), ce_mat, false, true), "mat": ce_mat,

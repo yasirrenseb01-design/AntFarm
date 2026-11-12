@@ -36,6 +36,18 @@ BE_LEGS = [
 ]
 
 
+def up_knee(hip, ankle, l1, l2):
+    """The knee bent upward in the upright plane through hip and ankle (leg_ik.gdshaderinc, knee_up 1)."""
+    h, a = Vector(hip), Vector(ankle)
+    d = a - h
+    dist = d.length
+    d.normalize()
+    al = (l1 * l1 - l2 * l2 + dist * dist) / (2.0 * dist)
+    up = math.sqrt(max(0.0, l1 * l1 - al * al))
+    nn = (Vector((0.0, 1.0, 0.0)) - d * d.y).normalized()
+    return tuple(h + d * al + nn * up)
+
+
 def be_knee(hip, ankle, femur, knee_y, tibia, bend):
     """The knee for an ankle there: the femur swings level round the hip (its end at knee_y), the tibia reaches down to
     the ankle - two circles on the ground plan. The same sums as shaders/creatures/leg_ik.gdshaderinc."""

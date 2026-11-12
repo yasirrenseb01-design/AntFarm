@@ -334,8 +334,10 @@ elif WHAT == "plant":
         preview_material()
         render(SHOT, Vector((0, 0, 13.0)), 75.0, Vector((0.8, -1.0, 0.35)))
 elif WHAT == "spider":
-    wolf_spider()
+    _joints = wolf_spider()
     export(OUT + "/creatures/wolf_spider.antmesh")
+    with open(OUT + "/creatures/wolf_spider.json", "w") as fh:
+        json.dump(_joints, fh)
     if SHOT:
         preview_material()
         view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.6, -1.0, 0.8)))

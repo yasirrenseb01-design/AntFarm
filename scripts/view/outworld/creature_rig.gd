@@ -34,6 +34,7 @@ static func setup(cv: Dictionary, name: String) -> void:
 	mat.set_shader_parameter("bend", bends)
 	cv["stride"] = float(d.get("stride", 3.0))
 	mat.set_shader_parameter("stride", cv.stride)
+	mat.set_shader_parameter("knee_up", float(d.get("knee_up", 0.0)))      # (how the knee is bent: leg_ik.gdshaderinc)
 
 
 ## The gait phase a creature is drawn at this frame. v: its smoothing state (kept there as "gaitd"); s: the simulation's;
