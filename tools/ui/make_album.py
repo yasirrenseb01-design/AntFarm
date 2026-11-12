@@ -43,8 +43,33 @@ for y in range(H):
                     alpha[cy, cx] = 0.0
 # faint paper left between: below 0.12 nothing
 alpha[alpha < 0.12] = 0.0
+# the paper inside the drawing (the eye's pale oval, the light on the gaster) is part of it: whatever the paper round
+# it cannot reach without crossing ink is filled in, opaque (the keeper, 2026-11-12: "I cannot see its eye")
+ink = alpha > 0.3
+outside = np.zeros_like(ink)
+dq = deque()
+for y in range(H):
+    for x in (0, W - 1):
+        if not ink[y, x] and not outside[y, x]:
+            outside[y, x] = True
+            dq.append((y, x))
+for x in range(W):
+    for y in (0, H - 1):
+        if not ink[y, x] and not outside[y, x]:
+            outside[y, x] = True
+            dq.append((y, x))
+while dq:
+    cy, cx = dq.popleft()
+    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        ny, nx = cy + dy, cx + dx
+        if 0 <= ny < H and 0 <= nx < W and not ink[ny, nx] and not outside[ny, nx]:
+            outside[ny, nx] = True
+            dq.append((ny, nx))
+inside = ~outside & ~ink
+alpha[inside] = 1.0
 # the ink: the drawing's own colours, darkened a little (sepia on the cream sheet)
 rgb = np.clip(q * 0.8, 0, 255)
+rgb[inside] = np.clip(q[inside] * 1.02, 0, 255)          # (the paper within keeps its own light colour)
 out = np.dstack([rgb, alpha * 255.0]).astype(np.uint8)
 Image.fromarray(out, "RGBA").save("%s/assets/ui/album/%s_queen.png" % (root, SP))
 print("album pictures made:", w // 2, "x", h, "each; queen", W, "x", H)

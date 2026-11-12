@@ -21,6 +21,11 @@ func _sync_rocks() -> void:
 		_ant_shader_mat.set_shader_parameter("prop_tex", tex)
 		if _sel_shader_mat != null:
 			_sel_shader_mat.set_shader_parameter("prop_tex", tex)
+		for k in _creature_views:              # (the creatures walk over it too: shaders/creatures/props_h.gdshaderinc)
+			var cm: ShaderMaterial = _creature_views[k].mat
+			cm.set_shader_parameter("prop_tex", tex)
+			cm.set_shader_parameter("prop_size", Vector2(_props_h.w, _props_h.h) * PropHeights.CELL)      # (as the ants': outworld_view.gd)
+			cm.set_shader_parameter("has_props", 1.0)
 	for rk in sim.rocks:
 		var outline := PackedVector2Array()
 		for p in rk.poly:

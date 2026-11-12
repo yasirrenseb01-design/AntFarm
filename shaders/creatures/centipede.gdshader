@@ -16,6 +16,7 @@ render_mode diffuse_burley;
 #define LEGS_MAX 30
 #include "res://shaders/terrain/ground_h.gdshaderinc"
 #include "res://shaders/creatures/leg_ik.gdshaderinc"
+#include "res://shaders/creatures/props_h.gdshaderinc"
 
 // from the model (tools/blender/props/centipede.py)
 const float ANT_X = 9.2;        // antenna bases
@@ -35,6 +36,7 @@ float body_lunge(float x, float t) {
 }
 
 void vertex() {
+	float rest_y = VERTEX.y;           // (the litter under its feet: props_h.gdshaderinc)
 	float part = floor(COLOR.a * 16.0 + 0.5);
 	float gait = INSTANCE_CUSTOM.x;
 	float state = INSTANCE_CUSTOM.y;
@@ -90,6 +92,7 @@ void vertex() {
 	}
 	VERTEX = v;
 	VERTEX = follow_ground(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
+	VERTEX = on_props(VERTEX, MODEL_MATRIX, part == 1.0 ? 1.0 : 0.0, rest_y, 8.0);    // and over the litter
 }
 
 void fragment() {

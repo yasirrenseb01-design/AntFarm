@@ -340,8 +340,11 @@ elif WHAT == "spider":
         json.dump(_joints, fh)
     if SHOT:
         preview_material()
-        view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.6, -1.0, 0.8)))
-        render(SHOT, Vector((-0.5, 0, 1.8)), 34.0, view)
+        view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1)), "face": Vector((1.0, -0.25, 0.3))}.get(globals().get("VIEW", ""), Vector((0.6, -1.0, 0.8)))
+        if globals().get("VIEW", "") == "face":
+            render(SHOT, Vector((4.3, 0, 1.9)), 9.0, view)          # (the face close up: v0.13.4)
+        else:
+            render(SHOT, Vector((-0.5, 0, 1.8)), 34.0, view)
 elif WHAT == "centipede":
     _joints = centipede()
     export(OUT + "/creatures/centipede.antmesh")

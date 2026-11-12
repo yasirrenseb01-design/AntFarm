@@ -5,7 +5,14 @@
 # Legs (v0.12.34): jointed like the ground beetle's (beetle.py: loft, be_knee) - the 11th number of each vertex is its
 # leg piece (1 coxa + femur, 2 patella to metatarsus, 3 tarsus; "ANT2") and the joints at rest go to wolf_spider.json,
 # which the game hands to shaders/creatures/leg_ik.gdshaderinc. Vertex alpha = part / 16: 0 body, 1-4 left legs front to
-# back, 5-8 right legs (the json's legs in that order).
+# back, 5-8 right legs (the json's legs in that order), 9/10 left/right pedipalps, 11/12 left/right chelicerae (v0.13.4:
+# they move - holding prey, chewing). The 11th number 9 on the eyes: glossy (spider.gdshader).
+# The face (v0.13.4, the keeper's close-up photos of a wolf spider): the two big posterior median eyes looking forward
+# over a straight row of four small anterior eyes, the posterior laterals on top behind; under them the chelicerae, big
+# and furry, banded, side by side to the ground, a red-brown boss at the top of each; the pedipalps thick and furry,
+# reaching forward beside them.
+SP_PALP_BASE = (3.85, 1.75, 0.72)    # the pedipalp's base, one side (spider.gdshader: PALP_BASE)
+SP_CHEL_TOP = (4.3, 2.35, 0.36)      # the chelicera's top, one side (spider.gdshader: CHEL_TOP)
 
 SP_FUR = (0.31, 0.25, 0.19)
 SP_DARK = (0.13, 0.1, 0.08)
@@ -91,20 +98,43 @@ def wolf_spider():
     # the carapace: pear-shaped, the head high in front, the sides coming down over the legs' bases; under it the sternum
     loft("carapace", 0.0, 4.3, _sp_car_w, lambda x: 1.25, _sp_car_top, carapace_col, 0.8, 34, 32, 0.06, 4, 1700, eb=0.5, wb=0.7)
     ell("sternum", (1.9, 1.15, 0), (1.7, 0.3, 1.1), 0, const(SP_DARK), 10)
-    # eyes: a row of four small ones low on the face, two big forward-facing ones, two on top
+    # eyes: a straight row of four small ones low on the face, the two big posterior medians above them looking
+    # forward, the two posterior laterals on top behind - glossy black (the 11th number 9)
+    made = len(OBJS)
     for side in (-1, 1):
-        for z in (0.15, 0.42):
-            ell("eye", (4.27, 2.5, z * side), (0.11, 0.11, 0.11), 0, const((0.03, 0.03, 0.03)), 8)
-        ell("eye", (4.08, 3.0, 0.42 * side), (0.3, 0.3, 0.3), 0, const((0.02, 0.02, 0.02)), 12)
-        ell("eye", (3.45, 3.42, 0.72 * side), (0.24, 0.24, 0.24), 0, const((0.02, 0.02, 0.02)), 10)
-        # chelicerae (fangs folded under) and the short leg-like pedipalps
-        tube("chelicera", [(4.05, 2.0, 0.32 * side), (4.4, 1.4, 0.35 * side), (4.3, 0.9, 0.3 * side)],
-            [0.34, 0.3, 0.18], 0, const(SP_DARK), 8)
-        tube("palp", [(3.75, 1.7, 0.75 * side), (4.7, 1.9, 1.25 * side), (5.2, 1.1, 1.15 * side), (5.4, 0.45, 1.05 * side)],
-            [0.22, 0.21, 0.18, 0.14], 0, lambda g, n: (SP_FUR[0], SP_FUR[1], SP_FUR[2], 0.0), 6)
+        for z in (0.13, 0.4):
+            ell("eye", (4.3, 2.52, z * side), (0.12, 0.13, 0.13), 0, const((0.02, 0.02, 0.025)), 10)
+        ell("eye", (4.12, 3.02, 0.36 * side), (0.34, 0.36, 0.34), 0, const((0.015, 0.015, 0.02)), 16)
+        ell("eye", (3.45, 3.45, 0.74 * side), (0.25, 0.25, 0.25), 0, const((0.015, 0.015, 0.02)), 12)
+    for o in OBJS[made:]:
+        o["seg"] = 9.0
+    # a pale brow between the big eyes
+    ell("brow", (4.0, 3.38, 0.0), (0.26, 0.14, 0.2), 0, const(SP_PALE), 10)
     tube("spinnerets", [(-6.5, 1.75, 0), (-6.95, 1.6, 0)], [0.3, 0.15], 0, const(SP_DARK), 6)
     for o in OBJS:
         COLFNS[o["colfn"]] = with_part(COLFNS[o["colfn"]], 0)          # every body piece is part 0
+    for side in (-1, 1):
+        si = 0 if side < 0 else 1
+        # the chelicerae: big, furry, banded light and dark down their length, side by side to the ground; a red-brown
+        # boss at the outer top, the fang folded under at the bottom (part 11 / 12: they open and chew)
+        def chel_col(g, n, part=11 + si):
+            band = 0.5 + 0.5 * math.sin(g.y * 9.0 + math.sin(g.z * 21.0) * 0.6)
+            c = SP_DARK if band < 0.42 else SP_FUR
+            m = _mottle(g)
+            return (c[0] * m, c[1] * m, c[2] * m, part / 16.0)
+        ct = SP_CHEL_TOP
+        blobs("chelicera", [((ct[0] + 0.1, ct[1] - 0.8, ct[2] * side), (0.5, 0.95, 0.4), Matrix.Rotation(0.14, 4, "Z"))],
+            0, chel_col, 0.05, 3, 700)
+        ell("boss", (ct[0] + 0.26, ct[1] - 0.08, (ct[2] + 0.28) * side), (0.12, 0.07, 0.13), 0,
+            const((0.3, 0.09, 0.05), (11 + si) / 16.0), 8)
+        tube("fang", [(ct[0] + 0.3, ct[1] - 1.55, ct[2] * side), (ct[0] + 0.42, ct[1] - 1.72, ct[2] * side * 0.5),
+                      (ct[0] + 0.35, ct[1] - 1.8, ct[2] * side * 0.15)], [0.07, 0.05, 0.015], 0,
+            const((0.22, 0.06, 0.03), (11 + si) / 16.0), 5, cap=False)
+        # the pedipalps: thick, furry, reaching forward and down beside the chelicerae (part 9 / 10: they hold prey)
+        pb = SP_PALP_BASE
+        tube("palp", [(pb[0], pb[1], pb[2] * side), (4.75, 1.95, 1.05 * side), (5.35, 1.35, 1.0 * side), (5.55, 0.65, 0.86 * side),
+                      (5.5, 0.3, 0.75 * side)], [0.27, 0.27, 0.25, 0.21, 0.16], 0,
+            lambda g, n, part=9 + si: (SP_FUR[0] * _mottle(g), SP_FUR[1] * _mottle(g), SP_FUR[2] * _mottle(g), part / 16.0), 8)
     # eight jointed legs (see the top of the file): the coxa out from under the carapace, the femur up to a high knee, the
     # patella, tibia and metatarsus down to the ground in one gently bent piece, the tarsus on the ground
     joints = {"hips": [None] * 8, "knees": [None] * 8, "ankles": [None] * 8, "bends": [None] * 8, "stride": SP_STRIDE, "knee_up": 1.0}

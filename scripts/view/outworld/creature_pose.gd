@@ -69,9 +69,12 @@ static func update(o, delta: float) -> void:
 			var origin := Vector3(p.x, o.ground_h(p.x, p.y), p.y) + b * (lift * sc)
 			mm.set_instance_transform(i, Transform3D(lb.scaled_local(Vector3.ONE * sc), origin))
 			var gait: float = CreatureRig.gait(cv, v, s, step.length() * (1.0 - exp(-15.0 * delta)), delta)
-			# y: 0..1 into a strike, or 3 + how hard it kicks once it is over on its back; w: how much it is walking,
-			# + 2 while ants are holding it down (it writhes)
+			# y: 0..1 into a strike, or 3 + how hard it kicks once it is over on its back, 5 feeding on prey held before its
+			# fangs / 6 shaking a bitten one (the spider: enemies/spider_prey.gd); w: how much it is walking, + 2 while ants
+			# are holding it down (it writhes)
 			var y: float = (3.0 + _kick(s)) if v.roll > 0.5 else float(v.sk)
+			if s.has("prey") and v.roll <= 0.5:
+				y = 6.0 if String(s.prey.get("mode", "")) == "shake" else 5.0
 			mm.set_instance_custom_data(i, Color(gait, y, o._t, v.mv + (2.0 if held or back else 0.0)))
 			v.xf = mm.get_instance_transform(i)
 			v.kind = kind
@@ -96,3 +99,23 @@ static func grip_h(o, foe_id: int, h: float) -> float:
 	if r <= 0.0:
 		return h
 	return lerpf(h, minf(h, float(BACK_TOP_MM.get(String(v.get("kind", "")), h))), smoothstep(0.0, 1.0, r))
+
+
+## An ant in a spider's fangs (enemies/spider_prey.gd): held up across them, belly to the fangs, head down a little,
+## the palps and front legs closed on it (spider.gdshader); shaken from side to side when it is to be dropped.
+static func prey_xf(o, a, tr: Transform3D) -> Transform3D:
+	var v: Dictionary = o._creature_vis.get(a.foe, {})
+	if not v.has("xf"):
+		return tr
+	var shake := 0.0
+	for c in o.sim.creatures:
+		if c.id == a.foe and c.has("prey") and String(c.prey.get("mode", "")) == "shake":
+			shake = 1.0
+	var xf: Transform3D = v.xf
+	var t: float = o._t
+	var at: Vector3 = xf * Vector3(5.75, 1.3 + 0.08 * sin(t * 5.0), 0.38 * shake * sin(t * 19.0))
+	var fwd: Vector3 = xf.basis.x.normalized()
+	var side: Vector3 = xf.basis.z.normalized()
+	var s: float = tr.basis.get_scale().x
+	var b := Basis(side, fwd, side.cross(fwd)).rotated(side, -0.35 + 0.12 * sin(t * 3.1)).rotated(fwd, 0.25 * shake * sin(t * 19.0))
+	return Transform3D(b.scaled(Vector3.ONE * s), at)

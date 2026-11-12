@@ -88,7 +88,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band
 	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
 	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos)
-	if not leaving and inside and sim.blocked(np + Vector2.from_angle(c.ang) * STATS.length * 0.5):
+	if not leaving and inside and sim.creature_blocked(np + Vector2.from_angle(c.ang) * STATS.length * 0.5):
 		c.ang += 1.6
 		if sim.panicking(c):
 			sim.flip_over(c)             # (ran into the side of the box in its panic)

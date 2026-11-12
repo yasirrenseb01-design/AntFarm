@@ -17,6 +17,7 @@ const ENEMY_KINDS := {
 const ACID := 0.0004        # health an ant's bite + formic acid takes off per tick
 const ACT_ATTACK := 13      # view: biting and spraying (gaster curled forward)
 const ACT_ALARM := 14       # view: running in alarmed, mandibles open
+const SpiderPrey := preload("res://scripts/sim/enemies/spider_prey.gd")
 const FIGHT_FROM := 20      # a colony smaller than this hides from big enemies instead of mobbing them
 const RELEASE_MAX := 3      # enemies in the box at once when the keeper lets them in (the HUD's enemy panel)
 const CROWD_SHARE := 0.0   # what an ant beyond an enemy's "hold" adds to biting and pinning it (in each other's way)
@@ -148,7 +149,7 @@ func _nearest_creature(p: Vector2, within: float):
 func _clinging(c: Dictionary) -> Array:
 	var out := []
 	for a in outside:
-		if a.foe == c.id and a.busy > 0 and not a.dead:
+		if a.foe == c.id and a.busy > 0 and not a.dead and a.act != SpiderPrey.ACT_PREY:
 			out.append(a)
 	return out
 
@@ -188,6 +189,17 @@ func struggle_free(c: Dictionary, free: float) -> float:
 		return free
 	c["panic"] = p - 1
 	return maxf(free, 0.6)
+
+
+## A wall, a big stone, or a carcass or dead cricket lying there: a creature goes round it (v0.13.4: it walked through
+## a cricket - the keeper, 2026-11-12). Small stones and litter it walks over (the view lifts it on them).
+func creature_blocked(p: Vector2, reach := 3.0) -> bool:
+	if blocked(p):
+		return true
+	for f in foods:
+		if (f.kind == "cricket" or String(f.kind).ends_with("_dead")) and p.distance_squared_to(f.pos) < pow(float(f.r) + reach, 2.0):
+			return true
+	return false
 
 
 func panicking(c: Dictionary) -> bool:
@@ -234,6 +246,8 @@ func _step_creatures() -> void:
 			c["flip"] = 0
 			c["panic"] = 0
 			_log(T.enemy_dying, "ok", [L.k(K.NAME)])
+		if on_back(c):
+			SpiderPrey.let_go(self, c)          # (turned over or dying, it lets go of its prey)
 		if c.has("dying") and int(c.dying) <= 0:
 			_creature_dies(c, clinging)
 			gone.append(c)
@@ -269,6 +283,7 @@ func _creature_dies(c: Dictionary, clinging: Array) -> void:
 
 
 func _release(c: Dictionary, clinging: Array) -> void:
+	SpiderPrey.let_go(self, c)
 	for a in clinging:
 		a.busy = 0
 		a.act = 0
@@ -301,6 +316,8 @@ func _shake_off(a: Ant, c: Dictionary) -> void:
 
 ## A worker answering the alarm: run to the nearest enemy, seize it, bite and spray.
 func _step_defender(a: Ant) -> void:
+	if a.act == SpiderPrey.ACT_PREY:
+		return                       # (in a spider's fangs: enemies/spider_prey.gd moves it)
 	var n := ant_substep
 	var c = _creature(a.foe) if a.foe != 0 else null
 	if c == null:

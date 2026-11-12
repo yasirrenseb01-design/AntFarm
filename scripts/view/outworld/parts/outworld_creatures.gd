@@ -156,6 +156,9 @@ func _update_ants(delta: float) -> void:
 				var gp: Array = Grip.pose(foe, sim.ENEMY_KINDS[foe.kind], int(foe.spots[a.id]))
 				var side_ax: Vector3 = tr.basis.z.normalized()
 				tr = Transform3D(Basis(side_ax, float(gp[1])) * tr.basis, tr.origin + up * CreaturePose.grip_h(self, a.foe, float(gp[0])) / MM_PER_UNIT)
+		if a.act == 23 and a.busy > 0:
+			act = 13                     # in a spider's fangs: held up across them, kicking and spraying (creature_pose.gd)
+			tr = CreaturePose.prey_xf(self, a, tr)
 		if flung > 0.0:
 			# thrown clear: over onto its back in the air, legs flailing where it lands, then a roll back upright
 			var roll := PI * smoothstep(0.0, 0.25, flung) + PI * smoothstep(0.7, 0.92, flung)
@@ -572,6 +575,10 @@ func _brush_ants() -> void:
 			continue
 		var o: Vector3 = (a.vxf as Transform3D).origin
 		near.append([Vector2(o.x, o.z).distance_squared_to(tp), o, a.size])
+	for v in _creature_vis.values():          # (the enemies push the grass and leaves aside too: v0.13.4, legs ~6 units out)
+		if v.get("xf") is Transform3D:
+			var co: Vector3 = (v.xf as Transform3D).origin
+			near.append([-1.0, co + Vector3(0, 0.5, 0), 6.0 * (v.xf as Transform3D).basis.get_scale().x / (1.6 * ANT_SCALE)])
 	if near.size() > BRUSH_N:
 		near.sort_custom(func(p, q): return p[0] < q[0])
 	_brush.resize(BRUSH_N)

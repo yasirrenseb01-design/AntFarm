@@ -19,6 +19,7 @@ mat3 rot_z(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(c, s,
 
 #include "res://shaders/terrain/ground_h.gdshaderinc"
 #include "res://shaders/creatures/leg_ik.gdshaderinc"
+#include "res://shaders/creatures/props_h.gdshaderinc"
 
 void vertex() {
 	float part = floor(COLOR.a * 16.0 + 0.5);
@@ -73,6 +74,7 @@ void vertex() {
 		NORMAL = R * NORMAL;
 	}
 	VERTEX = follow_ground(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
+	VERTEX = on_props(VERTEX, MODEL_MATRIX, (part >= 4.0 && part <= 9.0) ? 1.0 : 0.0, obj.y, 8.0);    // and over the litter
 }
 
 void fragment() {

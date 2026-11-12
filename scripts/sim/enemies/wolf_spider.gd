@@ -7,6 +7,7 @@ extends RefCounted
 
 const T := preload("res://scripts/sim/text_th.gd")
 const L := preload("res://scripts/sim/lang.gd")
+const SpiderPrey := preload("res://scripts/sim/enemies/spider_prey.gd")      # (taking prey: v0.13.4)
 const IN_NEST := 0
 
 const NAME := "enemy_wolf_spider"            # (keys of lang/strings.csv)
@@ -62,6 +63,8 @@ static func spawn(sim) -> Dictionary:
 ## One tick. Returns false once the spider has left the box. `clinging` = ants holding on to it.
 static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	s.life -= 1
+	if SpiderPrey.step(sim, s, clinging, sim.ENEMY_KINDS[s.kind]):
+		return true                         # (prey in its fangs: it stands and feeds, or shakes it)
 	var held := clinging.size()
 	var free: float = sim.struggle_free(s, clampf(1.0 - float(s.get("load", held)) / STATS.pin, 0.0, 1.0))      # pinned by the ants holding on (a panicked rush drags them)
 	if s.hp < STATS.flee_at and not s.get("fleeing", false):
@@ -82,8 +85,18 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 		target_ang = (s.exit - s.pos).angle()
 	elif (s.get("fleeing", false) or sim.panicking(s)) and best != null:
 		target_ang = (s.pos - best.pos).angle()          # shut in: away from the ants, round the box
-	elif best != null:
+	elif best != null and bd < 70.0:
 		target_ang = (best.pos - s.pos).angle()
+	else:
+		# no ant near: a dead fly lying in the box, if there is one (it takes dead insects too)
+		var fly = SpiderPrey.fly_near(sim, s)
+		if fly != null:
+			target_ang = (fly.pos - s.pos).angle()
+			if SpiderPrey.mouth(s).distance_to(fly.pos) < 5.0:
+				SpiderPrey.catch_fly(sim, s, fly)
+				return true
+		elif best != null:
+			target_ang = (best.pos - s.pos).angle()
 	# a rush at an ant close by (not while ants hold it, or on its way out)
 	s.dash_cd = maxi(0, int(s.get("dash_cd", 0)) - 1)
 	if not leaving and held == 0 and best != null and bd < STATS.dash_at and s.dash_cd == 0:
@@ -101,7 +114,7 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band
 	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
 	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(s.pos)
-	if not leaving and inside and sim.blocked(np):
+	if not leaving and inside and sim.creature_blocked(np, 10.0):
 		s.ang += 2.0
 		if sim.panicking(s):
 			sim.flip_over(s)             # (ran into the side of the box in its panic)
@@ -113,6 +126,13 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 		victim = clinging[sim.rng.randi() % held]
 	elif best != null and bd < 7.0:
 		victim = best
+	# an ant at its fangs - out on its own, or one of the first to hold it - seized, to eat or to shake and drop
+	var front = SpiderPrey.at_fangs(sim, s) if held <= 3 else null
+	if front != null and sim.rng.randf() < STATS.bite * 3.0:
+		if front.busy > 0:
+			front.busy = 0                       # (it let go of the spider to be seized)
+		SpiderPrey.catch_ant(sim, s, front)
+		return true
 	if victim != null and sim.rng.randf() < STATS.bite * (0.4 + 0.6 * free):
 		s.strike = 18
 		sim._bite(victim, s)
