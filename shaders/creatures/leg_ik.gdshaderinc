@@ -11,7 +11,9 @@
 // (back by `stride` over the stance), then it is lifted and carried forward. The same sums as be_knee() in
 // tools/blender/props/beetle.py and tools/dev/leg_clip.py.
 
-const int LEGS_MAX = 8;
+#ifndef LEGS_MAX
+#define LEGS_MAX 8
+#endif
 uniform vec3 hip[LEGS_MAX];
 uniform vec3 knee[LEGS_MAX];
 uniform vec3 ankle[LEGS_MAX];
@@ -19,7 +21,7 @@ uniform vec2 bend[LEGS_MAX];          // which side of the hip-ankle line the kn
 uniform float knee_up = 0.0;
 uniform float stride = 3.0;           // how far the body goes in one turn of the gait (model units)
 const float LEG_DUTY = 0.62;          // the share of a step the foot is on the ground
-const float LEG_LIFT = 0.55;          // how high the ankle is carried forward
+uniform float leg_lift = 0.55;        // how high the ankle is carried forward (the model's .json "lift")
 
 // v turned as a is turned onto b (both any length; not for opposite ones)
 vec3 leg_turn(vec3 v, vec3 a, vec3 b) {
@@ -40,7 +42,7 @@ vec3 leg_ankle(int i, float turn, float walk) {
 	} else {
 		float u = (p - LEG_DUTY) / (1.0 - LEG_DUTY);
 		a.x += stride * walk * (-0.5 + u * u * (3.0 - 2.0 * u));
-		a.y += LEG_LIFT * walk * sin(u * PI);
+		a.y += leg_lift * walk * sin(u * PI);
 	}
 	return a;
 }

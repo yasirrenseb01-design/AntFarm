@@ -343,8 +343,10 @@ elif WHAT == "spider":
         view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.6, -1.0, 0.8)))
         render(SHOT, Vector((-0.5, 0, 1.8)), 34.0, view)
 elif WHAT == "centipede":
-    centipede()
+    _joints = centipede()
     export(OUT + "/creatures/centipede.antmesh")
+    with open(OUT + "/creatures/centipede.json", "w") as fh:
+        json.dump(_joints, fh)
     if SHOT:
         preview_material()
         view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.5, -1.0, 0.9)))

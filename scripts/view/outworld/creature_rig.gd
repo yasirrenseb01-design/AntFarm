@@ -5,7 +5,7 @@ extends RefCounted
 ## it really covers, one turn for each `stride`, so a foot set down stays where it is while the body goes over it.
 
 const U := 1.0 / 3.0            # simulation px -> units (outworld_scene.U)
-const LEGS_MAX := 8             # (leg_ik.gdshaderinc)
+const LEGS_MAX := 8             # (leg_ik.gdshaderinc; a model with more legs says so in its shader: the centipede's 30)
 const HELD_TURNS := 1.6         # held down by ants its legs work on the spot: turns of the gait a second
 
 
@@ -21,19 +21,20 @@ static func setup(cv: Dictionary, name: String) -> void:
 	var mat: ShaderMaterial = cv.mat
 	for key in ["hips", "knees", "ankles"]:
 		var pts := PackedVector3Array()
-		pts.resize(LEGS_MAX)
 		var rows: Array = d.get(key, [])
-		for i in mini(rows.size(), LEGS_MAX):
+		pts.resize(maxi(LEGS_MAX, rows.size()))
+		for i in rows.size():
 			pts[i] = Vector3(rows[i][0], rows[i][1], rows[i][2])
 		mat.set_shader_parameter(key.trim_suffix("s"), pts)
 	var bends := PackedVector2Array()
-	bends.resize(LEGS_MAX)
 	var rows: Array = d.get("bends", [])
-	for i in mini(rows.size(), LEGS_MAX):
+	bends.resize(maxi(LEGS_MAX, rows.size()))
+	for i in rows.size():
 		bends[i] = Vector2(rows[i][0], rows[i][1])
 	mat.set_shader_parameter("bend", bends)
 	cv["stride"] = float(d.get("stride", 3.0))
 	mat.set_shader_parameter("stride", cv.stride)
+	mat.set_shader_parameter("leg_lift", float(d.get("lift", 0.55)))
 	mat.set_shader_parameter("knee_up", float(d.get("knee_up", 0.0)))      # (how the knee is bent: leg_ik.gdshaderinc)
 
 

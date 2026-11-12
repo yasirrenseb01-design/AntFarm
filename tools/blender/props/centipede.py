@@ -7,7 +7,10 @@
 # Facing +x, ~16.5 units long (25 mm), legs on the ground. Alpha = part / 16 for
 # shaders/creatures/centipede.gdshader: 0 body, 1 walking legs, 2 antennae, 3 ultimate (last) legs,
 # 4 forcipules (venom claws). The shader sends the leg strokes and the body wave down the body by x.
-# Shader constants that depend on this shape: ANT_X (antenna base 9.2), FANG_X (8.6), BODY_HALF (8.3).
+# Shader constants that depend on this shape: ANT_X (antenna base 9.2), FANG_X (8.6).
+# Walking legs (v0.12.35): jointed like the spider's (knee bent upward: up_knee in beetle.py) - 30 of them, so each
+# vertex's 11th number is 4 x the leg's number + its piece (1 coxa + femur, 2 tibia, 3 claw), the legs numbered pair by
+# pair from the head, left then right; their joints at rest go to centipede.json for shaders/creatures/leg_ik.gdshaderinc.
 
 LI_PLATE = (0.36, 0.17, 0.08)      # chestnut tergites
 LI_EDGE = (0.22, 0.1, 0.05)        # darker hind margins
@@ -17,8 +20,12 @@ LI_LEG = (0.72, 0.48, 0.28)        # paler, translucent-looking legs
 LI_TIP = (0.4, 0.25, 0.13)
 
 
+LI_STRIDE = 1.4             # how far a foot is carried in a step (model units; the game's: creature_rig.gd)
+
+
 def centipede():
     n = 15                                         # leg-bearing segments
+    joints = {"hips": [], "knees": [], "ankles": [], "bends": [], "stride": LI_STRIDE, "knee_up": 1.0, "lift": 0.22}
     x0, x1 = 7.2, -7.4
     for i in range(n):
         x = x0 + (x1 - x0) * i / (n - 1)
@@ -34,16 +41,40 @@ def centipede():
             return (c[0] * k, c[1] * k, c[2] * k, 0.0)
         ell("tergite", (x, 0.55, 0), (lx, 0.2, w), 0, plate, 14)
         ell("sternite", (x, 0.38, 0), (0.48, 0.17, w * 0.78), 0, const(LI_BELLY), 8)
-        # walking legs: one pair per segment, out and down, the hind ones longer and swept back
+        # walking legs (v0.12.35): one pair per segment, jointed - a coxa at the body's side, the femur up and out to a low
+        # knee, the tibia down to the ground, a claw; the hind ones longer and swept back. Each vertex carries
+        # 4 x the leg's number + its piece ("ANT2"), the joints go to centipede.json (see the top of the file).
         reach = 1.9 + 0.5 * i / (n - 1)
         for side in (-1, 1):
-            hip = (x, 0.45, 0.75 * side * w)
-            knee = (x + 0.1, 0.95, (0.75 * w + reach * 0.55) * side)
-            foot = (x - 0.25 - 0.3 * i / (n - 1), 0.0, (0.75 * w + reach) * side)
-            tube("leg", [hip, knee, lerp(knee, foot, 0.6), foot], [0.11, 0.09, 0.07, 0.04], 0,
-                lambda g, nn: (LI_LEG[0], LI_LEG[1], LI_LEG[2], 1 / 16.0), 5)
-            tube("claw", [foot, (foot[0] - 0.15, 0.0, foot[2] + 0.06 * side)], [0.035, 0.012], 0,
+            idx = i * 2 + (0 if side < 0 else 1)
+            lc = lambda g, nn: (LI_LEG[0], LI_LEG[1], LI_LEG[2], 1 / 16.0)
+            hip = (x, 0.45, 0.72 * side * w)
+            ankle = (x - 0.2 - 0.3 * i / (n - 1), 0.1, (0.72 * w + reach) * side)
+            l1 = 0.5 * reach + 0.25
+            l2 = 0.62 * reach + 0.35
+            knee = up_knee(hip, ankle, l1, l2)
+            for dx in (-0.5 * LI_STRIDE, 0.5 * LI_STRIDE):
+                far = (Vector((ankle[0] + dx, ankle[1], ankle[2] + 0.6 * side)) - Vector(hip)).length      # (+ the body's sway)
+                assert abs(l1 - l2) < far < l1 + l2, "centipede leg %d cannot reach its step" % idx
+            joints["hips"].append(hip)
+            joints["knees"].append(knee)
+            joints["ankles"].append(ankle)
+            joints["bends"].append((0.0, side))
+            made = len(OBJS)
+            ell("coxa", lerp(hip, knee, 0.12), (0.17, 0.14, 0.17), 0, lc, 6)
+            tube("femur", [hip, lerp(hip, knee, 0.5), knee], [0.12, 0.115, 0.095], 0, lc, 6)
+            for o in OBJS[made:]:
+                o["seg"] = 4.0 * idx + 1.0
+            made = len(OBJS)
+            ell("knee", knee, (0.105, 0.105, 0.105), 0, lc, 6)
+            tube("tibia", [knee, lerp(knee, ankle, 0.5), ankle], [0.095, 0.075, 0.05], 0, lc, 5)
+            for o in OBJS[made:]:
+                o["seg"] = 4.0 * idx + 2.0
+            made = len(OBJS)
+            tube("claw", [ankle, (ankle[0] - 0.1, 0.02, ankle[2] + 0.2 * side)], [0.045, 0.012], 0,
                 lambda g, nn: (LI_TIP[0], LI_TIP[1], LI_TIP[2], 1 / 16.0), 4, cap=False)
+            for o in OBJS[made:]:
+                o["seg"] = 4.0 * idx + 3.0
     # the soft body under the plates, one continuous tube
     for i in range(n - 1):
         xm = x0 + (x1 - x0) * (i + 0.5) / (n - 1)
@@ -68,3 +99,4 @@ def centipede():
         ul = [(-7.7, 0.48, 0.6 * side), (-8.8, 0.45, 1.2 * side), (-10.2, 0.35, 1.6 * side), (-11.4, 0.22, 1.75 * side)]
         tube("ultimate_leg", ul, [0.15, 0.13, 0.1, 0.05], 0,
             lambda g, nn: (0.62, 0.36, 0.18, 3 / 16.0), 5)
+    return joints
