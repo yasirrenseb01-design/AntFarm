@@ -17,13 +17,15 @@ const STATS := {
 	"armor": 0.7,       # thick, smooth cuticle: little purchase for mandibles or acid
 	"r": 10.0,          # px: ants grab its legs and antennae round its body
 	"hold": 7,          # ants holding on that bite and pin it in full; more get in each other's way (a quarter each)
-	# where ants hold on (grip_spots.gd): its legs and antennae from the ground, up the sides of elytra and pronotum, on its
-	# back (tools/blender/props/beetle.py: elytra 8 mm high, pronotum 7 mm - v0.12.33: the body raised 1 mm, its legs under it), the head and the tip of the abdomen
-	"spots": [[18.0, 13.0, 0.0, 0.5], [25.0, 15.0, 0.0, 0.3], [0.0, 17.0, 0.0, 0.5], [-6.0, 23.0, 0.0, 0.3],
-		[-12.0, 15.0, 0.0, 0.5], [-22.0, 20.0, 0.0, 0.3], [40.0, 16.0, 0.5, 0.6],
-		[-16.0, 10.5, 4.0, 0.9], [-6.0, 11.0, 4.2, 0.9], [4.0, 9.5, 4.0, 0.9], [12.0, 8.0, 4.5, 0.9],
-		[-16.0, 4.0, 7.6, 0.0], [-6.0, 4.5, 8.0, 0.0], [4.0, 3.5, 7.6, 0.1], [12.0, 3.0, 6.9, 0.1],
-		[21.0, 0.0, 6.0, 0.2], [-25.0, 0.0, 4.0, 0.6]],
+	# where ants hold on (grip_spots.gd): a pair at each leg (reared up at the lower leg, at the foot pulling it out), up
+	# the side of its head, up the sides of elytra and pronotum, on its back, the waist and head, the tip of the abdomen -
+	# on the model as drawn (v0.12.33: elytra 7.4 mm high, its antennae held 6 mm up: out of an ant's reach from the
+	# ground), put there by `python tools/dev/grip_fit.py . --fit`
+	"spots": [[18.1, 15.2, 0.0, 0.6], [27.9, 16.9, 0.0, 0.3], [6.0, 19.8, 0.0, 0.6], [-1.1, 27.4, 0.0, 0.3],
+		[-8.6, 20.0, 0.0, 0.6], [-16.7, 22.7, 0.0, 0.3], [23.3, 5.3, 3.0, 0.9],
+		[-15.4, 11.4, 4.0, 0.9], [-8.0, 11.6, 4.2, 0.9], [3.1, 8.0, 4.0, 0.9], [11.9, 9.6, 4.5, 0.9],
+		[-16.0, 4.0, 7.4, 0.0], [-6.0, 4.5, 7.3, 0.0], [4.0, 3.5, 5.6, 0.1], [12.0, 3.0, 7.0, 0.1],
+		[21.0, 0.0, 4.4, 0.2], [-25.0, 0.0, 4.0, 0.6]],
 	"pin": 16,          # strong: a full load of 7 ants only halves its pace (8: they held it, and killed 5 of 8, v0.11.1)
 	"flee_at": 0.8,     # harried by a mob it soon gives up and leaves
 	"speed": 1.0,       # px per tick: a fast runner

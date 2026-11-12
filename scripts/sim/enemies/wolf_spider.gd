@@ -18,12 +18,13 @@ const STATS := {
 	"armor": 0.15,      # share of the ants' damage its body shrugs off
 	"r": 16.0,          # px from its centre where ants grab on (its legs)
 	"hold": 8,          # ants holding on that bite and pin it in full; more get in each other's way (a quarter each)
-	# where ants hold on (scripts/sim/enemies/grip_spots.gd): its legs (from the ground, rearing up), up its sides, on its
-	# carapace and abdomen (the model, x0.85: carapace up to 4.6 mm high, abdomen 5.5 mm), the spinnerets
-	"spots": [[12.4, 8.5, 0.0, 0.5], [4.7, 14.2, 0.0, 0.5], [-4.8, 14.2, 0.0, 0.5], [-12.4, 8.3, 0.0, 0.5],
-		[18.2, 12.4, 0.0, 0.3], [6.9, 20.9, 0.0, 0.3], [-7.1, 20.8, 0.0, 0.3], [-18.2, 12.2, 0.0, 0.3],
-		[4.0, 6.0, 1.8, 0.9], [-5.0, 7.0, 2.0, 0.9], [-12.0, 6.0, 2.0, 0.9],
-		[5.0, 2.2, 4.4, 0.1], [-5.0, 2.8, 5.3, 0.0], [-12.0, 2.0, 4.8, -0.1], [-17.0, 0.0, 2.5, 0.7]],
+	# where ants hold on (scripts/sim/enemies/grip_spots.gd): reared up at each leg's lower part, at each foot (pulling
+	# it out), up its sides, on its carapace and abdomen, the spinnerets - on the model as drawn (v0.12.34, x0.85: carapace
+	# 4.0 mm high, abdomen 4.7 mm, feet out to 13 mm from its middle), put there by `python tools/dev/grip_fit.py . --fit`
+	"spots": [[22.2, 14.1, 0.0, 0.6], [12.1, 19.5, 0.0, 0.6], [-1.1, 20.7, 0.0, 0.6], [-13.0, 16.7, 0.0, 0.6],
+		[27.9, 17.9, 0.0, 0.3], [14.7, 25.6, 0.0, 0.3], [-3.2, 27.1, 0.0, 0.3], [-18.7, 21.3, 0.0, 0.3],
+		[4.2, 6.4, 1.8, 0.9], [-7.2, 6.1, 2.0, 0.9], [-11.6, 6.8, 2.0, 0.9],
+		[5.0, 2.2, 4.0, 0.1], [-5.0, 2.8, 3.8, 0.0], [-12.0, 2.0, 4.7, -0.1], [-17.0, 0.0, 2.5, 0.7]],
 	"pin": 5,           # this many ants stop it moving (spread-eagling)
 	"flee_at": 0.45,    # below this health it runs for the edge
 	# pace, px per tick (1 px = 0.5 mm, 60 ticks a second at 1x) at full warmth: wolf spiders sprint at 20-50 cm/s
