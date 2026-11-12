@@ -81,14 +81,17 @@ func setup(s) -> void:
 	_spider_mat = sp_mat
 	_creature_views["wolf_spider"] = {"mm": _multimesh(Props.spider(), sp_mat, false, true), "mat": sp_mat,
 		"scale": 0.85, "gait": 0.5}
+	CreatureRig.setup(_creature_views["wolf_spider"], "creatures/wolf_spider")
 	var ce_mat := ShaderMaterial.new()
 	ce_mat.shader = load("res://shaders/creatures/centipede.gdshader")
 	_creature_views["centipede"] = {"mm": _multimesh(Props.asset("creatures/centipede"), ce_mat, false, true), "mat": ce_mat,
 		"scale": 1.0, "gait": 1.0}
+	CreatureRig.setup(_creature_views["centipede"], "creatures/centipede")
 	var be_mat := ShaderMaterial.new()
 	be_mat.shader = load("res://shaders/creatures/beetle.gdshader")
 	_creature_views["ground_beetle"] = {"mm": _multimesh(Props.asset("creatures/ground_beetle"), be_mat, false, true), "mat": be_mat,
 		"scale": 1.0, "gait": 1.4}
+	CreatureRig.setup(_creature_views["ground_beetle"], "creatures/ground_beetle")      # (its jointed legs: creature_rig.gd)
 	_mound = -1.0
 	_update_mound()             # the creatures' shaders need the ground's shape too
 

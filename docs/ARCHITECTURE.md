@@ -108,6 +108,10 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 - `limb_gain` (shader uniform) ทำให้ขา/หนวด/กรามสีอ่อนกว่าตัว (ราชินีสีส้มอำพัน)
 
 ## รูปแบบไฟล์ .antmesh
+- **สัตว์ที่ขามีข้อ** (v0.12.33 ด้วงดิน, v0.12.34 แมงมุม, v0.12.35 ตะขาบ: 30 ขา ค่าที่ 11 = `4 × เลขขา + ท่อน`, shader `#define LEGS_MAX 30` — `knee_up` ใน json: 0 ต้นขาแกว่งแนวราบ, 1 เข่างอขึ้น; `docs/roadmap/PLAN_CREATURES.md`): ไฟล์ `ANT2` เหมือนมด — float ที่ 11 = ท่อนขา (1 โคน+ต้นขา, 2 แข้ง, 3 ตีน)
+  และมี `<ชื่อ>.json` คู่กัน (`hips`, `knees`, `ankles`, `bends`, `stride`) ที่สคริปต์ Blender เขียน; `view/outworld/creature_rig.gd` ส่งเข้า
+  `shaders/creatures/leg_ik.gdshaderinc` และคิดจังหวะก้าวจากระยะที่เดินจริง; ตรวจด้วย `python tools/dev/leg_clip.py . ik`;
+  แก้โมเดลแล้วตรวจจุดเกาะของมด (`spots` ใน `scripts/sim/enemies/<ชนิด>.gd`) ด้วย `python tools/dev/grip_fit.py .` (`--fit` เสนอค่าใหม่จากโมเดล)
 - `ANT2` (โมเดลมด): เหมือน `ANTM` แต่มี float ที่ 11 ต่อจุด = ท่อนขา (1 โคนขา, 2 ต้นขา, 3 หน้าแข้ง, 4 เท้า; 0 = ไม่ใช่ขา
   หรือโมเดลไกล) ส่งเข้า shader ทาง `UV.x` — shader ใช้ IK บนข้อต่อของ `LEGS` ใน `tools/blender/ant/legs.py` (ต้องตรงกันสองที่)
 - การก้าว: `ant_model3d.gd` (`STRIDE_A`, `stride_scale`, `duty`, `stride_len`, `gait_w`) คู่กับค่าใน shader;

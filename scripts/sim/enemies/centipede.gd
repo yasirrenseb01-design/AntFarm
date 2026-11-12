@@ -21,10 +21,10 @@ const STATS := {
 	"r": 8.0,           # px: ants within this of their grip point latch on
 	"hold": 10,         # 15 pairs of legs to grab; more ants get in each other's way (a quarter each)
 	# where ants hold on (grip_spots.gd): its legs along both sides, on its flat back (1.1 mm high), the antennae, the
-	# long last legs, its head
+	# long last legs, its head (checked on the v0.12.35 model: `python tools/dev/grip_fit.py . centipede`)
 	"spots": [[18.0, 8.0, 0.0, 0.3], [12.0, 8.0, 0.0, 0.3], [6.0, 8.0, 0.0, 0.3], [0.0, 8.0, 0.0, 0.3], [-6.0, 8.0, 0.0, 0.3],
 		[-12.0, 8.0, 0.0, 0.3], [-18.0, 8.0, 0.0, 0.3], [15.0, 1.8, 1.2, 0.0], [5.0, 1.8, 1.2, 0.0], [-5.0, 1.8, 1.2, 0.0],
-		[-15.0, 1.8, 1.2, 0.0], [32.0, 6.0, 0.0, 0.4], [-30.0, 6.0, 0.0, 0.3], [24.0, 0.0, 1.2, 0.0]],
+		[-15.0, 1.8, 1.2, 0.0], [36.2, 2.7, 0.0, 0.4], [-33.2, 7.0, 0.0, 0.3], [24.0, 0.0, 1.2, 0.0]],
 	"pin": 6,
 	"flee_at": 0.5,     # runs as soon as it is badly mobbed
 	"speed": 1.15,      # px per tick: one of the fastest things in the leaf litter

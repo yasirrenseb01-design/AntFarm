@@ -477,7 +477,7 @@ func _update_creatures(delta: float) -> void:
 			mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * sc), Vector3(p.x, ground_h(p.x, p.y), p.y)))
 			var striking := 1.0 if int(s.get("strike", 0)) > 0 else 0.0
 			var struggling := maxf(v.mv, 1.0 if int(s.get("held", 0)) > 0 else 0.0)    # pinned: legs thrash
-			var gait := fmod(s.phase * cv.gait, TAU * 64.0)
+			var gait: float = CreatureRig.gait(cv, v, s, step.length() * (1.0 - exp(-15.0 * delta)), delta)
 			# w: how much it is walking, + 2 while ants are holding it down (it writhes)
 			mm.set_instance_custom_data(i, Color(gait, striking, _t, v.mv + (2.0 if int(s.get("held", 0)) > 0 else 0.0)))
 			v.xf = mm.get_instance_transform(i)

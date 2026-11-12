@@ -317,4 +317,4 @@ func _food_centipede_dead(root: Node3D, f: Dictionary, left: float) -> void:
 
 
 func _food_ground_beetle_dead(root: Node3D, f: Dictionary, left: float) -> void:
-	_dead_creature(root, "ground_beetle", left, 4.6, true)
+	_dead_creature(root, "ground_beetle", left, 5.25, true)
