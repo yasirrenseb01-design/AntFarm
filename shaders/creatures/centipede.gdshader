@@ -43,17 +43,26 @@ void vertex() {
 	float mv = INSTANCE_CUSTOM.w - 2.0 * held;
 	vec3 v = VERTEX;
 	float side = v.z < 0.0 ? -1.0 : 1.0;
-	bool dead = state > 1.5;
-	bool leg = part == 1.0 && !dead;
+	bool dead = state > 1.5 && state < 2.5;
+	bool back = state > 2.5;               // on its back alive (v0.13.3): it writhes, its legs working at the sky
+	if (back) {
+		held = 1.0;
+		state = 0.0;
+	}
+	bool on_back = MODEL_MATRIX[1].y < 0.0;
+	bool leg = part == 1.0 && (!dead || on_back);
 	if (leg) {
 		int i = int(floor(UV.x / 4.0 + 0.01));
 		float seg = UV.x - 4.0 * float(i);
 		float pair = floor(float(i) / 2.0);
 		vec3 a = leg_ankle(i, gait / TAU - pair * PAIR_LAG + (mod(float(i), 2.0) > 0.5 ? 0.5 : 0.0), 1.0);
+		if (dead) {
+			a = vec3(ankle[i].x, -1.2, ankle[i].z * 0.75);     // a dead one on its back: the legs stiff in the air (curled with it below)
+		}
 		// (the foot stays; the hip goes with the body's wave and lunge: the leg is placed from the hip as it is now)
 		vec3 off = vec3(state > 0.5 ? body_lunge(hip[i].x, t) : 0.0, 0.0, body_sway(hip[i].x, gait, t, mv, held));
 		a -= off;
-		leg_place(i, seg, a, v, NORMAL);
+		leg_place_up(i, seg, a, v, NORMAL, MODEL_MATRIX[1].y < 0.0 ? -1.0 : 1.0);     // (a body on its back: its knees bent toward the sky)
 		v += off;
 	}
 	if (part == 2.0) {

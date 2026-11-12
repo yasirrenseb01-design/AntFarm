@@ -305,3 +305,64 @@ class RibbonBox extends StyleBox:
 		D.poly(ci, D.round_rect(Rect2(c - Vector2(4, h), Vector2(10, h * 2.0)), 4), Color(0.86, 0.76, 0.58))
 		D.outline(ci, D.round_rect(Rect2(c - Vector2(4, h), Vector2(10, h * 2.0)), 4), Color(0.45, 0.33, 0.2, 0.7), 1.0)
 		D.poly(ci, D.round_rect(Rect2(c + Vector2(0, -h * 0.45), Vector2(4, h * 0.9)), 2), Color(0.55, 0.42, 0.26))
+
+
+## A loose sheet of the cream paper (the panels beside the bar: enemies, top ants, an ant's card): its shadow, a faint
+## pencilled edge.
+class SheetBox extends StyleBox:
+	func _init(pad_h := 14, pad_v := 12) -> void:
+		content_margin_left = pad_h
+		content_margin_right = pad_h
+		content_margin_top = pad_v
+		content_margin_bottom = pad_v
+
+	func _draw(ci: RID, rect: Rect2) -> void:
+		var D = load("res://scripts/view/ui/desk.gd")
+		D.poly(ci, D.round_rect(Rect2(rect.position + Vector2(2, 4), rect.size), 4), Color(0, 0, 0, 0.32))
+		var pts: PackedVector2Array = D.round_rect(rect, 3)
+		D.poly_tex(ci, pts, D.paper(), 256.0)
+		D.outline(ci, pts, Color(0.45, 0.35, 0.24, 0.55), 1.0)
+
+
+## A window (the reports, settings, my colonies, the species, the album...) on a clipboard: the board round it, the
+## cream sheet under its title and body, the brass clip over the title's top. Drawn round the window's rect, which
+## leaves out its title bar (TITLE above it).
+class WindowBox extends StyleBox:
+	const TITLE := 34.0
+	const EDGE := 12.0
+
+	func _draw(ci: RID, rect: Rect2) -> void:
+		var D = load("res://scripts/view/ui/desk.gd")
+		var board := rect.grow_individual(EDGE, TITLE + EDGE + 8.0, EDGE, EDGE)
+		D.poly(ci, D.round_rect(Rect2(board.position + Vector2(4, 7), board.size), 12), Color(0, 0, 0, 0.4))
+		var bp: PackedVector2Array = D.round_rect(board, 12)
+		D.poly_tex(ci, bp, D.wood(), 256.0)
+		D.outline(ci, bp, Color(0.2, 0.11, 0.05), 2.0)
+		D.outline(ci, D.round_rect(board.grow(-2), 10), Color(0.75, 0.52, 0.3, 0.35), 1.0)
+		for k in 4:
+			var sx := 1.0 if k % 2 == 0 else -1.0
+			var sy := 1.0 if k < 2 else -1.0
+			var o := Vector2(board.position.x if sx > 0 else board.end.x, board.position.y if sy > 0 else board.end.y)
+			D.brass(ci, PackedVector2Array([o + Vector2(2, 2) * Vector2(sx, sy), o + Vector2(28, 2) * Vector2(sx, sy),
+				o + Vector2(28, 7) * Vector2(sx, sy), o + Vector2(7, 7) * Vector2(sx, sy), o + Vector2(7, 28) * Vector2(sx, sy),
+				o + Vector2(2, 28) * Vector2(sx, sy)]))
+		var sheet := rect.grow_individual(3, TITLE, 3, 3)
+		D.poly(ci, D.round_rect(Rect2(sheet.position + Vector2(1.5, 2.5), sheet.size), 2), Color(0, 0, 0, 0.3))
+		var sp: PackedVector2Array = D.round_rect(sheet, 2)
+		D.poly_tex(ci, sp, D.paper(), 256.0)
+		D.outline(ci, sp, Color(0.55, 0.45, 0.32, 0.5), 1.0)
+		# the clip, on the board above the sheet
+		var cw := clampf(board.size.x * 0.3, 90.0, 220.0)
+		var cx := board.get_center().x
+		var top := board.position.y
+		var ring := Rect2(cx - cw * 0.22, top - 11, cw * 0.44, 20)
+		D.brass(ci, D.round_rect(ring, 8))
+		D.poly(ci, D.round_rect(ring.grow(-5), 5), Color(0.18, 0.1, 0.05))
+		var plate := PackedVector2Array([Vector2(cx - cw * 0.5, top + 4), Vector2(cx + cw * 0.5, top + 4),
+			Vector2(cx + cw * 0.46, top + 22), Vector2(cx - cw * 0.46, top + 22)])
+		D.poly(ci, D.moved(plate, Vector2(1.5, 3)), Color(0, 0, 0, 0.3))
+		D.brass(ci, plate)
+		for s in [-1.0, 1.0]:
+			var rv := Vector2(cx + s * cw * 0.38, top + 13)
+			D.circle(ci, rv, 3.0, D.BRASS_DARK)
+			D.circle(ci, rv - Vector2(0.8, 0.8), 1.8, D.BRASS_LIGHT)

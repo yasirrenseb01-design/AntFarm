@@ -150,8 +150,76 @@ func _unhandled_key_input(e: InputEvent) -> void:
 
 # ---------------------------------------------------------------- refresh
 
+# ---------------------------------------------------------------- the album (ui/album.gd)
+
+const Album := preload("res://scripts/view/ui/album.gd")
+var _album_seen := 0.0
+
+
+## The queen's sketch under the species' name (the keeper's plate, assets/ui/album/): a click opens the album.
+func _album_sketch(into: Control) -> void:
+	var sp_id := String(sim.sp.get("id", ""))
+	var path := "res://assets/ui/album/%s_queen.png" % sp_id
+	if not ResourceLoader.exists(path):
+		return
+	var t := TextureButton.new()
+	t.texture_normal = load(path)
+	t.ignore_texture_size = true
+	t.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	t.custom_minimum_size = Vector2(0, 54)
+	t.focus_mode = Control.FOCUS_NONE
+	t.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	t.tooltip_text = tr("album_tip")
+	t.modulate = Color(1, 1, 1, 0.92)
+	t.mouse_entered.connect(func(): t.modulate = Color(1.1, 1.05, 0.95, 1.0))
+	t.mouse_exited.connect(func(): t.modulate = Color(1, 1, 1, 0.92))
+	t.pressed.connect(open_album)
+	into.add_child(t)
+
+
+## The plates won for this species so far (the settings' "album": anything else there is ignored).
+func album_won(sp_id: String) -> Array:
+	var all = settings.get("album", {})
+	var mine = all.get(sp_id, []) if all is Dictionary else []
+	return (mine as Array).filter(func(x): return x is String) if mine is Array else []
+
+
+func open_album() -> void:
+	var sp_id := String(sim.sp.get("id", ""))
+	var w = Album.new()
+	_colonies.get_parent().add_child(w)
+	w.setup(self, sp_id, album_won(sp_id))
+	w.reset_size()
+	w.popup_centered()
+
+
+## A plate won by this colony's count of workers: kept for good, told on the banner.
+func _check_album(delta: float) -> void:
+	_album_seen += delta
+	# (not before the game has given the HUD its settings: a plate won into the empty ones it starts with was lost when
+	# they came, and won - and told - again)
+	if _album_seen < 1.0 or quiet or settings.is_empty():
+		return
+	_album_seen = 0.0
+	var sp_id := String(sim.sp.get("id", ""))
+	var won := album_won(sp_id)
+	var new: Array = Album.newly_won(sp_id, sim.workers.size(), won)
+	if new.is_empty():
+		return
+	won.append_array(new)
+	var all = settings.get("album", {})
+	if not all is Dictionary:
+		all = {}
+	all[sp_id] = won
+	settings["album"] = all
+	settings_changed.emit(settings)
+	for id in new:
+		_named_news(tr("album_won") % tr(Album.caption_of(sp_id, id)))
+
+
 func refresh(delta: float) -> void:
 	_t += delta
+	_check_album(delta)
 	_tick_banner(delta)
 	_tick_stars()
 	_fit_tools()

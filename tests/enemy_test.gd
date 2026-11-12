@@ -40,12 +40,14 @@ func _init():
 		var fled := false
 		var t := 0
 		var max_held := 0
+		var last := {}
 		while t < s.TPD * 6 and not s.creatures.is_empty():
 			s.step()
 			t += 1
 			if s.creatures.is_empty():
 				break
 			var c: Dictionary = s.creatures[0]
+			last = c
 			max_held = maxi(max_held, int(c.get("held", 0)))
 			fled = fled or bool(c.get("fleeing", false))
 			if bool(c.get("was_in", false)):
@@ -53,6 +55,8 @@ func _init():
 			elif Rect2(Vector2(3, 3), s.WORLD - Vector2(6, 6)).has_point(c.pos):
 				c["was_in"] = true
 		var killed := int(s.stats.get("enemies_killed", 0))
+		var ticks_died: int = t
+		print("  %s: %d ticks (%.0f s at 1x), flips %d, panics %d" % [kind, ticks_died, ticks_died / 60.0, last.get("n_flips", 0), last.get("n_panics", 0)])
 		print("keeper %s: %s after %.2f days (most ants holding %d, ran from them %s), farthest past the wall once in %.1f px"
 			% [kind, "killed" if killed > 0 else ("still in the box" if not s.creatures.is_empty() else "GONE"),
 			float(t) / s.TPD, max_held, str(fled), out_px])

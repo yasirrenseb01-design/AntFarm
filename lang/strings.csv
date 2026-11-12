@@ -35,6 +35,8 @@ log_alarm_raised,มดเจอศัตรู! ปล่อยกลิ่น�
 log_enemy_killed,มดรุมจับ%sไว้จนตาย แล้วกัดพ่นกรดฟอร์มิกจนมันไม่ขยับ ตอนนี้กลายเป็นอาหารโปรตีนของรัง,"The ants held the %s down, biting and spraying formic acid until it stopped moving. Now it is protein for the colony"
 log_enemy_released,ผู้เลี้ยงปล่อย%sเข้าไปในพื้นที่หาอาหาร,The keeper let a %s into the outworld
 log_enemy_flees,%sบาดเจ็บจากกรดฟอร์มิก กำลังหนีออกจากกล่อง,"Hurt by formic acid, the %s is fleeing the box"
+log_enemy_flipped,%sพลิกหงายท้อง ขาปัดป่าย มดรุมขึ้นไปบนตัว,"The %s has rolled onto its back, legs kicking, and the ants swarm over it"
+log_enemy_dying,%sหมดแรงแล้ว นอนหงายดิ้นอยู่ใต้มดที่รุม,"The %s is spent: it lies on its back kicking under the mob"
 log_enemy_runs,%sบาดเจ็บจากกรดฟอร์มิก วิ่งหนีมดไปรอบกล่อง แต่ออกไปไม่ได้,"Hurt by formic acid, the %s runs from the ants round the box - there is no way out"
 log_found_spider_dead,มดเริ่มกินซากแมงมุมที่รุมฆ่าได้,The ants have started eating the spider they killed
 log_centipede_arrives,ตะขาบหินวิ่งออกมาจากใต้ก้อนหินมาล่าเหยื่อตอนกลางคืน,A stone centipede has come out from under a stone to hunt in the dark
@@ -472,6 +474,7 @@ panel_today,วันนี้,Today
 en_title,ศัตรู · ปล่อยมาดูมดสู้,Enemies · let one in and watch the ants fight
 en_rate,ศัตรูธรรมชาติมาเองบ่อยแค่ไหน,How often natural enemies come by themselves
 en_how,ปล่อยเอง: ศัตรูเดินเข้ามาจากขอบพื้นที่หาอาหาร ล่าอยู่ราวครึ่งวันในเกมแล้วจากไป ถ้ามดไม่รุมฆ่าหรือไล่ไปก่อน · มดที่เจอจะปล่อยกลิ่นเตือนภัย พวกพ้องกรูมากัดและพ่นกรดฟอร์มิก · ศัตรูที่ตายกลายเป็นอาหารของรัง,"Let one in: it walks in from the edge of the outworld and hunts for about half a game day, then leaves, unless the ants kill it or drive it off first · the ant that meets it gives off alarm pheromone and nestmates rush in to bite and spray formic acid · a dead enemy becomes food for the colony"
+en_how_box,"ปล่อยเอง: ศัตรูเดินเข้ามาจากขอบพื้นที่หาอาหารแล้วล่าไปเรื่อย ๆ — ในกล่องมันหนีไปไหนไม่ได้ อยู่จนมดฆ่าได้หรือคุณกดเอาออก · มดที่เจอจะปล่อยกลิ่นเตือนภัย พวกพ้องกรูมากัดและพ่นกรดฟอร์มิก · ถูกรุมหนักตอนยังมีแรง มันอาจตกใจวิ่งลากมดไปชนผนังจนหงายท้อง · หมดแรงแล้วจะนอนหงายดิ้นอยู่พักหนึ่งก่อนตาย · ศัตรูที่ตายกลายเป็นอาหารของรัง","Let one in: it walks in from the edge of the outworld and hunts on - in the box it cannot get out: it stays until the ants kill it or you take it out · the ant that meets it gives off alarm pheromone and nestmates rush in to bite and spray formic acid · mobbed while still strong it may panic and run, dragging the ants, into the side of the box and onto its back · spent, it lies on its back kicking a while before it dies · a dead enemy becomes food for the colony"
 en_release,ปล่อย,Let in
 food_low_sugar,"น้ำตาลใกล้หมด: พอกินอีก ~%s วันในเกม (วางน้ำผึ้ง)","Sugar running out: ~%s game days left (put honey in)"
 food_low_protein,"โปรตีนใกล้หมด: พอกินอีก ~%s วันในเกม (วางจิ้งหรีด)","Protein running out: ~%s game days left (put a cricket in)"
@@ -629,3 +632,11 @@ shop_view_3d,ดูโมเดล 3 มิติ,See it in 3D
 shop_view_hint,ลากเพื่อหมุนดู,Drag to turn it
 shop_view_close,ปิด,Close
 opening_tank,กำลังเปิดตู้…,Opening the tank…
+album_title,สมุดภาพ · %s,Album · %s
+album_tip,สมุดภาพของมดชนิดนี้ (คลิก),This species' album (click)
+album_count,ได้แล้ว %d จาก %d แผ่น,%d of %d plates
+album_locked,ได้เมื่อรังมีมดงาน %d ตัวพร้อมกัน,Won when a colony has %d workers at once
+album_plate_a,แผ่น IIa · ราชินีและช่วงตั้งรัง: ไข่ ตัวอ่อน,Plate IIa · The queen and the founding: eggs and larvae
+album_plate_b,แผ่น IIb · มดงานและการเจริญ: รังไหม ดักแด้ มดงานใหม่ มดงานโต,"Plate IIb · The workers and their growing: cocoon, pupa, callow and grown worker"
+album_note,ภาพที่ได้แล้วเก็บไว้ตลอด แม้รังจะตายทีหลัง · มดชนิดใหม่จะมีสมุดภาพของตัวเอง,"A plate once won is kept, even if the colony dies later · each new species will have its own album"
+album_won,ได้ภาพใหม่ในสมุดภาพ: %s (คลิกภาพราชินีบนแผงซ้าย),New in the album: %s (click the queen's sketch on the left bar)

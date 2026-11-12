@@ -14,6 +14,7 @@ const ABOUT := "enemy_ground_beetle_about"      # (the HUD's enemy panel)
 const CHASED := T.beetle_chased
 const STATS := {
 	"hp": 1.4,
+	"flip": 0.2,        # broad and low: rolled over far less than a spider or a centipede [inference] (sim_enemies.FLIP_RATE)
 	"armor": 0.7,       # thick, smooth cuticle: little purchase for mandibles or acid
 	"r": 10.0,          # px: ants grab its legs and antennae round its body
 	"hold": 7,          # ants holding on that bite and pin it in full; more get in each other's way (a quarter each)
@@ -55,7 +56,7 @@ static func spawn(sim) -> Dictionary:
 static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.life -= 1
 	var held := clinging.size()
-	var free := clampf(1.0 - float(c.get("load", held)) / STATS.pin, 0.0, 1.0)
+	var free: float = sim.struggle_free(c, clampf(1.0 - float(c.get("load", held)) / STATS.pin, 0.0, 1.0))
 	c.phase += 0.35 * maxf(free, 0.3)
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true
@@ -75,7 +76,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = c.ang + sim.rng.randf_range(-0.2, 0.2)
 	if leaving:
 		target_ang = (c.exit - c.pos).angle()
-	elif fleeing and best != null:
+	elif (fleeing or sim.panicking(c)) and best != null:
 		target_ang = (c.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null:
 		target_ang = (best.pos - c.pos).angle()
@@ -88,6 +89,8 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos)
 	if not leaving and inside and sim.blocked(np):
 		c.ang += 1.8
+		if sim.panicking(c):
+			sim.flip_over(c)             # (ran into the side of the box in its panic)
 	else:
 		c.pos = np
 	if held >= 2 and sim.rng.randf() < STATS.spray:

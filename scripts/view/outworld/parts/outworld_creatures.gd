@@ -3,6 +3,7 @@ extends "res://scripts/view/outworld/parts/outworld_crowd.gd"
 ## the spider, rain, the day/night light and the tool ring.
 
 const Grip := preload("res://scripts/sim/enemies/grip_spots.gd")
+const CreaturePose := preload("res://scripts/view/outworld/creature_pose.gd")
 const MM_PER_UNIT := 1.5           # a model unit out here (3 px at 0.5 mm a px)
 const DIR_RATE := 4.0              # 1/s: how fast a walker's smoothed way of travel follows its steps (~0.25 s)
 const UP_RATE := 9.0               # 1/s: how fast its body tips onto the slope under it (~0.1 s)
@@ -154,7 +155,7 @@ func _update_ants(delta: float) -> void:
 				# where it holds on: rearing up at a leg, up its side, on its back, or on a nestmate holding on under it
 				var gp: Array = Grip.pose(foe, sim.ENEMY_KINDS[foe.kind], int(foe.spots[a.id]))
 				var side_ax: Vector3 = tr.basis.z.normalized()
-				tr = Transform3D(Basis(side_ax, float(gp[1])) * tr.basis, tr.origin + up * float(gp[0]) / MM_PER_UNIT)
+				tr = Transform3D(Basis(side_ax, float(gp[1])) * tr.basis, tr.origin + up * CreaturePose.grip_h(self, a.foe, float(gp[0])) / MM_PER_UNIT)
 		if flung > 0.0:
 			# thrown clear: over onto its back in the air, legs flailing where it lands, then a roll back upright
 			var roll := PI * smoothstep(0.0, 0.25, flung) + PI * smoothstep(0.7, 0.92, flung)
@@ -442,51 +443,9 @@ func _update_corpses() -> void:
 		_corpse_mm.set_instance_custom_data(n + i, Color(0, 11, 0, 0))
 
 
-## Every enemy in the box, drawn with its kind's model (see _creature_views, set up in setup()).
-## Each keeps its own smoothing state by creature id, so the drawn body glides between sim steps.
+## Every enemy in the box, drawn with its kind's model: view/outworld/creature_pose.gd (here until v0.13.3).
 func _update_creatures(delta: float) -> void:
-	var by_kind := {}
-	for c in sim.creatures:
-		if _creature_views.has(c.kind):
-			if not by_kind.has(c.kind):
-				by_kind[c.kind] = []
-			by_kind[c.kind].append(c)
-	var seen := {}
-	for kind in _creature_views:
-		var cv: Dictionary = _creature_views[kind]
-		var list: Array = by_kind.get(kind, [])
-		var mm: MultiMesh = cv.mm
-		mm.instance_count = list.size()
-		for i in list.size():
-			var s: Dictionary = list[i]
-			seen[s.id] = true
-			if not _creature_vis.has(s.id):
-				_creature_vis[s.id] = {"p": s.pos, "a": s.ang, "mv": 0.0}
-			var v: Dictionary = _creature_vis[s.id]
-			var step: Vector2 = s.pos - v.p
-			v.p += step * (1.0 - exp(-15.0 * delta))
-			v.a = lerp_angle(v.a, s.ang, 1.0 - exp(-8.0 * delta))
-			v.mv = lerpf(v.mv, 1.0 if step.length_squared() > 0.0004 else 0.0, minf(1.0, 6.0 * delta))
-			var p: Vector2 = v.p * U
-			var up := ground_n(p.x, p.y)
-			var f := Vector3(cos(v.a), 0, sin(v.a))
-			f = (f - up * f.dot(up)).normalized()
-			# out beyond the box (arriving or leaving) it is not drawn
-			var inside: bool = Rect2(Vector2.ZERO, sim.WORLD).grow(-2.0).has_point(v.p)
-			var sc: float = cv.scale if inside else 0.0
-			mm.set_instance_transform(i, Transform3D(Basis(f, up, f.cross(up)).scaled(Vector3.ONE * sc), Vector3(p.x, ground_h(p.x, p.y), p.y)))
-			var striking := 1.0 if int(s.get("strike", 0)) > 0 else 0.0
-			var struggling := maxf(v.mv, 1.0 if int(s.get("held", 0)) > 0 else 0.0)    # pinned: legs thrash
-			var gait: float = CreatureRig.gait(cv, v, s, step.length() * (1.0 - exp(-15.0 * delta)), delta)
-			# w: how much it is walking, + 2 while ants are holding it down (it writhes)
-			mm.set_instance_custom_data(i, Color(gait, striking, _t, v.mv + (2.0 if int(s.get("held", 0)) > 0 else 0.0)))
-			v.xf = mm.get_instance_transform(i)
-			v.kind = kind
-			v.gait = gait
-			v.held = 1.0 if int(s.get("held", 0)) > 0 else 0.0
-	for id in _creature_vis.keys():
-		if not seen.has(id):
-			_creature_vis.erase(id)
+	CreaturePose.update(self, delta)
 
 
 func _update_rain(delta: float, raining: bool) -> void:

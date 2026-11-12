@@ -309,11 +309,11 @@ func _dead_creature(root: Node3D, kind: String, left: float, lift: float, on_bac
 
 
 func _food_wolf_spider_dead(root: Node3D, f: Dictionary, left: float) -> void:
-	_dead_creature(root, "wolf_spider", left, -0.3)
+	_dead_creature(root, "wolf_spider", left, 3.9, true)        # (on its back, as its death throes left it: v0.13.3)
 
 
 func _food_centipede_dead(root: Node3D, f: Dictionary, left: float) -> void:
-	_dead_creature(root, "centipede", left, -0.2)
+	_dead_creature(root, "centipede", left, 0.85, true)
 
 
 func _food_ground_beetle_dead(root: Node3D, f: Dictionary, left: float) -> void:

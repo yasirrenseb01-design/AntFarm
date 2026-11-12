@@ -48,7 +48,9 @@ vec3 leg_ankle(int i, float turn, float walk) {
 }
 
 // The knee of leg i for its ankle at `a` (moved in toward the hip, or out, if the leg cannot reach: a is changed).
-vec3 leg_knee(int i, inout vec3 a) {
+// up_sign: which way a knee_up knee is bent - 1 up from the body, -1 the other way (on its back: v0.13.3, the knees
+// toward the sky, not into the ground).
+vec3 leg_knee_up(int i, inout vec3 a, float up_sign) {
 	vec3 h = hip[i];
 	if (knee_up > 0.5) {
 		float l1 = length(knee[i] - h);
@@ -60,7 +62,8 @@ vec3 leg_knee(int i, inout vec3 a) {
 		a = h + d * far;
 		float al = (l1 * l1 - l2s * l2s + far * far) / (2.0 * far);
 		float up = sqrt(max(0.0, l1 * l1 - al * al));
-		vec3 nn = normalize(vec3(0.0, 1.0, 0.0) - d * d.y);
+		vec3 nn = vec3(0.0, up_sign, 0.0) - d * d.y * up_sign;
+		nn = length(nn) > 0.001 ? normalize(nn) : vec3(1.0, 0.0, 0.0);
 		return h + d * al + nn * up;
 	}
 	float ky = knee[i].y;
@@ -82,9 +85,13 @@ vec3 leg_knee(int i, inout vec3 a) {
 	return vec3(k.x, ky, k.y);
 }
 
-// A leg's vertex and its normal, with the leg's ankle at `a`. seg: UV.x.
-void leg_place(int i, float seg, vec3 a, inout vec3 v, inout vec3 nrm) {
-	vec3 k = leg_knee(i, a);
+vec3 leg_knee(int i, inout vec3 a) {
+	return leg_knee_up(i, a, 1.0);
+}
+
+// A leg's vertex and its normal, with the leg's ankle at `a`. seg: UV.x. up_sign: as leg_knee_up.
+void leg_place_up(int i, float seg, vec3 a, inout vec3 v, inout vec3 nrm, float up_sign) {
+	vec3 k = leg_knee_up(i, a, up_sign);
 	if (seg < 1.5 && knee_up > 0.5) {
 		vec3 was3 = knee[i] - hip[i];
 		vec3 now3 = k - hip[i];
@@ -106,4 +113,17 @@ void leg_place(int i, float seg, vec3 a, inout vec3 v, inout vec3 nrm) {
 	} else {
 		v += a - ankle[i];
 	}
+}
+
+
+void leg_place(int i, float seg, vec3 a, inout vec3 v, inout vec3 nrm) {
+	leg_place_up(i, seg, a, v, nrm, 1.0);
+}
+
+
+// On its back (v0.13.3): the ankle of leg i kicking in the air over the belly - `base` its pose there, `kick` 0..1
+// how hard (fading in its death throes), t the clock. Below the body in the model is up in the world then.
+vec3 leg_kick(int i, vec3 base, float kick, float t) {
+	float fi = float(i);
+	return base + kick * vec3(0.9 * sin(t * 9.0 + fi * 1.7), -1.4 * abs(sin(t * 6.5 + fi * 2.1)), 0.7 * cos(t * 8.0 + fi * 2.3));
 }

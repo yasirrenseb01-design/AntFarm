@@ -153,6 +153,70 @@ func _clinging(c: Dictionary) -> Array:
 	return out
 
 
+# a fight that lasts (the keeper, 2026-11-12: "they die too fast ... near death it should writhe a while, maybe flip on
+# its back and lie there kicking with the ants all over it; or, mobbed while still strong, panic, run into the side of
+# the box and turn over"). Ticks at 1x: 60 a second.
+const FLIP_TICKS := 240        # on its back, legs in the air, before it rights itself (4-6 s at 1x)
+const DYING_TICKS := 600       # its death throes on its back once the ants have the better of it (10 s at 1x)
+const PANIC_TICKS := 110       # a panicked rush, dragging the ants holding it
+const FLIP_RATE := 0.0005      # a tick, for each ant holding it beyond two: thrashing, it rolls over [inference]
+const PANIC_RATE := 0.0015     # a tick, for each ant holding it, while it still has more than PANIC_HP of its strength
+const PANIC_HP := 0.6
+
+
+func on_back(c: Dictionary) -> bool:
+	return int(c.get("flip", 0)) > 0 or c.has("dying")
+
+
+## It rolls onto its back (thrashing, or running into the side of the box in a panic).
+func flip_over(c: Dictionary) -> void:
+	if on_back(c):
+		return
+	c["flip"] = FLIP_TICKS + rng.randi_range(0, 120)
+	c["n_flips"] = int(c.get("n_flips", 0)) + 1          # (counted for tests/enemy_test.gd)
+	c["panic"] = 0
+	c["strike"] = 0
+	if not c.get("flipped_told", false):
+		c["flipped_told"] = true
+		_log(T.enemy_flipped, "ok", [L.k(ENEMY_KINDS[c.kind].NAME)])
+
+
+## How free to move a creature is, given what its ants allow (`free`), now: a panicked rush drags them along.
+func struggle_free(c: Dictionary, free: float) -> float:
+	var p := int(c.get("panic", 0))
+	if p <= 0:
+		return free
+	c["panic"] = p - 1
+	return maxf(free, 0.6)
+
+
+func panicking(c: Dictionary) -> bool:
+	return int(c.get("panic", 0)) > 0
+
+
+## On its back: it cannot walk; it kicks and twists, now and then throwing an ant off, rarely biting. Then it rights
+## itself - unless these are its death throes.
+func _step_on_back(c: Dictionary, clinging: Array, K) -> void:
+	c.phase = float(c.get("phase", 0.0)) + 0.5
+	var held := clinging.size()
+	var weak: float = clampf(float(c.dying) / DYING_TICKS, 0.0, 1.0) if c.has("dying") else 1.0     # (fading as it dies)
+	if held >= 2 and rng.randf() < float(K.STATS.get("spray", 0.0)) * weak:
+		c.strike = 20                    # (a beetle sprays on its back too: every ant on it lets go)
+		for a in clinging:
+			_shake_off(a, c)
+	elif held > 0 and rng.randf() < K.STATS.shake * held * 0.6 * weak:
+		c.strike = 12
+		_shake_off(clinging[rng.randi() % held], c)
+	elif held > 0 and rng.randf() < K.STATS.bite * 0.25 * weak:
+		c.strike = 14
+		_bite(clinging[rng.randi() % held], c)
+	c.strike = maxi(0, int(c.get("strike", 0)) - 1)
+	if c.has("dying"):
+		c.dying = int(c.dying) - 1
+	else:
+		c.flip = int(c.flip) - 1
+
+
 func _step_creatures() -> void:
 	var gone := []
 	for c in creatures:
@@ -164,12 +228,27 @@ func _step_creatures() -> void:
 		# biting and pinning: the first "hold" ants in full, the rest a little each (they hold on to it and to each other)
 		var hold: float = K.STATS.hold
 		c["load"] = minf(c.held, hold) + CROWD_SHARE * maxf(0.0, c.held - hold)
-		if c.hp <= 0.0:
+		if c.hp <= 0.0 and not c.has("dying"):
+			# beaten: it rolls over and dies kicking on its back, the ants on it
+			c["dying"] = DYING_TICKS
+			c["flip"] = 0
+			c["panic"] = 0
+			_log(T.enemy_dying, "ok", [L.k(K.NAME)])
+		if c.has("dying") and int(c.dying) <= 0:
 			_creature_dies(c, clinging)
 			gone.append(c)
-		elif not K.step(self, c, clinging):
-			_release(c, clinging)
-			gone.append(c)
+		elif on_back(c):
+			_step_on_back(c, clinging, K)
+		else:
+			if c.held >= 3 and rng.randf() < FLIP_RATE * (c.held - 2) * float(K.STATS.get("flip", 1.0)):
+				flip_over(c)
+				continue
+			if c.held >= 3 and not panicking(c) and c.hp > PANIC_HP * float(K.STATS.hp) and rng.randf() < PANIC_RATE * c.held:
+				c["panic"] = PANIC_TICKS
+				c["n_panics"] = int(c.get("n_panics", 0)) + 1
+			if not K.step(self, c, clinging):
+				_release(c, clinging)
+				gone.append(c)
 	for c in gone:
 		creatures.erase(c)
 		_taken.erase(c.id)

@@ -44,7 +44,7 @@ func _build_enemies(root: Control) -> void:
 	rates.changed.connect(func(v): sim.set_enemy_rate(v))
 	col.add_child(rates)
 	col.add_child(HSeparator.new())
-	col.add_child(_wrapped(tr("en_how"), 12, MUTED))
+	col.add_child(_wrapped(tr("en_how_box" if sim.scenario == "keeper" else "en_how"), 12, MUTED))      # (the keeper's box is shut: v0.13.2)
 	for kind in sim.ENEMY_KINDS:
 		var K = sim.ENEMY_KINDS[kind]
 		var row := HBoxContainer.new()

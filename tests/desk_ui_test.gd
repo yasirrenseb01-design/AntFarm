@@ -41,6 +41,13 @@ func _init():
 		ok = false
 	var b = Ctl.SealButton.new("enemy", Color.RED)
 	ok = ok and b.get_theme_stylebox("normal") != null
+	# the album: plate a at 50 workers, b at 200, each once
+	var Album = load("res://scripts/view/ui/album.gd")
+	var steps := [Album.newly_won("lasius_niger", 49, []), Album.newly_won("lasius_niger", 50, []),
+		Album.newly_won("lasius_niger", 250, ["a"]), Album.newly_won("lasius_niger", 250, ["a", "b"]), Album.newly_won("nobody", 999, [])]
+	if steps != [[], ["a"], ["b"], [], []]:
+		print("album: ", steps)
+		ok = false
 	print("dial and strap: %s" % ("as their buttons were" if ok else "WRONG"))
 	print("DESK UI TEST PASSED" if ok else "DESK UI TEST FAILED")
 	d.free()

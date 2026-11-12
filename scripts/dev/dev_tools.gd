@@ -408,8 +408,8 @@ func _take_shot() -> void:
 	if _opts.has("star-go"):
 		hud.go_to_ant(sim.outside[0].id if _opts["star-go"] == "out" and not sim.outside.is_empty() else int(_opts["star-go"]))     # (out: a forager)
 	if _opts.has("species"):
-		var sw: Window = hud.open_species(1, true)
-		sw._show(int(_opts["species"]) if String(_opts["species"]).is_valid_int() else 0)      # (--species=<i>: which model)
+		hud.open_species(1, true)._show(int(_opts["species"]) if String(_opts["species"]).is_valid_int() else 0)      # (--species=<i>: which model)
+	load("res://scripts/dev/fight_states.gd").apply(self)      # (--enemy-state, --album: dev/fight_states.gd)
 	if _opts.has("settings"):
 		hud.open_settings()
 	if _opts.has("enemy-panel") or _opts.has("release"):

@@ -37,7 +37,7 @@ func _init():
 		var l2 := 0.0
 		var peak := 0
 		var last: Vector2 = c.pos
-		while t < s.TPD and not s.creatures.is_empty():
+		while t < s.TPD * 3 and not s.creatures.is_empty():
 			s.step()
 			t += 1
 			if s.creatures.is_empty():

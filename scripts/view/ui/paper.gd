@@ -1,5 +1,6 @@
 extends RefCounted
-## The keeper's field notebook look (PART EA2, the player's idea): kraft paper made in code, pencil and ink colours,
+## The keeper's field notebook look (PART EA2, the player's idea): paper made in code - kraft until v0.13.2, cream since,
+## to go with the desk look (ui/desk.gd: windows on a clipboard, buttons as paper tags) - pencil and ink colours,
 ## the theme for the windows (new colony, species, settings, my colonies, reports) and a pencil scribbling sound.
 ## The title screen's page is drawn on it too (game/title.gd). The HUD over the colony stays dark (it sits on the scene).
 
@@ -12,11 +13,13 @@ const RULE := Color(0.36, 0.42, 0.55, 0.28)   # the ruled lines, faded blue
 const MARGIN := Color(0.7, 0.22, 0.16, 0.45)  # the margin line
 const HILITE := Color(0.95, 0.82, 0.38, 0.75) # a highlighter stroke (a button turned on)
 
+const Desk := preload("res://scripts/view/ui/desk.gd")
+
 static var _tex: ImageTexture
 static var _sounds: Array = []
 
 
-## The paper (one texture, made once): warm brown with darker fibres and a few flecks.
+## The paper (one texture, made once): cream with darker fibres and a few flecks (warm brown kraft until v0.13.2).
 static func texture() -> ImageTexture:
 	if _tex != null:
 		return _tex
@@ -32,8 +35,8 @@ static func texture() -> ImageTexture:
 	fib.fractal_octaves = 2
 	var r := RandomNumberGenerator.new()
 	r.seed = 79
-	var c0 := Color(0.74, 0.6, 0.43)
-	var c1 := Color(0.82, 0.69, 0.52)
+	var c0 := Color(0.87, 0.81, 0.68)
+	var c1 := Color(0.96, 0.93, 0.84)
 	for y in n:
 		for x in n:
 			var v := base.get_noise_2d(x, y) * 0.5 + 0.5
@@ -44,7 +47,7 @@ static func texture() -> ImageTexture:
 			img.set_pixel(x, y, c)
 	for i in 260:
 		var p := Vector2i(r.randi() % n, r.randi() % n)
-		img.set_pixelv(p, c0.darkened(0.35 + r.randf() * 0.3))
+		img.set_pixelv(p, c0.darkened(0.15 + r.randf() * 0.2))
 	_tex = ImageTexture.create_from_image(img)
 	return _tex
 
@@ -83,15 +86,16 @@ static func theme(base: Theme) -> Theme:
 	th.set_stylebox("panel", "PanelContainer", page())
 	for cls in ["AcceptDialog", "ConfirmationDialog", "PopupPanel"]:
 		th.set_stylebox("panel", cls, page())
-	# the window's frame: the paper runs on under its title bar (drawn outside the window's own rect)
-	var frame := page(0, 0)
-	frame.expand_margin_left = 6
-	frame.expand_margin_right = 6
-	frame.expand_margin_bottom = 6
-	frame.expand_margin_top = 34
+	# the window's frame: a clipboard - the board round it, the sheet running on under its title bar, the brass clip
+	# above (ui/desk.gd WindowBox; the paper ran on under the title until v0.13.2)
+	var frame = Desk.WindowBox.new()
 	th.set_stylebox("embedded_border", "Window", frame)
 	th.set_stylebox("embedded_unfocused_border", "Window", frame)
 	th.set_color("title_color", "Window", INK)
+	var serif := SystemFont.new()                     # (window titles in the desk look's serif: v0.13.2)
+	serif.font_names = PackedStringArray(["Georgia", "Cambria", "Leelawadee UI"])
+	th.set_font("title_font", "Window", serif)
+	th.set_font_size("title_font_size", "Window", 16)
 	th.set_icon("close", "Window", _cross(false))
 	th.set_icon("close_pressed", "Window", _cross(true))
 	for cls in ["Label", "Button", "CheckBox", "OptionButton", "MenuButton", "RichTextLabel"]:
@@ -102,12 +106,10 @@ static func theme(base: Theme) -> Theme:
 		th.set_color("font_hover_pressed_color", cls, INK)
 	th.set_color("default_color", "RichTextLabel", INK)
 	th.set_color("font_disabled_color", "Button", PENCIL.lightened(0.25))
-	# buttons: an inked outline on the page; hovered, a light pencil shading; on (toggled), a highlighter stroke
-	th.set_stylebox("normal", "Button", _flat(clear, INK.lerp(PENCIL, 0.4)))
-	th.set_stylebox("hover", "Button", _flat(Color(0.3, 0.2, 0.1, 0.12), INK))
-	th.set_stylebox("pressed", "Button", _flat(HILITE, INK))
-	th.set_stylebox("hover_pressed", "Button", _flat(HILITE.lightened(0.08), INK))
-	th.set_stylebox("disabled", "Button", _flat(clear, PENCIL.lightened(0.3)))
+	# buttons: paper tags with a shadow; hovered, lighter; on (toggled), honey-washed (until v0.13.2: an inked outline,
+	# a highlighter stroke)
+	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		th.set_stylebox(st, "Button", Desk.TagBox.new(st, 10, 5))
 	for cls in ["OptionButton", "MenuButton"]:
 		th.set_stylebox("normal", cls, _flat(Color(1, 1, 1, 0.12), INK.lerp(PENCIL, 0.4)))
 		th.set_stylebox("hover", cls, _flat(Color(0.3, 0.2, 0.1, 0.12), INK))

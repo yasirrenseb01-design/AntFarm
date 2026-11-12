@@ -14,7 +14,7 @@ const LATIN := "Lithobius forficatus"
 const ABOUT := "enemy_centipede_about"      # (the HUD's enemy panel)
 const CHASED := T.centipede_chased
 const STATS := {
-	"hp": 0.9,          # a little tougher than a spider of its size
+	"hp": 2.2,          # a little tougher than a spider of its size (0.9 until v0.13.3: "it dies too fast")
 	"armor": 0.2,       # thin, flexible plates
 	"length": 50.0,     # px (about 25 mm)
 	"width": 4.0,       # px from the midline to where its legs are seized
@@ -26,11 +26,11 @@ const STATS := {
 		[-12.0, 8.0, 0.0, 0.3], [-18.0, 8.0, 0.0, 0.3], [15.0, 1.8, 1.2, 0.0], [5.0, 1.8, 1.2, 0.0], [-5.0, 1.8, 1.2, 0.0],
 		[-15.0, 1.8, 1.2, 0.0], [36.2, 2.7, 0.0, 0.4], [-33.2, 7.0, 0.0, 0.3], [24.0, 0.0, 1.2, 0.0]],
 	"pin": 6,
-	"flee_at": 0.5,     # runs as soon as it is badly mobbed
+	"flee_at": 1.2,     # runs as soon as it is badly mobbed (56% of its health)
 	"speed": 1.15,      # px per tick: one of the fastest things in the leaf litter
 	"bite": 0.025,
 	"lethal": 0.55,     # its venom is weak, but an ant is small
-	"shake": 0.002,     # writhes free
+	"shake": 0.0036,    # writhes free (0.002 until v0.13.3)
 	"carcass": "centipede_dead",
 	"night": true,      # only comes out in the dark, leaves at dawn
 	"rate": 0.12,       # common in gardens (counted over the night only; v0.11.2: was 0.3)
@@ -53,7 +53,7 @@ static func spawn(sim) -> Dictionary:
 static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.life -= 1
 	var held := clinging.size()
-	var free := clampf(1.0 - float(c.get("load", held)) / STATS.pin, 0.0, 1.0)
+	var free: float = sim.struggle_free(c, clampf(1.0 - float(c.get("load", held)) / STATS.pin, 0.0, 1.0))
 	c.phase += 0.45 * maxf(free, 0.3)
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true
@@ -75,7 +75,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = c.ang + sin(c.phase * 0.35) * 0.25 + sim.rng.randf_range(-0.1, 0.1)
 	if leaving:
 		target_ang = (c.exit - c.pos).angle()
-	elif fleeing and best != null:
+	elif (fleeing or sim.panicking(c)) and best != null:
 		target_ang = (c.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null and bd < 90.0:
 		target_ang = (best.pos - c.pos).angle()
@@ -90,6 +90,8 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos)
 	if not leaving and inside and sim.blocked(np + Vector2.from_angle(c.ang) * STATS.length * 0.5):
 		c.ang += 1.6
+		if sim.panicking(c):
+			sim.flip_over(c)             # (ran into the side of the box in its panic)
 	else:
 		c.pos = np
 	var victim = null

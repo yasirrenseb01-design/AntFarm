@@ -71,6 +71,7 @@ func _build_top(root: Control) -> void:
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sub.custom_minimum_size.x = BAR_W - 48.0
 	title.add_child(sub)
+	call("_album_sketch", title)          # (the queen's sketch, the album's way in: hud.gd)
 	col.add_child(title)
 	_top_title = title
 

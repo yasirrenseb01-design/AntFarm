@@ -14,7 +14,7 @@ const LATIN := "Lycosidae"
 const ABOUT := "enemy_wolf_spider_about"      # (the HUD's enemy panel)
 const CHASED := T.spider_chased        # journal line when the keeper removes it
 const STATS := {
-	"hp": 1.0,          # health; formic acid and bites wear it down
+	"hp": 2.3,          # health; formic acid and bites wear it down (1.0 until v0.13.3: the keeper, 2026-11-12 - "it dies too fast")
 	"armor": 0.15,      # share of the ants' damage its body shrugs off
 	"r": 16.0,          # px from its centre where ants grab on (its legs)
 	"hold": 8,          # ants holding on that bite and pin it in full; more get in each other's way (a quarter each)
@@ -26,7 +26,7 @@ const STATS := {
 		[4.2, 6.4, 1.8, 0.9], [-7.2, 6.1, 2.0, 0.9], [-11.6, 6.8, 2.0, 0.9],
 		[5.0, 2.2, 4.0, 0.1], [-5.0, 2.8, 3.8, 0.0], [-12.0, 2.0, 4.7, -0.1], [-17.0, 0.0, 2.5, 0.7]],
 	"pin": 5,           # this many ants stop it moving (spread-eagling)
-	"flee_at": 0.45,    # below this health it runs for the edge
+	"flee_at": 1.0,     # below this health it runs for the edge (in the keeper's box: from the ants) - 45% of its health
 	# pace, px per tick (1 px = 0.5 mm, 60 ticks a second at 1x) at full warmth: wolf spiders sprint at 20-50 cm/s
 	# (Pardosa valens, Brown & Formanowicz 2012) and hunt in short rushes. Slower here so the keeper can follow it:
 	# (v0.11.68, the keeper: "far slower than a real one - faster, but not that fast"; it was 0.55, 1.7 cm/s, slower than
@@ -38,7 +38,7 @@ const STATS := {
 	"dash_rest": 90,    # ticks before it rushes again
 	"flee": 2.0,        # running for the edge when badly hurt: 6 cm/s
 	"bite": 0.02,       # chance per tick to bite an ant within reach (less while pinned)
-	"shake": 0.0016,    # chance per tick, per clinging ant, to throw one off
+	"shake": 0.003,     # chance per tick, per clinging ant, to throw one off (0.0016 until v0.13.3)
 	"carcass": "wolf_spider_dead",
 	"night": false,     # hunts by day as well
 	"rate": 0.07,       # chance per day of one wandering in (v0.11.2: 0.25 came every ~4 days once it could come in at all)
@@ -63,7 +63,7 @@ static func spawn(sim) -> Dictionary:
 static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	s.life -= 1
 	var held := clinging.size()
-	var free := clampf(1.0 - float(s.get("load", held)) / STATS.pin, 0.0, 1.0)      # pinned by the ants holding on
+	var free: float = sim.struggle_free(s, clampf(1.0 - float(s.get("load", held)) / STATS.pin, 0.0, 1.0))      # pinned by the ants holding on (a panicked rush drags them)
 	if s.hp < STATS.flee_at and not s.get("fleeing", false):
 		s.fleeing = true
 		sim._log(T.enemy_flees if sim.enemy_can_leave() else T.enemy_runs, "ok", [L.k(NAME)])
@@ -80,7 +80,7 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = s.ang + sim.rng.randf_range(-0.12, 0.12)
 	if leaving:
 		target_ang = (s.exit - s.pos).angle()
-	elif s.get("fleeing", false) and best != null:
+	elif (s.get("fleeing", false) or sim.panicking(s)) and best != null:
 		target_ang = (s.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null:
 		target_ang = (best.pos - s.pos).angle()
@@ -94,7 +94,7 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	s.ang += wrapf(target_ang - s.ang, -PI, PI) * (0.25 if dashing else 0.08)
 	# a cold spider is slower, as the ants are (Pardosa ran 4x faster at 30 than at 7 °C: Villaseñor-Amador et al., Animal Behaviour 2023)
 	var warm: float = 0.25 + 0.75 * sim.activity
-	var pace: float = STATS.flee if s.get("fleeing", false) else (STATS.dash if dashing else STATS.speed)
+	var pace: float = STATS.flee if s.get("fleeing", false) or sim.panicking(s) else (STATS.dash if dashing else STATS.speed)
 	var np: Vector2 = s.pos + Vector2.from_angle(s.ang) * pace * warm * free
 	s.phase += 0.55 * maxf(pace * warm * free, 0.14)                    # legs step with the ground covered; pinned, they thrash
 	var world: Vector2 = sim.WORLD
@@ -103,6 +103,8 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(s.pos)
 	if not leaving and inside and sim.blocked(np):
 		s.ang += 2.0
+		if sim.panicking(s):
+			sim.flip_over(s)             # (ran into the side of the box in its panic)
 	else:
 		s.pos = np
 	# bite: an ant clinging to it first, otherwise the nearest one within reach

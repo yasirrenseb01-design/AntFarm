@@ -163,8 +163,8 @@ func _make_theme() -> Theme:
 	th.set_constant("separation", "VBoxContainer", 8)
 	# the paper over all of it (ui/paper.gd: the windows' look), with the panels' own padding and a shadow off the page
 	var pt := Paper.theme(th)
-	var page: StyleBoxTexture = Paper.page(14, 12)
-	pt.set_stylebox("panel", "PanelContainer", page)
+	# (the panels beside the bar - enemies, top ants, an ant's card - loose sheets with a shadow: v0.13.2)
+	pt.set_stylebox("panel", "PanelContainer", preload("res://scripts/view/ui/desk.gd").SheetBox.new(14, 12))
 	pt.set_stylebox("background", "ProgressBar", _box(Color(0.4, 0.3, 0.2, 0.25), LINE, 4, 0, 0))
 	pt.set_stylebox("fill", "ProgressBar", _box(Color(0.25, 0.5, 0.78), Color(0.25, 0.5, 0.78), 4, 0, 0))
 	pt.set_color("font_color", "LineEdit", INK)
