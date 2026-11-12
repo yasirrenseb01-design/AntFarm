@@ -8,12 +8,43 @@ extends "res://scripts/view/ui/parts/hud_stars.gd"
 ## a Post-it with the day and the season"; along the top until v0.11.77): the species and the box, the days kept, the
 ## time, the date and the weather, the points, the speeds, the two views, then the panels and the menu. Folded away, a
 ## sticky note is left in its corner (_postit), the day and the season on it: a click opens the bar again.
-const BAR_W := 236.0
+const BAR_W := 250.0
+const Desk := preload("res://scripts/view/ui/desk.gd")
+const DeskDial := preload("res://scripts/view/ui/desk_dial.gd")
+const DeskControls := preload("res://scripts/view/ui/desk_controls.gd")
+
+var _dial                        # ui/desk_dial.gd: the speeds
+var _view_strap                  # desk_controls.ViewStrap: outworld / nest
+var _serif: SystemFont           # the desk look's words (the keeper's picture: a serif, the date in italics)
+var _serif_i: SystemFont
+
+
+## The desk look's fonts: a serif (Georgia, Cambria), Thai from the system's fallback.
+func _desk_fonts() -> void:
+	if _serif != null:
+		return
+	_serif = SystemFont.new()
+	_serif.font_names = PackedStringArray(["Georgia", "Cambria", "Leelawadee UI"])
+	_serif_i = SystemFont.new()
+	_serif_i.font_names = PackedStringArray(["Georgia", "Cambria", "Leelawadee UI"])
+	_serif_i.font_italic = true
+
+
+## A button as stitched leather / a paper tag (desk_controls.gd).
+func _leather_button(b: Button) -> void:
+	DeskControls.leather(b)
+
+
+func _tag_button(b: Button) -> void:
+	DeskControls.tag(b)
+
 
 func _build_top(root: Control) -> void:
+	_desk_fonts()
 	var panel := PanelContainer.new()
-	panel.position = Vector2(14, 12)
+	panel.position = Vector2(14, 22)              # (room above for the clip's ring)
 	panel.custom_minimum_size.x = BAR_W
+	panel.add_theme_stylebox_override("panel", Desk.ClipboardBox.new(22, 38, 18))
 	root.add_child(panel)
 	_top = panel
 	var col := VBoxContainer.new()
@@ -24,10 +55,12 @@ func _build_top(root: Control) -> void:
 	var title := VBoxContainer.new()
 	title.add_theme_constant_override("separation", 0)
 	var name_row := HBoxContainer.new()
-	var name_l := _label(tr(sim.sp["name_th"]), 22, INK, _display)
+	var name_l := _label(tr(sim.sp["name_th"]), 22, INK, _serif)
 	name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_row.add_child(name_l)
 	var fold := _button("‹", false)
+	_leather_button(fold)
+	fold.custom_minimum_size = Vector2(28, 26)
 	fold.tooltip_text = tr("bar_fold_tip")
 	fold.pressed.connect(func(): set_bar_open(false))
 	guide_targets["fold"] = fold
@@ -36,7 +69,7 @@ func _build_top(root: Control) -> void:
 	var sub := _label(tr("top_subtitle") % [sim.sp["name"], tr("top_plot") if sim.scenario == "wild" else tr("top_box"),
 		"%d×%d" % [int(sim.WORLD.x * 0.05), int(sim.WORLD.y * 0.05)], ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.custom_minimum_size.x = BAR_W - 28.0
+	sub.custom_minimum_size.x = BAR_W - 48.0
 	title.add_child(sub)
 	col.add_child(title)
 	_top_title = title
@@ -45,16 +78,19 @@ func _build_top(root: Control) -> void:
 	# days I have kept them" - are on the time bar along the top since v0.12.12: ui/time_bar.gd)
 	var clock := VBoxContainer.new()
 	clock.add_theme_constant_override("separation", 0)
-	_date = _label("", 13, MUTED)
+	_date = _label("", 14, INK.lerp(MUTED, 0.4), _serif_i)
 	_date.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_weather = _label("", 12, MUTED)
+	_weather = _label("", 13, INK.lerp(MUTED, 0.4), _serif_i)
 	_weather.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	clock.add_child(_date)
 	clock.add_child(_weather)
 	col.add_child(clock)
 	# the points, in the bar (on a tab hung under the top bar until v0.11.77)
-	_harmony_l = _label("", 13, AMBER)
-	_harmony_row = with_harmony_icon(_harmony_l, 18)
+	# (on a parchment ribbon beside the honey: the keeper's picture)
+	_harmony_l = _label("", 14, Color(0.45, 0.25, 0.05), _serif_i)
+	_harmony_l.add_theme_stylebox_override("normal", Desk.RibbonBox.new())
+	_harmony_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_harmony_row = with_harmony_icon(_harmony_l, 26)
 	col.add_child(_harmony_row)
 	# the food warning, on paper under the bar (the keeper, 2026-10-27: sugar or protein about to run out - food_warning)
 	_food_warn = _label("", 13, Color(0.75, 0.33, 0.05))
@@ -70,78 +106,84 @@ func _build_top(root: Control) -> void:
 	_food_warn.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_food_warn)
 
-	col.add_child(HSeparator.new())
-	var speeds := GridContainer.new()
-	speeds.columns = 3
-	speeds.add_theme_constant_override("h_separation", 4)
-	speeds.add_theme_constant_override("v_separation", 4)
-	guide_targets["speeds"] = speeds
+	# the speeds: a brass gauge (a calm pace for watching - 0.5× is where a new game starts; longer stretches pass while
+	# the game is closed); developer speeds under it (F10 shows / hides them): fast-forward for testing, not for watching
+	_dial = DeskDial.new()
+	_dial.labels = [tr("speed_pause"), "0.2×", "0.5×", "1×", "2×", "5×"]
+	_dial.font = _serif
+	_dial.value = 0.5
+	guide_targets["speeds"] = _dial
+	_dial.picked.connect(func(v):
+		for b in _dev_speed_buttons:
+			b.set_pressed_no_signal(false)
+		speed_changed.emit(v))
+	col.add_child(_dial)
+	var dev := HBoxContainer.new()
+	dev.add_theme_constant_override("separation", 4)
 	var g := ButtonGroup.new()
-	# a calm pace for watching (0.5× is where a new game starts); longer stretches pass while the game is closed
-	for pair in [[tr("speed_pause"), 0.0], ["0.2×", 0.2], ["0.5×", 0.5], ["1×", 1.0], ["2×", 2.0], ["5×", 5.0]]:
-		var b := _button(pair[0], true, g)
-		b.button_pressed = pair[1] == 0.5
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var v: float = pair[1]
-		b.pressed.connect(func(): speed_changed.emit(v))
-		speeds.add_child(b)
-	# developer speeds (F10 shows / hides them): fast-forward for testing, not for watching
 	for pair in [["20×", 20.0], ["50×", 50.0], ["100×", 100.0]]:
 		var b := _button(pair[0], true, g)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var v: float = pair[1]
-		b.pressed.connect(func(): speed_changed.emit(v))
+		b.pressed.connect(func():
+			_dial.show_speed(v)
+			speed_changed.emit(v))
 		b.visible = false
 		b.tooltip_text = tr("speed_dev")
-		speeds.add_child(b)
+		dev.add_child(b)
 		_dev_speed_buttons.append(b)
-	col.add_child(speeds)
+	col.add_child(dev)
 
-	var views := HBoxContainer.new()
-	guide_targets["views"] = views
-	views.add_theme_constant_override("separation", 4)
-	var vg := ButtonGroup.new()
-	for pair in [[tr("view_outworld"), "outworld"], [tr("view_nest"), "nest"]]:
-		var b := _button(pair[0], true, vg)
-		b.button_pressed = pair[1] == "outworld"
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_view_btns[pair[1]] = b
-		var m: String = pair[1]
-		b.pressed.connect(func():
-			_apply_mode(m)
-			view_changed.emit(m))
-		views.add_child(b)
-	col.add_child(views)
+	# the two views: a leather strap, the chosen half raised
+	_view_strap = DeskControls.ViewStrap.new()
+	_view_strap.words = [tr("view_outworld"), tr("view_nest")]
+	_view_strap.font = _serif
+	guide_targets["views"] = _view_strap
+	_view_strap.chosen.connect(func(m):
+		_apply_mode(m)
+		view_changed.emit(m))
+	col.add_child(_view_strap)
 
-	col.add_child(HSeparator.new())
 	var more := GridContainer.new()
 	more.columns = 2
-	more.add_theme_constant_override("h_separation", 4)
-	more.add_theme_constant_override("v_separation", 4)
+	more.add_theme_constant_override("h_separation", 6)
+	more.add_theme_constant_override("v_separation", 6)
 	col.add_child(more)
-	var foes := _button(tr("enemies"), false)
+	var foes := _seal(tr("enemies"), "enemy", Color(0.6, 0.12, 0.09))
 	foes.tooltip_text = tr("enemies_tip")
 	foes.pressed.connect(toggle_enemies)
-	var stars := _button(tr("stars"), false)
+	var stars := _seal(tr("stars"), "ant", Color(0.55, 0.14, 0.1))
 	guide_targets["stars"] = stars
 	stars.tooltip_text = tr("stars_tip")
 	stars.pressed.connect(toggle_stars)
-	var mine := _button(tr("my_colonies"), false)
+	var mine := _seal(tr("my_colonies"), "home", Color(0.72, 0.52, 0.16))
 	mine.pressed.connect(func(): open_colonies())
 	# the nest as the desktop wallpaper, behind the icons (back: the ant icon in the system tray)
-	var desk := _button(tr("wallpaper"), false)
+	var desk := _seal(tr("wallpaper"), "picture", Color(0.27, 0.23, 0.23))
 	desk.tooltip_text = tr("wallpaper_tip")
 	desk.pressed.connect(func(): desktop_requested.emit())
-	var menu := _button(tr("menu"), false)
+	var menu := _seal(tr("menu"), "menu", Color(0.42, 0.25, 0.14))
 	guide_targets["menu"] = menu
 	menu.tooltip_text = tr("menu_tip")
 	menu.pressed.connect(func(): menu_requested.emit())
-	for b in [foes, stars, mine, desk, menu]:
+	# (two to a row; My colonies - the longest words - a row of its own: the bar stays as narrow as it was)
+	for b in [foes, stars, desk, menu]:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		more.add_child(b)
+	mine.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(mine)
 
 	_postit = _make_postit()
 	root.add_child(_postit)
+
+
+## A paper tag with a wax seal (the colony bar's buttons).
+func _seal(text: String, kind: String, wax: Color) -> Button:
+	var b = DeskControls.SealButton.new(kind, wax)
+	b.text = text
+	b.add_theme_font_override("font", _serif_i)
+	b.add_theme_font_size_override("font_size", 13)
+	return b
 
 
 ## The folded bar: a yellow sticky note, a little askew, the day and the season pencilled on it (the keeper's sketch,
@@ -277,17 +319,18 @@ func _build_tools(root: Control) -> void:
 	panel.offset_top = -64
 	panel.offset_bottom = -12
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.add_theme_stylebox_override("panel", Desk.TrayBox.new())       # (a wooden tray: the keeper, 2026-11-12)
 	root.add_child(panel)
 	_tools_bar = panel
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	panel.add_child(row)
-	var place_label := _label(tr("place_plot") if sim.scenario == "wild" else tr("place_box"), 12, MUTED)
+	var place_label := _label(tr("place_plot") if sim.scenario == "wild" else tr("place_box"), 12, Color(0.95, 0.86, 0.7))
 	row.add_child(place_label)
 	_outside_tools.append(place_label)
 	_cut_row = HBoxContainer.new()
 	_cut_row.visible = false
-	_cut_row.add_child(_label(tr("cut_plane"), 12, MUTED))
+	_cut_row.add_child(_label(tr("cut_plane"), 12, Color(0.95, 0.86, 0.7)))
 	var cut := HSlider.new()
 	_cut_slider = cut
 	cut.min_value = -32
@@ -353,6 +396,9 @@ func _build_tools(root: Control) -> void:
 		sim._log(T.fridge_in if on else T.fridge_out))
 	cold.visible = sim.scenario == "keeper"      # outdoors winter comes by itself
 	row.add_child(cold)
+	for b in row.get_children():
+		if b is Button:
+			_tag_button(b)
 	_hint = _label("", 12, Color(1, 1, 1, 0.85))       # (over the scene, not on paper: light, with a shadow)
 	_hint.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
 	_hint.add_theme_constant_override("shadow_offset_x", 1)
@@ -376,6 +422,7 @@ func _build_camera_pad(root: Control) -> void:
 	panel.offset_bottom = -12
 	panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	panel.add_theme_stylebox_override("panel", Desk.TrayBox.new(14, 10))
 	root.add_child(panel)
 	_cam_pad = panel
 	var col := VBoxContainer.new()
@@ -388,6 +435,7 @@ func _build_camera_pad(root: Control) -> void:
 			[tr("cam_top"), "top", "out"], [tr("cam_fit"), "reset", "both"]]:
 		var b := _button(spec[0], false)
 		b.custom_minimum_size = Vector2(34, 0)
+		_tag_button(b)
 		var a: String = spec[1]
 		b.pressed.connect(func(): cam_action.emit(a))
 		row.add_child(b)
@@ -398,13 +446,14 @@ func _build_camera_pad(root: Control) -> void:
 	var go := HBoxContainer.new()
 	go.add_theme_constant_override("separation", 4)
 	col.add_child(go)
-	var lbl := _label(tr("cam_go"), 12, MUTED)
+	var lbl := _label(tr("cam_go"), 12, Color(0.95, 0.86, 0.7))
 	go.add_child(lbl)
 	for spec in [[tr("cam_entrance"), "nest", "outworld"], [tr("queen"), "queen", "nest"], [tr("larvae"), "larvae", "nest"],
 			[tr("pupae"), "pupae", "nest"], [tr("cam_entrance"), "entrance", "nest"]]:
 		var b := _button(spec[0], false)
 		var a: String = spec[1]
 		b.pressed.connect(func(): cam_action.emit(a))
+		_tag_button(b)
 		go.add_child(b)
 		if spec[2] == "nest":
 			_cam_nest.append(b)
@@ -421,8 +470,8 @@ func set_cut(v: float) -> void:
 
 func _apply_mode(m: String) -> void:
 	var outside := m != "nest"
-	if _view_btns.has(m):
-		_view_btns[m].button_pressed = true
+	if _view_strap != null:
+		_view_strap.select(m)
 	for c in _cam_nest:
 		c.visible = m == "nest"
 	for c in _cam_outside:

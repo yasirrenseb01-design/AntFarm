@@ -20,8 +20,9 @@ func _build_panel(root: Control) -> void:
 	panel.anchor_bottom = 1.0
 	panel.offset_left = -PANEL_W
 	panel.offset_right = -12
-	panel.offset_top = 12
+	panel.offset_top = 22                          # (room above for the clip's ring)
 	panel.offset_bottom = -12
+	panel.add_theme_stylebox_override("panel", Desk.ClipboardBox.new(20, 38, 16))     # (a clipboard: the keeper, 2026-11-12)
 	root.add_child(panel)
 	_side = panel
 	var whole := VBoxContainer.new()
@@ -51,6 +52,7 @@ func _build_panel(root: Control) -> void:
 			col.visible = show == col
 			_stats.visible = show == _stats
 			_stats.redraw())
+		_leather_button(b)
 		tabs.add_child(b)
 		_side_tabs.append(b)
 	guide_targets["stats"] = _side_tabs[1]
@@ -75,6 +77,7 @@ func _build_panel(root: Control) -> void:
 	root.add_child(_side_tab)
 	root.get_viewport().size_changed.connect(_layout_side)
 
+	_leather_button(fold)
 	tabs.add_child(fold)
 	var st := VBoxContainer.new()
 	st.add_theme_constant_override("separation", 6)
@@ -326,7 +329,7 @@ func _crowded() -> bool:
 
 
 func _layout_side() -> void:
-	_side.offset_top = 12.0
+	_side.offset_top = 22.0
 	_side_tab.offset_top = _side.offset_top
 	_fit_bottom()
 

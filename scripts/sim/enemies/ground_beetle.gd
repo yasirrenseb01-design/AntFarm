@@ -59,8 +59,10 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.phase += 0.35 * maxf(free, 0.3)
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true
-		sim._log(T.enemy_flees, "ok", [L.k(NAME)])
-	var leaving: bool = c.life <= 0 or c.get("fleeing", false) or (sim.daylight() > 0.35 and not c.get("released", false))
+		sim._log(T.enemy_flees if sim.enemy_can_leave() else T.enemy_runs, "ok", [L.k(NAME)])
+	# (the keeper's box is shut: it stays in till the ants kill it or the keeper takes it out - sim_enemies.enemy_can_leave)
+	var leaving: bool = sim.enemy_can_leave() and (c.life <= 0 or c.get("fleeing", false) or (sim.daylight() > 0.35 and not c.get("released", false)))
+	var fleeing: bool = c.get("fleeing", false)
 	var best = null
 	var bd := 140.0
 	for a in sim.outside:
@@ -73,10 +75,12 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = c.ang + sim.rng.randf_range(-0.2, 0.2)
 	if leaving:
 		target_ang = (c.exit - c.pos).angle()
+	elif fleeing and best != null:
+		target_ang = (c.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null:
 		target_ang = (best.pos - c.pos).angle()
 	c.ang += wrapf(target_ang - c.ang, -PI, PI) * 0.1
-	var burst := 1.0 if fmod(c.phase, 9.0) < 7.0 or leaving else 0.15
+	var burst := 1.0 if fmod(c.phase, 9.0) < 7.0 or leaving or fleeing else 0.15
 	var np: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.speed * free * burst
 	var world: Vector2 = sim.WORLD
 	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band

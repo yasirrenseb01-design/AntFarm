@@ -1,0 +1,196 @@
+extends RefCounted
+## The colony bar's other pieces in the desk look (ui/desk.gd): the leather strap that picks the view (outworld / nest)
+## and the buttons as paper tags with a wax seal (the keeper's picture, 2026-11-12). Icons are drawn in code.
+
+const D := preload("res://scripts/view/ui/desk.gd")
+
+
+## A button as stitched leather (the side panel's tabs): cream words.
+static func leather(b: Button) -> void:
+	b.add_theme_stylebox_override("normal", D.LeatherBox.new(false, 12, 5, 7.0, Color(0.85, 0.83, 0.83)))
+	b.add_theme_stylebox_override("hover", D.LeatherBox.new(false, 12, 5, 7.0, Color(1.0, 0.97, 0.95)))
+	b.add_theme_stylebox_override("pressed", D.LeatherBox.new(true, 12, 5, 7.0))
+	b.add_theme_stylebox_override("hover_pressed", D.LeatherBox.new(true, 12, 5, 7.0))
+	for c in ["font_color", "font_hover_color"]:
+		b.add_theme_color_override(c, Color(0.9, 0.8, 0.64))
+	for c in ["font_pressed_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(c, Color(1.0, 0.94, 0.8))
+
+
+## A button as a paper tag (the tray's tools, the camera's): honey-washed when on.
+static func tag(b: Button) -> void:
+	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		b.add_theme_stylebox_override(st, D.TagBox.new(st, 10, 5))
+	for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(c, D.INK)
+
+
+## A wax seal's icon, drawn at c in a seal of radius r (light on the wax).
+static func icon(ci: CanvasItem, kind: String, c: Vector2, r: float, col: Color) -> void:
+	var s := r / 10.0
+	match kind:
+		"enemy":                                 # a spider, struck through
+			ci.draw_circle(c + Vector2(-1.5, 0) * s, 2.4 * s, col, true, -1.0, true)
+			ci.draw_circle(c + Vector2(2.5, 0) * s, 3.0 * s, col, true, -1.0, true)
+			for k in 4:
+				var a := -0.9 + 0.6 * k
+				for sd in [-1.0, 1.0]:
+					var p0 := c + Vector2(-1.0 * s, 0)
+					var kn := p0 + Vector2(cos(a) * 3.5, sd * (2.5 + abs(sin(a)) * 1.5)) * s
+					ci.draw_polyline(PackedVector2Array([p0, kn, kn + Vector2(cos(a) * 2.5, sd * 2.5) * s]), col, 1.1 * s, true)
+			ci.draw_line(c + Vector2(-6, 6) * s, c + Vector2(6, -6) * s, col, 1.6 * s, true)
+		"ant":                                   # an ant from above
+			for e in [[Vector2(-4.2, 0), Vector2(2.6, 2.0)], [Vector2(0.2, 0), Vector2(2.2, 1.3)], [Vector2(3.8, 0), Vector2(1.6, 1.5)]]:
+				_oval(ci, c + e[0] * s, e[1] * s, col)
+			for k in 3:
+				for sd in [-1.0, 1.0]:
+					var p0 := c + Vector2(0.2 + (k - 1) * 0.9, 0) * s
+					var kn := p0 + Vector2((k - 1) * 2.2, sd * 3.0) * s
+					ci.draw_polyline(PackedVector2Array([p0, kn, kn + Vector2((k - 1) * 1.6, sd * 2.4) * s]), col, 0.9 * s, true)
+			for sd in [-1.0, 1.0]:
+				ci.draw_polyline(PackedVector2Array([c + Vector2(5, sd * 0.8) * s, c + Vector2(7, sd * 2.5) * s, c + Vector2(8.5, sd * 2.0) * s]), col, 0.8 * s, true)
+		"home":                                  # a house: the colonies kept
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-6, -0.5) * s, c + Vector2(0, -6) * s, c + Vector2(6, -0.5) * s]), col)
+			ci.draw_rect(Rect2(c + Vector2(-4.2, -1) * s, Vector2(8.4, 6.5) * s), col)
+			ci.draw_rect(Rect2(c + Vector2(-1.2, 1.8) * s, Vector2(2.4, 3.7) * s), col.darkened(0.6))
+		"picture":                               # a framed picture: the wallpaper
+			ci.draw_rect(Rect2(c + Vector2(-6, -4.5) * s, Vector2(12, 9) * s), col, false, 1.4 * s, true)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-4.5, 3.2) * s, c + Vector2(-1.2, -1.5) * s, c + Vector2(1, 1) * s,
+				c + Vector2(2.6, -0.5) * s, c + Vector2(4.5, 3.2) * s]), col)
+			ci.draw_circle(c + Vector2(2.8, -2.3) * s, 1.1 * s, col, true, -1.0, true)
+		"menu":                                  # three lines
+			for k in 3:
+				ci.draw_line(c + Vector2(-5, -3.5 + 3.5 * k) * s, c + Vector2(5, -3.5 + 3.5 * k) * s, col, 1.5 * s, true)
+		"ground":                                # the outworld: an ant over the ground, a blade of grass
+			ci.draw_line(c + Vector2(-8, 4) * s, c + Vector2(8, 4) * s, col, 1.2 * s, true)
+			for e in [[Vector2(-3.5, 1), Vector2(2.2, 1.6)], [Vector2(0, 1), Vector2(1.6, 1.0)], [Vector2(3, 0.6), Vector2(1.4, 1.3)]]:
+				_oval(ci, c + e[0] * s, e[1] * s, col)
+			for k in 3:
+				var x := -1.5 + 1.5 * k
+				ci.draw_line(c + Vector2(x - 0.5, 1.5) * s, c + Vector2(x - 1.5 + k, 4) * s, col, 0.8 * s, true)
+			ci.draw_polyline(PackedVector2Array([c + Vector2(6.5, 4) * s, c + Vector2(6.0, -1) * s, c + Vector2(7.5, -4.5) * s]), col, 1.0 * s, true)
+		"nest":                                  # the nest: a chamber under the ground with an ant in it
+			ci.draw_line(c + Vector2(-8, -5) * s, c + Vector2(8, -5) * s, col, 1.2 * s, true)
+			ci.draw_line(c + Vector2(-1, -5) * s, c + Vector2(0, -1.5) * s, col, 1.2 * s, true)
+			ci.draw_arc(c + Vector2(0, 2) * s, 5.5 * s, PI * 1.05, TAU * 0.98, 16, col, 1.2 * s, true)
+			ci.draw_line(c + Vector2(-5.5, 2) * s, c + Vector2(5.5, 2) * s, col, 1.2 * s, true)
+			for e in [[Vector2(-2.2, 0.6), Vector2(1.5, 1.0)], [Vector2(0.2, 0.6), Vector2(1.0, 0.7)], [Vector2(2.2, 0.4), Vector2(1.0, 0.9)]]:
+				_oval(ci, c + e[0] * s, e[1] * s, col)
+
+
+static func _oval(ci: CanvasItem, c: Vector2, r: Vector2, col: Color) -> void:
+	var pts := PackedVector2Array()
+	for k in 14:
+		var a := TAU * k / 14.0
+		pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
+	ci.draw_colored_polygon(pts, col)
+
+
+## A wax seal: a round blob with a wavy edge, a pressed ring and the icon, lit from the top left.
+static func seal(ci: CanvasItem, c: Vector2, r: float, wax: Color, kind: String, pressed := false) -> void:
+	var edge := PackedVector2Array()
+	for k in 36:
+		var a := TAU * k / 36.0
+		edge.append(c + Vector2.from_angle(a) * r * (1.0 + 0.06 * sin(a * 5.0 + 1.3) + 0.03 * sin(a * 11.0)))
+	ci.draw_colored_polygon(D.moved(edge, Vector2(1.2, 2.0) if not pressed else Vector2(0.5, 1.0)), Color(0, 0, 0, 0.35))
+	var cols := PackedColorArray()
+	for p in edge:
+		var u := clampf(((p - c).dot(Vector2(0.6, 0.8)) / r) * 0.5 + 0.5, 0.0, 1.0)
+		cols.append(wax.lightened(0.25).lerp(wax.darkened(0.35), u))
+	ci.draw_polygon(edge, cols)
+	ci.draw_arc(c, r * 0.72, 0, TAU, 32, wax.darkened(0.4), 1.4, true)
+	ci.draw_arc(c + Vector2(-0.6, -0.6), r * 0.72, PI * 0.9, PI * 1.6, 12, wax.lightened(0.35), 1.0, true)
+	icon(ci, kind, c + Vector2(0, 0.5), r * 0.62, wax.lightened(0.55))
+
+
+## A button as a paper tag with a wax seal at its left (the colony bar's Enemies, Top ants, My colonies...).
+class SealButton extends Button:
+	var kind := "menu"
+	var wax := Color(0.6, 0.12, 0.1)
+
+	func _init(k: String, w: Color) -> void:
+		kind = k
+		wax = w
+		focus_mode = Control.FOCUS_NONE
+		alignment = HORIZONTAL_ALIGNMENT_LEFT
+		clip_text = true
+		text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		custom_minimum_size = Vector2(0, 32)
+		var Desk = load("res://scripts/view/ui/desk.gd")
+		for st in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+			var sb = Desk.TagBox.new(st, 6, 4)
+			sb.content_margin_left = 31
+			add_theme_stylebox_override(st, sb)
+		add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
+			add_theme_color_override(c, Desk.INK)
+
+	func _draw() -> void:
+		var C = load("res://scripts/view/ui/desk_controls.gd")
+		var r := 12.5
+		C.seal(self, Vector2(14.0, size.y * 0.5 + (1.0 if button_pressed or is_pressed() else 0.0)), r, wax, kind, is_pressed())
+
+
+## The leather strap that picks the view: two halves, the chosen one a raised piece with its icon and word.
+class ViewStrap extends Control:
+	signal chosen(mode: String)
+	var modes: Array = ["outworld", "nest"]
+	var words: Array = ["Outworld", "Nest"]
+	var icons: Array = ["ground", "nest"]
+	var mode := "outworld"
+	var font: Font
+	var _hover := -1
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(0, 40)
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+	func select(m: String) -> void:
+		mode = m
+		queue_redraw()
+
+	func _half(i: int) -> Rect2:
+		var w := size.x * 0.5
+		return Rect2(Vector2(w * i, 0), Vector2(w, size.y))
+
+	func _gui_input(e: InputEvent) -> void:
+		if e is InputEventMouseMotion:
+			var h := 0 if e.position.x < size.x * 0.5 else 1
+			if h != _hover:
+				_hover = h
+				queue_redraw()
+		elif e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			var i := 0 if e.position.x < size.x * 0.5 else 1
+			if modes[i] != mode:
+				select(modes[i])
+				chosen.emit(mode)
+			accept_event()
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_MOUSE_EXIT:
+			_hover = -1
+			queue_redraw()
+
+	func _draw() -> void:
+		var Desk = load("res://scripts/view/ui/desk.gd")
+		var C = load("res://scripts/view/ui/desk_controls.gd")
+		draw_style_box(Desk.LeatherBox.new(false, 0, 0, 12.0, Color(0.8, 0.78, 0.78)), Rect2(Vector2.ZERO, size))
+		var sel := modes.find(mode)
+		for i in 2:
+			var r := _half(i).grow(-3)
+			if i == sel:
+				draw_style_box(Desk.LeatherBox.new(true, 0, 0, 10.0), r)
+			elif i == _hover:
+				draw_style_box(Desk.LeatherBox.new(false, 0, 0, 10.0, Color(1.1, 1.06, 1.0)), r)
+			var on := i == sel
+			var ink := Color(0.98, 0.9, 0.72) if on else Color(0.85, 0.74, 0.58, 0.85)
+			var fs := 13
+			var w := font.get_string_size(words[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x if font != null else 0.0
+			var whole := 22.0 + 6.0 + w
+			var x0 := r.position.x + (r.size.x - whole) * 0.5
+			# the icon pressed into the leather: dark under, light over
+			C.icon(self, icons[i], Vector2(x0 + 10.0, r.get_center().y + 0.8), 11.0, Color(0.15, 0.07, 0.03, 0.8))
+			C.icon(self, icons[i], Vector2(x0 + 10.0, r.get_center().y), 11.0, ink)
+			if font != null:
+				draw_string(font, Vector2(x0 + 28.0, r.get_center().y + 5.0), words[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)

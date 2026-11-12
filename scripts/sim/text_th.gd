@@ -38,6 +38,7 @@ const alarm_raised := "log_alarm_raised"
 const enemy_killed := "log_enemy_killed"
 const enemy_released := "log_enemy_released"
 const enemy_flees := "log_enemy_flees"
+const enemy_runs := "log_enemy_runs"           # (the keeper's box: it cannot get out)
 const found_spider_dead := "log_found_spider_dead"
 const centipede_arrives := "log_centipede_arrives"
 const centipede_leaves := "log_centipede_leaves"

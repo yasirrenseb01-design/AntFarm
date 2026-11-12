@@ -57,9 +57,11 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.phase += 0.45 * maxf(free, 0.3)
 	if c.hp < STATS.flee_at and not c.get("fleeing", false):
 		c.fleeing = true
-		sim._log(T.enemy_flees, "ok", [L.k(NAME)])
-	# daylight sends it back under cover (not one the keeper let in: it hunts on till its time is up)
-	var leaving: bool = c.life <= 0 or c.get("fleeing", false) or (sim.daylight() > 0.35 and not c.get("released", false))
+		sim._log(T.enemy_flees if sim.enemy_can_leave() else T.enemy_runs, "ok", [L.k(NAME)])
+	# daylight sends it back under cover (not one the keeper let in: it hunts on till its time is up); the keeper's box is
+	# shut: it stays in till the ants kill it or the keeper takes it out (sim_enemies.enemy_can_leave)
+	var leaving: bool = sim.enemy_can_leave() and (c.life <= 0 or c.get("fleeing", false) or (sim.daylight() > 0.35 and not c.get("released", false)))
+	var fleeing: bool = c.get("fleeing", false)
 	var head: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.length * 0.5
 	var best = null
 	var bd := 180.0
@@ -73,10 +75,15 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = c.ang + sin(c.phase * 0.35) * 0.25 + sim.rng.randf_range(-0.1, 0.1)
 	if leaving:
 		target_ang = (c.exit - c.pos).angle()
+	elif fleeing and best != null:
+		target_ang = (c.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null and bd < 90.0:
 		target_ang = (best.pos - c.pos).angle()
 	c.ang += wrapf(target_ang - c.ang, -PI, PI) * 0.06
-	var np: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.speed * free * (1.3 if leaving else 1.0)
+	# running off it is faster; shut in the keeper's box, the acid in it slows it the more hurt it is [inference] - it
+	# outran the ants round the box for 6 days and more, v0.13.2 tests/enemy_test.gd
+	var pace: float = 1.3 if leaving else (0.5 + 0.5 * clampf(c.hp / STATS.flee_at, 0.0, 1.0) if fleeing else 1.0)
+	var np: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.speed * free * pace
 	var world: Vector2 = sim.WORLD
 	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band
 	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)

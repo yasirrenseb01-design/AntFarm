@@ -283,6 +283,13 @@ func _calm(a: Ant) -> void:
 	a.trip = 0
 
 
+## Can an enemy get away? Over the edge of the wild plot, yes; out of the keeper's formicarium, no - it is a shut box
+## (the keeper, 2026-11-12: "in a box it cannot get out anywhere"): hurt, it runs from the ants round the box, and stays
+## till they kill it or the keeper takes it out.
+func enemy_can_leave() -> bool:
+	return climate.scenario == "wild"
+
+
 ## The keeper takes every enemy out of the box.
 func remove_enemies() -> void:
 	if creatures.is_empty():

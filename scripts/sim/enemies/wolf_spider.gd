@@ -66,8 +66,9 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	var free := clampf(1.0 - float(s.get("load", held)) / STATS.pin, 0.0, 1.0)      # pinned by the ants holding on
 	if s.hp < STATS.flee_at and not s.get("fleeing", false):
 		s.fleeing = true
-		sim._log(T.enemy_flees, "ok", [L.k(NAME)])
-	var leaving: bool = s.life <= 0 or s.get("fleeing", false)
+		sim._log(T.enemy_flees if sim.enemy_can_leave() else T.enemy_runs, "ok", [L.k(NAME)])
+	# (the keeper's box is shut: it stays in till the ants kill it or the keeper takes it out - sim_enemies.enemy_can_leave)
+	var leaving: bool = sim.enemy_can_leave() and (s.life <= 0 or s.get("fleeing", false))
 	var best = null
 	var bd := 150.0
 	for a in sim.outside:
@@ -79,6 +80,8 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = s.ang + sim.rng.randf_range(-0.12, 0.12)
 	if leaving:
 		target_ang = (s.exit - s.pos).angle()
+	elif s.get("fleeing", false) and best != null:
+		target_ang = (s.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null:
 		target_ang = (best.pos - s.pos).angle()
 	# a rush at an ant close by (not while ants hold it, or on its way out)

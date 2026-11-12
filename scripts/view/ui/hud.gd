@@ -138,9 +138,8 @@ func _unhandled_key_input(e: InputEvent) -> void:
 			b.visible = not b.visible            # developer fast-forward speeds
 			if not b.visible and b.button_pressed:
 				# (hiding them while one is on drops back to 5×)
-				for o in b.get_parent().get_children():
-					if o is Button and o.text == "5×":
-						o.button_pressed = true
+				b.set_pressed_no_signal(false)
+				_dial.show_speed(5.0)
 				speed_changed.emit(5.0)
 		return
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F3:

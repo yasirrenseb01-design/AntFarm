@@ -79,7 +79,9 @@ Report "workers' crops and fat: their sums are the colony's sugar and fat, nothi
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/reach_test.gd") 300
 Report "ants reach food walled by stones" ($r -match "reached 8/8")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/enemy_test.gd") 300
-Report "released enemies come in and are fought" ($r -match "ENEMY TEST PASSED")
+Report "released enemies come in and are fought, and never get out of the keeper's box" ($r -match "ENEMY TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/desk_ui_test.gd") 120
+Report "the speed dial and the view strap pick what their buttons did" ($r -match "DESK UI TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/name_test.gd") 300
 Report "ant names kept, change nothing, a named death is told" ($r -match "NAME TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/stats_test.gd") 300

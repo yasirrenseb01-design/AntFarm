@@ -35,6 +35,7 @@ log_alarm_raised,มดเจอศัตรู! ปล่อยกลิ่น�
 log_enemy_killed,มดรุมจับ%sไว้จนตาย แล้วกัดพ่นกรดฟอร์มิกจนมันไม่ขยับ ตอนนี้กลายเป็นอาหารโปรตีนของรัง,"The ants held the %s down, biting and spraying formic acid until it stopped moving. Now it is protein for the colony"
 log_enemy_released,ผู้เลี้ยงปล่อย%sเข้าไปในพื้นที่หาอาหาร,The keeper let a %s into the outworld
 log_enemy_flees,%sบาดเจ็บจากกรดฟอร์มิก กำลังหนีออกจากกล่อง,"Hurt by formic acid, the %s is fleeing the box"
+log_enemy_runs,%sบาดเจ็บจากกรดฟอร์มิก วิ่งหนีมดไปรอบกล่อง แต่ออกไปไม่ได้,"Hurt by formic acid, the %s runs from the ants round the box - there is no way out"
 log_found_spider_dead,มดเริ่มกินซากแมงมุมที่รุมฆ่าได้,The ants have started eating the spider they killed
 log_centipede_arrives,ตะขาบหินวิ่งออกมาจากใต้ก้อนหินมาล่าเหยื่อตอนกลางคืน,A stone centipede has come out from under a stone to hunt in the dark
 log_centipede_leaves,ตะขาบหินกลับไปหลบใต้ก้อนหินแล้ว (จับมดได้ %d ตัว),The stone centipede has gone back under its stone (ants caught: %d)
