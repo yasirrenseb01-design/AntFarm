@@ -19,6 +19,7 @@ var _sel_shader_mat: ShaderMaterial
 const FoodKinds := preload("res://scripts/sim/food_kinds.gd")
 const GroundData := preload("res://scripts/view/outworld/ground_data.gd")
 const SceneryDraw := preload("res://scripts/view/outworld/scenery_draw.gd")
+const CreatureRig := preload("res://scripts/view/outworld/creature_rig.gd")      # the creatures' jointed legs
 const KeeperRoom := preload("res://scripts/view/outworld/keeper_room.gd")
 
 const U := 1.0 / 3.0                 # simulation px -> units

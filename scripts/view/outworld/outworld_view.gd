@@ -89,6 +89,7 @@ func setup(s) -> void:
 	be_mat.shader = load("res://shaders/creatures/beetle.gdshader")
 	_creature_views["ground_beetle"] = {"mm": _multimesh(Props.asset("creatures/ground_beetle"), be_mat, false, true), "mat": be_mat,
 		"scale": 1.0, "gait": 1.4}
+	CreatureRig.setup(_creature_views["ground_beetle"], "creatures/ground_beetle")      # (its jointed legs: creature_rig.gd)
 	_mound = -1.0
 	_update_mound()             # the creatures' shaders need the ground's shape too
 

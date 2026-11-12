@@ -190,9 +190,13 @@ def lerp(a, b, t):
 def export(path, groups=None, scale=1.0):
     verts = []
     idx = []
+    # ("ANT2": an 11th number for each vertex, the leg segment it belongs to - set on an object as o["seg"]; the shader
+    # reads it in UV.x. Written only for a model that has any.)
+    segs = any("seg" in o for o in OBJS)
     for o in OBJS:
         if groups is not None and o["group"] not in groups:
             continue
+        seg = float(o.get("seg", 0.0))
         fn = COLFNS[o["colfn"]]
         bm = bmesh.new()
         bm.from_mesh(o.data)
@@ -210,7 +214,7 @@ def export(path, groups=None, scale=1.0):
                 g = GV(v.co)
                 gn = GV(n)
                 c = fn(g, gn)
-                verts.append((g.x * scale, g.y * scale, g.z * scale, gn.x, gn.y, gn.z, c[0], c[1], c[2], c[3]))
+                verts.append((g.x * scale, g.y * scale, g.z * scale, gn.x, gn.y, gn.z, c[0], c[1], c[2], c[3]) + ((seg,) if segs else ()))
                 tri.append(len(verts) - 1)
                 if not flat:
                     shared[v.index] = tri[-1]
@@ -218,10 +222,10 @@ def export(path, groups=None, scale=1.0):
         bm.free()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as fh:
-        fh.write(b"ANTM")
+        fh.write(b"ANT2" if segs else b"ANTM")
         fh.write(struct.pack("<II", len(verts), len(idx)))
         for v in verts:
-            fh.write(struct.pack("<10f", *v))
+            fh.write(struct.pack("<%df" % len(v), *v))
         fh.write(struct.pack("<%dI" % len(idx), *idx))
     print("  %s: %d vertices, %d triangles" % (os.path.basename(path), len(verts), len(idx) // 3))
 
@@ -344,8 +348,10 @@ elif WHAT == "centipede":
         view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.5, -1.0, 0.9)))
         render(SHOT, Vector((0.0, 0, 0.6)), 36.0, view)
 elif WHAT == "beetle":
-    ground_beetle()
+    _joints = ground_beetle()
     export(OUT + "/creatures/ground_beetle.antmesh")
+    with open(OUT + "/creatures/ground_beetle.json", "w") as fh:
+        json.dump(_joints, fh)
     if SHOT:
         preview_material()
         view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.8, -1.0, 0.7)))
