@@ -35,6 +35,7 @@ var sort_a := 0.0                    # what it is sorted by this step (sim_colon
 var sort_b := 0.0
 var sort_c := 0.0                    # (its TH_AGE: sim_colony._ranked)
 var was_dig := false                 # (it was at the dig face before this colony tick: sim_colony._colony)
+var fed_in := false                  # (it was inside when this colony tick counted the crops there: sim_colony._metabolism)
 
 # what a worker inside is doing this half hour (its duty, set by parts/sim_duties.gd from the colony's needs; saved)
 const D_OUT := 0           # outside (foraging, defending, carrying out the dead, hauling)
@@ -84,9 +85,9 @@ var dead := false
 var name := ""            # what the keeper calls it ("" = no name; saved, never read by the simulation)
 var duty := D_OUT        # what it does this half hour inside (D_*; parts/sim_duties.gd)
 var partner := 0         # who it gives honeydew to / gets it from (worker id), 0 = nobody
-var sweet := 0.0         # honeydew in its crop to pass on, 0..1 (fills when it brings sugar home or is given some)
-var crop := 0.0          # its share of the colony's sugar (units; PART 0.13 step 1: a ledger only, the sum is sim.sugar - parts/sim_crops.gd)
-var body_fat := 0.0      # its share of the colony's fat (the same: the sum is sim.fat)
+var sweet := 0.0         # unused since v0.13.1 (was: honeydew to pass on, 0..1 - now Ant.crop); kept in the save, always 0
+var crop := 0.0          # honeydew in its crop, 0..crop_cap() units: what it eats and passes on (parts/sim_crops.gd)
+var body_fat := 0.0      # its own fat, 0..fat_cap_each units: burnt when the crop is empty (sim.fat is the sum)
 # what it has done in its life (the star ants panel; never read by the simulation)
 var n_larvae := 0        # times it fed a larva
 var n_brood := 0         # eggs, larvae and cocoons carried

@@ -5,6 +5,8 @@ extends SceneTree
 ##   godot --headless --path . --script res://tests/year_run.gd -- <wild|keeper> <workers> <days> [alone|kept] [seed] [save-name] [big]
 ## big: the Home's bigger tank (90 x 56 cm, keeper only - v0.12.23, the nest spreading in it)
 ## "alone": nobody waters or feeds (outdoors the colony must live on rain, aphids and what it hunts).
+## skip=<n> (anywhere after the others): n draws of the colony's generator thrown away after setup - the same colony on
+## another run of chance (LESSONS 3e/3n: compare several, not one)
 ## save-name: the colony is saved at the end of each year to user://growtest/<save-name>/ (slot = year), to open
 ## in the game with --testsave=<save-name> [--slot=<year>] (performance and nest-shape checks on a grown colony).
 func _init():
@@ -14,12 +16,16 @@ func _init():
 	var workers: int = int(args[1]) if args.size() > 1 else 0
 	var days: int = int(args[2]) if args.size() > 2 else 730
 	var alone: bool = args.size() > 3 and args[3] == "alone"
-	var save_name: String = args[5] if args.size() > 5 else ""
+	var save_name: String = args[5] if args.size() > 5 and not args[5].begins_with("skip=") else ""
 	var Store = load("res://scripts/game/save_store.gd")
 	if save_name != "":
 		Store.base = "user://growtest/%s/" % save_name
 	var s = Sim.new()
 	s.setup(int(args[4]) if args.size() > 4 else 5, workers, false, scen, args.size() > 6 and args[6] == "big")
+	for x in args:
+		if x.begins_with("skip="):
+			for i in int(x.substr(5)):
+				s.rng.randf()
 	var r := RandomNumberGenerator.new(); r.seed = 3
 	print("%s start %s  workers %d" % [scen, s.date_text(), workers])
 	for d in days:

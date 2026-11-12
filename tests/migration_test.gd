@@ -30,9 +30,9 @@ func _print(sim) -> String:
 		sim.eggs.size(), sim.sugar, sim.humidity, pos, sim.creatures.size(), sim.rng.state]
 
 
-## How far the workers' shares of sugar and fat are from the colony's sums (PART 0.13).
+## How far what the workers hold (+ the queen's crop, the honeydew at the entrance) is from the colony's sugar and fat (PART 0.13).
 func _ledger_off(sim) -> float:
-	var c: float = sim.queen.crop
+	var c: float = sim.queen.crop + sim._pending_in
 	var f := 0.0
 	for w in sim.workers:
 		c += w.crop

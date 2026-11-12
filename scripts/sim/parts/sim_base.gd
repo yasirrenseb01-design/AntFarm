@@ -439,11 +439,11 @@ func winding_down() -> bool:
 
 ## How much the workers can lay down as body fat: roughly a winter's worth each.
 func fat_cap() -> float:
-	return workers.size() * 2.2          # (a ~4-month winter at 3-8 °C for each worker, with some to spare)
+	return workers.size() * sp["fat_cap_each"]     # (a ~4-month winter at 3-8 °C for each worker, with some to spare)
 
 
 func sugar_cap() -> float:
-	return 10.0 + workers.size() * 2.5
+	return 10.0 + workers.size() * crop_cap()
 
 
 func protein_cap() -> float:

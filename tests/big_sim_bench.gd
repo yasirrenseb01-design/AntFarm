@@ -12,7 +12,7 @@ func _init() -> void:
 	var days := float(a[2])
 	for sub in [4, 1]:
 		var s = Sim.new()
-		s.from_dict(d.sim)
+		s.from_dict(load("res://scripts/sim/save_migrations.gd").migrate(d.sim.duplicate(true), Sim.SAVE_VERSION))   # (an older save: as the game opens it)
 		s.ant_substep = sub
 		var n := int(days * s.TPD)
 		var inside := 0

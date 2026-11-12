@@ -118,10 +118,16 @@ func _colony(dt: float) -> void:
 	_ranked()
 	var callow_d: float = sp["callow_days"]
 	var aged := dt * age_k
+	_in_c = 0.0
+	_in_f = 0.0
 	for a in workers:
 		a.was_dig = a.task == Ant.TASK_DIG       # who was digging: they keep at it while digging is wanted
 		a.age += aged
-		if a.state != Ant.IN_NEST:
+		a.fed_in = a.state == Ant.IN_NEST        # (what those inside hold, for _metabolism: counted here, not again)
+		if a.fed_in:
+			_in_c += a.crop
+			_in_f += a.body_fat
+		else:
 			out_count += 1
 			outside.append(a)
 			a.task = Ant.TASK_DIG if a.state == Ant.DUMP else Ant.TASK_OUT      # (a digger out with its pellet)
@@ -229,65 +235,103 @@ func _colony(dt: float) -> void:
 
 func _metabolism(dt: float) -> void:
 	protein *= pow(0.92, dt)  # stored prey dries out and spoils
-	# Workers feed the queen first by trophallaxis, then share what is left among themselves.
-	var heat := cold_factor(climate.nest)          # little food is burnt in a cold nest
+	# (PART 0.13 step 2) Each worker eats from its own crop, then burns its own fat; out of both, it starves on its own.
+	# The queen and the larvae are still fed as a whole (step 4: mouth to mouth): the queen from her own crop, then
+	# both from the honeydew at the entrance and the crops - then the fat - of the workers inside, in proportion to what
+	# each holds. The workers feed the queen first; a cold nest burns little.
+	var heat := cold_factor(climate.nest)
 	var q_need: float = sp["sugar_queen"] * dt * heat if queen.alive else 0.0
-	if sugar < q_need and fat > 0.0:
-		var burn := minf(q_need - sugar, fat)
-		fat -= burn
-		sugar += burn
-	queen_fed = sugar >= q_need
+	var l_need: float = larvae.size() * sp["sugar_larva"] * clampf(dev, 0.1, 1.0) * dt * heat     # (still in diapause)
+	# (the crops and fat of those inside, as _colony counted them this tick: an ant sent out since gives its share too)
+	var in_c := _in_c
+	var in_f := _in_f
+	var q_own := minf(queen.crop, q_need)
+	var want := l_need
+	queen_fed = q_own + _pending_in + in_c + in_f >= q_need
 	if not queen_fed and queen.reserve > 0.0:
 		queen.reserve = maxf(0.0, queen.reserve - q_need)   # living off her own body
 		queen_fed = true
 	else:
-		sugar = maxf(0.0, sugar - q_need)
-	# larvae held still by the cold (winter diapause) barely eat
-	var need: float = (workers.size() * sp["sugar_worker"] + larvae.size() * sp["sugar_larva"] * clampf(dev, 0.1, 1.0)) * dt * heat
-	if sugar < need and fat > 0.0:
-		# lean times: the workers live on (and regurgitate) their own body fat
-		var burn := minf(need - sugar, fat)
-		fat -= burn
-		sugar += burn
-	if sugar < need and queen.reserve > 0.0 and workers.size() < 5:
-		# while founding, the queen regurgitates food from her reserves to her first workers
-		var give := minf(need - sugar, queen.reserve)
-		queen.reserve -= give
-		sugar += give
+		queen.crop -= q_own
+		food_eaten += q_own
+		want += q_need - q_own
+	var k := _nest_gives(want, in_c, in_f)
+	var founding_w := workers.size() < 5
+	if founding_w and k[2] > 0.0:
+		# while founding, the queen regurgitates food from her reserves to her first larvae and workers
+		queen.reserve = maxf(0.0, queen.reserve - k[2])
+	var w_need: float = sp["sugar_worker"] * dt * heat
+	var need: float = workers.size() * w_need + l_need
 	# what the colony earns and eats, as running averages over about a week
 	var fade := exp(-dt / 7.0)
 	sugar_income *= fade
 	sugar_spend = sugar_spend * fade + need + q_need
-	var fed := 1.0 if need <= 0.0 else clampf(sugar / need, 0.0, 1.0)
-	starving = fed < 0.999
-	sugar = maxf(0.0, sugar - need)
-	# in autumn only a couple of days' food stays in the crops; everything else goes into fat
-	# (and from midsummer on outdoors a surplus goes into fat too, not only in autumn when the honeydew is already
-	# drying up: a big colony otherwise entered winter on half the fat it needed and starved in the spring)
+	# in autumn only a couple of days' food stays in the crops; everything else goes into fat (and from midsummer on
+	# outdoors a surplus goes into fat too, not only in autumn when the honeydew is already drying up: a big colony
+	# otherwise entered winter on half the fat it needed and starved in the spring) - each worker its own, at most
+	# 0.15 units a day
 	var late_summer: bool = scenario == "wild" and doy_f() > 172.0
-	var keep := minf(sugar_cap() * 0.5, workers.size() * sp["sugar_worker"] * 2.0 + 2.0) if winding_down() 		else sugar_cap() * (0.25 if late_summer else 0.5)
-	if sugar > keep and fat < fat_cap():
-		# a well-fed colony lays down fat (and full crops) for the lean months, above all in autumn
-		var store := minf(minf(sugar - keep, fat_cap() - fat), workers.size() * 0.15 * dt)
-		fat += store
-		sugar -= store
-	ledger_sync()
+	var keep: float = sp["sugar_worker"] * 2.0 if winding_down() else crop_cap() * (0.25 if late_summer else 0.5)
+	var fat_each: float = sp["fat_cap_each"]
+	var store_max := 0.15 * dt
+	# ...and no more than the colony's cap in all (as through v0.13.0: the fat of the dead, shared among the living, can
+	# take some over their own cap - without this the colony kept more fat than before, laid more, and grew past what
+	# its fat carried through the winter)
+	var fat_room := fat_cap() - fat
 	var dry := humidity < 0.1
-	var starve_k: float = dt * heat * (1.0 - fed) / sp["starve_days_worker"]
+	var starve_k: float = dt * heat / sp["starve_days_worker"]
 	var risk: float = sp["forager_daily_risk"] * dt
-	for a in workers:
-		if starving:
-			a.energy -= starve_k / a.hardiness
+	var c_sum := 0.0
+	var f_sum := 0.0
+	var short := 0
+	food_eaten += w_need * workers.size()      # (less what each could not find: below)
+	for a: Ant in workers:
+		if a.fed_in:
+			a.crop -= a.crop * k[0]
+			a.body_fat -= a.body_fat * k[1]
+		var miss := w_need - a.crop
+		if miss <= 0.0:
+			a.crop -= w_need
+			miss = 0.0
+		else:
+			a.crop = 0.0
+			var burn := minf(miss, a.body_fat)          # lean times: it lives on its own body fat
+			a.body_fat -= burn
+			miss -= burn
+			food_eaten -= miss
+			if a.carry == Ant.SUGAR:
+				miss = 0.0                               # a forager on its way home drinks from its load (in its crop)
+			if miss > 0.0 and founding_w and queen.reserve > 0.0:
+				# (the same, to her first workers)
+				var give := minf(miss, queen.reserve)
+				queen.reserve -= give
+				miss -= give
+				food_eaten += give
+				food_in += give
+		if a.crop > keep and a.body_fat < fat_each and fat_room > 0.0:
+			var store := minf(minf(a.crop - keep, fat_each - a.body_fat), minf(store_max, fat_room))
+			a.crop -= store
+			a.body_fat += store
+			fat_room -= store
+		c_sum += a.crop
+		f_sum += a.body_fat
+		var empty := miss > 1e-12
+		if empty:
+			short += 1
+			a.energy -= starve_k * (miss / w_need) / a.hardiness
 		elif dry:
 			a.energy -= dt / 6.0 / a.hardiness
 		else:
 			a.energy = minf(1.0, a.energy + dt)
 		if a.energy <= 0.0:
-			_kill(a, "starve" if starving else "thirst")
+			_kill(a, "starve" if empty else "thirst")
 		elif a.age > a.life:
 			_kill(a, "old")
 		elif a.state != Ant.IN_NEST and rng.randf() < risk:
 			_kill(a, "out")          # lost while foraging: a bird, a spider, a raindrop, a wrong turn
+	sugar = c_sum + queen.crop + _pending_in
+	fat = f_sum
+	starving = short > workers.size() * STARVING_SHARE
 	_warn("starve", starving, T.warn_starve)
 	_warn("dry", dry, T.warn_dry)
 

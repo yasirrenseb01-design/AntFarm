@@ -64,6 +64,11 @@ const DATA := {
 	"sugar_worker": 0.08,
 	"sugar_queen": 0.5,
 	"sugar_larva": 0.04,
+	# A worker's own crop and fat (PART 0.13): a crop holds ~1.8 ul of honeydew, a trip brings ~0.75 ul home (1 unit),
+	# so ~2.4 units - 2.5 chosen (the colony's sugar cap per worker before); fat: the colony's cap per worker before
+	# (docs/biology/crop_and_hunger.md)
+	"crop_cap": 2.5,
+	"fat_cap_each": 2.2,
 	"protein_larva": 0.25,
 	"protein_egg": 0.05,
 	"starve_days_worker": 7.0,

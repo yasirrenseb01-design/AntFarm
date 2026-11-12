@@ -96,8 +96,8 @@ func step() -> void:
 	if not creatures.is_empty():
 		_step_creatures()
 	if _any_dead:
+		ledger_dead()                                 # (their crops and fat stay in the colony)
 		workers = workers.filter(func(w): return not w.dead)
-		ledger_sync(true)                             # (their shares stay in the colony)
 		outside = outside.filter(func(w): return not w.dead)
 		_out_ver += 1
 		_any_dead = false
@@ -129,7 +129,7 @@ func to_dict() -> Dictionary:
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
 		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "water": water, "mold": mold, "heater": heater, "enemies": enemies, "enemy_rate": enemy_rate,
 		"creatures": creatures, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
-		"queen_tended": queen_tended, "carry_due": _carry_due, "unloaded": _unloaded, "duty_rng": [duty_rng.seed, duty_rng.state],
+		"queen_tended": queen_tended, "carry_due": _carry_due, "unloaded": _unloaded, "pending_in": _pending_in, "duty_rng": [duty_rng.seed, duty_rng.state],
 		"history": history, "log": log_entries, "warned": _warned, "next_id": _next_id,
 		"cannibal_cd": _cannibal_cd, "recruits": _recruits,
 		# values the colony tick derives but foragers read in between
@@ -243,6 +243,7 @@ func from_dict(d: Dictionary) -> void:
 	queen_tended = d.queen_tended
 	_carry_due = d.carry_due
 	_unloaded = d.unloaded
+	_pending_in = maxf(0.0, float(d.get("pending_in", 0.0)))     # (saves before v0.13.1: none)
 	duty_rng.seed = d.duty_rng[0]
 	if d.duty_rng.size() > 1:
 		duty_rng.state = d.duty_rng[1]
@@ -272,7 +273,7 @@ func from_dict(d: Dictionary) -> void:
 		_nest_in_tank()                     # (saved before v0.12.18: the block from 0 - moved to where it lies in the tank)
 	elif scenario == "keeper" and not nest.slab:
 		nest.tank = Vector2i(floori(WORLD.x * 0.5 / nest.VOXEL_MM), floori(WORLD.y * 0.5 / nest.VOXEL_MM))
-	ledger_sync(true)                   # (the shares of sugar and fat added up again: nothing of the colony's moves)
+	ledger_count()                      # (sugar and fat: the sums of what the ants hold)
 
 
 ## A short summary for the save menu and the "while you were away" report.
