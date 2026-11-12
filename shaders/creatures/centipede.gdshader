@@ -28,8 +28,11 @@ const float PAIR_LAG = 0.14;    // how much of a step each pair of legs is behin
 
 // how far the body is to one side at x: the running wave, and the writhing while it is held down
 float body_sway(float x, float gait, float t, float mv, float held) {
-	float sway = sin(x * 0.5 - gait * 1.4) * 0.45 * mv + sin(x * 0.3 + t * 0.6) * 0.12;
-	return sway + held * (sin(x * 0.55 - t * 6.0) * 0.6 + sin(t * 1.7) * 0.012 * (x - 2.0) * (x - 2.0));
+	// (v0.13.6, the keeper: "its body shakes fast while it goes slowly" - a Lithobius runs with little undulation: the
+	// running wave a half of what it was, the writhing held down slower and smaller; outworld_creatures._writhe_offset
+	// has the same sums)
+	float sway = sin(x * 0.5 - gait * 1.4) * 0.22 * mv + sin(x * 0.3 + t * 0.6) * 0.1;
+	return sway + held * (sin(x * 0.55 - t * 3.2) * 0.42 + sin(t * 1.3) * 0.01 * (x - 2.0) * (x - 2.0));
 }
 
 // how far the front of the body is thrown forward at x while it strikes
@@ -101,7 +104,7 @@ void vertex() {
 		}
 	}
 	VERTEX = v;
-	VERTEX = follow_ground(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
+	VERTEX = follow_ground_soft(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
 	VERTEX = on_props(VERTEX, MODEL_MATRIX, part == 1.0 ? 1.0 : 0.0, rest_y, 8.0);    // and over the litter
 }
 

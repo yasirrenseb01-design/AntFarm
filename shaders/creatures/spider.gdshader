@@ -62,7 +62,8 @@ void vertex() {
 			float near = abs(length(knee[i] - hip[i]) - length(ankle[i] - knee[i])) + 2.5;      // (tools/dev/leg_clip.py: nearer, the femur stands into the carapace)
 			a = vec3(hip[i].x + o.x * near, 0.3, hip[i].z + o.y * near);
 			if (back) {
-				a = leg_kick(i, a + vec3(0.0, -0.8, 0.0), kick, t);    // on its back, kicking at the sky
+				// on its back, kicking at the sky - spread out round it, not bunched over the belly (v0.13.6)
+				a = leg_kick(i, vec3(hip[i].x + o.x * (near + 2.2), -1.0, hip[i].z + o.y * (near + 2.2)), kick * 1.3, t);
 			}
 		}
 		leg_place_up(i, UV.x, a, VERTEX, NORMAL, MODEL_MATRIX[1].y < 0.0 ? -1.0 : 1.0);     // (a body on its back: its knees bent toward the sky)
@@ -118,7 +119,7 @@ void vertex() {
 			}
 		}
 	}
-	VERTEX = follow_ground(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
+	VERTEX = follow_ground_soft(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
 	VERTEX = on_props(VERTEX, MODEL_MATRIX, (part >= 1.0 && part <= 8.0) ? 1.0 : 0.0, obj.y, 5.0);    // and over the litter
 }
 

@@ -51,7 +51,7 @@ void vertex() {
 			// on its back: the legs drawn in over the belly, the feet up (alive: kicking)
 			a = vec3(hip[i].x * 0.9 + 0.3, hip[i].y - 3.0, 3.0 * side);     // (tried with tools/dev/leg_clip.py: 0.27% of the legs in the body)
 			if (back) {
-				a = leg_kick(i, a, kick, t);
+				a = leg_kick(i, vec3(hip[i].x * 1.15 + 0.3, hip[i].y - 2.6, 4.2 * side), kick * 1.2, t);    // (spread out: v0.13.6)
 			}
 		}
 		leg_place(i, UV.x, a, VERTEX, NORMAL);
@@ -89,7 +89,7 @@ void vertex() {
 		VERTEX = piv + R * (VERTEX - piv);
 		NORMAL = R * NORMAL;
 	}
-	VERTEX = follow_ground(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
+	VERTEX = follow_ground_soft(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
 	VERTEX = on_props(VERTEX, MODEL_MATRIX, (part >= 4.0 && part <= 9.0) ? 1.0 : 0.0, obj.y, 8.0);    // and over the litter
 }
 

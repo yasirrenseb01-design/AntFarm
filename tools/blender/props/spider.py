@@ -102,14 +102,13 @@ def wolf_spider():
     # forward, the two posterior laterals on top behind - glossy black (the 11th number 9)
     made = len(OBJS)
     for side in (-1, 1):
+        # (set into the carapace, only their fronts showing: v0.13.6 - the keeper, "the eyes bulge out")
         for z in (0.13, 0.4):
-            ell("eye", (4.3, 2.52, z * side), (0.12, 0.13, 0.13), 0, const((0.02, 0.02, 0.025)), 10)
-        ell("eye", (4.12, 3.02, 0.36 * side), (0.34, 0.36, 0.34), 0, const((0.015, 0.015, 0.02)), 16)
-        ell("eye", (3.45, 3.45, 0.74 * side), (0.25, 0.25, 0.25), 0, const((0.015, 0.015, 0.02)), 12)
+            ell("eye", (4.18, 2.52, z * side), (0.11, 0.12, 0.12), 0, const((0.02, 0.02, 0.025)), 10)
+        ell("eye", (3.9, 3.0, 0.36 * side), (0.3, 0.32, 0.3), 0, const((0.015, 0.015, 0.02)), 16)
+        ell("eye", (3.38, 3.36, 0.74 * side), (0.21, 0.21, 0.21), 0, const((0.015, 0.015, 0.02)), 12)
     for o in OBJS[made:]:
         o["seg"] = 9.0
-    # a pale brow between the big eyes
-    ell("brow", (4.0, 3.38, 0.0), (0.26, 0.14, 0.2), 0, const(SP_PALE), 10)
     tube("spinnerets", [(-6.5, 1.75, 0), (-6.95, 1.6, 0)], [0.3, 0.15], 0, const(SP_DARK), 6)
     for o in OBJS:
         COLFNS[o["colfn"]] = with_part(COLFNS[o["colfn"]], 0)          # every body piece is part 0

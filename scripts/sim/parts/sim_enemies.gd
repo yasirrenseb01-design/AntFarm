@@ -163,6 +163,9 @@ const PANIC_TICKS := 110       # a panicked rush, dragging the ants holding it
 const FLIP_RATE := 0.0005      # a tick, for each ant holding it beyond two: thrashing, it rolls over [inference]
 const PANIC_RATE := 0.0015     # a tick, for each ant holding it, while it still has more than PANIC_HP of its strength
 const PANIC_HP := 0.6
+const LURCH_RATE := 0.006      # a tick while pinned: about one heave in three seconds at 1x
+const LURCH_TICKS := 40        # a heave lasts 2/3 s
+const LURCH_FREE := 0.3        # of its pace it gets back during one
 
 
 func on_back(c: Dictionary) -> bool:
@@ -186,6 +189,14 @@ func flip_over(c: Dictionary) -> void:
 func struggle_free(c: Dictionary, free: float) -> float:
 	var p := int(c.get("panic", 0))
 	if p <= 0:
+		# pinned, it still heaves itself on now and then, a few mm, dragging its ants (v0.13.6, the keeper: "it only
+		# moves on the spot - let it struggle a little to somewhere near") [inference: the pace of the heaves]
+		var lu := int(c.get("lurch", 0))
+		if lu > 0:
+			c["lurch"] = lu - 1
+			return maxf(free, LURCH_FREE)
+		if free < 0.25 and int(c.get("held", 0)) > 0 and rng.randf() < LURCH_RATE:
+			c["lurch"] = LURCH_TICKS
 		return free
 	c["panic"] = p - 1
 	return maxf(free, 0.6)

@@ -142,10 +142,34 @@ func _unhandled_key_input(e: InputEvent) -> void:
 				_dial.show_speed(5.0)
 				speed_changed.emit(5.0)
 		return
+	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_SPACE and _dial != null:
+		# Space: pause, and on again at the speed it had (the keeper, 2026-11-13)
+		if _dial.value > 0.0:
+			_speed_before_pause = _dial.value
+			_pick_speed(0.0)
+		else:
+			_pick_speed(_speed_before_pause if _speed_before_pause > 0.0 else 0.5)
+		get_viewport().set_input_as_handled()
+		return
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F3:
 		_fps_label.visible = not _fps_label.visible          # show / hide the frame rate
 		settings["show_fps"] = _fps_label.visible
 		settings_changed.emit(settings)
+
+
+var _speed_before_pause := 0.5
+
+
+## The speed set as if picked on the dial (a developer speed: its button pressed, the needle pegged).
+func _pick_speed(v: float) -> void:
+	for b in _dev_speed_buttons:
+		b.set_pressed_no_signal(b.text == "%d×" % int(v) and v > 5.0)
+	if v > 5.0:
+		_dial.show_speed(v)
+	else:
+		_dial.value = v
+		_dial.queue_redraw()
+	speed_changed.emit(v)
 
 
 # ---------------------------------------------------------------- refresh

@@ -424,8 +424,8 @@ cam_fit,เต็มจอ,Fit
 cam_go,ไปที่,Go to
 cam_entrance,ปากรัง,Entrance
 pupae,ดักแด้,Pupae
-hint_nest,ลากซ้าย หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูม · ดับเบิลคลิก ไปที่ห้องนั้น · W/S หน้า-หลัง · A/D ซ้าย-ขวา · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง,Left drag: turn · right drag: move · wheel: zoom · double-click: go to that chamber · W/S forward-back · A/D left-right · Q/E down-up · Z/C turn · R/F tilt
-hint_outworld,ลากซ้าย (มือ) หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง,Left drag (hand): turn · right drag: move · wheel: zoom where you point · double-click: zoom in · WASD move · Q/E down-up · Z/C turn · R/F tilt
+hint_nest,ลากซ้าย หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูม · ดับเบิลคลิก ไปที่ห้องนั้น · W/S หน้า-หลัง · A/D ซ้าย-ขวา · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง · Space หยุด/เดินเวลา,Left drag: turn · right drag: move · wheel: zoom · double-click: go to that chamber · W/S forward-back · A/D left-right · Q/E down-up · Z/C turn · R/F tilt · Space pause/go on
+hint_outworld,ลากซ้าย (มือ) หมุน · ลากขวา เลื่อน · ล้อเมาส์ ซูมตรงจุดที่ชี้ · ดับเบิลคลิก ซูมเข้า · WASD เลื่อน · Q/E ลง-ขึ้น · Z/C หมุน · R/F เอียง · Space หยุด/เดินเวลา,Left drag (hand): turn · right drag: move · wheel: zoom where you point · double-click: zoom in · WASD move · Q/E down-up · Z/C turn · R/F tilt · Space pause/go on
 # journal,,
 log_heater_on,เปิดแผ่นความร้อนใต้รัง อุณหภูมิในรังจะค่อยๆ สูงขึ้น,Switched on the heat mat under the nest: the nest will slowly warm up
 log_heater_off,ปิดแผ่นความร้อน,Switched off the heat mat

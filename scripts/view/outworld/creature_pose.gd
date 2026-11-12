@@ -43,7 +43,7 @@ static func update(o, delta: float) -> void:
 			# eased: a strike (up fast, down slower), the roll onto its back and off it, how hard it struggles
 			var sk_to := 1.0 if int(s.get("strike", 0)) > 0 else 0.0
 			v.sk = lerpf(float(v.get("sk", 0.0)), sk_to, minf(1.0, (14.0 if sk_to > v.get("sk", 0.0) else 6.0) * delta))
-			v.roll = move_toward(float(v.get("roll", 0.0)), 1.0 if back else 0.0, delta * 1.5)      # (~0.7 s over)
+			v.roll = move_toward(float(v.get("roll", 0.0)), 1.0 if back else 0.0, delta * 0.9)      # (~1.1 s over: 0.7 s looked a snap)
 			v.agit = lerpf(float(v.get("agit", 0.0)), 1.0 if held or back else 0.0, minf(1.0, 3.0 * delta))
 			var p: Vector2 = v.p * o.U
 			var up: Vector3 = o.ground_n(p.x, p.y)
@@ -132,7 +132,12 @@ static func prey_xf(o, a, tr: Transform3D) -> Transform3D:
 
 ## model units from the ground up to the underside of the body at rest (tools/dev/grip_fit.py's bodies): on its back,
 ## the ants hold on there - the belly is up
-const BELLY := {"wolf_spider": 0.37, "ground_beetle": 1.47, "centipede": 0.21}
+## (the underside under the middle of the body: the spider's sternum and abdomen ~1.0, not its waist's 0.37 - v0.13.6,
+## the ants stood off it in the air)
+const BELLY := {"wolf_spider": 1.0, "ground_beetle": 1.6, "centipede": 0.25}
+## the belly's extent in the model (x from, x to, half width): on its back the ants stay on it (v0.13.6: those from the
+## legs were drawn in only part way and stood in the air beyond the body)
+const BELLY_BOX := {"wolf_spider": Vector3(-6.0, 4.2, 1.6), "ground_beetle": Vector3(-7.0, 7.5, 2.8), "centipede": Vector3(-7.5, 8.0, 0.9)}
 static var _hold := {}          # ant id -> [position, facing] of an ant holding a leg from the ground, eased
 
 
@@ -152,16 +157,18 @@ static func held_xf(o, a, foe: Dictionary, spot: Dictionary, layer: int, s: floa
 	var mm_to_model: float = 1.0 / (1.5 * sc)
 	var t: float = o._t + a.id * 0.61
 	var p: Vector2 = spot.p
-	var face: float = float(spot.face) - foe.ang                  # (the spot's facing in the creature's own frame)
+	var face: float = float(spot.face)          # (grip_spots.spots(): already in the creature's own frame - v0.13.5 took
+	                                            # its angle off again, and the ants faced every which way)
 	var f := Vector3(cos(face), 0.0, sin(face))
 	var on_ground: bool = float(spot.h) <= 0.6
 	if not on_ground or float(v.get("roll", 0.0)) >= 0.5:
 		_hold.erase(a.id)
 	if float(v.get("roll", 0.0)) >= 0.5:
 		# on its back: on the belly (which is up), the ground ones drawn in toward the middle
-		var k := 0.55 if on_ground else 1.0
-		var local := Vector3(p.x * px_to_model * k, float(BELLY.get(String(foe.kind), 0.5)) - layer * 1.3 * mm_to_model,
-			p.y * px_to_model * (0.4 if on_ground else 0.8))
+		var box: Vector3 = BELLY_BOX.get(String(foe.kind), Vector3(-4, 4, 1))
+		var lx: float = clampf(p.x * px_to_model * (0.55 if on_ground else 1.0), box.x, box.y)
+		var lz: float = clampf(p.y * px_to_model * (0.4 if on_ground else 0.8), -box.z, box.z)
+		var local := Vector3(lx, float(BELLY.get(String(foe.kind), 0.5)) - layer * 1.3 * mm_to_model, lz)
 		var lb := Basis(f, Vector3.DOWN, f.cross(Vector3.DOWN))
 		return Transform3D((xb * lb).scaled(Vector3.ONE * s), xf * local)
 	if not on_ground:
