@@ -18,6 +18,8 @@ render_mode diffuse_burley;
 #include "res://shaders/creatures/leg_ik.gdshaderinc"
 #include "res://shaders/creatures/props_h.gdshaderinc"
 
+varying float gloss;     // the ocelli (the 11th number 9 on the body: tools/blender/props/centipede.py - v0.13.5)
+
 // from the model (tools/blender/props/centipede.py)
 const float ANT_X = 9.2;        // antenna bases
 const float ANT_LEN = 5.6;
@@ -37,6 +39,7 @@ float body_lunge(float x, float t) {
 
 void vertex() {
 	float rest_y = VERTEX.y;           // (the litter under its feet: props_h.gdshaderinc)
+	gloss = (COLOR.a < 0.03 && UV.x > 8.5) ? 1.0 : 0.0;
 	float part = floor(COLOR.a * 16.0 + 0.5);
 	float gait = INSTANCE_CUSTOM.x;
 	float state = INSTANCE_CUSTOM.y;
@@ -46,7 +49,11 @@ void vertex() {
 	vec3 v = VERTEX;
 	float side = v.z < 0.0 ? -1.0 : 1.0;
 	bool dead = state > 1.5 && state < 2.5;
-	bool back = state > 2.5;               // on its back alive (v0.13.3): it writhes, its legs working at the sky
+	bool back = state > 2.5 && state < 4.5;   // on its back alive (v0.13.3): it writhes, its legs working at the sky
+	bool feed = state > 4.5 && state < 5.5;   // prey in its venom claws (v0.13.5): still, the claws working
+	if (state > 5.5) {
+		state = 1.0;                       // shaking a bitten ant: the front of the body thrown about as in a strike
+	}
 	if (back) {
 		held = 1.0;
 		state = 0.0;
@@ -75,6 +82,9 @@ void vertex() {
 	if (part == 4.0) {
 		float k = clamp((v.x - FANG_X) / 1.0, 0.0, 1.0);
 		float open = state > 0.5 && !dead ? 0.08 : 0.3;      // wide open, snapping shut on a strike
+		if (feed) {
+			open = 0.06 + 0.12 * max(0.0, sin(t * 5.0));
+		}
 		v.z += side * open * k;
 	}
 	if (dead) {
@@ -101,4 +111,9 @@ void fragment() {
 	SPECULAR = 0.6;                          // glossy plates
 	RIM = 0.3;
 	RIM_TINT = 0.5;
+	if (gloss > 0.5) {
+		ROUGHNESS = 0.05;
+		SPECULAR = 1.0;
+		CLEARCOAT = 1.0;
+	}
 }

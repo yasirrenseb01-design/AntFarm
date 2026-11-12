@@ -194,3 +194,42 @@ class ViewStrap extends Control:
 			C.icon(self, icons[i], Vector2(x0 + 10.0, r.get_center().y), 11.0, ink)
 			if font != null:
 				draw_string(font, Vector2(x0 + 28.0, r.get_center().y + 5.0), words[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
+
+
+## A yellow pencil lying on the page (the album: the keeper, 2026-11-13 - "a yellow pencil, as on a desk"): drawn along
+## its own x, the eraser at 0, the point at `size.x`; turned by the Control's rotation.
+class Pencil extends Control:
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		custom_minimum_size = Vector2(250, 18)
+
+	func _draw() -> void:
+		var L := size.x
+		var h := size.y
+		var y0 := 0.0
+		var tip := L - h * 2.2              # where the sharpened wood begins
+		# a soft shadow on the paper under it
+		draw_colored_polygon(PackedVector2Array([Vector2(4, h + 3), Vector2(tip, h + 3), Vector2(L - 2, h * 0.5 + 4),
+			Vector2(tip, h * 0.15 + 5), Vector2(4, h * 0.15 + 5)]), Color(0, 0, 0, 0.18))
+		# the eraser and the metal ferrule
+		draw_rect(Rect2(0, y0, h * 0.9, h), Color(0.86, 0.47, 0.5))
+		draw_rect(Rect2(0, y0 + h * 0.62, h * 0.9, h * 0.38), Color(0.7, 0.36, 0.4))
+		for k in 4:
+			var x := h * 0.9 + k * h * 0.28
+			draw_rect(Rect2(x, y0, h * 0.28, h), Color(0.72, 0.72, 0.7).lerp(Color(0.5, 0.5, 0.48), float(k % 2)))
+		var fe := h * 0.9 + h * 1.12
+		# the hexagonal body in three faces: light on top, the yellow middle, shade under
+		draw_rect(Rect2(fe, y0, tip - fe, h * 0.33), Color(1.0, 0.86, 0.35))
+		draw_rect(Rect2(fe, y0 + h * 0.33, tip - fe, h * 0.34), Color(0.96, 0.74, 0.12))
+		draw_rect(Rect2(fe, y0 + h * 0.67, tip - fe, h * 0.33), Color(0.78, 0.55, 0.06))
+		draw_line(Vector2(fe, y0 + h * 0.33), Vector2(tip, y0 + h * 0.33), Color(0.7, 0.5, 0.05, 0.6), 1.0)
+		draw_line(Vector2(fe, y0 + h * 0.67), Vector2(tip, y0 + h * 0.67), Color(0.55, 0.38, 0.03, 0.6), 1.0)
+		# the sharpened wood, its scalloped edge, and the graphite point
+		var wood := PackedVector2Array([Vector2(tip, y0), Vector2(L - h * 0.55, y0 + h * 0.36), Vector2(L - h * 0.55, y0 + h * 0.64),
+			Vector2(tip, y0 + h)])
+		draw_colored_polygon(wood, Color(0.9, 0.74, 0.52))
+		for k in 3:
+			var c := Vector2(tip, y0 + h * (0.17 + 0.33 * k))
+			draw_arc(c, h * 0.17, -PI * 0.5, PI * 0.5, 6, Color(0.96, 0.74, 0.12), h * 0.12)
+		draw_colored_polygon(PackedVector2Array([Vector2(L - h * 0.55, y0 + h * 0.36), Vector2(L, y0 + h * 0.5),
+			Vector2(L - h * 0.55, y0 + h * 0.64)]), Color(0.18, 0.18, 0.2))

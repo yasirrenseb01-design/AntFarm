@@ -88,3 +88,9 @@ func setup(h, species: String, won: Array) -> void:
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size.x = 904
 	col.add_child(note)
+	# a yellow pencil lying across the foot of the page (the keeper, 2026-11-13)
+	var pencil = load("res://scripts/view/ui/desk_controls.gd").Pencil.new()
+	pencil.size = Vector2(250, 16)
+	pencil.rotation = deg_to_rad(-8.0)
+	pencil.position = Vector2(600, -4)
+	note.add_child(pencil)

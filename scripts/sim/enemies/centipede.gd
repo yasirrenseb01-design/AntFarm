@@ -7,6 +7,7 @@ extends RefCounted
 
 const T := preload("res://scripts/sim/text_th.gd")
 const L := preload("res://scripts/sim/lang.gd")
+const Prey := preload("res://scripts/sim/enemies/spider_prey.gd")      # (taking prey, as the spider does: v0.13.5)
 const IN_NEST := 0
 
 const NAME := "enemy_centipede"            # (keys of lang/strings.csv)
@@ -52,6 +53,8 @@ static func spawn(sim) -> Dictionary:
 
 static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.life -= 1
+	if Prey.step(sim, c, clinging, sim.ENEMY_KINDS[c.kind]):
+		return true                         # (prey in its jaws: it stands and feeds, or shakes it)
 	var held := clinging.size()
 	var free: float = sim.struggle_free(c, clampf(1.0 - float(c.get("load", held)) / STATS.pin, 0.0, 1.0))
 	c.phase += 0.45 * maxf(free, 0.3)
@@ -75,14 +78,14 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = c.ang + sin(c.phase * 0.35) * 0.25 + sim.rng.randf_range(-0.1, 0.1)
 	if leaving:
 		target_ang = (c.exit - c.pos).angle()
-	elif (fleeing or sim.panicking(c)) and best != null:
+	elif (fleeing or sim.panicking(c)) and best != null and bd < 60.0:
 		target_ang = (c.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null and bd < 90.0:
 		target_ang = (best.pos - c.pos).angle()
 	c.ang += wrapf(target_ang - c.ang, -PI, PI) * 0.06
 	# running off it is faster; shut in the keeper's box, the acid in it slows it the more hurt it is [inference] - it
 	# outran the ants round the box for 6 days and more, v0.13.2 tests/enemy_test.gd
-	var pace: float = 1.3 if leaving else (0.5 + 0.5 * clampf(c.hp / STATS.flee_at, 0.0, 1.0) if fleeing else 1.0)
+	var pace: float = 1.3 if leaving else (0.3 + 0.45 * clampf(c.hp / STATS.flee_at, 0.0, 1.0) if fleeing else 1.0)
 	var np: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.speed * free * pace
 	var world: Vector2 = sim.WORLD
 	# walls and stones turn it once it is in (judged where it is, not where it steps: blocked() counts the 3 px band
@@ -94,6 +97,13 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 			sim.flip_over(c)             # (ran into the side of the box in its panic)
 	else:
 		c.pos = np
+	# an ant at its jaws - out on its own, or one of the first to hold it - seized, to eat or to shake and drop
+	var front = Prey.at_fangs(sim, c) if held <= 3 else null
+	if front != null and sim.rng.randf() < STATS.bite * 3.0:
+		if front.busy > 0:
+			front.busy = 0
+		Prey.catch_ant(sim, c, front)
+		return true
 	var victim = null
 	if held > 0:
 		victim = clinging[sim.rng.randi() % held]

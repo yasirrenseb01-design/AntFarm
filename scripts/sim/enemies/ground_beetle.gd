@@ -6,6 +6,7 @@ extends RefCounted
 
 const T := preload("res://scripts/sim/text_th.gd")
 const L := preload("res://scripts/sim/lang.gd")
+const Prey := preload("res://scripts/sim/enemies/spider_prey.gd")      # (taking prey, as the spider does: v0.13.5)
 const IN_NEST := 0
 
 const NAME := "enemy_ground_beetle"            # (keys of lang/strings.csv)
@@ -55,6 +56,8 @@ static func spawn(sim) -> Dictionary:
 
 static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	c.life -= 1
+	if Prey.step(sim, c, clinging, sim.ENEMY_KINDS[c.kind]):
+		return true                         # (prey in its jaws: it stands and feeds, or shakes it)
 	var held := clinging.size()
 	var free: float = sim.struggle_free(c, clampf(1.0 - float(c.get("load", held)) / STATS.pin, 0.0, 1.0))
 	c.phase += 0.35 * maxf(free, 0.3)
@@ -76,7 +79,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = c.ang + sim.rng.randf_range(-0.2, 0.2)
 	if leaving:
 		target_ang = (c.exit - c.pos).angle()
-	elif (fleeing or sim.panicking(c)) and best != null:
+	elif (fleeing or sim.panicking(c)) and best != null and bd < 60.0:
 		target_ang = (c.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null:
 		target_ang = (best.pos - c.pos).angle()
@@ -102,6 +105,13 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 			c.sprayed = true
 			sim._log(T.beetle_sprays, "bad")
 	else:
+		# an ant at its jaws - out on its own, or one of the first to hold it - seized, to eat or to shake and drop
+		var front = Prey.at_fangs(sim, c) if held <= 3 else null
+		if front != null and sim.rng.randf() < STATS.bite * 3.0:
+			if front.busy > 0:
+				front.busy = 0
+			Prey.catch_ant(sim, c, front)
+			return true
 		var victim = null
 		if held > 0:
 			victim = clinging[sim.rng.randi() % held]

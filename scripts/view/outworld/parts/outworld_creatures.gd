@@ -79,7 +79,7 @@ func _update_ants(delta: float) -> void:
 			a.vfly_from = a.vpos
 		var flung := 0.0                                  # 0..1 through being thrown off and righting itself
 		if a.vright > 0.0:
-			a.vright = maxf(0.0, a.vright - adt)
+			a.vright = maxf(0.0, a.vright - minf(adt, delta * 1.5))    # (never faster than 1.5x: at 5x the throw flashed past in a few frames)
 			flung = 1.0 - a.vright / THROWN_S
 		var step: Vector2 = a.pos + out_step - a.vpos
 		var foe = _held_foe(a)                            # holding on to an enemy: glued to it where it is drawn
@@ -153,9 +153,10 @@ func _update_ants(delta: float) -> void:
 				tr.origin += _writhe_offset(_creature_vis[a.foe], tr.origin)    # carried with the writhing body
 			if foe != null and foe.spots.has(a.id):
 				# where it holds on: rearing up at a leg, up its side, on its back, or on a nestmate holding on under it
-				var gp: Array = Grip.pose(foe, sim.ENEMY_KINDS[foe.kind], int(foe.spots[a.id]))
-				var side_ax: Vector3 = tr.basis.z.normalized()
-				tr = Transform3D(Basis(side_ax, float(gp[1])) * tr.basis, tr.origin + up * CreaturePose.grip_h(self, a.foe, float(gp[0])) / MM_PER_UNIT)
+				var sp: Array = Grip.spots(sim.ENEMY_KINDS[foe.kind])
+				var gi := int(foe.spots[a.id])
+				tr = CreaturePose.held_xf(self, a, foe, sp[gi % sp.size()], gi / sp.size(), s, delta)
+				tr.origin += _writhe_offset(_creature_vis.get(a.foe, {}), tr.origin)      # (and the centipede's writhing body)
 		if a.act == 23 and a.busy > 0:
 			act = 13                     # in a spider's fangs: held up across them, kicking and spraying (creature_pose.gd)
 			tr = CreaturePose.prey_xf(self, a, tr)
@@ -222,9 +223,12 @@ func _update_ants(delta: float) -> void:
 		if sel_kind == "worker" and a.id == sel_id:
 			sel_at = [tr, cus[-1]]
 		if act == 13:
-			# formic acid sprayed from the curled gaster tip, under the body
-			var puff := 0.5 + 0.5 * sin(a.anim * 9.0 + a.id)
-			spray.append(tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.12 + 0.18 * puff)), Vector3(0.35, 0.25, 0.0)))
+			# formic acid sprayed from the curled gaster tip under the body: a fine mist of droplets thrown forward and
+			# fading as they spread (v0.13.5: one white blob, pulsing, until then - the keeper, "it looks like white lumps")
+			for k in 6:
+				var u := fmod(a.anim * 1.7 + a.id * 0.37 + k / 6.0, 1.0)
+				var sp := Vector3(0.35 + 1.5 * u, 0.25 + 0.35 * u, 0.55 * u * sin(k * 2.4 + a.id))
+				spray.append([tr * Transform3D(Basis.from_scale(Vector3.ONE * (0.035 + 0.09 * u)), sp), 0.5 * (1.0 - u) * (1.0 - u)])
 		if a.carry == Ant.PROTEIN:
 			loads.append(tr * CARRY_OFFSET)
 		elif a.carry == Ant.SOIL:
@@ -245,7 +249,8 @@ func _update_ants(delta: float) -> void:
 		_ant_mm.set_instance_custom_data(i, cus[i])
 	_spray_mm.instance_count = spray.size()
 	for i in spray.size():
-		_spray_mm.set_instance_transform(i, spray[i])
+		_spray_mm.set_instance_transform(i, spray[i][0])
+		_spray_mm.set_instance_color(i, Color(0.94, 0.96, 1.0, spray[i][1]))
 	_soil_mm.instance_count = soil.size()
 	for i in soil.size():
 		_soil_mm.set_instance_transform(i, soil[i])

@@ -12,8 +12,12 @@ extends RefCounted
 ## ants clinging to the spider); a fly is a food item moved there and eaten away.
 
 const T := preload("res://scripts/sim/text_th.gd")
+const L := preload("res://scripts/sim/lang.gd")
 const ACT_PREY := 23            # (sim_enemies / the view: an ant in a spider's fangs)
 const MOUTH_PX := 15.0          # px ahead of the spider's middle: its fangs (the model's x 5.5 x 0.85 x 3 px)
+## the same for each kind (v0.13.5, the keeper: "the centipede and the beetle have no such move yet - make them the
+## same"): the beetle's mandibles (x 9.3 units, 3 px a unit), the centipede's venom claws (x 10)
+const MOUTH := {"wolf_spider": MOUTH_PX, "ground_beetle": 28.0, "centipede": 30.0}
 const DIE_AT := 150             # ticks a bitten ant lives (2.5 s at 1x): till then the ants can still save it
 const SHAKE_TICKS := 55         # bitten and shaken, then dropped
 const MEAL := [600, 1200]       # ticks it feeds (10-20 s at 1x)
@@ -27,7 +31,7 @@ static func busy(s: Dictionary) -> bool:
 
 ## Where its fangs are.
 static func mouth(s: Dictionary) -> Vector2:
-	return s.pos + Vector2.from_angle(s.ang) * MOUTH_PX
+	return s.pos + Vector2.from_angle(s.ang) * float(MOUTH.get(String(s.get("kind", "")), MOUTH_PX))
 
 
 ## It seizes ant a: to eat it there, or to bite, shake and drop it.
@@ -42,7 +46,10 @@ static func catch_ant(sim, s: Dictionary, a) -> void:
 	s.strike = 18
 	if not s.get("caught_told", false):
 		s["caught_told"] = true
-		sim._log(T.spider_caught, "bad")
+		if s.get("kind", "") == "wolf_spider":
+			sim._log(T.spider_caught, "bad")
+		else:
+			sim._log(T.enemy_caught, "bad", [L.k(sim.ENEMY_KINDS[s.kind].NAME)])
 
 
 ## A dead fly lying near, to go for when no ant is nearer (or null).

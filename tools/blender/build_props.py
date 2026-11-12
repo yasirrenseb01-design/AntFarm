@@ -352,8 +352,11 @@ elif WHAT == "centipede":
         json.dump(_joints, fh)
     if SHOT:
         preview_material()
-        view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1))}.get(globals().get("VIEW", ""), Vector((0.5, -1.0, 0.9)))
-        render(SHOT, Vector((0.0, 0, 0.6)), 36.0, view)
+        view = {"top": Vector((0.0, -0.05, 1.0)), "side": Vector((0.0, -1.0, 0.1)), "face": Vector((1.0, -0.6, 0.7))}.get(globals().get("VIEW", ""), Vector((0.5, -1.0, 0.9)))
+        if globals().get("VIEW", "") == "face":
+            render(SHOT, Vector((8.8, 0, 0.5)), 6.0, view)          # (the head close up: v0.13.5)
+        else:
+            render(SHOT, Vector((0.0, 0, 0.6)), 36.0, view)
 elif WHAT == "beetle":
     _joints = ground_beetle()
     export(OUT + "/creatures/ground_beetle.antmesh")

@@ -185,10 +185,16 @@ def ground_beetle():
         lambda x: 2.25, lambda x: 3.35 - 0.45 * max(0.0, (x - 6.6) / 1.85), head_col, 0.8, 24, 24, 0.05, 3, 900)
     ell("labrum", (8.45, 2.55, 0), (0.25, 0.18, 0.55), 0, head_col, 10)
     for side in (-1, 1):
-        ell("eye", (7.2, 3.0, 1.22 * side), (0.42, 0.4, 0.33), 0, const((0.03, 0.03, 0.035, 1 / 16.0)), 12)
-        # sickle-shaped mandibles curving in, their tips crossing in front of the head
-        tube("mandible", [(8.2, 2.45, 0.6 * side), (8.95, 2.42, 0.78 * side), (9.65, 2.38, 0.5 * side), (9.95, 2.35, -0.12 * side)],
-            [0.34, 0.26, 0.15, 0.04], 0, const((0.04, 0.03, 0.03, 10 / 16.0)), 7)
+        # the compound eyes: bulging at the sides, glossy (the 11th number 9: beetle.gdshader - v0.13.5)
+        eye = ell("eye", (7.25, 3.02, 1.24 * side), (0.44, 0.42, 0.36), 0, const((0.03, 0.03, 0.035, 1 / 16.0)), 14)
+        eye["seg"] = 9.0
+        # sickle-shaped mandibles curving in, their tips crossing in front of the head: stout, with a tooth on the
+        # inner edge and a dark red-brown sheen toward the tip (v0.13.5: bigger, after Carabus photographs)
+        tube("mandible", [(8.15, 2.45, 0.62 * side), (8.95, 2.43, 0.84 * side), (9.75, 2.39, 0.55 * side), (10.1, 2.36, -0.14 * side)],
+            [0.4, 0.31, 0.18, 0.04], 0, lambda g, n: ((0.16, 0.06, 0.04, 10 / 16.0) if g.x > 9.4 else (0.04, 0.03, 0.03, 10 / 16.0)), 8)
+        ell("tooth", (9.2, 2.42, 0.6 * side), (0.14, 0.09, 0.12), 0, const((0.05, 0.03, 0.03, 10 / 16.0)), 6)
+        # a shallow groove and two pits on the clypeus, and the frons' furrows beside the eyes
+        ell("fovea", (8.05, 3.02, 0.42 * side), (0.18, 0.06, 0.1), 0, const((0.02, 0.02, 0.025, 1 / 16.0)), 6)
         # maxillary palps: four segments down and forward, the last broadened
         tube("palp", [(8.1, 2.15, 0.5 * side), (8.6, 1.75, 0.8 * side), (9.05, 1.35, 0.92 * side), (9.35, 1.05, 0.9 * side)],
             [0.1, 0.08, 0.075, 0.07], 0, const((0.06, 0.05, 0.05, 1 / 16.0)), 5)

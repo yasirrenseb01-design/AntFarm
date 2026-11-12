@@ -80,21 +80,31 @@ def centipede():
         xm = x0 + (x1 - x0) * (i + 0.5) / (n - 1)
         wm = 1.15 - 0.3 * abs(i - 6) / 8.0
         ell("core", (xm, 0.5, 0), (0.6, 0.17, wm), 0, const(LI_EDGE), 10)
-    # head: a flat rounded plate, clusters of simple eyes (ocelli) at the sides, antennae, venom claws
-    ell("head", (8.3, 0.55, 0), (0.85, 0.3, 0.95), 0, const(LI_HEAD), 12)
+    # head (v0.13.5, after Lithobius photographs): a flat rounded plate broader than the first segment, a groove down
+    # its front; behind each antenna a cluster of simple eyes (ocelli) - glossy black (the 11th number 9:
+    # centipede.gdshader); under it the plate that bears the venom claws (forcipules): big, curved, dark-tipped hooks
+    blobs("head", [((8.3, 0.55, 0.32), (0.85, 0.32, 0.62), Matrix.Identity(4)), ((8.3, 0.55, -0.32), (0.85, 0.32, 0.62), Matrix.Identity(4)),
+                   ((8.75, 0.52, 0), (0.55, 0.28, 0.6), Matrix.Identity(4))], 0, const(LI_HEAD), 0.04, 3, 600)
+    ell("groove", (8.8, 0.83, 0), (0.45, 0.03, 0.05), 0, const(LI_EDGE), 6)
+    ell("forcipular_plate", (8.65, 0.22, 0), (0.62, 0.13, 0.72), 0, const(LI_EDGE), 10)
+    made = len(OBJS)
     for side in (-1, 1):
-        for k in range(5):
-            ell("ocellus", (8.55 - 0.12 * (k % 3), 0.72, (0.62 + 0.08 * (k // 3)) * side), (0.06, 0.05, 0.06), 0,
-                const((0.04, 0.03, 0.02)), 5)
+        for k in range(8):
+            ell("ocellus", (8.5 - 0.13 * (k % 4) + 0.05 * (k // 4), 0.74 - 0.05 * (k // 4), (0.72 + 0.11 * (k // 4) + 0.02 * (k % 4)) * side),
+                (0.085, 0.075, 0.085), 0, const((0.02, 0.015, 0.012)), 6)
+    for o in OBJS[made:]:
+        o["seg"] = 9.0
+    for side in (-1, 1):
         pts = [(9.2, 0.62, 0.3 * side)]
         for k in range(1, 25):
             t = k / 24.0
             pts.append((9.2 + 5.6 * t, 0.62 + 0.5 * math.sin(t * 2.2), (0.3 + 2.6 * t * t) * side))
+        # (many short segments: banded light and dark)
         tube("antenna", pts, [0.08 - 0.045 * k / 24.0 for k in range(25)], 0,
-            lambda g, nn: (0.55, 0.3, 0.15, 2 / 16.0), 4)
-        fc = [(8.6, 0.32, 0.55 * side), (9.15, 0.28, 0.6 * side), (9.55, 0.28, 0.3 * side), (9.62, 0.3, 0.07 * side)]
-        tube("forcipule", fc, [0.17, 0.14, 0.1, 0.035], 0,
-            lambda g, nn: ((0.1, 0.05, 0.03, 4 / 16.0) if g.x > 9.4 else (0.42, 0.2, 0.09, 4 / 16.0)), 5)
+            lambda g, nn: ((0.42, 0.22, 0.1, 2 / 16.0) if math.sin((g.x - 9.2) * 15.0) > 0.4 else (0.58, 0.33, 0.16, 2 / 16.0)), 5)
+        fc = [(8.5, 0.3, 0.55 * side), (9.25, 0.25, 0.78 * side), (9.85, 0.28, 0.5 * side), (10.05, 0.32, 0.12 * side)]
+        tube("forcipule", fc, [0.24, 0.2, 0.13, 0.04], 0,
+            lambda g, nn: ((0.08, 0.03, 0.02, 4 / 16.0) if g.x > 9.75 else (0.42, 0.2, 0.09, 4 / 16.0)), 6)
         # the 15th (last) leg pair: longer, thicker, held out behind
         ul = [(-7.7, 0.48, 0.6 * side), (-8.8, 0.45, 1.2 * side), (-10.2, 0.35, 1.6 * side), (-11.4, 0.22, 1.75 * side)]
         tube("ultimate_leg", ul, [0.15, 0.13, 0.1, 0.05], 0,

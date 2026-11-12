@@ -83,7 +83,7 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	var target_ang: float = s.ang + sim.rng.randf_range(-0.12, 0.12)
 	if leaving:
 		target_ang = (s.exit - s.pos).angle()
-	elif (s.get("fleeing", false) or sim.panicking(s)) and best != null:
+	elif (s.get("fleeing", false) or sim.panicking(s)) and best != null and bd < 60.0:
 		target_ang = (s.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null and bd < 70.0:
 		target_ang = (best.pos - s.pos).angle()

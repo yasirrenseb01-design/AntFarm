@@ -36,6 +36,7 @@ log_enemy_killed,มดรุมจับ%sไว้จนตาย แล้ว
 log_enemy_released,ผู้เลี้ยงปล่อย%sเข้าไปในพื้นที่หาอาหาร,The keeper let a %s into the outworld
 log_enemy_flees,%sบาดเจ็บจากกรดฟอร์มิก กำลังหนีออกจากกล่อง,"Hurt by formic acid, the %s is fleeing the box"
 log_spider_caught,แมงมุมหมาป่าคว้ามดงานไว้ด้วยขาหน้าและเขี้ยว — ถ้าพวกพ้องรุมตรึงมันทัน ยังช่วยได้,"The wolf spider has seized a worker in its front legs and fangs - if her nestmates pin it in time, they can still save her"
+log_enemy_caught,%sงับมดงานไว้ในปาก — ถ้าพวกพ้องรุมตรึงมันทัน ยังช่วยได้,"The %s has seized a worker in its jaws - if her nestmates pin it in time, they can still save her"
 log_ant_rescued,มดรุมตรึงแมงมุมจนมันปล่อยเพื่อนที่ถูกจับ — รอดมาได้แต่บาดเจ็บ,The ants pinned the spider until it let go of their nestmate - she got away hurt
 log_enemy_flipped,%sพลิกหงายท้อง ขาปัดป่าย มดรุมขึ้นไปบนตัว,"The %s has rolled onto its back, legs kicking, and the ants swarm over it"
 log_enemy_dying,%sหมดแรงแล้ว นอนหงายดิ้นอยู่ใต้มดที่รุม,"The %s is spent: it lies on its back kicking under the mob"

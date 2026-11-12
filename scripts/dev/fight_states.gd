@@ -16,7 +16,7 @@ static func apply(d) -> void:
 		elif st == "back":
 			d.sim.flip_over(c)
 			c.flip = 100000
-		elif (st == "eat" or st == "shake") and c.kind == "wolf_spider":
+		elif st == "eat" or st == "shake":
 			var SpiderPrey = load("res://scripts/sim/enemies/spider_prey.gd")
 			var near = null
 			for a in d.sim.outside:
