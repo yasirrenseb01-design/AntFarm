@@ -1,7 +1,8 @@
 extends RefCounted
 ## Dev options for looking at a fight and the windows of v0.13.3 (kept out of dev_tools.gd, at its size limit):
-##   --enemy-state=back|dying|eat|shake   the enemy staged with --enemy turned over now (held there) / in its death throes /
+##   --enemy-state=back|dying|carcass|eat|shake   the enemy staged with --enemy turned over now (held there) / in its death throes /
 ##                              (a spider) with the nearest ant in its fangs, to feed on (held a long while) or to shake
+##   --carcass=<kind>           a carcass (food kind centipede_dead...) laid at --enemy-at
 ##   --album                    the album open, as the queen's sketch opens it
 ##   --click-sketch             a real mouse click on the queen's sketch after a second; prints whether the album opened
 
@@ -13,6 +14,9 @@ static func apply(d) -> void:
 		var c: Dictionary = d.sim.creatures[-1]
 		if st == "dying":
 			c.hp = 0.0
+		elif st == "carcass":
+			c.hp = 0.0
+			c["dying"] = 2                      # (dead in a moment: its carcass, torn - v0.13.11)
 		elif st == "back":
 			d.sim.flip_over(c)
 			c.flip = 100000
@@ -27,6 +31,13 @@ static func apply(d) -> void:
 				SpiderPrey.catch_ant(d.sim, c, near)
 				c.prey.mode = st
 				c.prey.end = 100000 if st == "eat" else 100000
+	if o.has("carcass"):
+		# --carcass=<food kind> (centipede_dead...): laid at the enemy's spot (--enemy-at), as the ants find it
+		var at: PackedStringArray = String(o.get("enemy-at", "200,125")).split(",")
+		var cp := Vector2(float(at[0]), float(at[1]))
+		print("carcass placed: ", d.sim.place_food(String(o["carcass"]), cp))
+		d.outworld.follow_cid = 0
+		d.outworld.target_t = d.outworld._on_ground(cp)
 	if o.has("album"):
 		d.hud.open_album()
 	if o.has("select-queen"):

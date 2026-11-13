@@ -299,9 +299,35 @@ func _step_creatures() -> void:
 			if not K.step(self, c, clinging):
 				_release(c, clinging)
 				gone.append(c)
+		_keep_in_box(c)
 	for c in gone:
 		creatures.erase(c)
 		_taken.erase(c.id)
+
+
+## Its body kept inside the keeper's box (v0.13.11, the keeper: "insects still look like they go through the glass"):
+## walls stopped only its middle, 3 px from the glass - a beetle's head or a centipede's front half went through it.
+## Once all of it has come in, its middle stays its own reach from each wall, as it lies there (along and across).
+## px from its middle: along its length to the head's tip, across to its legs [the models: creature_pose.PREY_AT, BELLY]
+const BOX_HALF := {"wolf_spider": Vector2(18.0, 20.0), "centipede": Vector2(31.0, 12.0), "ground_beetle": Vector2(29.0, 18.0)}
+
+
+func _keep_in_box(c: Dictionary) -> void:
+	if enemy_can_leave() or not BOX_HALF.has(c.kind):
+		return
+	var hb: Vector2 = BOX_HALF[c.kind]
+	var ca := absf(cos(float(c.ang)))
+	var sa := absf(sin(float(c.ang)))
+	var m := Vector2(ca * hb.x + sa * hb.y, sa * hb.x + ca * hb.y) + Vector2(2.0, 2.0)
+	var box := Rect2(m, WORLD - 2.0 * m)
+	if not c.get("in_box", false):
+		c["in_box"] = box.has_point(c.pos)      # (still coming in over the edge: not pulled in)
+		return
+	var kept: Vector2 = c.pos.clamp(box.position, box.end)
+	if kept != c.pos:
+		c.pos = kept
+		if not on_back(c):
+			c.ang += 0.07 * (1.0 if int(c.id) % 2 == 0 else -1.0)      # (against the glass: it turns along it, as at a wall)
 
 
 ## The ants have killed it: the body stays where it fell as food for the colony.
@@ -436,3 +462,13 @@ func remove_enemies() -> void:
 	creatures.clear()
 	for kind in kinds:
 		_log(ENEMY_KINDS[kind].CHASED)
+
+
+## The keeper picks one enemy out of the box (the Enemies window, its row's button: v0.13.11, the keeper).
+func remove_enemy(id: int) -> void:
+	for c in creatures:
+		if int(c.id) == id:
+			_release(c, _clinging(c))
+			creatures.erase(c)
+			_log(ENEMY_KINDS[c.kind].CHASED)
+			return

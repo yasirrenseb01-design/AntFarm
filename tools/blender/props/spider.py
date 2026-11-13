@@ -71,7 +71,10 @@ SP_LEGS = [
 def _sp_car_w(x):
     # the carapace from above: a pear - broad over the legs, narrowing to the high head (x: 0 back edge .. 4.3 front)
     u = min(1.0, max(0.0, x / 4.3))
-    thorax = 1.85 * max(0.0, math.sin(math.pi * min(1.0, (u + 0.1) / 0.9))) ** 0.6
+    # (v0.13.11, the keeper: "the middle of the body looks odd" - its back end was cut off square, ~2 wide and 1.4 high,
+    # over a ball of a waist: now it rounds in to the narrow pedicel, as a lycosid's does)
+    thorax = 1.85 * max(0.0, math.sin(math.pi * min(1.0, (u + 0.015) / 0.915))) ** 0.6
+    thorax *= 0.3 + 0.7 * math.sqrt(max(0.0, 1.0 - max(0.0, (0.3 - u) / 0.3) ** 2))     # (its back rounded, seen from above)
     head = 1.2 * math.sqrt(max(0.0, 1.0 - max(0.0, (u - 0.8) / 0.2) ** 2.2))
     return max(thorax, head)
 
@@ -79,7 +82,8 @@ def _sp_car_w(x):
 def _sp_car_top(x):
     # highest at the head (the eyes look over the grass), a shallow saddle behind it, sloping down to the waist
     u = min(1.0, max(0.0, x / 4.3))
-    return 2.2 + 1.15 * math.sin(math.pi * (0.1 + 0.8 * u)) ** 0.7 + 0.3 * math.exp(-((u - 0.78) / 0.14) ** 2) - 0.12 * math.exp(-((u - 0.45) / 0.1) ** 2)
+    back = 0.3 + 0.7 * min(1.0, u / 0.2) ** 0.5           # (sloping down to the waist at its back edge: v0.13.11)
+    return 1.25 + back * (0.95 + 1.15 * math.sin(math.pi * (0.1 + 0.8 * u)) ** 0.7 + 0.3 * math.exp(-((u - 0.78) / 0.14) ** 2) - 0.12 * math.exp(-((u - 0.45) / 0.1) ** 2))
 
 
 def _sp_ab_w(x):
@@ -88,13 +92,92 @@ def _sp_ab_w(x):
     return 2.15 * math.sin(math.pi * u ** 0.85) ** 0.62
 
 
+def hairs(name, spots, colfn):
+    """Fine hairs, one mesh: each a thin three-sided cone from root to tip. spots: (root, direction, length, radius)."""
+    bm = bmesh.new()
+    for root, d, ln, r in spots:
+        d = Vector(d).normalized()
+        a = Vector((0, 0, 1)) if abs(d.z) < 0.9 else Vector((1, 0, 0))
+        n1 = d.cross(a).normalized()
+        n2 = d.cross(n1)
+        base = [bm.verts.new(G(*(Vector(root) + (n1 * math.cos(k * math.tau / 3) + n2 * math.sin(k * math.tau / 3)) * r)))
+                for k in range(3)]
+        tip = bm.verts.new(G(*(Vector(root) + d * ln)))
+        for k in range(3):
+            bm.faces.new((base[k], base[(k + 1) % 3], tip))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    return _obj(name, me, 0, colfn)
+
+
+def _hair_col(g, n):
+    # light and dark hairs mixed, the light ones grey-buff (wolf spiders' pile: photographs)
+    k = 0.5 + 0.5 * math.sin(g.x * 41.0 + g.y * 29.0 + g.z * 37.0)
+    c = SP_PALE if k > 0.8 else (SP_FUR if k > 0.3 else SP_DARK)
+    c = (c[0] * 1.1, c[1] * 1.1, c[2] * 1.1)
+    return (c[0], c[1], c[2], 0.0)
+
+
+def _loft_surface(x, a, wfn, ybfn, ytfn, e, eb=None, wb=1.0):
+    """A point on loft()'s surface (beetle.py) at x, angle a round the section, and its outward normal (numerically)."""
+    def pt(x, a):
+        w = max(0.02, wfn(x))
+        yb, yt = ybfn(x), ytfn(x)
+        mid = yb + (yt - yb) * 0.3
+        ca, sa = math.cos(a), math.sin(a)
+        under = sa < -1e-9
+        ee = eb if (under and eb is not None) else e
+        z = w * (wb if under else 1.0) * math.copysign(abs(ca) ** ee, ca)
+        h = (yt - mid) if sa > 0 else (mid - yb)
+        return Vector((x, mid + h * math.copysign(abs(sa) ** ee, sa), z))
+    p = pt(x, a)
+    nn = (pt(x + 0.01, a) - pt(x - 0.01, a)).cross(pt(x, a + 0.01) - pt(x, a - 0.01))
+    if nn.dot(p - Vector((x, p.y - math.sin(a), 0.0))) < 0:
+        nn = -nn
+    return p, nn.normalized()
+
+
+def _body_hairs(rnd, x0, x1, n, wfn, ybfn, ytfn, e, eb, wb, ln):
+    spots = []
+    for _ in range(n):
+        x = rnd.uniform(x0, x1)
+        a = rnd.uniform(-0.25, math.pi + 0.25)          # the back and sides (the belly is on the ground)
+        p, nn = _loft_surface(x, a, wfn, ybfn, ytfn, e, eb, wb)
+        # laid back toward the rear, lifted off the surface a little
+        d = (nn * 0.55 + Vector((-1.0, 0.0, 0.0)) * 0.8 + Vector((rnd.uniform(-0.2, 0.2), 0, rnd.uniform(-0.3, 0.3)))).normalized()
+        spots.append((p - nn * 0.04, d, ln * rnd.uniform(0.6, 1.2), 0.03))
+    return spots
+
+
+def _leg_hairs(rnd, pts, radii, n):
+    """Hairs on a leg piece along the polyline pts (radii at them), slanted toward the leg's tip."""
+    spots = []
+    for _ in range(n):
+        t = rnd.uniform(0.05, 0.95) * (len(pts) - 1)
+        k = min(int(t), len(pts) - 2)
+        f = t - k
+        a, b = Vector(pts[k]), Vector(pts[k + 1])
+        axis = (b - a).normalized()
+        c = a.lerp(b, f)
+        r = radii[k] + (radii[k + 1] - radii[k]) * f
+        side = Vector((0, 1, 0)) if abs(axis.y) < 0.9 else Vector((1, 0, 0))
+        n1 = axis.cross(side).normalized()
+        n2 = axis.cross(n1)
+        ang = rnd.uniform(0.0, math.tau)
+        out = n1 * math.cos(ang) + n2 * math.sin(ang)
+        spots.append((c + out * r * 0.85, (out * 0.6 + axis * 0.8).normalized(), rnd.uniform(0.16, 0.3), 0.025))
+    return spots
+
+
 def wolf_spider():
     flat = Matrix.Identity(4)
     # the abdomen: an egg on a narrow waist, a little flattened under, highest behind its middle
     loft("abdomen", -6.6, -0.4, _sp_ab_w, lambda x: 1.0 + 0.5 * max(0.0, (-4.9 - x) / 1.7) ** 2,
         lambda x: 1.0 + 3.0 * math.sin(math.pi * min(1.0, max(0.0, (x + 6.6) / 6.2)) ** 0.9) ** 0.55, abdomen_col, 0.95, 40, 32, 0.08, 5, 1800,
         eb=0.7, wb=0.92)
-    blobs("waist", [((-0.25, 1.75, 0), (0.55, 0.45, 0.5), flat)], 0, const(SP_DARK), 0.06, 3, 200)
+    blobs("waist", [((-0.2, 1.65, 0), (0.42, 0.3, 0.3), flat)], 0, const(SP_DARK), 0.05, 3, 160)     # (the pedicel: v0.13.11)
     # the carapace: pear-shaped, the head high in front, the sides coming down over the legs' bases; under it the sternum
     loft("carapace", 0.0, 4.3, _sp_car_w, lambda x: 1.25, _sp_car_top, carapace_col, 0.8, 34, 32, 0.06, 4, 1700, eb=0.5, wb=0.7)
     ell("sternum", (1.9, 1.15, 0), (1.7, 0.3, 1.1), 0, const(SP_DARK), 10)
@@ -110,6 +193,12 @@ def wolf_spider():
     for o in OBJS[made:]:
         o["seg"] = 9.0
     tube("spinnerets", [(-6.5, 1.75, 0), (-6.95, 1.6, 0)], [0.3, 0.15], 0, const(SP_DARK), 6)
+    # fur (v0.13.11, the keeper: "make the spider look a little hairy"): a pile of fine hairs laid back over the abdomen
+    # and the carapace, light and dark mixed [photographs of Lycosidae; the counts and lengths: inference, for the look]
+    rnd = random.Random(7)
+    hairs("abdomen_hair", _body_hairs(rnd, -6.3, -0.8, 1100, _sp_ab_w, lambda x: 1.0 + 0.5 * max(0.0, (-4.9 - x) / 1.7) ** 2,
+        lambda x: 1.0 + 3.0 * math.sin(math.pi * min(1.0, max(0.0, (x + 6.6) / 6.2)) ** 0.9) ** 0.55, 0.95, 0.7, 0.92, 0.28), _hair_col)
+    hairs("carapace_hair", _body_hairs(rnd, 0.3, 3.4, 450, _sp_car_w, lambda x: 1.25, _sp_car_top, 0.8, 0.5, 0.7, 0.22), _hair_col)
     for o in OBJS:
         COLFNS[o["colfn"]] = with_part(COLFNS[o["colfn"]], 0)          # every body piece is part 0
     for side in (-1, 1):
@@ -174,6 +263,7 @@ def wolf_spider():
             ell("coxa", tuple(hv + flat1 * 0.45), (0.55, 0.42, 0.5), 0, pc, 8)
             tube("femur", [tuple(hv), tuple(cox), tuple(cox.lerp(kv, 0.35)), tuple(cox.lerp(kv, 0.75)), tuple(kv)],
                 [0.36, 0.38, 0.44, 0.4, 0.33], 0, pc, 8)
+            hairs("femur_hair", _leg_hairs(rnd, [hv, cox, kv], [0.36, 0.42, 0.33], 40), with_part(_hair_col, part))
             for o in OBJS[made:]:
                 o["seg"] = 1.0
             made = len(OBJS)
@@ -185,6 +275,7 @@ def wolf_spider():
                 at = kv.lerp(mid, 0.3 + k * 0.22) if k < 3 else mid.lerp(av, 0.4)
                 tube("spine", [tuple(at), tuple(at + Vector((0, 0.4, 0)) + flat2 * 0.18)], [0.045, 0.01], 0,
                     with_part(lambda g, n: (0.1, 0.08, 0.06, 0.0), part), 4, cap=False)
+            hairs("shin_hair", _leg_hairs(rnd, [kv, mid, av], [0.33, 0.26, 0.15], 50), with_part(_hair_col, part))
             for o in OBJS[made:]:
                 o["seg"] = 2.0
             made = len(OBJS)

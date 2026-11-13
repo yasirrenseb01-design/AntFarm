@@ -85,7 +85,7 @@ func setup(s) -> void:
 	var ce_mat := ShaderMaterial.new()
 	ce_mat.shader = load("res://shaders/creatures/centipede.gdshader")
 	_creature_views["centipede"] = {"mm": _multimesh(Props.asset("creatures/centipede"), ce_mat, false, true), "mat": ce_mat,
-		"scale": 1.0, "gait": 1.0}
+		"scale": 1.0, "gait": 1.0, "max_hz": 4.0}
 	CreatureRig.setup(_creature_views["centipede"], "creatures/centipede")
 	var be_mat := ShaderMaterial.new()
 	be_mat.shader = load("res://shaders/creatures/beetle.gdshader")

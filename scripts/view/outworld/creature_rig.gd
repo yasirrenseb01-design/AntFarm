@@ -46,5 +46,8 @@ static func gait(cv: Dictionary, v: Dictionary, s: Dictionary, moved_px: float, 
 	var turn := moved_px * U / (float(cv.scale) * float(cv.stride))
 	if int(s.get("held", 0)) > 0:
 		turn = maxf(turn, HELD_TURNS * delta)
+	# (no more than max_hz steps a second: the centipede, the fastest, stepped 6.4 a second at 0.5x - its 30 legs moved
+	# so far each frame they flickered, "like a low frame rate" (v0.13.11, the keeper); faster, its feet slip a little)
+	turn = minf(turn, float(cv.get("max_hz", 99.0)) * delta)
 	v["gaitd"] = fmod(float(v.get("gaitd", 0.0)) + turn * TAU, TAU * 64.0)
 	return v.gaitd

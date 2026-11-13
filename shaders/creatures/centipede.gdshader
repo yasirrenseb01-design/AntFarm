@@ -73,6 +73,12 @@ void vertex() {
 		float seg = UV.x - 4.0 * float(i);
 		float pair = floor(float(i) / 2.0);
 		vec3 a = leg_ankle(i, gait / TAU - pair * PAIR_LAG + (mod(float(i), 2.0) > 0.5 ? 0.5 : 0.0), 1.0);
+		// turning (v0.13.11, the keeper: "its legs look odd as it turns"): the body bends round the turn and the legs on
+		// the inside of the bend cover less ground than those outside - shorter steps inside, longer outside, back-steps
+		// inside when it turns on the spot [inference: the geometry of a turn; centipedes turn by bending the trunk]
+		// (+z is the inside of a turn with turn_curl > 0: creature_pose.gd)
+		float k_side = clamp(1.0 - side * turn_curl * 0.9, -0.5, 1.8);
+		a.x = ankle[i].x + (a.x - ankle[i].x) * k_side;
 		if (dead) {
 			a = vec3(ankle[i].x, -1.2, ankle[i].z * 0.75);     // a dead one on its back: the legs stiff in the air (curled with it below)
 		}
@@ -108,8 +114,14 @@ void vertex() {
 			v.x += body_lunge(v.x, t);      // striking: the front of the body lunges forward and back at the ant it bites
 		}
 	}
-	if (dead && INSTANCE_CUSTOM.x > 0.5 && rest_x < -2.5) {
-		v += vec3(-1.0, 0.0, 1.5);       // a carcass: its hind third torn away (v0.13.7)
+	// a carcass: its hind third torn away (v0.13.7), cut between whole pieces - the 11th segment on, by the piece's own
+	// segment (a plate, its legs), not by where each vertex lies: legs swept back and plates overlapping were cut across
+	// and stretched over the gap (v0.13.11, the keeper: "dead, its body looks stretched")
+	if (dead && INSTANCE_CUSTOM.x > 0.5) {
+		float seg_of = UV.x < -0.5 ? -UV.x - 1.0 : (part == 1.0 ? floor(floor(UV.x / 4.0 + 0.01) / 2.0) : (rest_x < -2.7 ? 99.0 : 0.0));
+		if (seg_of >= 10.0) {
+			v += vec3(-1.0, 0.0, 1.5);
+		}
 	}
 	VERTEX = v;
 	VERTEX = follow_ground_soft(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it

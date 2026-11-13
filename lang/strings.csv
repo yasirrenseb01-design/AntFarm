@@ -486,6 +486,7 @@ en_release_cost,ปล่อย · %s,Let in · %s
 en_need_points,ปล่อยศัตรูใช้ %s แต้ม Colony Harmony ต่อตัว (50 ต่อรังที่มีมด) — แต้มยังไม่พอ,Letting an enemy in costs %s Colony Harmony points (50 for each colony with ants) — not enough points yet
 en_now,ในพื้นที่หาอาหารตอนนี้,In the outworld now
 en_remove,เอาศัตรูออกทั้งหมด,Take all enemies out
+en_take_out,หยิบออก,Take out
 en_full,มีศัตรูในพื้นที่ครบ %d ตัวแล้ว,There are already %d enemies in the outworld
 en_no_ants,รังนี้ไม่มีมดเหลือแล้ว,This colony has no ants left
 en_small,รังยังมีมดงานไม่ถึง %d ตัว: มดจะหลบ ไม่รุมสู้ ศัตรูจับมดที่ออกหากินได้ง่าย,"The colony has fewer than %d workers: they hide instead of mobbing, and an enemy easily catches foragers"

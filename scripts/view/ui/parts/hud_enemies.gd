@@ -180,6 +180,11 @@ func _refresh_enemies() -> void:
 			var cid: int = c.id
 			watch.pressed.connect(func(): enemy_watch.emit(cid))
 			row.add_child(watch)
+			var out := _button(tr("en_take_out"), false)      # (one picked out of the box: v0.13.11, the keeper)
+			out.pressed.connect(func():
+				sim.remove_enemy(cid)
+				_refresh_enemies())
+			row.add_child(out)
 			_enemy_list.add_child(row)
 			_enemy_rows[c.id] = l
 		if ids.is_empty():

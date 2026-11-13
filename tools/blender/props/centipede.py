@@ -20,7 +20,7 @@ LI_LEG = (0.72, 0.48, 0.28)        # paler, translucent-looking legs
 LI_TIP = (0.4, 0.25, 0.13)
 
 
-LI_STRIDE = 1.8             # how far a foot is carried in a step (model units; the game's: creature_rig.gd)
+LI_STRIDE = 2.4             # how far a foot is carried in a step (model units; the game's: creature_rig.gd)
 
 
 def centipede():
@@ -39,8 +39,11 @@ def centipede():
                 c = LI_EDGE                        # hind margin of the plate
             k = 1.0 + 0.35 * max(0.0, nn.y) * (0.5 + 0.5 * math.sin(g.z * 2.5))     # glossy
             return (c[0] * k, c[1] * k, c[2] * k, 0.0)
+        made = len(OBJS)
         ell("tergite", (x, 0.55, 0), (lx, 0.2, w), 0, plate, 14)
         ell("sternite", (x, 0.38, 0), (0.48, 0.17, w * 0.78), 0, const(LI_BELLY), 8)
+        for o in OBJS[made:]:
+            o["seg"] = -1.0 - i                    # (its segment, for the torn carcass: centipede.gdshader - v0.13.11)
         # walking legs (v0.12.35): one pair per segment, jointed - a coxa at the body's side, the femur up and out to a low
         # knee, the tibia down to the ground, a claw; the hind ones longer and swept back. Each vertex carries
         # 4 x the leg's number + its piece ("ANT2"), the joints go to centipede.json (see the top of the file).
@@ -88,6 +91,7 @@ def centipede():
         xm = x0 + (x1 - x0) * (i + 0.5) / (n - 1)
         wm = 1.15 - 0.3 * abs(i - 6) / 8.0
         ell("core", (xm, 0.5, 0), (0.6, 0.17, wm), 0, const(LI_EDGE), 10)
+        OBJS[-1]["seg"] = -1.0 - i
     # head (v0.13.5, after Lithobius photographs): a flat rounded plate broader than the first segment, a groove down
     # its front; behind each antenna a cluster of simple eyes (ocelli) - glossy black (the 11th number 9:
     # centipede.gdshader); under it the plate that bears the venom claws (forcipules): big, curved, dark-tipped hooks
