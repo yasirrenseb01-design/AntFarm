@@ -35,6 +35,22 @@ try {
     Write-Output "built v$version -> $archived (game is open: the shortcut switches to v$version as soon as it is closed)"
 }
 
+# The free demo (v0.13.18, scripts/game/demo.gd): the same game exported with the feature tag "demo" (preset "Windows
+# Demo") into build\demo\ - AntFarm-demo-v<version>.exe (tools/package.ps1 zips it) and AntFarm-demo.exe, the C++ part
+# beside them. Only this version's is kept there.
+$demoDir = "$root\build\demo"
+New-Item -ItemType Directory -Force $demoDir | Out-Null
+$demoExe = "$demoDir\AntFarm-demo-v$version.exe"
+$env:GODOT_SCRIPT_ENCRYPTION_KEY = (Get-Content $keyFile -Raw).Trim()
+& $godot --headless --path $root --export-release "Windows Demo" $demoExe
+Remove-Item Env:\GODOT_SCRIPT_ENCRYPTION_KEY
+if (-not (Test-Path $demoExe)) { throw "demo export failed" }
+foreach ($d in $dlls) { try { Copy-Item $d.FullName "$demoDir\$($d.Name)" -Force } catch {} }
+try { Copy-Item $demoExe "$demoDir\AntFarm-demo.exe" -Force; Write-Output "built demo v$version -> $demoDir\AntFarm-demo.exe" } catch { Write-Output "built demo v$version -> $demoExe (AntFarm-demo.exe is open)" }
+Get-ChildItem $demoDir -Filter "AntFarm-demo-v*.exe" | Where-Object { $_.Name -ne "AntFarm-demo-v$version.exe" } | ForEach-Object {
+    try { Remove-Item $_.FullName -ErrorAction Stop; Write-Output "removed old demo build $($_.Name)" } catch {}
+}
+
 # Old builds: keep the five newest and the first build of every PART (x.y.0); remove the rest.
 $all = Get-ChildItem "$root\build\versions" -Filter "AntFarm-v*.exe" | ForEach-Object {
     $v = $_.BaseName -replace '^AntFarm-v', ''

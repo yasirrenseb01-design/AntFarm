@@ -19,6 +19,7 @@ log_queen_died,ราชินีตายจาก%s รังจะค่อ�
 log_cannibalism,ขาดโปรตีน มดงานกินตัวอ่อนที่อดอาหารไปแล้ว %d ตัว,"Short of protein, the workers have eaten starving larvae (%d so far)"
 log_first_worker,มดงานตัวแรกออกจากรังไหมแล้ว! เป็นมดรุ่นแรกตัวเล็ก (nanitic) จะเปิดปากรังออกไปหาอาหาร,"The first worker has come out of her cocoon! A small first-generation worker (a nanitic), she will open the nest and go out to forage"
 log_colony_near_limit,"รังใกล้ขนาดสูงสุดของเกมแล้ว (1,000 ตัว รวมไข่ ตัวอ่อน รังไหม) ราชินีจะวางไข่ช้าลงเรื่อย ๆ ให้พอแทนมดที่ตาย — รังจริงโตได้มากกว่านี้","The colony is nearing the game's largest size (1,000, counting eggs, larvae and cocoons). The queen will lay more and more slowly, enough to replace the ants that die. Real colonies grow far larger"
+log_demo_limit,"รังถึงขีดจำกัดของเวอร์ชันเดโมแล้ว (%d ตัว รวมไข่ ตัวอ่อน ดักแด้) ราชินีจะวางไข่ต่อเมื่อมีมดตายลง — ในเกมเต็มรังโตต่อได้ และเปิดเซฟนี้เล่นต่อได้เลย","The colony has reached the demo's limit (%d, counting eggs, larvae and pupae). The queen lays again as ants die - in the full game the colony grows on, and this save carries over"
 log_new_worker,มดงานตัวใหม่ออกจากรังไหม (รวม %d ตัว),A new worker has come out of her cocoon (%d in all)
 log_warn_heat,ในรังร้อนเกินไป ตัวอ่อนเริ่มตาย,The nest is too hot: larvae are dying
 log_fly_fell,มีแมลงวันตายตกลงมาในกล่อง มดจะหาเจอเองถ้าออกสำรวจ,A dead fly has fallen into the box. The ants will find it if they go exploring
@@ -219,6 +220,9 @@ shop_shelf4,ชั้นวาง 4 ตู้,A shelf for 4 tanks
 shop_shelf4_note,ที่วางตู้เล็ก 4 ตู้ (ตู้ซื้อแยก),Room for 4 small tanks (the tanks are bought separately)
 shop_price,%s แต้ม,%s points
 shop_buy,ซื้อ,Buy
+shop_demo,เวอร์ชันเดโมซื้อไม่ได้,The demo cannot buy
+shop_demo_note,"เวอร์ชันเดโมซื้อของในร้านไม่ได้ — ในเกมเต็มซื้อตู้และชั้นวางด้วยแต้ม Colony Harmony ได้ และเปิดรังที่เลี้ยงในเดโมเล่นต่อได้เลย","The demo cannot buy from the shop. In the full game you buy tanks and shelves with Colony Harmony points, and the colonies you keep in the demo carry over"
+shop_demo_go,เปิดหน้าร้านเกมเต็ม,Open the full game's store page
 shop_owned,มีแล้ว,Bought
 shop_no_place,ไม่มีที่ว่างบนชั้นวาง — ซื้อชั้นวางก่อน,No free place on a shelf — buy a shelf first
 shop_no_wall,ไม่มีผนังว่างสำหรับชั้นวางแล้ว,No wall left for another shelf
@@ -660,6 +664,9 @@ album_title,สมุดภาพ · %s,Album · %s
 album_tip,สมุดภาพของมดชนิดนี้ (คลิก),This species' album (click)
 album_count,ได้แล้ว %d จาก %d แผ่น,%d of %d plates
 album_locked,ได้เมื่อรังมีมดงาน %d ตัวพร้อมกัน,Won when a colony has %d workers at once
+album_demo,ปลดล็อกได้ในเกมเต็ม,Unlocked in the full game
+demo_badge,DEMO,DEMO
+demo_badge_tip,"เวอร์ชันเดโมฟรี: ตู้ 2 ตู้ แปลงป่า 1 แปลง รังละไม่เกิน %d ตัว ร้านค้าซื้อไม่ได้ — เซฟเปิดเล่นต่อในเกมเต็มได้","The free demo: 2 tanks, 1 garden plot, colonies up to %d, nothing to buy in the shop - saves carry over to the full game"
 album_plate_a,แผ่น IIa · ราชินีและช่วงตั้งรัง: ไข่ ตัวอ่อน,Plate IIa · The queen and the founding: eggs and larvae
 album_plate_b,แผ่น IIb · มดงานและการเจริญ: รังไหม ดักแด้ มดงานใหม่ มดงานโต,"Plate IIb · The workers and their growing: cocoon, pupa, callow and grown worker"
 album_note,ภาพที่ได้แล้วเก็บไว้ตลอด แม้รังจะตายทีหลัง · มดชนิดใหม่จะมีสมุดภาพของตัวเอง,"A plate once won is kept, even if the colony dies later · each new species will have its own album"

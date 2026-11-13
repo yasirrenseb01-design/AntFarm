@@ -5,6 +5,7 @@ extends PanelContainer
 
 const Paper := preload("res://scripts/view/ui/paper.gd")
 const Preview := preload("res://scripts/game/shop_preview.gd")
+const Demo := preload("res://scripts/game/demo.gd")
 # what is sold, its name and its note (keys of lang/strings.csv, written out: tests/lang_test.gd finds them so)
 # (the ant farm is not sold for now - the keeper, 2026-10-27: on its own its foraging floor is next to nothing; it comes
 # back after Early Access as an add-on joined to a tank by a tube, the colony's nest growing into it: BACKLOG. Farms
@@ -72,7 +73,7 @@ func refresh() -> void:
 		note.custom_minimum_size.x = 250
 		info.add_child(note)
 		var why: String = home_ui.main.home.why_not(item, have)
-		if why != "":
+		if why != "" and why != "shop_demo":
 			info.add_child(h._label(tr(why), 12, Paper.LEAF if why == "shop_owned" else Paper.DANGER))
 		row.add_child(info)
 		var right := VBoxContainer.new()
@@ -82,9 +83,9 @@ func refresh() -> void:
 		price_row.alignment = BoxContainer.ALIGNMENT_END
 		right.add_child(price_row)
 		var buy: Button = h._button(tr("shop_buy"), false)
-		buy.disabled = why != ""
+		buy.disabled = why != "" and why != "shop_demo"
 		var it: String = item
-		buy.pressed.connect(func(): _ask(it))
+		buy.pressed.connect(func(): _demo_note() if why == "shop_demo" else _ask(it))
 		right.add_child(buy)
 		row.add_child(right)
 		_col.add_child(row)
@@ -96,6 +97,11 @@ func _ask(item: String) -> void:
 	var left: float = home_ui.main.harmony.points - price
 	home_ui.main.hud.confirm(tr("shop_title"), tr("shop_confirm") % [_name(item), num(price), num(left)],
 		tr("shop_buy"), func(): _buy(item))
+
+
+## The free demo (game/demo.gd): nothing is sold - it says so, with a button to the full game's store page.
+func _demo_note() -> void:
+	home_ui.main.hud.confirm(tr("shop_title"), tr("shop_demo_note"), tr("shop_demo_go"), func(): OS.shell_open(Demo.STORE_URL))
 
 
 func _buy(item: String) -> void:

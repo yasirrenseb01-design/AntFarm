@@ -61,7 +61,7 @@ func _ready() -> void:
 		for k in ["desktop", "desktop-after", "leave-after", "win", "view", "reload-after"]:
 			_opts.erase(k)
 	_started = true
-	sim = Sim.new()
+	sim = _new_sim()                     # (the free demo's limit: parts/main_base.gd)
 	_persist = not (_opts.has("selftest") or _opts.has("shot")) or _opts.has("sandbox")
 	if _opts.has("sandbox"):
 		Store.base = "user://sandbox/"

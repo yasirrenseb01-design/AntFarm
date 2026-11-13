@@ -5,6 +5,7 @@ extends CanvasLayer
 ## the queen, the brood, a worker in the nest - and, once ants have names (EA3b), every other shot follows a named one.
 ## main.gd owns it: open() / close(); while it is open the HUD is hidden.
 
+const Demo := preload("res://scripts/game/demo.gd")
 const SHOT_S := 14.0                  # seconds a shot lasts
 const TURN := 0.05                    # radians a second the camera drifts round
 const FIND_S := 2.0                   # seconds to find an ant in the nest just switched to (it is drawn after a few frames)
@@ -94,6 +95,19 @@ func setup(m) -> void:
 	ver.offset_left = 24
 	ver.offset_top = -34
 	_root.add_child(ver)
+	if Demo.on():
+		# the free demo (game/demo.gd): a red stamp over the version, as on a sample copy
+		var stamp: Label = h._label(tr("demo_badge"), 30, Paper.DANGER, h._display)
+		stamp.add_theme_stylebox_override("normal", Paper.page(16, 4))
+		stamp.anchor_top = 1.0
+		stamp.anchor_bottom = 1.0
+		stamp.offset_left = 22
+		stamp.offset_top = -92
+		stamp.offset_bottom = -40
+		stamp.rotation = -0.06
+		stamp.tooltip_text = tr("demo_badge_tip") % Demo.MAX_COLONY
+		stamp.mouse_filter = Control.MOUSE_FILTER_PASS
+		_root.add_child(stamp)
 	_caption = h._label("", 15, h.INK, h._display)
 	_caption.anchor_left = 1.0
 	_caption.anchor_right = 1.0

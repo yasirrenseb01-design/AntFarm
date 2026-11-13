@@ -58,6 +58,11 @@ func _queen(dt: float) -> void:
 	if not queen_tended:
 		rate *= UNTENDED_LAYING          # nobody attended her this half hour (parts/sim_duties.gd)
 	var whole := workers.size() + brood + pupae.size()      # (all of them may yet become workers)
+	if demo_max > 0 and whole >= demo_max:
+		rate = 0.0                       # the free demo: no more laying at its limit, again as ants die (game/demo.gd)
+		if not stats.get("demo_told", false):
+			stats["demo_told"] = true    # (said once a colony: else the keeper thinks it a fault)
+			_log(T.demo_limit, "ok", [demo_max])
 	var most: float = sp.get("colony_max", 1000.0)
 	rate *= clampf((most - whole) / (most * 0.15), 0.0, 1.0)
 	if whole >= most * 0.85 and not stats.get("near_limit", false):

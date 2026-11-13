@@ -68,7 +68,7 @@ func _build_top(root: Control) -> void:
 	name_row.add_child(fold)
 	title.add_child(name_row)
 	var sub := _label(tr("top_subtitle") % [sim.sp["name"], tr("top_plot") if sim.scenario == "wild" else tr("top_box"),
-		"%d×%d" % [int(sim.WORLD.x * 0.05), int(sim.WORLD.y * 0.05)], ProjectSettings.get_setting("application/config/version", "dev")], 12, MUTED)
+		"%d×%d" % [int(sim.WORLD.x * 0.05), int(sim.WORLD.y * 0.05)], ProjectSettings.get_setting("application/config/version", "dev") + (" · " + tr("demo_badge") if load("res://scripts/game/demo.gd").on() else "")], 12, MUTED)
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sub.custom_minimum_size.x = BAR_W - 48.0
 	title.add_child(sub)

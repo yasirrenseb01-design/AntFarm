@@ -23,6 +23,7 @@
 | Release status | **Early access** | ถ้าในรายการไม่มีคำนี้ ให้เลือก In development แล้วใส่คำว่า Early Access ในคำอธิบาย (มีอยู่แล้ว) |
 | Pricing | **Paid: minimum price $1.49** ("$1.49 USD or more", ผู้ใช้เปลี่ยน 2026-11-07; ตอนปล่อย 2026-11-04 เป็น $0 or donate) | ตั้งราคาที่โปรเจกต์ ไม่ตั้งราคาแยกรายไฟล์ เพื่อให้ขึ้นราคาภายหลังโดยผู้ซื้อเดิมไม่เสียสิทธิ์; สัญญากับผู้เล่นใน Discord: ซื้อแล้วได้อัปเดตฟรีตลอด รวมสายพันธุ์ใหม่ |
 | Uploads | `AntFarm-v‹เวอร์ชัน›-windows.zip` ติ๊ก **Windows** | ไฟล์จาก `build/release/` |
+| Uploads (เดโมฟรี, ตั้งแต่ v0.13.18) | `AntFarm-v‹เวอร์ชัน›-demo-windows.zip` ติ๊ก **Windows** และ **This file is a demo and can be downloaded for free** | `tools/package.ps1` ทำทั้งสองไฟล์; เดโม: ตู้ 2 แปลงป่า 1 รังละ 150 ร้านซื้อไม่ได้ (`scripts/game/demo.gd`) เซฟเล่นต่อในเกมเต็มได้ |
 | Description | ดูข้อ 3 (อังกฤษก่อน ไทยตามหลัง) | |
 | Genre | **Simulation** | |
 | Tags (สูงสุด 10) | `ants`, `insects`, `simulation`, `life-simulation`, `nature`, `realistic`, `relaxing`, `virtual-pet`, `wallpaper`, `3d` | ถ้าอยากได้คำเกี่ยวกับเวลาเดินต่อตอนปิดเกม เปลี่ยน `3d` เป็น `idle` |

@@ -3,6 +3,7 @@ extends Node2D
 ## closed. Layers: main_base <- main_camera <- dev/dev_tools <- main.
 const OutworldCard := preload("res://scripts/game/outworld_card.gd")
 const Sim := preload("res://scripts/sim/simulation.gd")
+const Demo := preload("res://scripts/game/demo.gd")
 const Hud := preload("res://scripts/view/ui/hud.gd")
 const NestView := preload("res://scripts/view/nest/nest_view.gd")
 const OutworldView := preload("res://scripts/view/outworld/outworld_view.gd")
@@ -316,3 +317,11 @@ func _hours_text(h: float) -> String:
 	if h < 48.0:
 		return tr("hours_n") % h
 	return tr("days_n") % (h / 24.0)
+
+
+## A new simulation - in the free demo (game/demo.gd; --demo in the editor) with its colony limit, which is never saved.
+func _new_sim():
+	Demo.forced = _opts.has("demo")
+	var s = Sim.new()
+	s.demo_max = Demo.MAX_COLONY if Demo.on() else 0
+	return s

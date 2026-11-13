@@ -124,6 +124,8 @@ func _music_row() -> HBoxContainer:
 func slots_of(scen: String) -> Array:
 	if home == null:
 		return [1, 2, 3]
+	if scen == "wild" and Demo.on():
+		return home.wild.slice(0, Demo.WILD_SLOTS)      # (the free demo: one garden plot - game/demo.gd)
 	return home.wild if scen == "wild" else home.tanks
 
 
@@ -353,6 +355,7 @@ class EnemyRate extends VBoxContainer:
 
 
 ## Choices for a new colony: where it lives, what it lives in, and how it starts (words: keys of lang/strings.csv).
+const Demo := preload("res://scripts/game/demo.gd")
 const NEW_SCENARIOS := [
 	["wild", "scen_wild", "scen_wild_note"],
 	["keeper", "scen_keeper", "scen_keeper_note"]]

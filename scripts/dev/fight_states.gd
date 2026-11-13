@@ -6,6 +6,7 @@ extends RefCounted
 ##   --home-click=<kind>        (with --home) that item of the Home's room clicked after a second
 ##   --place-rocks=<n>          n stones laid by the keeper at --enemy-at
 ##   --tool-tab=items [--tool=t] the toolbox's shelf shown, a tool held
+##   --shop-buy                 (with --home --shop) the free demo's note on buying
 ##   --album                    the album open, as the queen's sketch opens it
 ##   --click-sketch             a real mouse click on the queen's sketch after a second; prints whether the album opened
 
@@ -69,6 +70,9 @@ static func apply(d) -> void:
 	if o.has("look-nest"):
 		d.outworld.focus_nest()                 # --look-nest: the camera on the nest's crater (at --dist)
 		d.outworld.dist_t = float(o.get("dist", 60.0))
+	if o.has("shop-buy"):
+		# --home --shop --shop-buy: as a buy button is pressed in the free demo (its note, the way to the full game)
+		d.get_tree().create_timer(1.0).timeout.connect(func(): d.home_room.shop._demo_note())
 	if o.has("album"):
 		d.hud.open_album()
 	if o.has("select-queen"):

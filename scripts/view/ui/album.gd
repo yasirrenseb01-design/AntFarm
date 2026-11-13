@@ -11,6 +11,7 @@ extends Window
 const Paper := preload("res://scripts/view/ui/paper.gd")
 const Desk := preload("res://scripts/view/ui/desk.gd")
 const Registry := preload("res://scripts/sim/species/registry.gd")
+const Demo := preload("res://scripts/game/demo.gd")
 
 ## species id -> its plates: [id, picture, caption key, workers that win it]
 const PLATES := {
@@ -187,7 +188,9 @@ func _plate(p: Array, page: Rect2, side: int) -> void:
 		var mid := CenterContainer.new()
 		mid.set_anchors_preset(Control.PRESET_FULL_RECT)
 		pasted.add_child(mid)
-		var lock: Label = _h._label(tr("album_locked") % int(p[3]), 15, Paper.INK)
+		# (the free demo's colonies stop at Demo.MAX_COLONY: a plate past it is the full game's - game/demo.gd)
+		var past: bool = Demo.on() and int(p[3]) > Demo.MAX_COLONY
+		var lock: Label = _h._label(tr("album_demo") if past else tr("album_locked") % int(p[3]), 15, Paper.INK)
 		lock.add_theme_stylebox_override("normal", Paper.page(14, 7))       # (a slip of paper over the ghost)
 		mid.add_child(lock)
 	var cap: Label = _h._label(tr(p[2]), 13, Paper.INK if have else Paper.PENCIL)

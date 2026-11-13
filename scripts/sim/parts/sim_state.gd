@@ -145,6 +145,7 @@ const UNTENDED_LAYING := 0.9             # a queen nobody attended lays this muc
 var queen_tended := true                 # someone attended the queen this half hour (none: she lays UNTENDED_LAYING)
 var _carry_due := 0                      # brood to carry since the last duty round (eggs laid, larvae pupating, workers out)
 var _dumps := {}                         # worker id -> {"to": where it sets its pellet down, "dig": the digger, "dropped"}
+var demo_max := 0                        # the free demo's colony limit (game/demo.gd; 0: none) - set by the game, never saved
 var _unloaded: Array = []                # foragers (ids) who brought honeydew home since the last duty round
 
 
