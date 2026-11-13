@@ -404,6 +404,22 @@ class PageBox extends StyleBox:
 		D.age(ci, rect)
 
 
+## A framed window's body (Paper.body, v0.13.12): the same sheet the frame draws round the title, carried on under it -
+## its browned edges where the sheet's are (3 px out at the sides and bottom, the top band up under the title, out of
+## sight), so the window reads as one page, not a page on a page (the keeper: "two sheets, one on the other").
+class WindowBodyBox extends StyleBox:
+	func _init(pad_h := 18, pad_v := 16) -> void:
+		content_margin_left = pad_h
+		content_margin_right = pad_h
+		content_margin_top = pad_v
+		content_margin_bottom = pad_v
+
+	func _draw(ci: RID, rect: Rect2) -> void:
+		var D = load("res://scripts/view/ui/desk.gd")
+		RenderingServer.canvas_item_add_texture_rect(ci, rect, D.paper().get_rid(), true)
+		D.age(ci, rect.grow_individual(3.0, WindowBox.TITLE, 3.0, 3.0))
+
+
 ## The keeper's journal on the side panel: a page with a stitched leather spine down its left edge (the keeper's picture).
 class JournalBox extends StyleBox:
 	func _init() -> void:

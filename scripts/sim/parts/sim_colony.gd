@@ -36,7 +36,7 @@ func _new_day() -> void:
 	nest.work_left = nest.count_work_left()
 	history.append(_snapshot())
 	if history.size() > HISTORY_DAYS:
-		history.pop_front()
+		_thin_history()
 	# rain: outdoors only - a formicarium in the Home's room has none (it rained in the tanks until v0.11.77: the keeper,
 	# 2026-11-03). The draws are made either way, so a colony's other chances come out as before.
 	if rng.randf() < 0.14:
@@ -441,3 +441,15 @@ func _outworld(dt: float) -> void:
 
 	if enemies:
 		_maybe_spawn(dt)
+
+
+## The record kept to HISTORY_DAYS by thinning its old part rather than dropping its start (v0.13.12, the keeper: "can I
+## zoom the chart out to day 0?" - only the last three years were kept): the last year stays day by day, before it one
+## day in a week, and only when all of that is weekly does the very first go.
+func _thin_history() -> void:
+	var old_end := history.size() - 365
+	for i in range(1, old_end):
+		if float(history[i + 1].get("day", 0)) - float(history[i - 1].get("day", 0)) <= 7.0:
+			history.remove_at(i)
+			return
+	history.pop_front()

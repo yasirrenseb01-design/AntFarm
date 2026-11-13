@@ -35,6 +35,11 @@ var _legend: RichTextLabel       # each line's name and today's value, a dot in 
 var _set_pick: OptionButton
 var _name_edit: LineEdit
 var _days_n := -1                # the record's length when last drawn
+# the part of X shown (v0.13.12, the keeper: "zoom the chart out, scroll it, see it all"): a share of the whole, 0..1
+var _view := Vector2(0.0, 1.0)
+var _drag_from := -1.0           # where a drag began (px), -1: none
+var _hover_x := -1.0             # the mouse over the chart (px), -1: not over it
+var _zoom_note: Label
 
 
 static func path() -> String:
@@ -71,8 +76,32 @@ func setup(s, h) -> void:
 
 	_canvas = Control.new()
 	_canvas.custom_minimum_size = Vector2(0, 200)
+	_canvas.mouse_filter = Control.MOUSE_FILTER_STOP
 	_canvas.draw.connect(_draw)
+	_canvas.gui_input.connect(_chart_input)
+	_canvas.mouse_exited.connect(func():
+		_hover_x = -1.0
+		_canvas.queue_redraw())
 	add_child(_canvas)
+	# zoom: out, in, the whole record (the wheel and a drag do the same on the chart)
+	var zrow := HBoxContainer.new()
+	zrow.add_theme_constant_override("separation", 4)
+	for spec in [["−", 1.6], ["+", 1.0 / 1.6]]:
+		var b: Button = hud._button(spec[0], false)
+		var f: float = spec[1]
+		b.custom_minimum_size.x = 30
+		b.pressed.connect(func(): _zoom(f, 0.5))
+		zrow.add_child(b)
+	var all: Button = hud._button(tr("stat_all"), false)
+	all.pressed.connect(func():
+		_view = Vector2(0.0, 1.0)
+		redraw())
+	zrow.add_child(all)
+	_zoom_note = hud._label(tr("stat_zoom_hint"), 11, hud.MUTED)
+	_zoom_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_zoom_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	zrow.add_child(_zoom_note)
+	add_child(zrow)
 	_legend = RichTextLabel.new()
 	_legend.bbcode_enabled = true
 	_legend.fit_content = true
@@ -146,6 +175,49 @@ func _apply(st: Dictionary) -> void:
 	redraw()
 
 
+## The wheel zooms where it points, a drag slides along, a double click shows it all; the mouse over it shows that
+## day's values.
+func _chart_input(e: InputEvent) -> void:
+	var left := 34.0
+	var span: float = maxf(1.0, _canvas.size.x - left - 4.0)
+	if e is InputEventMouseButton and e.pressed:
+		var at := clampf((e.position.x - left) / span, 0.0, 1.0)
+		match e.button_index:
+			MOUSE_BUTTON_WHEEL_UP:
+				_zoom(1.0 / 1.25, at)
+				_canvas.accept_event()
+			MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom(1.25, at)
+				_canvas.accept_event()
+			MOUSE_BUTTON_LEFT:
+				if e.double_click:
+					_view = Vector2(0.0, 1.0)
+					redraw()
+				else:
+					_drag_from = e.position.x
+	elif e is InputEventMouseButton and not e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+		_drag_from = -1.0
+	elif e is InputEventMouseMotion:
+		_hover_x = e.position.x
+		if _drag_from >= 0.0 and e.button_mask & MOUSE_BUTTON_MASK_LEFT:
+			var w := _view.y - _view.x
+			var d: float = -(e.position.x - _drag_from) / span * w
+			_drag_from = e.position.x
+			var a := clampf(_view.x + d, 0.0, 1.0 - w)
+			_view = Vector2(a, a + w)
+		_canvas.queue_redraw()
+
+
+## Zoom the shown part by f (> 1 out, < 1 in) about `at` (0..1 across the chart as it is shown).
+func _zoom(f: float, at: float) -> void:
+	var w := _view.y - _view.x
+	var nw := clampf(w * f, 0.02, 1.0)
+	var pivot := _view.x + at * w
+	var a := clampf(pivot - at * nw, 0.0, 1.0 - nw)
+	_view = Vector2(a, a + nw)
+	redraw()
+
+
 func redraw() -> void:
 	_days_n = -1
 	_canvas.queue_redraw()
@@ -200,10 +272,17 @@ func _draw() -> void:
 			c.draw_string(font, Vector2(left + 8, h * 0.5 + li * 16 - 8), lines[li], HORIZONTAL_ALIGNMENT_LEFT, w - left - 12, 12, hud.MUTED)
 		_legend.text = ""
 		return
-	var x0: float = xs.min()
-	var x1: float = xs.max()
-	if x1 - x0 < 0.0001:
-		x1 = x0 + 1.0
+	var full0: float = xs.min()
+	var full1: float = xs.max()
+	if full1 - full0 < 0.0001:
+		full1 = full0 + 1.0
+	# the part shown: only its points, Y fitted to them
+	var x0: float = lerpf(full0, full1, _view.x)
+	var x1: float = lerpf(full0, full1, _view.y)
+	var pad := (x1 - x0) * 0.004
+	pts = pts.filter(func(p): return float(p[x_key]) >= x0 - pad and float(p[x_key]) <= x1 + pad)
+	if pts.is_empty():
+		return
 	# Y: one scale for all (from 0 when nothing is below it), or each its own
 	var ranges := {}
 	var all_lo := INF
@@ -256,6 +335,27 @@ func _draw() -> void:
 		legend.append("[color=#%s]●[/color] %s %s%s" % [col.to_html(false), _name_of(k), _num(float(last.get(k, 0.0))),
 			"" if shared else " (%s–%s)" % [_num(r.x), _num(r.y)]])
 	_legend.text = "\n".join(legend)
+	# the mouse over it: a line at that X and its values (the nearest day)
+	if _hover_x >= left and _hover_x <= w - 4.0 and by_day:
+		var hx: float = x0 + (_hover_x - left) / (w - left - 4.0) * (x1 - x0)
+		var best = null
+		for p in pts:
+			if best == null or absf(float(p[x_key]) - hx) < absf(float(best[x_key]) - hx):
+				best = p
+		if best != null:
+			var bx: float = left + (float(best[x_key]) - x0) / (x1 - x0) * (w - left - 4.0)
+			c.draw_line(Vector2(bx, top), Vector2(bx, bottom), hud.INK * Color(1, 1, 1, 0.45), 1.0)
+			var txt := PackedStringArray([_name_of(x_key) + " " + _num(float(best[x_key]))])
+			for k in y_keys:
+				if (best as Dictionary).has(k):
+					txt.append(_name_of(k) + " " + _num(float(best[k])))
+			var tw := 0.0
+			for t in txt:
+				tw = maxf(tw, font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x)
+			var bxp: float = bx + 6.0 if bx + 12.0 + tw < w else bx - 10.0 - tw
+			c.draw_rect(Rect2(bxp - 3.0, top + 2.0, tw + 8.0, 14.0 * txt.size() + 4.0), Color(0.98, 0.95, 0.86, 0.92))
+			for i in txt.size():
+				c.draw_string(font, Vector2(bxp + 1.0, top + 15.0 + 14.0 * i), txt[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, hud.INK)
 
 
 static func _num(v: float) -> String:

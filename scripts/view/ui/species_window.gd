@@ -44,7 +44,7 @@ func setup(h) -> void:
 	wrap_controls = true
 	close_requested.connect(queue_free)
 	var body := PanelContainer.new()
-	body.add_theme_stylebox_override("panel", Paper.page(18, 16))
+	body.add_theme_stylebox_override("panel", Paper.body(18, 16))
 	body.set_anchors_preset(Control.PRESET_FULL_RECT)          # (the paper fills the window: no dark strip under it)
 	add_child(body)
 	var row := HBoxContainer.new()

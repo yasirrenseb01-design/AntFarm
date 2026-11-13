@@ -616,6 +616,8 @@ stat_save,บันทึก,Save
 stat_x,แกน X,X axis
 stat_y,แกน Y (เลือกได้หลายค่า),Y axis (pick any)
 stat_own_scale,แต่ละเส้นใช้สเกลของตัวเอง,Each line on its own scale
+stat_all,ดูทั้งหมด,Show all
+stat_zoom_hint,"ล้อเมาส์ซูม · ลากเลื่อน · ดับเบิลคลิกดูทั้งหมด","Wheel to zoom · drag to scroll · double-click: all"
 stat_no_data,ยังไม่มีข้อมูลพอ (บันทึกวันละครั้ง),Not enough yet (recorded once a day)
 stat_default,ประชากรรายวัน (ตั้งต้น),Population by day (default)
 stat_new_value,"ค่านี้เริ่มบันทึกวันละครั้งตั้งแต่ v0.11.78

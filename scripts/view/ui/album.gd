@@ -42,7 +42,7 @@ func setup(h, species: String, won: Array) -> void:
 	wrap_controls = true
 	close_requested.connect(queue_free)
 	var body := PanelContainer.new()
-	body.add_theme_stylebox_override("panel", Paper.page(22, 18))
+	body.add_theme_stylebox_override("panel", Paper.body(22, 18))
 	body.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(body)
 	var col := VBoxContainer.new()

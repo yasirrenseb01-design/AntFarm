@@ -54,6 +54,12 @@ static func texture() -> ImageTexture:
 
 ## A sheet of the paper as a panel style: the cream paper tiled, its edges browned with age and a few stains
 ## (ui/desk.gd PageBox - plain tiled paper until v0.13.7).
+## A framed window's body: the frame's sheet carried on under the title, browned only at the sheet's own edges
+## (desk.gd WindowBodyBox) - a second aged page inside it showed two sheets, one on the other (v0.13.12, the keeper).
+static func body(pad_h := 18, pad_v := 16) -> StyleBox:
+	return Desk.WindowBodyBox.new(pad_h, pad_v)
+
+
 static func page(pad_h := 18, pad_v := 16) -> StyleBox:
 	return Desk.PageBox.new(pad_h, pad_v)
 
@@ -76,9 +82,10 @@ static func _flat(bg: Color, border: Color, width := 1, radius := 3, pad_h := 10
 static func theme(base: Theme) -> Theme:
 	var th: Theme = base.duplicate()
 	var clear := Color(0, 0, 0, 0)
-	th.set_stylebox("panel", "PanelContainer", page())
-	for cls in ["AcceptDialog", "ConfirmationDialog", "PopupPanel"]:
-		th.set_stylebox("panel", cls, page())
+	th.set_stylebox("panel", "PanelContainer", body())
+	for cls in ["AcceptDialog", "ConfirmationDialog"]:
+		th.set_stylebox("panel", cls, body())          # (in a framed window: its sheet is the frame's - v0.13.12)
+	th.set_stylebox("panel", "PopupPanel", page())
 	# the window's frame: a clipboard - the board round it, the sheet running on under its title bar, the brass clip
 	# above (ui/desk.gd WindowBox; the paper ran on under the title until v0.13.2)
 	var frame = Desk.WindowBox.new()
