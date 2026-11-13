@@ -29,7 +29,7 @@ const M := 1.0 / Spec.VOXEL          # units a metre
 const SOIL_BOTTOM := -Spec.SOIL * M  # the box's soil, as deep as the nest, seen through the glass down to its floor (units)
 const FLUON_BAND := 12.0          # the slippery band painted under the rim (~1.8 cm): climbing ants turn back below it
 const CARRY_OFFSET := Transform3D(Basis(Vector3(0.55, 0, 0), Vector3(0, 0.55, 0), Vector3(0, 0, 0.55)), Vector3(1.35, 0.6, 0.0))   # in the mandibles of a raised head (shader act 8)
-const THROWN_S := 1.6                # seconds: thrown off an enemy, on its back, righted again
+const THROWN_S := 2.2                # seconds: thrown off an enemy, on its back, righted again (1.6 until v0.13.8: "they fly off too fast")
 const SIDE_PANEL_PX := 364.0         # the HUD's side panel covers the right of the window
 var side_px := SIDE_PANEL_PX         # ... unless it is folded away (0; the HUD sets it)
 

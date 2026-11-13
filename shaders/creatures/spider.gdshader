@@ -52,10 +52,6 @@ void vertex() {
 			// rearing: the two front pairs lifted off the ground and reaching forward (eased: strike is 0..1)
 			a = mix(a, ankle[i] + vec3(0.6, 2.8 + 0.5 * sin(t * 8.0 + li), -0.8 * side), smoothstep(0.0, 1.0, strike));
 		}
-		if ((feed || shake) && li < 0.5) {
-			// the front legs closed round the prey held before the fangs
-			a = vec3(6.0 + 0.15 * sin(t * 3.0 + side), 1.0 + 0.2 * sin(t * 2.3 + side), 1.25 * side);
-		}
 		if (dead || back) {
 			// dead: the feet drawn in beside the body, the knees standing up over it
 			vec2 o = normalize(ankle[i].xz - hip[i].xz);

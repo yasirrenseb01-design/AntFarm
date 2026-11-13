@@ -81,6 +81,10 @@ static func update(o, delta: float) -> void:
 			mm.set_instance_transform(i, Transform3D(lb.scaled_local(Vector3.ONE * sc), origin))
 			# (turning on the spot takes steps too: the feet round its body go ~18 px for each radian - v0.13.7)
 			var gait: float = CreatureRig.gait(cv, v, s, step.length() * (1.0 - exp(-15.0 * delta)) + absf(wrapf(v.a - was_a, -PI, PI)) * 18.0, delta)
+			if s.has("prey"):
+				gait = float(v.get("gait_hold", gait))      # (feeding or shaking its prey, its feet stay put - v0.13.8)
+			else:
+				v.gait_hold = gait
 			# y: 0..1 into a strike, or 3 + how hard it kicks once it is over on its back, 5 feeding on prey held before its
 			# fangs / 6 shaking a bitten one (the spider: enemies/spider_prey.gd); w: how much it is walking, + 2 while ants
 			# are holding it down (it writhes)
@@ -179,7 +183,7 @@ static func held_xf(o, a, foe: Dictionary, spot: Dictionary, layer: int, s: floa
 		g = [float(o._t), from, _frame]
 	g[2] = _frame
 	_grab[a.id] = g
-	var u := clampf((float(o._t) - float(g[0])) / 0.6, 0.0, 1.0)
+	var u := clampf((float(o._t) - float(g[0])) / 0.4, 0.0, 1.0)
 	if u >= 1.0:
 		return target
 	var e := smoothstep(0.0, 1.0, u)
@@ -209,7 +213,8 @@ static func _held_target(o, a, foe: Dictionary, spot: Dictionary, layer: int, s:
 		# on its back: on the belly (which is up), the ground ones drawn in toward the middle
 		var box: Vector3 = BELLY_BOX.get(String(foe.kind), Vector3(-4, 4, 1))
 		var lx: float = clampf(p.x * px_to_model * (0.55 if on_ground else 1.0), box.x, box.y)
-		var lz: float = clampf(p.y * px_to_model * (0.4 if on_ground else 0.8), -box.z, box.z)
+		# (those that held a leg from the ground hang on at the leg's base, along the belly's edge: v0.13.8)
+		var lz: float = (signf(p.y) * box.z) if on_ground else clampf(p.y * px_to_model * 0.8, -box.z, box.z)
 		var local := Vector3(lx, float(BELLY.get(String(foe.kind), 0.5)) - layer * 1.3 * mm_to_model, lz)
 		var lb := Basis(f, Vector3.DOWN, f.cross(Vector3.DOWN))
 		return Transform3D((xb * lb).scaled(Vector3.ONE * s), xf * local)

@@ -69,6 +69,9 @@ vec3 leg_knee_up(int i, inout vec3 a, float up_sign) {
 	float ky = knee[i].y;
 	float r1 = length(knee[i].xz - h.xz);
 	float l2 = length(ankle[i] - knee[i]);
+	// (an ankle farther above or below the knee than the tibia reaches is brought within it: else the foot was set
+	// there and the tibia, its length kept, fell short - the beetle's feet came off kicking on its back, v0.13.8)
+	a.y = clamp(a.y, ky - l2 * 0.97, ky + l2 * 0.97);
 	float r2 = sqrt(max(0.01, l2 * l2 - (ky - a.y) * (ky - a.y)));
 	vec2 u = a.xz - h.xz;
 	float rho = max(length(u), 0.001);

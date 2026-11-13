@@ -112,6 +112,21 @@ func _hold_spots(c: Dictionary, clinging: Array) -> void:
 				taken[i] = a.id
 			else:
 				a.busy = 0
+	# one standing on a nestmate who has been thrown off is on nothing: it falls off too (v0.13.8, the keeper: "the ones
+	# that float or have not got a hold must drop off, not ride along")
+	var n: int = Grip.spots(ENEMY_KINDS[c.kind]).size()
+	var idx := kept.values()
+	idx.sort()
+	for i in idx:
+		if i >= n and not taken.has(i - n):
+			var id = taken[i]
+			taken.erase(i)
+			kept.erase(id)
+			for a in clinging:
+				if a.id == id:
+					a.busy = 0
+					a.vflung = true
+					a.meet_cd = REGRAB_TICKS
 	c.spots = kept
 	_taken[c.id] = taken
 
@@ -160,9 +175,11 @@ func _clinging(c: Dictionary) -> Array:
 const FLIP_TICKS := 240        # on its back, legs in the air, before it rights itself (4-6 s at 1x)
 const DYING_TICKS := 600       # its death throes on its back once the ants have the better of it (10 s at 1x)
 const PANIC_TICKS := 110       # a panicked rush, dragging the ants holding it
-const FLIP_RATE := 0.0005      # a tick, for each ant holding it beyond two: thrashing, it rolls over [inference]
+const FLIP_RATE := 0.00012     # a tick, for each ant holding it beyond two (up to 8): thrashing, it rolls over [inference]
+                               # (0.0005 until v0.13.8: with 20 on it, about every 2 s - "it flips too often")
 const PANIC_RATE := 0.0015     # a tick, for each ant holding it, while it still has more than PANIC_HP of its strength
 const PANIC_HP := 0.6
+const REGRAB_TICKS := 120      # thrown off, it takes hold again no sooner than this (2 s at 1x: the view's throw)
 const LURCH_RATE := 0.006      # a tick while pinned: about one heave in three seconds at 1x
 const LURCH_TICKS := 40        # a heave lasts 2/3 s
 const LURCH_FREE := 0.3        # of its pace it gets back during one
@@ -235,7 +252,7 @@ func _step_on_back(c: Dictionary, clinging: Array, K) -> void:
 		c.strike = 20                    # (a beetle sprays on its back too: every ant on it lets go)
 		for a in clinging:
 			_shake_off(a, c)
-	elif held > 0 and rng.randf() < K.STATS.shake * held * 0.6 * weak:
+	elif held > 0 and rng.randf() < K.STATS.shake * held * 1.2 * weak:
 		c.strike = 12
 		_shake_off(clinging[rng.randi() % held], c)
 	elif held > 0 and rng.randf() < K.STATS.bite * 0.25 * weak:
@@ -273,7 +290,7 @@ func _step_creatures() -> void:
 		elif on_back(c):
 			_step_on_back(c, clinging, K)
 		else:
-			if c.held >= 3 and rng.randf() < FLIP_RATE * (c.held - 2) * float(K.STATS.get("flip", 1.0)):
+			if c.held >= 3 and rng.randf() < FLIP_RATE * mini(c.held - 2, 8) * float(K.STATS.get("flip", 1.0)):
 				flip_over(c)
 				continue
 			if c.held >= 3 and not panicking(c) and c.hp > PANIC_HP * float(K.STATS.hp) and rng.randf() < PANIC_RATE * c.held:
@@ -328,6 +345,7 @@ func _bite(a: Ant, c: Dictionary) -> void:
 
 func _shake_off(a: Ant, c: Dictionary) -> void:
 	a.vflung = true                 # (for the view: thrown clear, it lands on its back and rights itself)
+	a.meet_cd = REGRAB_TICKS        # (on its feet again before it goes back: it was back on its spot the next tick, v0.13.7)
 	a.busy = 0
 	a.hurt = minf(0.9, a.hurt + 0.15)
 	a.pos = (a.pos + (a.pos - c.pos).normalized() * 7.0).clamp(Vector2(4, 4), WORLD - Vector2(4, 4))
@@ -338,6 +356,8 @@ func _step_defender(a: Ant) -> void:
 	if a.act == SpiderPrey.ACT_PREY:
 		return                       # (in a spider's fangs: enemies/spider_prey.gd moves it)
 	var n := ant_substep
+	if a.meet_cd > 0:
+		a.meet_cd -= n               # (thrown off: a moment before it takes hold again - REGRAB_TICKS)
 	var c = _creature(a.foe) if a.foe != 0 else null
 	if c == null:
 		c = _nearest_creature(a.pos, 220.0)
@@ -367,7 +387,7 @@ func _step_defender(a: Ant) -> void:
 	if a.pos.distance_squared_to(c.pos) < pow(S.r + Grip.SEEK_PX, 2):
 		spot = Grip.free_spot(c, ENEMY_KINDS[c.kind], taken, a.pos, Grip.layers(workers.size()))
 	var to: Vector2 = (Grip.at(c, ENEMY_KINDS[c.kind], spot) if spot >= 0 else c.pos) - a.pos
-	if spot >= 0 and to.length() < 3.0 + spd:
+	if spot >= 0 and to.length() < 3.0 + spd and a.meet_cd <= 0:
 		c.spots[a.id] = spot
 		taken[spot] = a.id
 		c.held += 1

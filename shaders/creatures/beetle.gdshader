@@ -44,9 +44,6 @@ void vertex() {
 		// alternating tripods: front and hind of one side with the middle of the other
 		float grp = ((mod(li, 2.0) < 0.5) == (side < 0.0)) ? 0.0 : 0.5;
 		vec3 a = leg_ankle(i, gait / TAU + grp, 1.0);     // (standing still the legs stay as they were in the step)
-		if ((feed || shake) && i < 2) {
-			a = vec3(9.0 + 0.15 * sin(t * 3.0 + side), 1.3, 1.5 * side);      // the front legs round the prey
-		}
 		if (dead || back) {
 			// on its back: the legs drawn in over the belly, the feet up (alive: kicking)
 			a = vec3(hip[i].x * 0.9 + 0.3, hip[i].y - 3.0, 3.0 * side);     // (tried with tools/dev/leg_clip.py: 0.27% of the legs in the body)

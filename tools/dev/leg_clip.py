@@ -88,6 +88,7 @@ def ik_report(name, body_parts, first_part, far, group_of, dead_ankle, strike_an
             return h + d * al + nn * up, a
         r1 = math.hypot(k0[0] - h[0], k0[2] - h[2])
         l2 = np.linalg.norm(a0 - k0)
+        a = np.array([a[0], min(max(a[1], k0[1] - l2 * 0.97), k0[1] + l2 * 0.97), a[2]])     # (as leg_ik.gdshaderinc since v0.13.8)
         r2 = math.sqrt(max(0.01, l2 * l2 - (k0[1] - a[1]) ** 2))
         u = np.array([a[0] - h[0], a[2] - h[2]])
         rho = max(np.linalg.norm(u), 0.001)
