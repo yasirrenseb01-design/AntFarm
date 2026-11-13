@@ -16,7 +16,7 @@ func _sync_rocks() -> void:
 	for rk in sim.rocks:
 		if rk.get("climb", false):
 			var sd := int(rk.pos.x * 13 + rk.pos.y)          # (its kind and height as the mesh's below: rock_mesh.gd)
-			_props_h.stamp_rock(rk.pos * U, rk.r * U, RockMesh.height(rk.r * U, sd, RockMesh.kind_of(sd, rk.get("placed", false))))
+			_props_h.stamp_rock(rk.pos * U, rk.r * U, RockMesh.height(rk.r * U, sd, RockMesh.kind_for(rk, sd)))
 	if _ant_shader_mat != null and _props_h.w > 0:
 		var tex := _props_h.texture()
 		_ant_shader_mat.set_shader_parameter("prop_tex", tex)
@@ -33,7 +33,7 @@ func _sync_rocks() -> void:
 			outline.append((p - rk.pos) * U)
 		var mi := MeshInstance3D.new()
 		var seed_v := int(rk.pos.x * 13 + rk.pos.y)
-		mi.mesh = RockMesh.mesh(outline, rk.r * U, rk.tone, seed_v, RockMesh.kind_of(seed_v, rk.get("placed", false)))
+		mi.mesh = RockMesh.mesh(outline, rk.r * U, rk.tone, seed_v, RockMesh.kind_for(rk, seed_v))
 		mi.material_override = _vc_mat(0.85)
 		mi.position = _on_ground(rk.pos, 0.0)
 		_rock_root.add_child(mi)

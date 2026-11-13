@@ -486,9 +486,9 @@ func _update_rain(delta: float, raining: bool) -> void:
 
 func _update_ring() -> void:
 	var t: String = ground.tool
-	_ring.visible = hover != Vector3.INF and t in ["rock", "rock_take", "erase"]
+	_ring.visible = hover != Vector3.INF and t in ["rock", "rock_slate", "rock_granite", "rock_take", "erase"]
 	if _ring.visible:
-		var r := (10.0 if t == "rock" else 24.0) * U
+		var r := (10.0 if t.begins_with("rock") and t != "rock_take" else 24.0) * U
 		_ring.position = hover + Vector3(0, 0.3, 0)
 		_ring.scale = Vector3(r, 1.0, r)
 

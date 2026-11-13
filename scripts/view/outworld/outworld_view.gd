@@ -6,6 +6,7 @@ extends "res://scripts/view/outworld/parts/outworld_camera.gd"
 
 
 const Look := preload("res://scripts/game/look_prefs.gd")
+const ROCK_KINDS := ["rock", "rock_slate", "rock_granite"]      # the stone tools, by kind (view/common/rock_mesh.gd)
 func setup(s) -> void:
 	sim = s
 	ANT_SCALE = Spec.ANT_SCALE * float(sim.sp.look.worker_scale)      # (the species' size: docs/SPECIES.md)
@@ -219,7 +220,7 @@ func _unhandled_input(e: InputEvent) -> void:
 				_rot = e.pressed and not e.shift_pressed
 			elif e.pressed:
 				_use_tool(tool, pick(e.position))
-				_painting = tool in ["rock", "rock_take", "erase"]
+				_painting = tool in ["rock", "rock_slate", "rock_granite", "rock_take", "erase"]
 			else:
 				_painting = false
 		elif e.button_index == MOUSE_BUTTON_RIGHT or e.button_index == MOUSE_BUTTON_MIDDLE:
@@ -252,8 +253,8 @@ func _use_tool(tool: String, at: Vector3) -> void:
 		_ when FoodKinds.info(tool).has("tool"):
 			sim.place_food(tool, p)
 			_items_timer = 0.0
-		"rock":
-			if p.distance_to(_last_paint) > 9.0 and sim.can_place(p) and sim.add_rock(p, 10.0, true):
+		"rock", "rock_slate", "rock_granite":            # (the keeper picks the kind: rock_mesh.gd, v0.13.17)
+			if p.distance_to(_last_paint) > 9.0 and sim.can_place(p) and sim.add_rock(p, 10.0, true, ROCK_KINDS.find(tool)):
 				_last_paint = p
 				_items_timer = 0.0
 		"rock_take":

@@ -318,8 +318,8 @@ func add_water() -> void:
 	_log(T.water_added, "", [int(humidity * 100)])
 
 
-## placed: laid by the keeper (the stone tool) - the keeper can take it away again (remove_rock).
-func add_rock(p: Vector2, r: float, placed := false) -> bool:
+## placed: laid by the keeper (the stone tool) - the keeper can take it away again (remove_rock). kind: the stone the keeper chose (view/common/rock_mesh.gd; -1 by where it lies)
+func add_rock(p: Vector2, r: float, placed := false, kind := -1) -> bool:
 	if p.distance_to(nest_pos) < r + 24.0 or p.distance_to(midden_pos) < r + 10.0:
 		return false
 	for f in foods:
@@ -342,7 +342,7 @@ func add_rock(p: Vector2, r: float, placed := false) -> bool:
 		var a := TAU * k / 14.0
 		var rr := r * (0.86 + 0.18 * sin(s + k * 1.9) + 0.08 * sin(s * 0.7 + k * 3.7))
 		poly.append(p + Vector2.from_angle(a) * rr)
-	rocks.append({"pos": p, "r": r, "poly": poly, "tone": rng.randf(), "placed": placed})
+	rocks.append({"pos": p, "r": r, "poly": poly, "tone": rng.randf(), "placed": placed, "kind": kind})
 	_restamp_rocks()
 	rock_ver += 1
 	# ants caught where the stone lands scramble out to its edge

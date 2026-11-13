@@ -394,7 +394,9 @@ cancel,ยกเลิก,Cancel
 new_go,เริ่มรังนี้,Start this colony
 # controls,,
 tool_pan,มือ (เลื่อนจอ),Hand (move the view)
-tool_rock,ก้อนหิน,Stone
+tool_rock,ก้อนหินมน,Round stone
+tool_rock_slate,แผ่นหินชนวน,Slate
+tool_rock_granite,ก้อนแกรนิต,Granite chunk
 tool_rock_take,เก็บหิน,Take stone
 tool_erase,ลบกลิ่น,Wipe scent
 top_subtitle,%s · รังเดี่ยว ราชินี 1 ตัว · %s %s ซม. · v%s,"%s · single colony, 1 queen · %s %s cm · v%s"
@@ -424,7 +426,9 @@ tb_items,ของในตู้,In the box
 tb_pan,มือ,Hand
 tb_honey,น้ำผึ้ง,Honey
 tb_cricket,จิ้งหรีด,Cricket
-tb_rock,วางหิน,Stone
+tb_rock,หินมน,Stone
+tb_rock_slate,หินชนวน,Slate
+tb_rock_granite,แกรนิต,Granite
 tb_rock_take,เก็บหิน,Take stone
 tb_erase,ลบกลิ่น,Wipe scent
 tb_water,เติมน้ำ,Water

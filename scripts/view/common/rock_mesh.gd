@@ -7,7 +7,13 @@ extends RefCounted
 const Props := preload("res://scripts/view/common/mesh_kit.gd")
 
 
-## Which kind a stone at that seed is (a laid one: any of three; the plot's own stones stay the rounded kind).
+## Which kind a stone is: the one the keeper chose (v0.13.17: three stone tools), else by where it lies (laid before
+## v0.13.17: any of three; the plot's own stones stay the rounded kind).
+static func kind_for(rk: Dictionary, seed_value: int) -> int:
+	var k := int(rk.get("kind", -1))
+	return k if k >= 0 and k < 3 else kind_of(seed_value, bool(rk.get("placed", false)))
+
+
 static func kind_of(seed_value: int, placed: bool) -> int:
 	if not placed:
 		return 0

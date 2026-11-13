@@ -5,6 +5,7 @@ extends RefCounted
 ##   --carcass=<kind>           a carcass (food kind centipede_dead...) laid at --enemy-at
 ##   --home-click=<kind>        (with --home) that item of the Home's room clicked after a second
 ##   --place-rocks=<n>          n stones laid by the keeper at --enemy-at
+##   --tool-tab=items [--tool=t] the toolbox's shelf shown, a tool held
 ##   --album                    the album open, as the queen's sketch opens it
 ##   --click-sketch             a real mouse click on the queen's sketch after a second; prints whether the album opened
 
@@ -49,13 +50,22 @@ static func apply(d) -> void:
 					print("home-click: ", it.kind)
 					return)
 	if o.has("place-rocks"):
-		# --place-rocks=<n>: n stones laid by the keeper in a row at --enemy-at (their three kinds: rock_mesh.gd)
+		# --place-rocks=<n>: n stones laid by the keeper in a row at --enemy-at, the three kinds in turn (rock_mesh.gd)
 		var at: PackedStringArray = String(o.get("enemy-at", "120,90")).split(",")
 		var p0 := Vector2(float(at[0]), float(at[1]))
 		for i in int(o["place-rocks"]):
-			d.sim.add_rock(p0 + Vector2((i % 4) * 26.0, (i / 4) * 26.0), 9.0 + (i % 3) * 2.0, true)
+			d.sim.add_rock(p0 + Vector2((i % 4) * 26.0, (i / 4) * 26.0), 9.0 + (i % 3) * 2.0, true, i % 3)
 		d.outworld.follow_cid = 0
 		d.outworld.target_t = d.outworld._on_ground(p0 + Vector2(39, 13))
+	if o.has("tool-tab"):
+		# --tool-tab=items [--tool=rock_slate]: the toolbox's shelf as its tab strap picks it, a tool held (v0.13.17)
+		for n in d.hud.find_children("*", "", true, false):
+			if n.has_signal("chosen") and "modes" in n and n.modes.has(String(o["tool-tab"])):
+				n.mode = String(o["tool-tab"])
+				n.queue_redraw()
+				n.chosen.emit(n.mode)
+		if o.has("tool"):
+			d.hud.ground.tool = String(o["tool"])
 	if o.has("look-nest"):
 		d.outworld.focus_nest()                 # --look-nest: the camera on the nest's crater (at --dist)
 		d.outworld.dist_t = float(o.get("dist", 60.0))

@@ -84,7 +84,15 @@ void vertex() {
 		}
 		// (the foot stays; the hip goes with the body's wave and lunge: the leg is placed from the hip as it is now)
 		vec3 off = vec3(state > 0.5 ? body_lunge(hip[i].x, t) : 0.0, 0.0, body_sway(hip[i].x, gait, t, mv, held, turn_curl));
-		a -= off;
+		// ...but the bend of a turn is the body's shape while it turns, not a wave passing over planted feet: the legs go
+		// round with it, each turned as the body is at its hip (v0.13.17, the keeper: "the front legs bend oddly as it
+		// turns" - with the feet left where they were, the front hips swung ~2.3 units aside: the outer front legs were
+		// pulled past their reach (4.8 against 3.3), the inner first foot ended under the body)
+		float bend_k = turn_curl * 0.045;
+		float th = atan(2.0 * bend_k * hip[i].x);          // the body's heading at the hip (z = bend_k x^2)
+		vec2 r = a.xz - hip[i].xz;
+		a.xz = hip[i].xz + vec2(r.x * cos(th) - r.y * sin(th), r.x * sin(th) + r.y * cos(th));
+		a -= off - vec3(0.0, 0.0, bend_k * hip[i].x * hip[i].x);
 		leg_place_up(i, seg, a, v, NORMAL, MODEL_MATRIX[1].y < 0.0 ? -1.0 : 1.0);     // (a body on its back: its knees bent toward the sky)
 		v += off;
 	}

@@ -7,6 +7,7 @@ var _walker = null          # --at-ant=walker: the forager the camera follows
 var _duty_seen = null       # --follow-duty: the meeting the camera is on
 var _watch_food = null       # --at-ant=hauler: the prey being hauled home
 var _watch_creature = null   # --watch-fight=<n>: the enemy the camera follows once n ants hold it
+var _spin_n := 0             # (--enemy-spin: frames counted, scripts/dev/creature_watch.gd)
 
 # ---------------------------------------------------------------- tools
 
@@ -616,10 +617,7 @@ func _take_shot() -> void:
 					var fp2: Vector2 = _watch_food.pos
 					outworld.target_t = Vector3(fp2.x, 0, fp2.y) * outworld.U
 					outworld.target = outworld.target_t
-				if _watch_creature != null and mode == "outworld" and sim.creatures.has(_watch_creature):
-					var cp: Vector2 = _watch_creature.pos
-					outworld.target_t = Vector3(cp.x, 0, cp.y) * outworld.U
-					outworld.target = outworld.target_t
+				CreatureWatch.frame(self)          # (the camera on the watched enemy; --enemy-spin: it turns round and round)
 				if _opts.has("follow-anim") and mode == "nest":
 					# watch a life-cycle moment (--follow-anim=eclose|pupate|egg|care) where it happens
 					for an in nest_view._anims:
@@ -945,6 +943,7 @@ func _dev_nest_after() -> void:
 
 const BodyCheck := preload("res://scripts/dev/body_check.gd")
 const TurnCheck := preload("res://scripts/dev/turn_check.gd")
+const CreatureWatch := preload("res://scripts/dev/creature_watch.gd")
 const StackCheck := preload("res://scripts/dev/stack_check.gd")
 const QueenCheck := preload("res://scripts/dev/queen_check.gd")
 const FlipCheck := preload("res://scripts/dev/flip_check.gd")

@@ -15,7 +15,8 @@ const PAPER := Color(0.95, 0.9, 0.78)
 
 ## which tab each thing is under, its short name (lang: tb_*) and icon
 const TABS := [["food", "tb_food"], ["items", "tb_items"]]
-const SHORT := {"pan": "tb_pan", "honey": "tb_honey", "cricket": "tb_cricket", "rock": "tb_rock", "rock_take": "tb_rock_take",
+const SHORT := {"pan": "tb_pan", "honey": "tb_honey", "cricket": "tb_cricket", "rock": "tb_rock", "rock_slate": "tb_rock_slate",
+	"rock_granite": "tb_rock_granite", "rock_take": "tb_rock_take",
 	"erase": "tb_erase"}
 
 
@@ -68,7 +69,8 @@ static func build(h, root: Control) -> void:
 	var things := []
 	for pair in FoodKinds.tools():
 		things.append(["food", pair[1], pair[0]])
-	for pair in [["rock", "tool_rock"], ["rock_take", "tool_rock_take"], ["erase", "tool_erase"]]:
+	for pair in [["rock", "tool_rock"], ["rock_slate", "tool_rock_slate"], ["rock_granite", "tool_rock_granite"],
+			["rock_take", "tool_rock_take"], ["erase", "tool_erase"]]:
 		things.append(["items", pair[0], pair[1]])
 	for th in things:
 		var key: String = th[1]
@@ -216,6 +218,35 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, s: float, on := false
 				ci.draw_line(c + Vector2(10, 7) * s, c + Vector2(10, -6) * s, Color(0.55, 0.15, 0.1), 1.4, true)
 				ci.draw_polyline(PackedVector2Array([c + Vector2(7, -3) * s, c + Vector2(10, -7) * s, c + Vector2(13, -3) * s]),
 					Color(0.55, 0.15, 0.1), 1.4, true)
+		"rock_slate":                   # a flat slate: its top, and its cut edge below (blue-grey: rock_mesh.gd kind 1)
+			var top := PackedVector2Array([Vector2(-10, -1), Vector2(-4, -6), Vector2(9, -5), Vector2(10, 0), Vector2(3, 3), Vector2(-8, 2)])
+			var edge := PackedVector2Array([Vector2(-10, -1), Vector2(-8, 2), Vector2(3, 3), Vector2(10, 0), Vector2(10, 3), Vector2(3, 6),
+				Vector2(-8, 5), Vector2(-10, 2)])
+			for k in top.size():
+				top[k] = c + top[k] * s
+			for k in edge.size():
+				edge[k] = c + edge[k] * s
+			ci.draw_colored_polygon(edge, Color(0.36, 0.4, 0.46))
+			ci.draw_colored_polygon(top, Color(0.55, 0.6, 0.66))
+			ci.draw_line(top[1] + Vector2(1, 1.5) * s, top[2] + Vector2(-2, 1.5) * s, Color(0.78, 0.82, 0.86), 1.0, true)
+			edge.append(edge[0])
+			ci.draw_polyline(edge, ink, 0.9, true)
+			ci.draw_polyline(PackedVector2Array([top[0], top[1], top[2], top[3]]), ink, 0.9, true)
+		"rock_granite":                 # a broken chunk of granite: sharp facets, speckled, tan as laid (rock_mesh.gd kind 2)
+			var out := PackedVector2Array([Vector2(-8, 6), Vector2(-9, -1), Vector2(-3, -9), Vector2(5, -7), Vector2(9, 1), Vector2(5, 7)])
+			for k in out.size():
+				out[k] = c + out[k] * s
+			var mid := c + Vector2(0, -1) * s
+			ci.draw_colored_polygon(out, Color(0.68, 0.6, 0.5))
+			ci.draw_colored_polygon(PackedVector2Array([out[1], out[2], mid]), Color(0.84, 0.77, 0.66))
+			ci.draw_colored_polygon(PackedVector2Array([out[4], out[5], mid]), Color(0.5, 0.44, 0.37))
+			for k in 6:
+				var dp := c + Vector2(-5 + (k * 7) % 11, -4 + (k * 5) % 9) * s
+				ci.draw_circle(dp, 0.7 * s, Color(0.2, 0.18, 0.18) if k % 2 == 0 else Color(0.92, 0.86, 0.82), true, -1.0, true)
+			for k in [1, 2, 4]:
+				ci.draw_line(out[k], mid, Color(ink, 0.6), 0.7, true)
+			out.append(out[0])
+			ci.draw_polyline(out, ink, 0.9, true)
 		"erase":                        # a cloth wiping a scent trail away
 			for k in 3:
 				var y := (-3.0 + k * 3.5) * s
@@ -325,7 +356,7 @@ class Switch extends Button:
 		toggle_mode = true
 		focus_mode = Control.FOCUS_NONE
 		flat = true
-		custom_minimum_size = Vector2(70, 58)
+		custom_minimum_size = Vector2(84, 58)       # (70 until v0.13.16: the icon grown, the keeper 2026-11-14)
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		toggled.connect(func(_on): queue_redraw())
 
@@ -343,8 +374,8 @@ class Switch extends Button:
 			Desk.poly(ci, Desk.round_rect(plate, 5), Color(1, 1, 1, 0.12))
 		# the icon on the plate's left, the lever on its right with its lamp
 		var Box = load("res://scripts/view/ui/toolbox.gd")
-		Box.icon(self, kind, Vector2(plate.position.x + 15.0, plate.get_center().y), 0.75, on)
-		var lamp := Vector2(plate.position.x + 30.0, plate.position.y + 7.0)
+		Box.icon(self, kind, Vector2(plate.position.x + 19.0, plate.get_center().y), 1.15, on)
+		var lamp := Vector2(plate.position.x + 39.0, plate.position.y + 7.0)
 		draw_circle(lamp, 3.0, Color(0.45, 0.95, 0.4) if on else Color(0.2, 0.25, 0.18), true, -1.0, true)
 		if on:
 			draw_circle(lamp, 5.5, Color(0.45, 0.95, 0.4, 0.25), true, -1.0, true)
