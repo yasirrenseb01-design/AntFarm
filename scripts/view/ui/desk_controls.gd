@@ -61,6 +61,8 @@ static func icon(ci: CanvasItem, kind: String, c: Vector2, r: float, col: Color)
 		"menu":                                  # three lines
 			for k in 3:
 				ci.draw_line(c + Vector2(-5, -3.5 + 3.5 * k) * s, c + Vector2(5, -3.5 + 3.5 * k) * s, col, 1.5 * s, true)
+		"food", "stone":                         # the toolbox's tabs (ui/toolbox.gd draws them)
+			load("res://scripts/view/ui/toolbox.gd").icon(ci, kind, c, r / 12.0)
 		"ground":                                # the outworld: an ant over the ground, a blade of grass
 			ci.draw_line(c + Vector2(-8, 4) * s, c + Vector2(8, 4) * s, col, 1.2 * s, true)
 			for e in [[Vector2(-3.5, 1), Vector2(2.2, 1.6)], [Vector2(0, 1), Vector2(1.6, 1.0)], [Vector2(3, 0.6), Vector2(1.4, 1.3)]]:

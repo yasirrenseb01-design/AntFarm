@@ -8,6 +8,7 @@ extends "res://scripts/view/ui/parts/hud_stars.gd"
 ## a Post-it with the day and the season"; along the top until v0.11.77): the species and the box, the days kept, the
 ## time, the date and the weather, the points, the speeds, the two views, then the panels and the menu. Folded away, a
 ## sticky note is left in its corner (_postit), the day and the season on it: a click opens the bar again.
+const Toolbox := preload("res://scripts/view/ui/toolbox.gd")
 const BAR_W := 250.0
 const Desk := preload("res://scripts/view/ui/desk.gd")
 const DeskDial := preload("res://scripts/view/ui/desk_dial.gd")
@@ -313,102 +314,7 @@ func _refresh_food_warn() -> void:
 
 
 func _build_tools(root: Control) -> void:
-	var panel := PanelContainer.new()
-	panel.anchor_top = 1.0
-	panel.anchor_bottom = 1.0
-	panel.offset_left = 14
-	panel.offset_top = -64
-	panel.offset_bottom = -12
-	panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	panel.add_theme_stylebox_override("panel", Desk.TrayBox.new())       # (a wooden tray: the keeper, 2026-11-12)
-	root.add_child(panel)
-	_tools_bar = panel
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	panel.add_child(row)
-	var place_label := _label(tr("place_plot") if sim.scenario == "wild" else tr("place_box"), 12, Color(0.95, 0.86, 0.7))
-	row.add_child(place_label)
-	_outside_tools.append(place_label)
-	_cut_row = HBoxContainer.new()
-	_cut_row.visible = false
-	_cut_row.add_child(_label(tr("cut_plane"), 12, Color(0.95, 0.86, 0.7)))
-	var cut := HSlider.new()
-	_cut_slider = cut
-	cut.min_value = -32
-	cut.max_value = 32
-	cut.step = 0.5
-	cut.value = 0
-	cut.custom_minimum_size = Vector2(220, 0)
-	cut.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	cut.focus_mode = Control.FOCUS_NONE
-	cut.value_changed.connect(func(v): if nest_view: nest_view.cut_offset = v)
-	_cut_row.add_child(cut)
-	row.add_child(_cut_row)
-	_xray_btn = _button(tr("xray"), true)
-	_xray_btn.visible = false
-	_xray_btn.toggled.connect(func(on):
-		if nest_view:
-			nest_view.set_xray(on)
-		_cut_row.visible = not on and not sim.nest.slab)
-	row.add_child(_xray_btn)
-	# the nest seen through the soil from the start (the keeper, 2026-11-03: the cut face of bare soil first until v0.11.78)
-	_xray_btn.button_pressed = true
-	var g := ButtonGroup.new()
-	for pair in [["tool_pan", "pan"]] + FoodKinds.tools() + [["tool_rock", "rock"], ["tool_rock_take", "rock_take"], ["tool_erase", "erase"]]:
-		var b := _button(tr(pair[0]), true, g)
-		b.button_pressed = pair[1] == ground.tool
-		var t: String = pair[1]
-		b.pressed.connect(func(): ground.tool = t)
-		row.add_child(b)
-		_outside_tools.append(b)
-		if pair[1] != "pan" and not guide_targets.has("food"):
-			guide_targets["food"] = b
-	row.add_child(VSeparator.new())
-	var water := _button(tr("add_water"), false)
-	guide_targets["water"] = water
-	water.pressed.connect(func():
-		var before: float = sim.water
-		sim.add_water()
-		water_given.emit(before))
-	water.visible = sim.scenario == "keeper"     # outdoors the rain waters the nest
-	row.add_child(water)
-	var pher := _button(tr("show_scent"), true)
-	pher.button_pressed = ground.show_pheromones
-	pher.toggled.connect(func(on): ground.show_pheromones = on)
-	row.add_child(pher)
-	_outside_tools.append(pher)
-	var heat := _button(tr("heater"), true)
-	heat.button_pressed = sim.heater          # a colony saved with the mat on loads with it on (set before connecting: no log line)
-	heat.toggled.connect(func(on):
-		sim.heater = on
-		sim._log(T.heater_on if on else T.heater_off))
-	heat.visible = sim.scenario == "keeper"      # outdoors there is no heat mat
-	row.add_child(heat)
-	var cold := _button(tr("fridge"), true)
-	cold.button_pressed = sim.fridge_on
-	cold.toggled.connect(func(on):
-		var other := _fridge_taken() if on else ""
-		if other != "":
-			# the Home's fridge holds two tanks (one until v0.11.75): other colonies are resting in it
-			cold.set_pressed_no_signal(false)
-			call("_named_news", tr("fridge_full") % other)        # (the banner: hud.gd)
-			return
-		sim.fridge_on = on
-		sim._log(T.fridge_in if on else T.fridge_out))
-	cold.visible = sim.scenario == "keeper"      # outdoors winter comes by itself
-	row.add_child(cold)
-	for b in row.get_children():
-		if b is Button:
-			_tag_button(b)
-	_hint = _label("", 12, Color(1, 1, 1, 0.85))       # (over the scene, not on paper: light, with a shadow)
-	_hint.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	_hint.add_theme_constant_override("shadow_offset_x", 1)
-	_hint.add_theme_constant_override("shadow_offset_y", 1)
-	_hint.anchor_top = 1.0
-	_hint.anchor_bottom = 1.0
-	_hint.offset_left = 18
-	_hint.offset_top = -92
-	root.add_child(_hint)
+	Toolbox.build(self, root)                # (the keeper's toolbox: ui/toolbox.gd, v0.13.14)
 	_apply_mode("outworld")
 
 

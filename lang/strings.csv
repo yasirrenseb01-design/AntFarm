@@ -419,6 +419,19 @@ add_water,เติมน้ำในรัง,Add water
 show_scent,แสดงกลิ่น,Show scent
 heater,แผ่นความร้อน,Heat mat
 fridge,จำศีลในตู้เย็น,Hibernate in fridge
+tb_food,อาหาร,Food
+tb_items,ของในตู้,In the box
+tb_pan,มือ,Hand
+tb_honey,น้ำผึ้ง,Honey
+tb_cricket,จิ้งหรีด,Cricket
+tb_rock,วางหิน,Stone
+tb_rock_take,เก็บหิน,Take stone
+tb_erase,ลบกลิ่น,Wipe scent
+tb_water,เติมน้ำ,Water
+tb_heat,ความร้อน,Heat mat
+tb_fridge,ตู้เย็น,Fridge
+tb_scent,กลิ่น,Scent
+tb_xray,ทะลุดิน,X-ray
 cam_top,มุมบน,Top
 cam_fit,เต็มจอ,Fit
 cam_go,ไปที่,Go to
