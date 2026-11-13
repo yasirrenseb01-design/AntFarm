@@ -3,21 +3,34 @@ extends RefCounted
 ## (the keeper, 2026-11-09: "the soil pellets look like one model - three kinds of pellet, mixed; moss in two").
 ## Every shape is about the unit sphere (radius ~1, centred), the instances scale it as before; made once, here, from
 ## fixed seeds - the same every run (no draw from the simulation).
-##   pellet 0: a rounded clod, lumpy all over · 1: a flat crumb with blunt facets · 2: two lobes stuck together
+##   pellet 0: a clod with cut faces (rounded and lumpy until v0.13.15: "make the round ones angular, with cut
+##   corners" - the keeper) · 1: a flat crumb with blunt facets · 2: two lobes stuck together · 3: a broken chip, a few
+##   flat faces and sharp edges · 4: a long crumb, a little bent (3 and 4: v0.13.15, "two more shapes")
 ##   moss 0: a cushion of small tufts · 1: a low mat spreading out in lobes
 ## [Lasius pellets are moist soil worked into crumbs by the mandibles - irregular, a few tenths of a mm to ~1 mm:
 ## general; the shapes are drawn to read as such at the camera's distance.]
 
-const PELLETS := 3
+const PELLETS := 5
 const MOSSES := 2
 
 
 static func pellet(kind: int) -> Mesh:
 	match kind:
 		0:
-			return _lump(16, 8, 0.22, 2.2, 11, Vector3(1.0, 0.9, 0.95))
+			return _lump(7, 4, 0.2, 2.2, 11, Vector3(1.0, 0.88, 0.95), true)
 		1:
 			return _lump(9, 5, 0.18, 1.3, 23, Vector3(1.15, 0.62, 0.9))
+		3:
+			return _lump(5, 3, 0.28, 3.0, 29, Vector3(1.1, 0.7, 0.85), true)
+		4:
+			var st := _begin()
+			var noise := _noise(31, 2.5)
+			for v in _sphere(6, 4):
+				var w: Vector3 = v * (1.0 + 0.18 * noise.get_noise_3dv(v))
+				w = Vector3(w.x * 1.4, w.y * 0.58, w.z * 0.66)
+				w.y += 0.18 * (w.x * w.x) / 2.0 - 0.1          # (bent a little along its length)
+				st.add_vertex(w)
+			return _end(st, true)
 		_:
 			var st := _begin()
 			_add(st, _sphere(12, 6), 0.16, 2.0, 37, Basis.from_scale(Vector3(0.75, 0.72, 0.7)), Vector3(-0.32, -0.08, 0.05))
@@ -45,10 +58,10 @@ static func moss(kind: int) -> Mesh:
 
 
 ## A unit sphere's surface, bumped by noise (amp at freq), scaled.
-static func _lump(segs: int, rings: int, amp: float, freq: float, seed_value: int, scale: Vector3) -> Mesh:
+static func _lump(segs: int, rings: int, amp: float, freq: float, seed_value: int, scale: Vector3, cut := false) -> Mesh:
 	var st := _begin()
 	_add(st, _sphere(segs, rings), amp, freq, seed_value, Basis.from_scale(scale), Vector3.ZERO)
-	return _end(st)
+	return _end(st, cut)
 
 
 static func _add(st: SurfaceTool, tris: PackedVector3Array, amp: float, freq: float, seed_value: int, b: Basis, at: Vector3) -> void:
@@ -86,10 +99,17 @@ static func _begin() -> SurfaceTool:
 	return st
 
 
-static func _end(st: SurfaceTool) -> Mesh:
-	st.index()
+## cut: each face lit flat (sharp edges between them), not smoothed over.
+static func _end(st: SurfaceTool, cut := false) -> Mesh:
+	if not cut:
+		st.index()
 	st.generate_normals()
 	return st.commit()
+
+
+## The pellet a digger carries in the nest view (its size there).
+static func carried() -> Mesh:
+	return sized(pellet(0), Vector3(0.8, 0.65, 0.68))
 
 
 ## The mesh scaled (s) - for an instance drawn without its own scale.

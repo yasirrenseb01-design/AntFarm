@@ -150,7 +150,7 @@ func setup(s) -> void:
 	_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	_pupa_mm = _multimesh(cocoon_mesh, cocoon_mat, true)
 	_carry_larva_mm = _multimesh(larva_mesh, larva_mat, false)
-	_carry_pellet_mm = _multimesh(_ellipsoid(0.8, 0.65), _mat_simple(Color(0.45, 0.32, 0.2), 0.95), false)
+	_carry_pellet_mm = _multimesh(load("res://scripts/view/common/lumps.gd").carried(), _mat_simple(Color(0.45, 0.32, 0.2), 0.95), false)     # (a cut clod: v0.13.15)
 	_fx_egg_mm = _multimesh(_ellipsoid(0.32, 0.2), egg_mat, false)
 	_fx_larva_mm = _multimesh(larva_mesh, larva_mat, false)
 	var silk := StandardMaterial3D.new()

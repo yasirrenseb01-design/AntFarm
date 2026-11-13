@@ -3,6 +3,8 @@ extends "res://scripts/view/outworld/parts/outworld_scene.gd"
 ## their husks and the soil the ants pile on them).
 
 
+const RockMesh := preload("res://scripts/view/common/rock_mesh.gd")
+
 func _sync_rocks() -> void:
 	if sim.rock_ver == _rocks_n:
 		return
@@ -13,9 +15,8 @@ func _sync_rocks() -> void:
 	_props_h.reset_to_litter()
 	for rk in sim.rocks:
 		if rk.get("climb", false):
-			var rng := RandomNumberGenerator.new()
-			rng.seed = int(rk.pos.x * 13 + rk.pos.y)          # the same draw as the mesh's height below
-			_props_h.stamp_rock(rk.pos * U, rk.r * U, rk.r * U * rng.randf_range(0.45, 0.7))
+			var sd := int(rk.pos.x * 13 + rk.pos.y)          # (its kind and height as the mesh's below: rock_mesh.gd)
+			_props_h.stamp_rock(rk.pos * U, rk.r * U, RockMesh.height(rk.r * U, sd, RockMesh.kind_of(sd, rk.get("placed", false))))
 	if _ant_shader_mat != null and _props_h.w > 0:
 		var tex := _props_h.texture()
 		_ant_shader_mat.set_shader_parameter("prop_tex", tex)
@@ -31,7 +32,8 @@ func _sync_rocks() -> void:
 		for p in rk.poly:
 			outline.append((p - rk.pos) * U)
 		var mi := MeshInstance3D.new()
-		mi.mesh = Props.rock(outline, rk.r * U, rk.tone, int(rk.pos.x * 13 + rk.pos.y))
+		var seed_v := int(rk.pos.x * 13 + rk.pos.y)
+		mi.mesh = RockMesh.mesh(outline, rk.r * U, rk.tone, seed_v, RockMesh.kind_of(seed_v, rk.get("placed", false)))
 		mi.material_override = _vc_mat(0.85)
 		mi.position = _on_ground(rk.pos, 0.0)
 		_rock_root.add_child(mi)
@@ -254,7 +256,7 @@ func _add_soil_cover(root: Node3D, f: Dictionary, left: float) -> void:
 	if cover <= 0.0:
 		return
 	if _grain_mesh == null:
-		_grain_mesh = _blob_mesh(Vector3(1.0, 0.75, 1.0))
+		_grain_mesh = load("res://scripts/view/common/lumps.gd").pellet(0)       # (a cut clod: v0.13.15)
 		_grain_mat = _vc_mat(0.95, false, false)
 	var big: bool = FoodKinds.info(f.kind).get("big", false)
 	var n_all := 220 if big else 60

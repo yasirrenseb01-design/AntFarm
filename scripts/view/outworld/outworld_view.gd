@@ -120,7 +120,7 @@ func setup(s) -> void:
 	mist.vertex_color_use_as_albedo = true          # (each droplet's fade: outworld_creatures)
 	mist.albedo_color = Color(1, 1, 1, 1)
 	_spray_mm = _multimesh(_blob_mesh(Vector3.ONE), mist, true)
-	_soil_mm = _multimesh(_blob_mesh(Vector3(1.0, 0.75, 1.0)), _mat(Color(0.4, 0.29, 0.19), 0.95), false)
+	_soil_mm = _multimesh(load("res://scripts/view/common/lumps.gd").pellet(0), _mat(Color(0.4, 0.29, 0.19), 0.95), false)     # (a cut clod: v0.13.15)
 	for i in 320:
 		_rain.append(Vector3(randf() * 400.0, randf() * 60.0, randf() * 250.0))
 

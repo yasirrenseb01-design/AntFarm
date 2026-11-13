@@ -325,7 +325,7 @@ class Switch extends Button:
 		toggle_mode = true
 		focus_mode = Control.FOCUS_NONE
 		flat = true
-		custom_minimum_size = Vector2(62, 54)
+		custom_minimum_size = Vector2(70, 58)
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		toggled.connect(func(_on): queue_redraw())
 
@@ -336,7 +336,7 @@ class Switch extends Button:
 	func _draw() -> void:
 		var ci := get_canvas_item()
 		var on := button_pressed
-		var plate := Rect2(Vector2(4, 3), Vector2(size.x - 8, 30))
+		var plate := Rect2(Vector2(4, size.y - 54.0), Vector2(size.x - 8, 28))      # (room above it for the lever thrown up)
 		Desk.poly(ci, Desk.round_rect(Rect2(plate.position + Vector2(1.5, 2), plate.size), 5), Color(0, 0, 0, 0.3))
 		Desk.brass(ci, Desk.round_rect(plate, 5))
 		if is_hovered():
@@ -344,14 +344,64 @@ class Switch extends Button:
 		# the icon on the plate's left, the lever on its right with its lamp
 		var Box = load("res://scripts/view/ui/toolbox.gd")
 		Box.icon(self, kind, Vector2(plate.position.x + 15.0, plate.get_center().y), 0.75, on)
-		var base := Vector2(plate.end.x - 14.0, plate.get_center().y)
-		draw_circle(base, 4.0, Desk.BRASS_DARK, true, -1.0, true)
-		var tip := base + Vector2(0, -10.0 if on else 10.0).rotated(0.25 if on else -0.25)
-		draw_line(base, tip, Color(0.25, 0.2, 0.15), 3.0, true)
-		draw_circle(tip, 2.6, Color(0.12, 0.1, 0.08), true, -1.0, true)
-		var lamp := Vector2(plate.end.x - 26.0, plate.position.y + 7.0)
+		var lamp := Vector2(plate.position.x + 30.0, plate.position.y + 7.0)
 		draw_circle(lamp, 3.0, Color(0.45, 0.95, 0.4) if on else Color(0.2, 0.25, 0.18), true, -1.0, true)
 		if on:
-			draw_circle(lamp, 5.0, Color(0.45, 0.95, 0.4, 0.25), true, -1.0, true)
+			draw_circle(lamp, 5.5, Color(0.45, 0.95, 0.4, 0.25), true, -1.0, true)
+		draw_circle(lamp + Vector2(-0.9, -0.9), 0.9, Color(1, 1, 1, 0.6), true, -1.0, true)
+		_toggle(Vector2(plate.end.x - 16.0, plate.get_center().y + 3.0), on)
 		var font := get_theme_default_font()
 		draw_string(font, Vector2(0, size.y - 5.0), word, HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, Color(0.97, 0.9, 0.75))
+
+	## A chrome toggle as on a workshop panel (v0.13.15, the keeper's photo): a steel hex nut, the threaded bushing
+	## over it, and the bat lever - a tapered chrome stem flaring to a rounded tip - thrown up (on) or down (off).
+	func _toggle(c: Vector2, on: bool) -> void:
+		# the hex nut, lit from the top left
+		var hexp := PackedVector2Array()
+		var hexc := PackedColorArray()
+		for k in 6:
+			var a := TAU * k / 6.0 + PI / 6.0
+			hexp.append(c + Vector2(cos(a), sin(a) * 0.8) * 11.0)
+			var lit := 0.5 + 0.5 * cos(a + 2.4)
+			hexc.append(Color(0.42, 0.42, 0.44).lerp(Color(0.86, 0.86, 0.88), lit))
+		draw_polygon(hexp, hexc)
+		hexp.append(hexp[0])
+		draw_polyline(hexp, Color(0.18, 0.18, 0.2), 1.0, true)
+		# the threaded bushing: a short cylinder, its threads across it
+		var bw := 6.5
+		var top := c + Vector2(0, -5.0)
+		draw_rect(Rect2(c.x - bw, top.y, bw * 2.0, 6.0), Color(0.62, 0.62, 0.64))
+		draw_rect(Rect2(c.x - bw, top.y, bw * 0.7, 6.0), Color(0.85, 0.85, 0.88))
+		for k in 3:
+			draw_line(Vector2(c.x - bw, top.y + 1.2 + k * 1.5), Vector2(c.x + bw, top.y + 1.6 + k * 1.5), Color(0.3, 0.3, 0.32, 0.8), 0.7, true)
+		draw_set_transform(top, 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, bw, Color(0.74, 0.74, 0.77), true, -1.0, true)
+		draw_circle(Vector2.ZERO, 2.9, Color(0.2, 0.2, 0.22), true, -1.0, true)
+		draw_set_transform(Vector2.ZERO)
+		# the lever: up and leaning back a little when on, down toward the viewer (shorter) when off
+		var dir := Vector2(0.18, -1.0).normalized() if on else Vector2(0.12, 1.0).normalized()
+		var L := 25.0 if on else 18.0
+		var root := top
+		var tip := root + dir * L
+		var side := Vector2(-dir.y, dir.x)
+		# its shadow on the plate
+		draw_line(root + Vector2(2.5, 2.5), tip + Vector2(3.5, 3.5), Color(0, 0, 0, 0.25), 4.5, true)
+		var w0 := 2.3
+		var w1 := 4.0
+		var l0 := root + side * w0
+		var r0 := root - side * w0
+		var l1 := tip + side * w1
+		var r1 := tip - side * w1
+		var m0 := root + side * w0 * 0.25
+		var m1 := tip + side * w1 * 0.25
+		# chrome: a bright streak just off the middle, dark at the edges
+		draw_polygon(PackedVector2Array([l0, m0, m1, l1]), PackedColorArray([Color(0.35, 0.35, 0.38), Color(0.98, 0.98, 1.0),
+			Color(0.98, 0.98, 1.0), Color(0.4, 0.4, 0.43)]))
+		draw_polygon(PackedVector2Array([m0, r0, r1, m1]), PackedColorArray([Color(0.98, 0.98, 1.0), Color(0.5, 0.5, 0.53),
+			Color(0.55, 0.55, 0.58), Color(0.98, 0.98, 1.0)]))
+		# the rounded tip
+		draw_circle(tip, w1, Color(0.62, 0.62, 0.66), true, -1.0, true)
+		draw_circle(tip + side * w1 * 0.25 - dir * 0.4, w1 * 0.55, Color(0.96, 0.96, 1.0), true, -1.0, true)
+		draw_arc(tip, w1, 0, TAU, 14, Color(0.25, 0.25, 0.28), 0.8, true)
+		draw_line(l0, l1, Color(0.22, 0.22, 0.25), 0.7, true)
+		draw_line(r0, r1, Color(0.22, 0.22, 0.25), 0.7, true)

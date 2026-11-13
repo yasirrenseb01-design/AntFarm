@@ -4,6 +4,7 @@ extends RefCounted
 ##                              (a spider) with the nearest ant in its fangs, to feed on (held a long while) or to shake
 ##   --carcass=<kind>           a carcass (food kind centipede_dead...) laid at --enemy-at
 ##   --home-click=<kind>        (with --home) that item of the Home's room clicked after a second
+##   --place-rocks=<n>          n stones laid by the keeper at --enemy-at
 ##   --album                    the album open, as the queen's sketch opens it
 ##   --click-sketch             a real mouse click on the queen's sketch after a second; prints whether the album opened
 
@@ -47,6 +48,17 @@ static func apply(d) -> void:
 					d.home_room._click(it)
 					print("home-click: ", it.kind)
 					return)
+	if o.has("place-rocks"):
+		# --place-rocks=<n>: n stones laid by the keeper in a row at --enemy-at (their three kinds: rock_mesh.gd)
+		var at: PackedStringArray = String(o.get("enemy-at", "120,90")).split(",")
+		var p0 := Vector2(float(at[0]), float(at[1]))
+		for i in int(o["place-rocks"]):
+			d.sim.add_rock(p0 + Vector2((i % 4) * 26.0, (i / 4) * 26.0), 9.0 + (i % 3) * 2.0, true)
+		d.outworld.follow_cid = 0
+		d.outworld.target_t = d.outworld._on_ground(p0 + Vector2(39, 13))
+	if o.has("look-nest"):
+		d.outworld.focus_nest()                 # --look-nest: the camera on the nest's crater (at --dist)
+		d.outworld.dist_t = float(o.get("dist", 60.0))
 	if o.has("album"):
 		d.hud.open_album()
 	if o.has("select-queen"):
