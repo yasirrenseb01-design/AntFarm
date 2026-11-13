@@ -20,7 +20,7 @@ LI_LEG = (0.72, 0.48, 0.28)        # paler, translucent-looking legs
 LI_TIP = (0.4, 0.25, 0.13)
 
 
-LI_STRIDE = 1.4             # how far a foot is carried in a step (model units; the game's: creature_rig.gd)
+LI_STRIDE = 1.8             # how far a foot is carried in a step (model units; the game's: creature_rig.gd)
 
 
 def centipede():
@@ -44,17 +44,25 @@ def centipede():
         # walking legs (v0.12.35): one pair per segment, jointed - a coxa at the body's side, the femur up and out to a low
         # knee, the tibia down to the ground, a claw; the hind ones longer and swept back. Each vertex carries
         # 4 x the leg's number + its piece ("ANT2"), the joints go to centipede.json (see the top of the file).
-        reach = 1.9 + 0.5 * i / (n - 1)
+        # (v0.13.9, the keeper: "its legs walk unrealistically" - they stood out square, all alike, knees high like a
+        # spider's. A Lithobius's legs fan: the front ones reach forward, the hind ones are longer and swept back
+        # [photographs; the posterior legs longer: Lithobius morphology], the knee low over a flat body [inference from
+        # photographs]; and a longer step, so the legs do not flicker at a slow walk)
+        u = i / (n - 1)
+        reach = 2.4 + 0.9 * u
+        fan = 0.7 - 2.3 * u ** 1.3
         for side in (-1, 1):
             idx = i * 2 + (0 if side < 0 else 1)
             lc = lambda g, nn: (LI_LEG[0], LI_LEG[1], LI_LEG[2], 1 / 16.0)
             hip = (x, 0.45, 0.72 * side * w)
-            ankle = (x - 0.2 - 0.3 * i / (n - 1), 0.1, (0.72 * w + reach) * side)
-            l1 = 0.5 * reach + 0.25
-            l2 = 0.62 * reach + 0.35
+            ankle = (x + fan, 0.1, (0.72 * w + reach) * side)
+            far_max = max((Vector((ankle[0] + dx, ankle[1], ankle[2])) - Vector(hip)).length
+                          for dx in (-0.5 * LI_STRIDE, 0.5 * LI_STRIDE))
+            l1 = 0.47 * far_max * 1.06
+            l2 = 0.53 * far_max * 1.06
             knee = up_knee(hip, ankle, l1, l2)
             for dx in (-0.5 * LI_STRIDE, 0.5 * LI_STRIDE):
-                far = (Vector((ankle[0] + dx, ankle[1], ankle[2] + 0.6 * side)) - Vector(hip)).length      # (+ the body's sway)
+                far = (Vector((ankle[0] + dx, ankle[1], ankle[2])) - Vector(hip)).length      # (+ the body's sway)
                 assert abs(l1 - l2) < far < l1 + l2, "centipede leg %d cannot reach its step" % idx
             joints["hips"].append(hip)
             joints["knees"].append(knee)

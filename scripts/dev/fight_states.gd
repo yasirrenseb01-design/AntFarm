@@ -29,6 +29,8 @@ static func apply(d) -> void:
 				c.prey.end = 100000 if st == "eat" else 100000
 	if o.has("album"):
 		d.hud.open_album()
+	if o.has("select-queen"):
+		d.hud.ant_tip._select({"kind": "queen"})    # (the queen's card open, as clicked - her character on it: v0.13.9)
 	if o.has("click-sketch"):
 		d.get_tree().create_timer(1.0).timeout.connect(func(): _click_sketch(d))
 

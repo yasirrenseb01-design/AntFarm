@@ -198,14 +198,28 @@ func _album_sketch(into: Control) -> void:
 	t.mouse_entered.connect(func(): t.modulate = Color(1.1, 1.05, 0.95, 1.0))
 	t.mouse_exited.connect(func(): t.modulate = Color(1, 1, 1, 0.92))
 	t.pressed.connect(open_album)
+	guide_targets["album"] = t          # (the getting-started guide points it out: v0.13.9)
 	into.add_child(t)
 
 
 ## The plates won for this species so far (the settings' "album": anything else there is ignored).
+## The plates won, by species, from the settings' "album": a line of text "species:a,b;species2:a" (the settings file
+## keeps only plain values - a dictionary there was dropped at every start, and the plates were won and told again:
+## v0.13.9, the keeper "it tells me every time I come back").
+func _album_all() -> Dictionary:
+	var out := {}
+	var raw = settings.get("album", "")
+	if raw is Dictionary:
+		return raw
+	for part in String(raw).split(";", false):
+		var kv := part.split(":", true, 1)
+		if kv.size() == 2:
+			out[kv[0]] = Array(kv[1].split(",", false))
+	return out
+
+
 func album_won(sp_id: String) -> Array:
-	var all = settings.get("album", {})
-	var mine = all.get(sp_id, []) if all is Dictionary else []
-	return (mine as Array).filter(func(x): return x is String) if mine is Array else []
+	return (_album_all().get(sp_id, []) as Array).duplicate()
 
 
 func open_album() -> void:
@@ -231,11 +245,12 @@ func _check_album(delta: float) -> void:
 	if new.is_empty():
 		return
 	won.append_array(new)
-	var all = settings.get("album", {})
-	if not all is Dictionary:
-		all = {}
+	var all := _album_all()
 	all[sp_id] = won
-	settings["album"] = all
+	var parts := PackedStringArray()
+	for k in all:
+		parts.append("%s:%s" % [k, ",".join(PackedStringArray(all[k]))])
+	settings["album"] = ";".join(parts)
 	settings_changed.emit(settings)
 	for id in new:
 		_named_news(tr("album_won") % tr(Album.caption_of(sp_id, id)))
@@ -329,7 +344,8 @@ func refresh(delta: float) -> void:
 	_vals["brood_dead"].tooltip_text = tr("brood_dead_tip") % [
 		sim.stats.brood_dead, sim.stats.cannibalized]
 	var cyc: float = sim.cycle_days()
-	_show(_vals["cycle"], tr("cycle_stopped") if cyc == INF else tr("days_d") % int(cyc))
+	if _vals.has("cycle"):
+		_show(_vals["cycle"], tr("cycle_stopped") if cyc == INF else tr("days_d") % int(cyc))
 	_show(_vals["vol"], tr("cm3") % sim.nest.volume_cm3(), DANGER if sim.nest.air < sim.target_air() * 0.7 and not fnd else INK)
 	_show(_vals["depth"], tr("depth_short") % sim.nest.depth_cm())        # (the chambers: in the cross-section's heading)
 	_show(_vals["size"], tr("mm") % sim.mean_worker_mm() if not sim.workers.is_empty() else tr("not_yet"))
@@ -339,6 +355,7 @@ func refresh(delta: float) -> void:
 		"depth_lo": tr("trait_depth_lo"), "spread_hi": tr("trait_spread_hi"), "spread_lo": tr("trait_spread_lo")}
 	var said: Array = sim.trait_words().map(func(w): return words.get(w, w))
 	_vals["character"].text = tr("trait_title") + "  " + (" · ".join(said) if not said.is_empty() else tr("trait_plain"))
+	ant_tip.character = _vals["character"].text        # (shown on the queen's card now, not in the panel: v0.13.9)
 	var hum: float = sim.humidity
 	_hum_bar.value = hum * 100.0
 	var ok: bool = hum >= sim.sp["humidity_ok_min"] and hum <= sim.sp["humidity_ok_max"]

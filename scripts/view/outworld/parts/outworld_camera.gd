@@ -61,10 +61,21 @@ func top_down() -> void:
 	dist_t = _fit_dist()
 
 
+var _hole_k := 0                         # which way out the entrance button showed last (0: the main entrance)
+
+## The entrance button: the main entrance first; pressed again while the camera is still there, the next way out
+## the nest has dug (nest_exits.gd), round to the main one again (v0.13.9, the keeper).
 func focus_nest() -> void:
 	follow_cid = 0
 	follow_wid = -1
-	target_t = _on_ground(sim.nest_pos)
+	var holes: Array = [-1]
+	for i in sim.nest.exits.size():
+		if sim.nest.exits[i].open:
+			holes.append(i)
+	var at := func(k: int) -> Vector3:
+		return _on_ground(sim.nest_pos + sim.nest.hole_off(holes[k]) * (2.0 * sim.nest.VOXEL_MM))
+	_hole_k = (_hole_k + 1) % holes.size() if _hole_k < holes.size() and Vector2(target_t.x - at.call(_hole_k).x, target_t.z - at.call(_hole_k).z).length() < 2.0 else 0
+	target_t = at.call(_hole_k)
 	dist_t = 60.0
 	pitch_t = clampf(pitch_t, 0.6, 1.1)
 

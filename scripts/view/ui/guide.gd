@@ -56,6 +56,7 @@ func setup(h) -> void:
 		["guide_food_wild" if wild else "guide_food", "food"],
 		["guide_views", "views"],
 		["guide_ants", "stars"],
+		["guide_album", "album"],
 		["guide_stats", "stats"],
 		["guide_away", "menu"],
 		["guide_keys", "fold"]]

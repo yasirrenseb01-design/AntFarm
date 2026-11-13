@@ -88,7 +88,7 @@ func _build_panel(root: Control) -> void:
 	grid.add_theme_constant_override("v_separation", 3)
 	st.add_child(grid)
 	for key in ["queen", "workers", "out", "nurses", "callow", "eggs", "larvae", "pupae", "sugar", "fat", "protein",
-			"nest_t", "dev", "dead", "brood_dead", "cycle", "vol", "depth", "size"]:
+			"nest_t", "dev", "dead", "brood_dead", "vol", "depth", "size"]:
 		var names := {"queen": tr("queen"), "workers": tr("panel_workers"), "out": tr("panel_out"), "nurses": tr("panel_nurses"),
 			"callow": tr("panel_callow"), "eggs": tr("eggs"), "larvae": tr("larvae"), "pupae": tr("pupae"), "sugar": tr("panel_sugar"), "fat": tr("panel_fat"),
 			"protein": tr("panel_protein"), "nest_t": tr("panel_nest_temp"), "dev": tr("panel_dev"), "dead": tr("panel_dead"), "brood_dead": tr("panel_brood_dead"), "cycle": tr("panel_cycle"),
@@ -133,6 +133,7 @@ func _build_panel(root: Control) -> void:
 	ch.mouse_filter = Control.MOUSE_FILTER_PASS
 	ch.tooltip_text = tr("trait_tip")
 	_vals["character"] = ch
+	ch.visible = false                      # (shown on the queen's card instead: ant_tip.gd - v0.13.9)
 	st.add_child(ch)
 
 	var ns := _section(col, tr("panel_section"))
@@ -143,6 +144,9 @@ func _build_panel(root: Control) -> void:
 	ns.add_child(_nest)
 
 	var ls := _section(col, tr("panel_journal"))
+	var jt: Control = ls.get_child(0)
+	jt.tooltip_text = tr("journal_colors")      # (what its colours mean)
+	jt.mouse_filter = Control.MOUSE_FILTER_PASS
 	ls.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log = RichTextLabel.new()
 	_log.bbcode_enabled = true
@@ -154,11 +158,21 @@ func _build_panel(root: Control) -> void:
 	ls.add_child(_log)
 
 
+## Journal lines that were good news (green) until v0.13.9 and are everyday now (the saves keep the old colour).
+const EVERYDAY := ["log_new_worker", "log_chamber_planned", "log_chamber_opened", "log_beyond_food"]
+
+
 func _render_log() -> void:
 	var lines := PackedStringArray()
 	for e in sim.log_entries.slice(0, 40):
-		var col := "#" + (DANGER if e.kind == "bad" else (LEAF if e.kind == "ok" else (AMBER if e.kind == "named" else INK))).to_html(false)
-		lines.append("[color=#%s]%s[/color]  [color=%s]%s[/color]" % [MUTED.to_html(false), L.stamp(e), col, L.entry_text(e)])
+		var kind: String = e.kind
+		var key: String = e.get("key", "")
+		if kind == "ok" and (key.begins_with("log_found_") or key in EVERYDAY):
+			kind = ""                       # (written green before v0.13.9: everyday news, plain ink now)
+		var col := "#" + (DANGER if kind == "bad" else (LEAF if kind == "ok" else (AMBER if kind == "named" else INK))).to_html(false)
+		# (the day and time in bold dark ink; the words coloured by how much they matter - red danger, green good news,
+		# amber a named ant, ink the everyday: v0.13.9)
+		lines.append("[b][color=#%s]%s[/color][/b]  [color=%s]%s[/color]" % [INK.to_html(false), L.stamp(e), col, L.entry_text(e)])
 	_log.text = "\n".join(lines)
 
 
@@ -224,11 +238,8 @@ func _draw_nest() -> void:
 
 	c.draw_rect(Rect2(0, 0, w, h), Color(0.08, 0.06, 0.05))
 	# keeper's water tank on the left (outdoors: the soil's moisture, the nest humidity)
-	var res := Rect2(6, 22, 26, h - 30)
-	c.draw_rect(res, Color(0.12, 0.1, 0.09))
-	var lvl: float = (sim.humidity if sim.scenario == "wild" else sim.water) * (res.size.y - 6)
-	c.draw_rect(Rect2(res.position.x + 3, res.end.y - 3 - lvl, res.size.x - 6, lvl), Color(0.3, 0.55, 0.8, 0.75))
-	c.draw_rect(res, Color(0.55, 0.5, 0.45, 0.6), false, 1.0)
+	var res := Rect2(8, 22, 22, h - 30)
+	_water_tube(c, res, clampf(sim.humidity if sim.scenario == "wild" else sim.water, 0.0, 1.0))
 	_nest_label(c, tr("panel_water"), Vector2(8, 16))
 
 	# the nest itself, fitted to the remaining space
@@ -281,6 +292,73 @@ func _draw_nest() -> void:
 				Kit.ant(c, to_screen.call(p), _seeded(i, 22) * TAU, 0.32 * s, _t * 3.0 + i, Ant.NONE, body, false)
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
 	_nest_label(c, tr("depth_chambers") % [nv.depth_cm(), nv.chambers.size()], Vector2(org.x + 4, org.y + 12))
+
+
+## The water as a glass test tube (v0.13.9, the keeper: "like water in a tube"): a rounded glass, the water
+## shaded deep to light with a curved meniscus that ripples a little, a few rising bubbles, scale ticks,
+## and the glass's own shine over it all.
+func _water_tube(c: Control, r: Rect2, frac: float) -> void:
+	var rad: float = r.size.x * 0.5
+	var glass := StyleBoxFlat.new()
+	glass.bg_color = Color(0.16, 0.19, 0.2, 0.9)
+	glass.set_corner_radius_all(int(rad))
+	glass.corner_radius_top_left = 3
+	glass.corner_radius_top_right = 3
+	glass.anti_aliasing = true
+	c.draw_style_box(glass, r)
+	var inner := r.grow(-3.0)
+	var top: float = inner.end.y - frac * inner.size.y
+	if frac > 0.002:
+		var water := StyleBoxFlat.new()
+		water.set_corner_radius_all(int(rad - 3.0))
+		water.corner_radius_top_left = 0
+		water.corner_radius_top_right = 0
+		water.anti_aliasing = true
+		# deep at the bottom, lighter toward the top: drawn as bands
+		var bands := 14
+		for i in bands:
+			var y0: float = lerpf(top, inner.end.y, float(i) / bands)
+			var y1: float = lerpf(top, inner.end.y, float(i + 1) / bands)
+			var col := Color(0.36, 0.66, 0.86, 0.85).lerp(Color(0.12, 0.33, 0.6, 0.92), float(i) / (bands - 1))
+			if i == bands - 1:
+				water.bg_color = col
+				c.draw_style_box(water, Rect2(inner.position.x, y0, inner.size.x, inner.end.y - y0))
+			else:
+				c.draw_rect(Rect2(inner.position.x, y0, inner.size.x, y1 - y0 + 0.5), col)
+		# the meniscus: the surface curves up at the glass, and ripples slowly
+		var pts := PackedVector2Array()
+		var n := 10
+		for i in n + 1:
+			var u: float = float(i) / n
+			var x: float = inner.position.x + u * inner.size.x
+			var cup: float = pow(absf(u - 0.5) * 2.0, 2.0) * 2.2
+			pts.append(Vector2(x, top - cup + sin(_t * 1.6 + u * 5.0) * 0.5))
+		c.draw_polyline(pts, Color(0.75, 0.9, 1.0, 0.85), 1.2, true)
+		# rising bubbles
+		for i in 3:
+			var ph: float = fposmod(_t * (0.12 + 0.05 * i) + i * 0.37, 1.0)
+			var by: float = lerpf(inner.end.y - 2.0, top + 3.0, ph)
+			if by > top + 2.0:
+				var bx: float = inner.position.x + inner.size.x * (0.3 + 0.4 * _seeded(i, 31)) + sin(_t * 2.0 + i) * 1.2
+				c.draw_arc(Vector2(bx, by), 1.1 + 0.4 * i, 0, TAU, 10, Color(0.85, 0.95, 1.0, 0.5), 0.8, true)
+	# scale ticks every quarter
+	for q in range(1, 4):
+		var ty: float = inner.end.y - inner.size.y * q / 4.0
+		var tl: float = 6.0 if q == 2 else 4.0
+		c.draw_line(Vector2(r.end.x - tl, ty), Vector2(r.end.x - 1.0, ty), Color(0.9, 0.88, 0.8, 0.45), 1.0)
+	# the glass: rim, a long shine on the left and a short one on the right
+	var rim := StyleBoxFlat.new()
+	rim.draw_center = false
+	rim.set_border_width_all(1)
+	rim.border_color = Color(0.82, 0.86, 0.85, 0.55)
+	rim.set_corner_radius_all(int(rad))
+	rim.corner_radius_top_left = 3
+	rim.corner_radius_top_right = 3
+	rim.anti_aliasing = true
+	c.draw_style_box(rim, r)
+	c.draw_rect(Rect2(r.position.x - 1.0, r.position.y - 1.0, r.size.x + 2.0, 2.5), Color(0.82, 0.86, 0.85, 0.6))   # the lip
+	c.draw_line(Vector2(r.position.x + 3.5, r.position.y + 6), Vector2(r.position.x + 3.5, r.end.y - rad - 2), Color(1, 1, 1, 0.28), 2.0)
+	c.draw_line(Vector2(r.end.x - 4.0, r.position.y + 8), Vector2(r.end.x - 4.0, r.position.y + 8 + r.size.y * 0.18), Color(1, 1, 1, 0.16), 1.0)
 
 
 func _brood_dots(c: Control, to_screen: Callable, spots: Array, count: int, cap: int, col: Color, r: float,

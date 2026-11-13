@@ -10,6 +10,7 @@ const Ant := preload("res://scripts/sim/ant.gd")
 const Hud := preload("res://scripts/view/ui/parts/hud_base.gd")
 
 var sim
+var character := ""             # what sets this colony apart (hud.gd: sim.trait_words in words) - on the queen's card
 var views: Array = []            # the 3D views (pick_ant, info_for, can_select, sel_kind / sel_id)
 var sel := {}                    # {"kind": "worker"|"digger"|"queen", "id": worker id (a digger: its own id)}
 var test_mouse := Vector2.INF    # dev (--hover): select the ant at this screen position
@@ -184,6 +185,8 @@ func describe(info: Dictionary) -> String:
 		else:
 			lines.append(tr("tip_laying") if not (sim.starving or sim.queen.starve > 0.5) else tr("tip_queen_not_laying"))
 		lines.append(tr("tip_doing") + _act_name(int(info.get("act", 1))))
+		if character != "":
+			lines.append(character)          # (the colony's character: here, not in the side panel - v0.13.9)
 		return "\n".join(lines)
 	var w = info.get("w")
 	var lines := []

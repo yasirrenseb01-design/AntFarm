@@ -157,16 +157,8 @@ static func age(ci: RID, r: Rect2, dog_ear := false) -> void:
 		var k2 := (k + 1) % 4
 		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([o[k], o[k2], i[k2], i[k]]),
 			PackedColorArray([edge, edge, clear, clear]))
-	# stains: a few soft rings of tea-brown, where the size of the sheet puts them
-	var seed_value := int(r.size.x * 7.0 + r.size.y * 13.0)
-	for k in 5:
-		var h1 := fposmod(sin(float(seed_value + k * 17)) * 43758.55, 1.0)
-		var h2 := fposmod(sin(float(seed_value * 3 + k * 29)) * 24634.63, 1.0)
-		var h3 := fposmod(sin(float(seed_value + k * 51)) * 13758.21, 1.0)
-		var c := r.position + Vector2(r.size.x * (0.08 + 0.84 * h1), r.size.y * (0.08 + 0.84 * h2))
-		var rad := 4.0 + 18.0 * h3
-		RenderingServer.canvas_item_add_circle(ci, c, rad, Color(0.48, 0.32, 0.12, 0.05 + 0.05 * h3))
-		RenderingServer.canvas_item_add_circle(ci, c, rad * 0.6, Color(0.95, 0.88, 0.72, 0.05))
+	# (no stains since v0.13.9: placed by the sheet's size, they moved about as the panel grew - "round dots that keep
+	# changing", the keeper)
 	if dog_ear:
 		# the corner turned up: the paper's back showing, a shadow under the fold
 		var s := clampf(minf(r.size.x, r.size.y) * 0.08, 10.0, 22.0)
@@ -437,7 +429,7 @@ class JournalBox extends StyleBox:
 		var D = load("res://scripts/view/ui/desk.gd")
 		D.poly(ci, D.round_rect(Rect2(rect.position + Vector2(1.5, 2.5), rect.size), 3), Color(0, 0, 0, 0.25))
 		RenderingServer.canvas_item_add_texture_rect(ci, rect, D.paper().get_rid(), true)
-		D.age(ci, rect, true)
+		D.age(ci, rect, false)              # (no corner of its own: the sheet's under it showed two, v0.13.9)
 		var spine := Rect2(rect.position, Vector2(14, rect.size.y))
 		D.poly_tex(ci, D.round_rect(spine, 3), D.leather(), 128.0)
 		D.outline(ci, D.round_rect(spine, 3), Color(0.18, 0.09, 0.04), 1.0)

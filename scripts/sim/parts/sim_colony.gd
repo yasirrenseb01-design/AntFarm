@@ -28,9 +28,9 @@ func _new_day() -> void:
 	nest.heat_k = clampf(1.0 + 0.016 * ((surf_mean if surf_mean > -999.0 else 22.0) - 22.0), 0.9, 1.45)
 	match nest.plan_chambers(eggs.size() + larvae.size() + pupae.size(), workers.size(), target_air()):
 		"planned":
-			_log(T.chamber_planned, "ok", [nest.chambers.size()])
+			_log(T.chamber_planned, "", [nest.chambers.size()])
 		"opened":
-			_log(T.chamber_opened, "ok")
+			_log(T.chamber_opened, "")
 		"grown":
 			_log(T.chamber_grown)
 	nest.work_left = nest.count_work_left()

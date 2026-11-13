@@ -148,7 +148,7 @@ func _brood(dt: float) -> void:
 			if nw.size >= HARMONY_BIG:
 				harmony_n.big += 1
 			if stats.born <= 3 or stats.born % 25 == 0:
-				_log(T.new_worker, "ok", [stats.born])
+				_log(T.new_worker, "", [stats.born])
 
 	# too hot where they lie (outdoors, a sun-baked top chamber the nurses have not cleared yet)
 	var hot: float = sp["dev_lethal_c"] - 2.0

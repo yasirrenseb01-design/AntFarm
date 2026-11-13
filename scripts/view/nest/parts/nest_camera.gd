@@ -92,6 +92,8 @@ func reset_view() -> void:
 		target_t = Vector3((nest.x_lo + nest.nx) / 2.0, nest.ny - 16.0, (nest.z_lo + nest.nz) / 2.0)
 
 
+var _hole_k := 0                        # the way out the entrance button showed last (0: the main entrance)
+
 ## Glide the camera to something worth looking at: "queen", "larvae", "pupae", "entrance".
 func focus(what: String) -> void:
 	follow_wid = -1
@@ -106,7 +108,16 @@ func focus(what: String) -> void:
 			if not _spots.pupae.is_empty():
 				p = _spots.pupae[_spots.pupae.size() / 2]
 		"entrance":
-			p = Vector3(nest.entrance)
+			# the main entrance first; again while still there, the next open way out (v0.13.9)
+			var holes: Array = [Vector3(nest.entrance)]
+			for ex in nest.exits:
+				if ex.open:
+					holes.append(ex.b)
+			if _hole_k < holes.size() and target_t.distance_to(holes[_hole_k]) < 1.5:
+				_hole_k = (_hole_k + 1) % holes.size()
+			else:
+				_hole_k = 0
+			p = holes[_hole_k]
 			dist_t = 45.0
 	if p == Vector3.INF:
 		return

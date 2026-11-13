@@ -245,7 +245,7 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 		f.found = true
 		var line: String = FoodKinds.info(f.kind).get("found", "")
 		if line != "":
-			_log(line, "ok")
+			_log(line, "")          # (everyday news: plain ink - v0.13.9, the journal's colours by how much it matters)
 
 
 # ---------------------------------------------------------------- hauling small prey home whole
@@ -288,7 +288,7 @@ func _back_from_beyond(a: Ant) -> void:
 	a.since = 0
 	if not _warned.get("beyond_hint", false):
 		_warned["beyond_hint"] = true
-		_log(T.beyond_food, "ok")
+		_log(T.beyond_food, "")
 
 
 func _at_glass(p: Vector2) -> bool:
@@ -307,7 +307,7 @@ func _start_drag(a: Ant, f: Dictionary) -> void:
 		f.found = true
 		var line: String = FoodKinds.info(f.kind).get("found", "")
 		if line != "":
-			_log(line, "ok")
+			_log(line, "")          # (everyday news: plain ink - v0.13.9, the journal's colours by how much it matters)
 
 
 func _step_drags() -> void:
