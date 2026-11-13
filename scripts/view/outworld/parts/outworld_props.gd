@@ -305,7 +305,7 @@ func _dead_creature(root: Node3D, kind: String, left: float, lift: float, on_bac
 	if on_back:
 		b = Basis(Vector3.RIGHT, PI) * b          # dead beetles end up on their backs, legs in the air
 	mm.set_instance_transform(0, Transform3D(b, Vector3(0, lift * (sag if on_back else 1.0), 0)))    # (on its back: lift = the shell's top)
-	mm.set_instance_custom_data(0, Color(0.0, 2.0, 0.0, 0.0))
+	mm.set_instance_custom_data(0, Color(1.0, 2.0, 0.0, 0.0))        # (x 1: torn apart a little - v0.13.7, the creature shaders)
 	var mi := MultiMeshInstance3D.new()
 	mi.multimesh = mm
 	mi.material_override = cv.mat

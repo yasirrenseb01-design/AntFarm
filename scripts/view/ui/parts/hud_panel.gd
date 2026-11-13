@@ -95,6 +95,11 @@ func _build_panel(root: Control) -> void:
 			"vol": tr("panel_volume"), "depth": tr("panel_depth"), "size": tr("panel_size")}
 		var l := _label(names[key], 13, MUTED)
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var lrow := HBoxContainer.new()           # (an inked sketch before the words: v0.13.7, the keeper's picture)
+		lrow.add_theme_constant_override("separation", 3)
+		lrow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lrow.add_child(DeskControls.StatIcon.new(key))
+		lrow.add_child(l)
 		var v := _label("-", 13, INK, _mono)
 		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		v.custom_minimum_size.x = 64
@@ -103,7 +108,7 @@ func _build_panel(root: Control) -> void:
 		l.clip_text = true
 		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		v.mouse_filter = Control.MOUSE_FILTER_PASS      # tooltips (causes of death)
-		grid.add_child(l)
+		grid.add_child(lrow)
 		grid.add_child(v)
 		_vals[key] = v
 	var hum_row := HBoxContainer.new()
@@ -145,6 +150,7 @@ func _build_panel(root: Control) -> void:
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log.add_theme_font_size_override("normal_font_size", 13)
 	_log.add_theme_color_override("default_color", INK)
+	_log.add_theme_stylebox_override("normal", Desk.JournalBox.new())      # (a page with a stitched spine: v0.13.7)
 	ls.add_child(_log)
 
 

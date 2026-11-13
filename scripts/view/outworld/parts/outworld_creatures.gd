@@ -554,7 +554,7 @@ func _writhe_offset(v: Dictionary, p: Vector3) -> Vector3:
 		return Vector3.ZERO
 	var x: float = (xf.affine_inverse() * p).x
 	var dz := sin(x * 0.5 - float(v.gait) * 1.4) * 0.22 * float(v.mv) + sin(x * 0.3 + _t * 0.6) * 0.1
-	dz += float(v.held) * (sin(x * 0.55 - _t * 3.2) * 0.42 + sin(_t * 1.3) * 0.01 * (x - 2.0) * (x - 2.0))
+	dz += float(v.held) * (sin(x * 0.55 - _t * 3.2) * 0.42 + sin(_t * 1.3) * 0.01 * (x - 2.0) * (x - 2.0)) + float(v.get("bend", 0.0)) * 0.045 * x * x
 	return xf.basis.z * dz
 
 

@@ -233,3 +233,90 @@ class Pencil extends Control:
 			draw_arc(c, h * 0.17, -PI * 0.5, PI * 0.5, 6, Color(0.96, 0.74, 0.12), h * 0.12)
 		draw_colored_polygon(PackedVector2Array([Vector2(L - h * 0.55, y0 + h * 0.36), Vector2(L, y0 + h * 0.5),
 			Vector2(L - h * 0.55, y0 + h * 0.64)]), Color(0.18, 0.18, 0.2))
+
+
+## A small inked sketch before a figure in the side panel's readout (the keeper's picture, 2026-11-13): what it counts.
+class StatIcon extends Control:
+	var kind := ""
+	const INK := Color(0.2, 0.13, 0.08)
+
+	func _init(k: String) -> void:
+		kind = k
+		custom_minimum_size = Vector2(18, 14)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _ant(c: Vector2, s: float, col: Color, crown := false) -> void:
+		for e in [[Vector2(-3.2, 0), Vector2(2.2, 1.5)], [Vector2(0, 0), Vector2(1.4, 0.9)], [Vector2(2.6, 0), Vector2(1.3, 1.2)]]:
+			var pts := PackedVector2Array()
+			for k in 10:
+				var a := TAU * k / 10.0
+				pts.append(c + (e[0] + Vector2(cos(a) * e[1].x, sin(a) * e[1].y)) * s)
+			draw_colored_polygon(pts, col)
+		for k in 3:
+			for sd in [-1.0, 1.0]:
+				var p0 := c + Vector2((k - 1) * 0.8, 0) * s
+				draw_line(p0, p0 + Vector2((k - 1) * 1.8, sd * 2.6) * s, col, 0.9, true)
+		if crown:
+			draw_polyline(PackedVector2Array([c + Vector2(1.6, -2.4) * s, c + Vector2(2.1, -4.0) * s, c + Vector2(2.7, -2.9) * s,
+				c + Vector2(3.3, -4.0) * s, c + Vector2(3.8, -2.4) * s]), Color(0.7, 0.5, 0.1), 1.0, true)
+
+	func _draw() -> void:
+		var c := size * 0.5
+		match kind:
+			"queen":
+				_ant(c + Vector2(0, 1), 1.15, INK, true)
+			"workers", "out", "nurses":
+				_ant(c, 1.0, INK)
+				if kind == "out":
+					draw_line(c + Vector2(-7, 5), c + Vector2(7, 5), INK, 0.8)
+				if kind == "nurses":
+					draw_circle(c + Vector2(6.5, -2), 1.6, Color(0.95, 0.92, 0.8), true, -1.0, true)
+					draw_arc(c + Vector2(6.5, -2), 1.6, 0, TAU, 8, INK, 0.7, true)
+			"callow":
+				_ant(c, 1.0, Color(0.7, 0.55, 0.38))
+			"eggs":
+				for p in [Vector2(-3, 1), Vector2(1, -1), Vector2(3, 2)]:
+					draw_set_transform(c + p, 0.4, Vector2(1.0, 0.65))
+					draw_circle(Vector2.ZERO, 2.4, Color(0.96, 0.94, 0.85), true, -1.0, true)
+					draw_arc(Vector2.ZERO, 2.4, 0, TAU, 10, INK, 0.9, true)
+					draw_set_transform(Vector2.ZERO)
+			"larvae":
+				draw_arc(c + Vector2(0, 1), 4.0, PI * 0.9, PI * 2.3, 10, Color(0.93, 0.88, 0.75), 3.4, true)
+				draw_arc(c + Vector2(0, 1), 4.0, PI * 0.9, PI * 2.3, 10, INK, 0.7, true)
+			"pupae":
+				draw_set_transform(c, 0.0, Vector2(1.0, 0.5))
+				draw_circle(Vector2.ZERO, 5.0, Color(0.85, 0.72, 0.5), true, -1.0, true)
+				draw_arc(Vector2.ZERO, 5.0, 0, TAU, 14, INK, 1.4, true)
+				draw_set_transform(Vector2.ZERO)
+			"sugar":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -6), c + Vector2(3.6, 1), c + Vector2(0, 5), c + Vector2(-3.6, 1)]), Color(0.9, 0.6, 0.12))
+				draw_circle(c + Vector2(0, 1.5), 3.6, Color(0.9, 0.6, 0.12), true, -1.0, true)
+			"fat":
+				draw_circle(c, 4.5, Color(0.95, 0.85, 0.5), true, -1.0, true)
+				draw_arc(c, 4.5, 0, TAU, 12, INK, 0.9, true)
+				draw_circle(c + Vector2(-1.5, -1.5), 1.2, Color(1, 1, 0.9), true, -1.0, true)
+			"protein":
+				draw_line(c + Vector2(-6, 4), c + Vector2(2, -3), INK, 2.2, true)
+				draw_line(c + Vector2(2, -3), c + Vector2(6, 2), INK, 1.6, true)
+				draw_circle(c + Vector2(-6, 4), 1.8, INK, true, -1.0, true)
+			"nest_t":
+				draw_line(c + Vector2(0, -6), c + Vector2(0, 3), INK, 2.4, true)
+				draw_circle(c + Vector2(0, 4), 2.8, Color(0.75, 0.15, 0.1), true, -1.0, true)
+				draw_line(c + Vector2(0, -1), c + Vector2(0, 3), Color(0.75, 0.15, 0.1), 1.2, true)
+			"dead", "brood_dead":
+				draw_line(c + Vector2(-4, -4), c + Vector2(4, 4), Color(0.6, 0.12, 0.08), 1.6, true)
+				draw_line(c + Vector2(4, -4), c + Vector2(-4, 4), Color(0.6, 0.12, 0.08), 1.6, true)
+			"dev", "cycle":
+				draw_arc(c, 5.0, -PI * 0.8, PI * 0.9, 14, INK, 1.2, true)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(4.6, 2.6), c + Vector2(6.8, 4.8), c + Vector2(2.6, 5.2)]), INK)
+			"vol", "depth":
+				draw_rect(Rect2(c - Vector2(5, 4), Vector2(10, 8)), INK, false, 1.0, true)
+				if kind == "depth":
+					draw_line(c + Vector2(0, -4), c + Vector2(0, 3), INK, 1.2, true)
+					draw_colored_polygon(PackedVector2Array([c + Vector2(-2, 2), c + Vector2(2, 2), c + Vector2(0, 5)]), INK)
+				else:
+					draw_line(c + Vector2(-5, 0), c + Vector2(5, 0), INK, 0.6)
+			"size":
+				draw_line(c + Vector2(-7, 2), c + Vector2(7, 2), INK, 1.2, true)
+				for k in 5:
+					draw_line(c + Vector2(-7 + k * 3.5, 2), c + Vector2(-7 + k * 3.5, -1 if k % 2 == 0 else 0), INK, 0.8)

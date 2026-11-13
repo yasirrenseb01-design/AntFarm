@@ -104,7 +104,7 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 		s.dash_cd = STATS.dash_rest
 	var dashing: bool = int(s.get("dash", 0)) > 0
 	s.dash = maxi(0, int(s.get("dash", 0)) - 1)
-	s.ang += wrapf(target_ang - s.ang, -PI, PI) * (0.25 if dashing else 0.08)
+	sim.turn_toward(s, target_ang, 0.25 if dashing else 0.08, 0.06 if dashing else 0.035, free)    # (2 rad/s at 1x, 3.6 dashing)
 	# a cold spider is slower, as the ants are (Pardosa ran 4x faster at 30 than at 7 °C: Villaseñor-Amador et al., Animal Behaviour 2023)
 	var warm: float = 0.25 + 0.75 * sim.activity
 	var pace: float = STATS.flee if s.get("fleeing", false) or sim.panicking(s) else (STATS.dash if dashing else STATS.speed)
@@ -115,7 +115,7 @@ static func step(sim, s: Dictionary, clinging: Array) -> bool:
 	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
 	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(s.pos)
 	if not leaving and inside and sim.creature_blocked(np, 10.0):
-		s.ang += 2.0
+		s.ang += 0.08 * (1.0 if int(s.id) % 2 == 0 else -1.0)      # (turns away along the wall: 2.0 rad in one tick until v0.13.7)
 		if sim.panicking(s):
 			sim.flip_over(s)             # (ran into the side of the box in its panic)
 	else:

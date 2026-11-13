@@ -86,7 +86,7 @@ var _banner_lines: Array = []    # (two at once in a bad night: both shown)
 ## A banner at the top of the view, over the game: the keeper named this ant (sim.name_ant), so its death is news.
 func _build_banner(root: Control) -> void:
 	_banner = PanelContainer.new()
-	var bsb: StyleBoxTexture = Paper.page(18, 10)
+	var bsb: StyleBox = Paper.page(18, 10)
 	_banner.add_theme_stylebox_override("panel", bsb)
 	_banner.anchor_left = 0.5
 	_banner.anchor_right = 0.5

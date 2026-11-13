@@ -52,17 +52,10 @@ static func texture() -> ImageTexture:
 	return _tex
 
 
-## A sheet of the paper as a panel style (tiled, with a soft edge shadow from the window).
-static func page(pad_h := 18, pad_v := 16) -> StyleBoxTexture:
-	var sb := StyleBoxTexture.new()
-	sb.texture = texture()
-	sb.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
-	sb.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
-	sb.content_margin_left = pad_h
-	sb.content_margin_right = pad_h
-	sb.content_margin_top = pad_v
-	sb.content_margin_bottom = pad_v
-	return sb
+## A sheet of the paper as a panel style: the cream paper tiled, its edges browned with age and a few stains
+## (ui/desk.gd PageBox - plain tiled paper until v0.13.7).
+static func page(pad_h := 18, pad_v := 16) -> StyleBox:
+	return Desk.PageBox.new(pad_h, pad_v)
 
 
 static func _flat(bg: Color, border: Color, width := 1, radius := 3, pad_h := 10, pad_v := 5) -> StyleBoxFlat:

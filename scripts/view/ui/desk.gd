@@ -143,6 +143,42 @@ static func circle(ci: RID, c: Vector2, r: float, col: Color) -> void:
 	RenderingServer.canvas_item_add_circle(ci, c, r, col, true)
 
 
+## Age on a sheet (v0.13.7, the keeper's picture of an old field-notebook page): its edges browned and darker in a soft
+## band, a few faint stains (the same on a sheet of the same size), and - `dog_ear` - its bottom right corner turned
+## up. Drawn over the paper already there.
+static func age(ci: RID, r: Rect2, dog_ear := false) -> void:
+	var band := clampf(minf(r.size.x, r.size.y) * 0.2, 10.0, 46.0)
+	var inner := r.grow(-band)
+	var edge := Color(0.36, 0.2, 0.07, 0.6)
+	var clear := Color(0.36, 0.2, 0.07, 0.0)
+	var o := [r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]
+	var i := [inner.position, Vector2(inner.end.x, inner.position.y), inner.end, Vector2(inner.position.x, inner.end.y)]
+	for k in 4:
+		var k2 := (k + 1) % 4
+		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([o[k], o[k2], i[k2], i[k]]),
+			PackedColorArray([edge, edge, clear, clear]))
+	# stains: a few soft rings of tea-brown, where the size of the sheet puts them
+	var seed_value := int(r.size.x * 7.0 + r.size.y * 13.0)
+	for k in 5:
+		var h1 := fposmod(sin(float(seed_value + k * 17)) * 43758.55, 1.0)
+		var h2 := fposmod(sin(float(seed_value * 3 + k * 29)) * 24634.63, 1.0)
+		var h3 := fposmod(sin(float(seed_value + k * 51)) * 13758.21, 1.0)
+		var c := r.position + Vector2(r.size.x * (0.08 + 0.84 * h1), r.size.y * (0.08 + 0.84 * h2))
+		var rad := 4.0 + 18.0 * h3
+		RenderingServer.canvas_item_add_circle(ci, c, rad, Color(0.48, 0.32, 0.12, 0.05 + 0.05 * h3))
+		RenderingServer.canvas_item_add_circle(ci, c, rad * 0.6, Color(0.95, 0.88, 0.72, 0.05))
+	if dog_ear:
+		# the corner turned up: the paper's back showing, a shadow under the fold
+		var s := clampf(minf(r.size.x, r.size.y) * 0.08, 10.0, 22.0)
+		var e := r.end
+		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([e - Vector2(s, 0), e, e - Vector2(0, s)]),
+			PackedColorArray([Color(0.14, 0.09, 0.05)]))
+		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([e - Vector2(s, 0) + Vector2(1.5, 2.5), e - Vector2(0, s) + Vector2(2.5, 1.5),
+			e - Vector2(s, s) + Vector2(3, 3)]), PackedColorArray([Color(0, 0, 0, 0.25)]))
+		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([e - Vector2(s, 0), e - Vector2(0, s), e - Vector2(s, s)]),
+			PackedColorArray([Color(0.86, 0.78, 0.62), Color(0.86, 0.78, 0.62), Color(0.97, 0.92, 0.8)]))
+
+
 # ---------------------------------------------------------------- the StyleBoxes
 
 ## A clipboard: a wooden board with brass corners, a cream sheet on it and a brass clip at the top (drawn above the box).
@@ -177,6 +213,7 @@ class ClipboardBox extends StyleBox:
 		D.poly(ci, D.round_rect(Rect2(sheet.position + Vector2(1.5, 2.5), sheet.size), 2), Color(0, 0, 0, 0.3))
 		var sp: PackedVector2Array = D.round_rect(sheet, 2)
 		D.poly_tex(ci, sp, D.paper(), 256.0)
+		D.age(ci, sheet, true)
 		D.outline(ci, sp, Color(0.55, 0.45, 0.32, 0.5), 1.0)
 		# the clip: a brass plate over the sheet's top, with a lever ring above the board
 		var cw := maxf(70.0, rect.size.x * clip_w)
@@ -321,6 +358,7 @@ class SheetBox extends StyleBox:
 		D.poly(ci, D.round_rect(Rect2(rect.position + Vector2(2, 4), rect.size), 4), Color(0, 0, 0, 0.32))
 		var pts: PackedVector2Array = D.round_rect(rect, 3)
 		D.poly_tex(ci, pts, D.paper(), 256.0)
+		D.age(ci, rect, true)
 		D.outline(ci, pts, Color(0.45, 0.35, 0.24, 0.55), 1.0)
 
 
@@ -350,6 +388,7 @@ class WindowBox extends StyleBox:
 		D.poly(ci, D.round_rect(Rect2(sheet.position + Vector2(1.5, 2.5), sheet.size), 2), Color(0, 0, 0, 0.3))
 		var sp: PackedVector2Array = D.round_rect(sheet, 2)
 		D.poly_tex(ci, sp, D.paper(), 256.0)
+		D.age(ci, sheet, true)
 		D.outline(ci, sp, Color(0.55, 0.45, 0.32, 0.5), 1.0)
 		# the clip, on the board above the sheet
 		var cw := clampf(board.size.x * 0.3, 90.0, 220.0)
@@ -366,3 +405,43 @@ class WindowBox extends StyleBox:
 			var rv := Vector2(cx + s * cw * 0.38, top + 13)
 			D.circle(ci, rv, 3.0, D.BRASS_DARK)
 			D.circle(ci, rv - Vector2(0.8, 0.8), 1.8, D.BRASS_LIGHT)
+
+
+## A page of the paper, aged at its edges (Paper.page() since v0.13.7: the windows' bodies, the banner, the Home's
+## panels). No shadow or outline: it lies on whatever holds it.
+class PageBox extends StyleBox:
+	var dog_ear := false
+
+	func _init(pad_h := 18, pad_v := 16, ear := false) -> void:
+		dog_ear = ear
+		content_margin_left = pad_h
+		content_margin_right = pad_h
+		content_margin_top = pad_v
+		content_margin_bottom = pad_v
+
+	func _draw(ci: RID, rect: Rect2) -> void:
+		var D = load("res://scripts/view/ui/desk.gd")
+		RenderingServer.canvas_item_add_texture_rect(ci, rect, D.paper().get_rid(), true)
+		D.age(ci, rect, dog_ear)
+
+
+## The keeper's journal on the side panel: a page with a stitched leather spine down its left edge (the keeper's picture).
+class JournalBox extends StyleBox:
+	func _init() -> void:
+		content_margin_left = 22
+		content_margin_right = 8
+		content_margin_top = 6
+		content_margin_bottom = 6
+
+	func _draw(ci: RID, rect: Rect2) -> void:
+		var D = load("res://scripts/view/ui/desk.gd")
+		D.poly(ci, D.round_rect(Rect2(rect.position + Vector2(1.5, 2.5), rect.size), 3), Color(0, 0, 0, 0.25))
+		RenderingServer.canvas_item_add_texture_rect(ci, rect, D.paper().get_rid(), true)
+		D.age(ci, rect, true)
+		var spine := Rect2(rect.position, Vector2(14, rect.size.y))
+		D.poly_tex(ci, D.round_rect(spine, 3), D.leather(), 128.0)
+		D.outline(ci, D.round_rect(spine, 3), Color(0.18, 0.09, 0.04), 1.0)
+		var y := rect.position.y + 6.0
+		while y < rect.end.y - 6.0:
+			RenderingServer.canvas_item_add_line(ci, Vector2(rect.position.x + 7, y), Vector2(rect.position.x + 7, y + 4), D.STITCH, 1.2, true)
+			y += 7.0

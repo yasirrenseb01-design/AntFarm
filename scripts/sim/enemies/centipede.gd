@@ -82,7 +82,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 		target_ang = (c.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null and bd < 90.0:
 		target_ang = (best.pos - c.pos).angle()
-	c.ang += wrapf(target_ang - c.ang, -PI, PI) * 0.06
+	sim.turn_toward(c, target_ang, 0.06, 0.03, free)
 	# running off it is faster; shut in the keeper's box, the acid in it slows it the more hurt it is [inference] - it
 	# outran the ants round the box for 6 days and more, v0.13.2 tests/enemy_test.gd
 	var pace: float = 1.3 if leaving else (0.3 + 0.45 * clampf(c.hp / STATS.flee_at, 0.0, 1.0) if fleeing else 1.0)
@@ -92,7 +92,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
 	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos)
 	if not leaving and inside and sim.creature_blocked(np + Vector2.from_angle(c.ang) * STATS.length * 0.5):
-		c.ang += 1.6
+		c.ang += 0.06 * (1.0 if int(c.id) % 2 == 0 else -1.0)      # (1.6 rad in one tick until v0.13.7)
 		if sim.panicking(c):
 			sim.flip_over(c)             # (ran into the side of the box in its panic)
 	else:

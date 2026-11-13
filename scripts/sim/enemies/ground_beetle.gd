@@ -83,7 +83,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 		target_ang = (c.pos - best.pos).angle()          # shut in: away from the ants, round the box
 	elif best != null:
 		target_ang = (best.pos - c.pos).angle()
-	c.ang += wrapf(target_ang - c.ang, -PI, PI) * 0.1
+	sim.turn_toward(c, target_ang, 0.1, 0.03, free)
 	var burst := 1.0 if fmod(c.phase, 9.0) < 7.0 or leaving or fleeing else 0.15
 	var np: Vector2 = c.pos + Vector2.from_angle(c.ang) * STATS.speed * free * burst
 	var world: Vector2 = sim.WORLD
@@ -91,7 +91,7 @@ static func step(sim, c: Dictionary, clinging: Array) -> bool:
 	# along the edge as wall, and a slow enemy coming in turned back there - spiders and beetles never came in, v0.8.25-v0.11.1)
 	var inside := Rect2(Vector2(3, 3), world - Vector2(6, 6)).has_point(c.pos)
 	if not leaving and inside and sim.creature_blocked(np, 14.0):
-		c.ang += 1.8
+		c.ang += 0.07 * (1.0 if int(c.id) % 2 == 0 else -1.0)      # (1.8 rad in one tick until v0.13.7)
 		if sim.panicking(c):
 			sim.flip_over(c)             # (ran into the side of the box in its panic)
 	else:

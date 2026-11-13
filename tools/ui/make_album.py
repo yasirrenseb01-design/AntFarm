@@ -12,8 +12,41 @@ root = sys.argv[1]
 SP = "lasius_niger"
 im = Image.open("%s/reference/album/%s_plate_II.webp" % (root, SP)).convert("RGB")
 w, h = im.size
-im.crop((0, 0, w // 2, h)).save("%s/assets/ui/album/%s_a.webp" % (root, SP), quality=92)
-im.crop((w // 2, 0, w, h)).save("%s/assets/ui/album/%s_b.webp" % (root, SP), quality=92)
+
+
+def cut_white(half):
+    """the white page round the torn plate made see-through (the keeper, 2026-11-13: "the white border in the album"):
+    near-white reached from the edge without crossing the plate's paper, faded over a few levels."""
+    a = np.asarray(half).astype(np.float64)
+    lum = a.mean(axis=2)
+    sat = a.max(axis=2) - a.min(axis=2)
+    white = (lum > 228) & (sat < 22)
+    H2, W2 = white.shape
+    out = np.zeros_like(white)
+    dq = deque((y, x) for y in range(H2) for x in (0, W2 - 1) if white[y, x])
+    dq.extend((y, x) for x in range(W2) for y in (0, H2 - 1) if white[y, x])
+    for y, x in dq:
+        out[y, x] = True
+    while dq:
+        cy, cx = dq.popleft()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ny, nx = cy + dy, cx + dx
+            if 0 <= ny < H2 and 0 <= nx < W2 and white[ny, nx] and not out[ny, nx]:
+                out[ny, nx] = True
+                dq.append((ny, nx))
+    alpha = np.where(out, 0.0, 255.0)
+    # (a pixel next to the cut-away: half see-through, so the torn edge is not jagged)
+    edge = np.zeros_like(out)
+    edge[1:, :] |= out[:-1, :]
+    edge[:-1, :] |= out[1:, :]
+    edge[:, 1:] |= out[:, :-1]
+    edge[:, :-1] |= out[:, 1:]
+    alpha[edge & ~out] = 150.0
+    return Image.fromarray(np.dstack([a, alpha]).astype(np.uint8), "RGBA")
+
+
+cut_white(im.crop((0, 0, w // 2, h))).save("%s/assets/ui/album/%s_a.webp" % (root, SP), quality=92)
+cut_white(im.crop((w // 2, 0, w, h))).save("%s/assets/ui/album/%s_b.webp" % (root, SP), quality=92)
 
 q = np.asarray(im.crop((52, 90, 705, 300))).astype(np.float64)
 lum = q @ np.array([0.299, 0.587, 0.114])

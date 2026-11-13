@@ -16,6 +16,11 @@ const DYING_TICKS := 600.0       # sim_enemies.DYING_TICKS
 
 
 static func update(o, delta: float) -> void:
+	_frame += 1
+	if _frame % 120 == 0:
+		for id in _grab.keys():
+			if int(_grab[id][2]) < _frame - 2:
+				_grab.erase(id)
 	var by_kind := {}
 	for c in o.sim.creatures:
 		if o._creature_views.has(c.kind):
@@ -36,7 +41,11 @@ static func update(o, delta: float) -> void:
 			var v: Dictionary = o._creature_vis[s.id]
 			var step: Vector2 = s.pos - v.p
 			v.p += step * (1.0 - exp(-15.0 * delta))
+			var was_a: float = v.a
 			v.a = lerp_angle(v.a, s.ang, 1.0 - exp(-8.0 * delta))
+			# how fast it is turning, for the centipede's body to curve round as it turns (not swing round stiff)
+			var tr_rate := wrapf(v.a - was_a, -PI, PI) / maxf(delta, 0.001)
+			v.bend = lerpf(float(v.get("bend", 0.0)), clampf(tr_rate / 1.5, -1.0, 1.0), minf(1.0, 4.0 * delta))
 			v.mv = lerpf(v.mv, 1.0 if step.length_squared() > 0.0004 else 0.0, minf(1.0, 6.0 * delta))
 			var held := int(s.get("held", 0)) > 0
 			var back: bool = int(s.get("flip", 0)) > 0 or s.has("dying")
@@ -70,7 +79,8 @@ static func update(o, delta: float) -> void:
 			var heave: float = sin(PI * r) * hc * 0.7 * sc
 			var origin := Vector3(p.x, o.ground_h(p.x, p.y), p.y) + b * (lift * sc) + up * heave
 			mm.set_instance_transform(i, Transform3D(lb.scaled_local(Vector3.ONE * sc), origin))
-			var gait: float = CreatureRig.gait(cv, v, s, step.length() * (1.0 - exp(-15.0 * delta)), delta)
+			# (turning on the spot takes steps too: the feet round its body go ~18 px for each radian - v0.13.7)
+			var gait: float = CreatureRig.gait(cv, v, s, step.length() * (1.0 - exp(-15.0 * delta)) + absf(wrapf(v.a - was_a, -PI, PI)) * 18.0, delta)
 			# y: 0..1 into a strike, or 3 + how hard it kicks once it is over on its back, 5 feeding on prey held before its
 			# fangs / 6 shaking a bitten one (the spider: enemies/spider_prey.gd); w: how much it is walking, + 2 while ants
 			# are holding it down (it writhes)
@@ -78,7 +88,10 @@ static func update(o, delta: float) -> void:
 			var y: float = (3.0 + _kick(s)) if (v.roll > 0.15 and back) or v.roll > 0.85 else float(v.sk)
 			if s.has("prey") and v.roll <= 0.15:
 				y = 6.0 if String(s.prey.get("mode", "")) == "shake" else 5.0
-			mm.set_instance_custom_data(i, Color(gait, y, o._t, v.mv + (2.0 if held or back else 0.0)))
+			var w: float = v.mv + (2.0 if held or back else 0.0)
+			if kind == "centipede":
+				w += 4.0 * floor((float(v.bend) + 1.0) * 50.0)      # (its turn packed above: centipede.gdshader)
+			mm.set_instance_custom_data(i, Color(gait, y, o._t, w))
 			v.xf = mm.get_instance_transform(i)
 			v.kind = kind
 			v.gait = gait
@@ -148,7 +161,36 @@ static var _hold := {}          # ant id -> [position, facing] of an ant holding
 ##  - holding a leg from the ground: led by it, easing after it over a fraction of a second and pulling back on it;
 ##  - once it is over on its back: all of them on its belly, nearer the middle (its legs are up in the air).
 ## spot: grip_spots.spots()[i % n]; layer: i / n (stood on the nestmate under it); s: the ant's scale.
+static var _grab := {}          # ant id -> [time it took hold, its transform then, frame last seen holding]
+static var _frame := 0
+
+
+## (v0.13.7, the keeper: "the ants on it look too orderly; and they float, then dart on - not walking up onto it"):
+## each one a little off its spot and turned its own way; and from where it was when it took hold it climbs onto the
+## spot over ~0.6 s, in an arc up the body, instead of being there the next frame.
 static func held_xf(o, a, foe: Dictionary, spot: Dictionary, layer: int, s: float, delta: float) -> Transform3D:
+	var j := func(k: int) -> float: return fposmod(sin(float(a.id) * 12.9898 + k * 78.233) * 43758.5453, 1.0) * 2.0 - 1.0
+	var messy := {"p": (spot.p as Vector2) + Vector2(j.call(1), j.call(2)) * 2.2, "h": spot.h,
+		"pitch": float(spot.pitch) + 0.18 * j.call(3), "face": float(spot.face) + 0.65 * j.call(4)}
+	var target := _held_target(o, a, foe, messy, layer, s, delta)
+	var g: Array = _grab.get(a.id, [])
+	if g.is_empty() or int(g[2]) < _frame - 2:
+		var from: Transform3D = a.vxf if a.vxf is Transform3D else target
+		g = [float(o._t), from, _frame]
+	g[2] = _frame
+	_grab[a.id] = g
+	var u := clampf((float(o._t) - float(g[0])) / 0.6, 0.0, 1.0)
+	if u >= 1.0:
+		return target
+	var e := smoothstep(0.0, 1.0, u)
+	var from_xf: Transform3D = g[1]
+	var out := from_xf.interpolate_with(target, e)
+	var up: Vector3 = target.basis.y.normalized()
+	out.origin += up * sin(PI * u) * 0.6 * s * float(spot.h > 0.6)       # (up the side, not through it)
+	return out
+
+
+static func _held_target(o, a, foe: Dictionary, spot: Dictionary, layer: int, s: float, delta: float) -> Transform3D:
 	var v: Dictionary = o._creature_vis.get(a.foe, {})
 	var xf: Transform3D = v.get("xf", Transform3D())
 	var sc: float = maxf(0.01, xf.basis.get_scale().x)

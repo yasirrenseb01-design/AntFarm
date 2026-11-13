@@ -213,6 +213,14 @@ func creature_blocked(p: Vector2, reach := 3.0) -> bool:
 	return false
 
 
+## Its heading turned toward `target`, no faster than `rate` radians a tick - and slower the more it is held down
+## (v0.13.7, the keeper: "they spin round on the spot, even mobbed - it would have to twist itself round"): `k` how
+## much of the gap it closes a tick.
+func turn_toward(c: Dictionary, target: float, k: float, rate: float, free: float) -> void:
+	var cap: float = rate * (0.2 + 0.8 * clampf(free, 0.0, 1.0))
+	c.ang = float(c.ang) + clampf(wrapf(target - float(c.ang), -PI, PI) * k, -cap, cap)
+
+
 func panicking(c: Dictionary) -> bool:
 	return int(c.get("panic", 0)) > 0
 

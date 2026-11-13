@@ -89,6 +89,18 @@ void vertex() {
 		VERTEX = piv + R * (VERTEX - piv);
 		NORMAL = R * NORMAL;
 	}
+	if (dead && INSTANCE_CUSTOM.x > 0.5) {
+		// a carcass (outworld_props): the head torn off and lying askew in front, a middle leg pulled off (v0.13.7)
+		if (part == 1.0 || part == 2.0 || part == 3.0 || part == 10.0) {
+			vec3 piv = vec3(5.7, 3.4, 0.0);
+			mat3 R = rot_y(0.55) * rot_x(0.25);
+			VERTEX = piv + R * (VERTEX - piv) + vec3(2.1, -0.3, 1.3);
+			NORMAL = R * NORMAL;
+		}
+		if (part == 6.0) {
+			VERTEX += vec3(-0.6, 0.0, -2.8);
+		}
+	}
 	VERTEX = follow_ground_soft(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
 	VERTEX = on_props(VERTEX, MODEL_MATRIX, (part >= 4.0 && part <= 9.0) ? 1.0 : 0.0, obj.y, 8.0);    // and over the litter
 }

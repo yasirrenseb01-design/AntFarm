@@ -27,12 +27,13 @@ const float FANG_X = 8.6;       // forcipule bases
 const float PAIR_LAG = 0.14;    // how much of a step each pair of legs is behind the one in front
 
 // how far the body is to one side at x: the running wave, and the writhing while it is held down
-float body_sway(float x, float gait, float t, float mv, float held) {
+float body_sway(float x, float gait, float t, float mv, float held, float curl) {
 	// (v0.13.6, the keeper: "its body shakes fast while it goes slowly" - a Lithobius runs with little undulation: the
 	// running wave a half of what it was, the writhing held down slower and smaller; outworld_creatures._writhe_offset
 	// has the same sums)
 	float sway = sin(x * 0.5 - gait * 1.4) * 0.22 * mv + sin(x * 0.3 + t * 0.6) * 0.1;
-	return sway + held * (sin(x * 0.55 - t * 3.2) * 0.42 + sin(t * 1.3) * 0.01 * (x - 2.0) * (x - 2.0));
+	// turning: the body curved round into a C, head and tail toward the turn (v0.13.7: it swung round stiff)
+	return sway + held * (sin(x * 0.55 - t * 3.2) * 0.42 + sin(t * 1.3) * 0.01 * (x - 2.0) * (x - 2.0)) + curl * 0.045 * x * x;
 }
 
 // how far the front of the body is thrown forward at x while it strikes
@@ -42,13 +43,17 @@ float body_lunge(float x, float t) {
 
 void vertex() {
 	float rest_y = VERTEX.y;           // (the litter under its feet: props_h.gdshaderinc)
+	float rest_x = VERTEX.x;
 	gloss = (COLOR.a < 0.03 && UV.x > 8.5) ? 1.0 : 0.0;
 	float part = floor(COLOR.a * 16.0 + 0.5);
 	float gait = INSTANCE_CUSTOM.x;
 	float state = INSTANCE_CUSTOM.y;
 	float t = INSTANCE_CUSTOM.z;
-	float held = INSTANCE_CUSTOM.w > 1.5 ? 1.0 : 0.0;
-	float mv = INSTANCE_CUSTOM.w - 2.0 * held;
+	float packed = floor(INSTANCE_CUSTOM.w / 4.0);           // (the view packs how fast it turns above 4: creature_pose.gd)
+	float wbase = INSTANCE_CUSTOM.w - 4.0 * packed;
+	float turn_curl = packed / 50.0 - 1.0;                     // -1..1: how fast it turns
+	float held = wbase > 1.5 ? 1.0 : 0.0;
+	float mv = wbase - 2.0 * held;
 	vec3 v = VERTEX;
 	float side = v.z < 0.0 ? -1.0 : 1.0;
 	bool dead = state > 1.5 && state < 2.5;
@@ -72,7 +77,7 @@ void vertex() {
 			a = vec3(ankle[i].x, -1.2, ankle[i].z * 0.75);     // a dead one on its back: the legs stiff in the air (curled with it below)
 		}
 		// (the foot stays; the hip goes with the body's wave and lunge: the leg is placed from the hip as it is now)
-		vec3 off = vec3(state > 0.5 ? body_lunge(hip[i].x, t) : 0.0, 0.0, body_sway(hip[i].x, gait, t, mv, held));
+		vec3 off = vec3(state > 0.5 ? body_lunge(hip[i].x, t) : 0.0, 0.0, body_sway(hip[i].x, gait, t, mv, held, turn_curl));
 		a -= off;
 		leg_place_up(i, seg, a, v, NORMAL, MODEL_MATRIX[1].y < 0.0 ? -1.0 : 1.0);     // (a body on its back: its knees bent toward the sky)
 		v += off;
@@ -98,10 +103,13 @@ void vertex() {
 		v.z = (6.0 + c.z) * cos(curl) - 6.0;
 		if (part == 1.0) { v.y += (abs(c.z) - 1.0) * 0.15; }      // (0.5 until v0.12.35: the jointed legs stand higher already)
 	} else if (!leg) {
-		v.z += body_sway(v.x, gait, t, mv, held);
+		v.z += body_sway(v.x, gait, t, mv, held, turn_curl);
 		if (state > 0.5) {
 			v.x += body_lunge(v.x, t);      // striking: the front of the body lunges forward and back at the ant it bites
 		}
+	}
+	if (dead && INSTANCE_CUSTOM.x > 0.5 && rest_x < -2.5) {
+		v += vec3(-1.0, 0.0, 1.5);       // a carcass: its hind third torn away (v0.13.7)
 	}
 	VERTEX = v;
 	VERTEX = follow_ground_soft(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it

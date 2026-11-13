@@ -119,6 +119,19 @@ void vertex() {
 			}
 		}
 	}
+	if (dead && INSTANCE_CUSTOM.x > 0.5) {
+		// a carcass (outworld_props): the abdomen torn off at the waist and lying askew, two legs pulled off beside it
+		// (v0.13.7, the keeper: "when it dies let it come apart a little - the legs, the abdomen")
+		if (part == 0.0 && obj.x < WAIST_X) {
+			vec3 piv = vec3(WAIST_X, 1.8, 0.0);
+			mat3 R = rot_y(0.5) * rot_z(-0.12);
+			VERTEX = piv + R * (VERTEX - piv) + vec3(-1.2, -0.15, 0.7);
+			NORMAL = R * NORMAL;
+		}
+		if (part == 2.0 || part == 7.0) {
+			VERTEX += vec3(0.9, 0.0, (part == 2.0 ? -1.0 : 1.0) * 2.6);
+		}
+	}
 	VERTEX = follow_ground_soft(VERTEX, MODEL_MATRIX);     // every part of the body stands on the floor under it
 	VERTEX = on_props(VERTEX, MODEL_MATRIX, (part >= 1.0 && part <= 8.0) ? 1.0 : 0.0, obj.y, 5.0);    // and over the litter
 }
