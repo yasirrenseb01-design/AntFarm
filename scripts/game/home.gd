@@ -8,6 +8,7 @@ extends CanvasLayer
 ## window, follow the computer's clock (home_room.set_hour).
 ## main.gd owns it: open() / close().
 
+const HomeWinter := preload("res://scripts/game/home_winter.gd")
 const Room := preload("res://scripts/view/home/home_room.gd")
 const Paper := preload("res://scripts/view/ui/paper.gd")
 const Store := preload("res://scripts/game/save_store.gd")
@@ -333,46 +334,12 @@ func _check_food(chime := true) -> void:
 			w = " · ".join(parts)
 		if w != "":
 			lines.append(tr("home_food_low") % [p.number, w])
-	lines.append_array(_winter_lines())
+	lines.append_array(HomeWinter.lines(main))
 	if chime and not lines.is_empty() and not _food.visible:
 		Chime.play(self, float(main._settings.get("music", 0.6)))      # (as the note comes up)
 	_food.text = ("⚠ " + "\n⚠ ".join(lines)) if not lines.is_empty() else ""
 	_food.visible = not lines.is_empty()
 	_food.reset_size()
-
-
-## The tanks whose colony has come to its winter (November to February, when the colony's own journal says to put it in
-## the fridge - sim_colony) and is not resting in the fridge (the keeper, 2026-11-03: "a note in the Home: which colony
-## has come to winter"). The one open now from the simulation, the others from their last save's day of the year moved
-## on by the time since, at the away rate.
-func _winter_lines() -> Array:
-	var out := []
-	var rate := Store.away_rate(int(main._settings.get("away", 3)))
-	for p in main.home.places():
-		var s: int = p.slot
-		var doy := -1.0
-		var cold := false
-		var alive := true
-		if s == main.slot and not main._demo and main.sim != null and main.sim.scenario == "keeper":
-			doy = main.sim.doy_f()
-			cold = main.sim.fridge_on
-			alive = main.sim.queen.alive
-		else:
-			var m: Dictionary = Store.meta(s)
-			if m.is_empty() or not m.has("doy") or String(m.get("scenario", "keeper")) != "keeper":
-				continue
-			var since := maxf(0.0, Time.get_unix_time_from_system() - float(m.get("saved_unix", 0.0))) / 3600.0 * rate
-			doy = fmod(float(m.doy) + minf(since, Store.MAX_AWAY_DAYS), 365.0)
-			cold = bool(m.get("fridge", false))
-			alive = bool(m.get("queen", true))
-		# (from 1 November, when the colony's journal says so, the wintering is to be got ready for; winter itself from
-		# 1 December as the season shown in the colony - "winter has come" on 8 November, an autumn day there: the keeper,
-		# 2026-11-06)
-		if alive and not cold and (doy >= 334.0 or doy < 59.0):
-			out.append(tr("home_winter") % p.number)
-		elif alive and not cold and doy >= 305.0:
-			out.append(tr("home_winter_near") % p.number)
-	return out
 
 
 ## Back to the title page.
@@ -579,6 +546,8 @@ func _describe(it) -> String:
 		return tr("home_fridge_none") if r.is_empty() else tr("home_fridge") % ", ".join(r.map(func(n): return str(n)))
 	if it.kind == "chair":
 		return tr("home_stand") if _seated else tr("home_chair")
+	if it.kind == "notebook":
+		return tr("home_notebook")
 	var s: int = it.slot
 	var m: Dictionary = Store.meta(s)
 	if m.is_empty():
@@ -611,6 +580,9 @@ func _click(it) -> void:
 			_stand()
 		else:
 			_sit(it)
+		return
+	if it.kind == "notebook":
+		main.hud.open_album(main.hud.album_species())       # (the plate album: ui/album.gd)
 		return
 	var s: int = it.slot
 	if not Store.exists(s):

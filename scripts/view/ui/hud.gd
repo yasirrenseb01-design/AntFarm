@@ -222,13 +222,23 @@ func album_won(sp_id: String) -> Array:
 	return (_album_all().get(sp_id, []) as Array).duplicate()
 
 
-func open_album() -> void:
-	var sp_id := String(sim.sp.get("id", ""))
+## The species the Home's notebook opens at: the first with plates won - Lasius niger before any.
+func album_species() -> String:
+	var won := _album_all()
+	for k in won:
+		if not (won[k] as Array).is_empty():
+			return String(k)
+	return "lasius_niger"
+
+
+## The album, as the notebook on the desk lying open (ui/album.gd): this colony's species, or `species` (the Home's
+## notebook: the species of the plates won so far).
+func open_album(species := "") -> void:
+	var sp_id := species if species != "" else String(sim.sp.get("id", ""))
 	var w = Album.new()
 	_colonies.get_parent().add_child(w)
 	w.setup(self, sp_id, album_won(sp_id))
-	w.reset_size()
-	w.popup_centered()
+	w.popup()                                # (the whole window: the room dimmed round the book)
 
 
 ## A plate won by this colony's count of workers: kept for good, told on the banner.

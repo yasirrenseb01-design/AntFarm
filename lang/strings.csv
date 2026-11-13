@@ -199,7 +199,7 @@ wild_colonies,โหมดป่า: รังในแปลงสวน,Wild m
 tank_colonies,ตู้เลี้ยงในบ้าน,The tanks at home
 new_title_wild,เริ่มรังใหม่ในแปลงสวน %d,New colony in garden plot %d
 new_title_tank,เริ่มรังใหม่ในตู้ %d,New colony in tank %d
-home_help,"เดิน: W A S D · มองรอบ: ขยับเมาส์ · คลิก: ตู้ เก้าอี้ ประตู · Tab: ปล่อยเมาส์ไว้กดปุ่ม/ร้านค้า · ซูม: ลูกกลิ้ง · Esc กลับหน้าแรก","Walk: W A S D · look round: move the mouse · click: a tank, the chair, the door · Tab: free the pointer for the buttons and the shop · zoom: wheel · Esc: title page"
+home_help,"เดิน: W A S D · มองรอบ: ขยับเมาส์ · คลิก: ตู้ เก้าอี้ ประตู สมุดภาพ · Tab: ปล่อยเมาส์ไว้กดปุ่ม/ร้านค้า · ซูม: ลูกกลิ้ง · Esc กลับหน้าแรก","Walk: W A S D · look round: move the mouse · click: a tank, the chair, the door, the album · Tab: free the pointer for the buttons and the shop · zoom: wheel · Esc: title page"
 home_purse,Colony Harmony %s,Colony Harmony %s
 home_door,ประตู,The door
 home_lamp_off,"โคมไฟ · คลิก: ปิด","The lamp · click: switch it off"
@@ -647,4 +647,6 @@ album_plate_a,แผ่น IIa · ราชินีและช่วงตั�
 album_plate_b,แผ่น IIb · มดงานและการเจริญ: รังไหม ดักแด้ มดงานใหม่ มดงานโต,"Plate IIb · The workers and their growing: cocoon, pupa, callow and grown worker"
 album_note,ภาพที่ได้แล้วเก็บไว้ตลอด แม้รังจะตายทีหลัง · มดชนิดใหม่จะมีสมุดภาพของตัวเอง,"A plate once won is kept, even if the colony dies later · each new species will have its own album"
 album_won,ได้ภาพใหม่ในสมุดภาพ: %s (คลิกภาพราชินีบนแผงซ้าย),New in the album: %s (click the queen's sketch on the left bar)
+album_close_hint,คลิกนอกสมุด หรือกด Esc เพื่อปิด,Click outside the book or press Esc to close
+home_notebook,สมุดภาพสะสม (คลิกเปิดดู),The plate album (click to open)
 journal_colors,"สีของข้อความ: แดง = อันตราย ต้องดู (ศัตรูเข้ามา น้ำหมด ราชินีตาย) · เขียว = ข่าวดี (ฆ่าศัตรูได้ ช่วยเพื่อนรอด มดงานตัวแรก) · ส้ม = มดที่ตั้งชื่อไว้ · ดำ = เรื่องทั่วไป (เจออาหาร มดเกิดใหม่ ขุดห้อง เติมน้ำ)","Colours: red = danger, look now (an enemy in, the water out, the queen dead) · green = good news (an enemy killed, a nestmate saved, the first worker) · amber = an ant you named · ink = the everyday (food found, a worker born, a chamber dug, water added)"

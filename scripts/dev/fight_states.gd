@@ -3,6 +3,7 @@ extends RefCounted
 ##   --enemy-state=back|dying|carcass|eat|shake   the enemy staged with --enemy turned over now (held there) / in its death throes /
 ##                              (a spider) with the nearest ant in its fangs, to feed on (held a long while) or to shake
 ##   --carcass=<kind>           a carcass (food kind centipede_dead...) laid at --enemy-at
+##   --home-click=<kind>        (with --home) that item of the Home's room clicked after a second
 ##   --album                    the album open, as the queen's sketch opens it
 ##   --click-sketch             a real mouse click on the queen's sketch after a second; prints whether the album opened
 
@@ -38,6 +39,14 @@ static func apply(d) -> void:
 		print("carcass placed: ", d.sim.place_food(String(o["carcass"]), cp))
 		d.outworld.follow_cid = 0
 		d.outworld.target_t = d.outworld._on_ground(cp)
+	if o.has("home-click"):
+		# --home-click=<kind> (with --home): that item of the Home's room clicked after a second (notebook, lamp...)
+		d.get_tree().create_timer(1.0).timeout.connect(func():
+			for it in d.home_room._room.items:
+				if it.kind == String(o["home-click"]):
+					d.home_room._click(it)
+					print("home-click: ", it.kind)
+					return)
 	if o.has("album"):
 		d.hud.open_album()
 	if o.has("select-queen"):

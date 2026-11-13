@@ -278,6 +278,8 @@ func _desk() -> void:
 	var y := DESK.y + DESK_SIZE.y * 0.5
 	# (the notebook and pencil at the left end, the kit's tray in front of the small tank - v0.11.78)
 	_notebook(Vector3(DESK.x - 0.8, y, DESK.z + 0.2), 0.2)
+	# (a click on it opens the plate album, the same notebook lying open: v0.13.13, the keeper)
+	items.append({"kind": "notebook", "mats": [], "box": AABB(Vector3(DESK.x - 0.94, y, DESK.z + 0.06), Vector3(0.28, 0.05, 0.28))})
 	_pencil(Vector3(DESK.x - 0.76, y, DESK.z + 0.33), 0.35)
 	_keeper_tools(y)                         # (the keeper's kit along the front: home_tools.gd)
 
