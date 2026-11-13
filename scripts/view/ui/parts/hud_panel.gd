@@ -87,8 +87,9 @@ func _build_panel(root: Control) -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 3)
 	st.add_child(grid)
+	# (cut, the keeper: egg-to-worker v0.13.9; development and worker size v0.13.10 - on the Statistics tab still)
 	for key in ["queen", "workers", "out", "nurses", "callow", "eggs", "larvae", "pupae", "sugar", "fat", "protein",
-			"nest_t", "dev", "dead", "brood_dead", "vol", "depth", "size"]:
+			"nest_t", "dead", "brood_dead", "depth", "vol"]:
 		var names := {"queen": tr("queen"), "workers": tr("panel_workers"), "out": tr("panel_out"), "nurses": tr("panel_nurses"),
 			"callow": tr("panel_callow"), "eggs": tr("eggs"), "larvae": tr("larvae"), "pupae": tr("pupae"), "sugar": tr("panel_sugar"), "fat": tr("panel_fat"),
 			"protein": tr("panel_protein"), "nest_t": tr("panel_nest_temp"), "dev": tr("panel_dev"), "dead": tr("panel_dead"), "brood_dead": tr("panel_brood_dead"), "cycle": tr("panel_cycle"),
@@ -154,11 +155,19 @@ func _build_panel(root: Control) -> void:
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log.add_theme_font_size_override("normal_font_size", 13)
 	_log.add_theme_color_override("default_color", INK)
+	# the day stamp in bold: the font has no bold face of its own, so [b] fell back to the plain one (v0.13.10, the keeper:
+	# "the Day still doesn't look bold") - the same font thickened
+	var bold := FontVariation.new()
+	bold.base_font = _log.get_theme_default_font()
+	bold.variation_embolden = 0.9
+	_log.add_theme_font_override("bold_font", bold)
+	_log.add_theme_font_size_override("bold_font_size", 13)
 	_log.add_theme_stylebox_override("normal", Desk.JournalBox.new())      # (a page with a stitched spine: v0.13.7)
 	ls.add_child(_log)
 
 
 ## Journal lines that were good news (green) until v0.13.9 and are everyday now (the saves keep the old colour).
+const EVERYDAY_INK := Color(0.33, 0.25, 0.18)     # the everyday words a softer ink than the bold day stamp (v0.13.10)
 const EVERYDAY := ["log_new_worker", "log_chamber_planned", "log_chamber_opened", "log_beyond_food"]
 
 
@@ -169,7 +178,7 @@ func _render_log() -> void:
 		var key: String = e.get("key", "")
 		if kind == "ok" and (key.begins_with("log_found_") or key in EVERYDAY):
 			kind = ""                       # (written green before v0.13.9: everyday news, plain ink now)
-		var col := "#" + (DANGER if kind == "bad" else (LEAF if kind == "ok" else (AMBER if kind == "named" else INK))).to_html(false)
+		var col := "#" + (DANGER if kind == "bad" else (LEAF if kind == "ok" else (AMBER if kind == "named" else EVERYDAY_INK))).to_html(false)
 		# (the day and time in bold dark ink; the words coloured by how much they matter - red danger, green good news,
 		# amber a named ant, ink the everyday: v0.13.9)
 		lines.append("[b][color=#%s]%s[/color][/b]  [color=%s]%s[/color]" % [INK.to_html(false), L.stamp(e), col, L.entry_text(e)])

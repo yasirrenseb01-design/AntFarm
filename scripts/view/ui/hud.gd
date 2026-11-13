@@ -332,7 +332,8 @@ func refresh(delta: float) -> void:
 		rows.append(tr("chamber_temp_row") % [sim.chamber_depth_cm(i), sim.chamber_temp(i), (" · ".join(who)) if not who.is_empty() else ""])
 	_vals["nest_t"].tooltip_text = "
 ".join(rows)
-	_show(_vals["dev"], "%d%%" % int(sim.dev * 100))
+	if _vals.has("dev"):
+		_show(_vals["dev"], "%d%%" % int(sim.dev * 100))
 	_show(_vals["dead"], str(sim.stats.dead))
 	_show(_vals["brood_dead"], str(sim.stats.brood_dead + sim.stats.cannibalized))
 	var by: Dictionary = sim.stats.dead_by
@@ -348,7 +349,8 @@ func refresh(delta: float) -> void:
 		_show(_vals["cycle"], tr("cycle_stopped") if cyc == INF else tr("days_d") % int(cyc))
 	_show(_vals["vol"], tr("cm3") % sim.nest.volume_cm3(), DANGER if sim.nest.air < sim.target_air() * 0.7 and not fnd else INK)
 	_show(_vals["depth"], tr("depth_short") % sim.nest.depth_cm())        # (the chambers: in the cross-section's heading)
-	_show(_vals["size"], tr("mm") % sim.mean_worker_mm() if not sim.workers.is_empty() else tr("not_yet"))
+	if _vals.has("size"):
+		_show(_vals["size"], tr("mm") % sim.mean_worker_mm() if not sim.workers.is_empty() else tr("not_yet"))
 	var words := {"queen_hi": tr("trait_queen_hi"), "queen_lo": tr("trait_queen_lo"), "forage_hi": tr("trait_forage_hi"),
 		"forage_lo": tr("trait_forage_lo"), "life_hi": tr("trait_life_hi"), "life_lo": tr("trait_life_lo"),
 		"size_hi": tr("trait_size_hi"), "size_lo": tr("trait_size_lo"), "depth_hi": tr("trait_depth_hi"),

@@ -455,11 +455,11 @@ panel_out,นอกรัง,Outside
 panel_nurses,พี่เลี้ยง,Nurses
 panel_callow,ตัวใหม่,Callows
 panel_sugar,น้ำตาล,Sugar
-panel_fat,ไขมันสะสม,Fat reserve
+panel_fat,ไขมัน,Fat reserve
 panel_protein,โปรตีน,Protein
 panel_nest_temp,ในรัง,Nest
 panel_dev,พัฒนาการ,Development
-panel_dead,มดงานตาย,Workers died
+panel_dead,มดตาย,Workers died
 panel_brood_dead,ลูกมดตาย,Brood lost
 panel_cycle,ไข่→มดงาน,Egg→worker
 panel_volume,ปริมาตรรัง,Nest volume

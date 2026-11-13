@@ -40,7 +40,7 @@ static func update(o, delta: float) -> void:
 				o._creature_vis[s.id] = {"p": s.pos, "a": s.ang, "mv": 0.0, "sk": 0.0, "roll": 0.0, "agit": 0.0}
 			var v: Dictionary = o._creature_vis[s.id]
 			var step: Vector2 = s.pos - v.p
-			v.p += step * (1.0 - exp(-15.0 * delta))
+			var moved := _glide(v, s.pos, delta)
 			var was_a: float = v.a
 			v.a = lerp_angle(v.a, s.ang, 1.0 - exp(-8.0 * delta))
 			# how fast it is turning, for the centipede's body to curve round as it turns (not swing round stiff)
@@ -80,7 +80,7 @@ static func update(o, delta: float) -> void:
 			var origin := Vector3(p.x, o.ground_h(p.x, p.y), p.y) + b * (lift * sc) + up * heave
 			mm.set_instance_transform(i, Transform3D(lb.scaled_local(Vector3.ONE * sc), origin))
 			# (turning on the spot takes steps too: the feet round its body go ~18 px for each radian - v0.13.7)
-			var gait: float = CreatureRig.gait(cv, v, s, step.length() * (1.0 - exp(-15.0 * delta)) + absf(wrapf(v.a - was_a, -PI, PI)) * 18.0, delta)
+			var gait: float = CreatureRig.gait(cv, v, s, moved + absf(wrapf(v.a - was_a, -PI, PI)) * 18.0, delta)
 			if s.has("prey"):
 				gait = float(v.get("gait_hold", gait))      # (feeding or shaking its prey, its feet stay put - v0.13.8)
 			else:
@@ -244,3 +244,28 @@ static func _held_target(o, a, foe: Dictionary, spot: Dictionary, layer: int, s:
 	b = Basis(b.z, float(spot.pitch) + 0.08 * sin(t * 6.0)) * b                 # (rearing at the leg, heaving)
 	var tug := fw * (-0.12 * s * maxf(0.0, sin(t * 5.0)))                       # (pulling back on it)
 	return Transform3D(b.scaled(Vector3.ONE * s), (h[0] as Vector3) + tug)
+
+
+## Moves the drawn position v.p after the simulation's at an even pace (v0.13.10, the keeper: "at 0.5x its legs look
+## jerky, like a low frame rate"). The simulation moves it in steps, at a slow game speed several frames apart, and the
+## old chase (fast after each step, slowing before the next) walked the legs in spurts. Now its pace is the simulation's
+## averaged over ~1/3 s, with a gentle pull onto the true place, never past it. Over frames the step it takes varies
+## 3-10% (the chase: 12-35%) at 0.2-0.5x, 24-144 fps, at most ~1 step behind [a model of both in Python, v0.13.10].
+## Returns how far it went this frame (sim px). A big jump (placed, or back into the box) is not walked.
+static func _glide(v: Dictionary, to: Vector2, delta: float) -> float:
+	var was: Vector2 = v.p
+	if not v.has("lp") or to.distance_to(v.p) > 30.0:
+		v.p = to
+		v.lp = to
+		v.vel = Vector2.ZERO
+		return 0.0
+	var d: Vector2 = to - (v.lp as Vector2)
+	v.lp = to
+	v.vel = (v.vel as Vector2).lerp(d / maxf(delta, 0.001), 1.0 - exp(-3.0 * delta))
+	var p: Vector2 = v.p + (v.vel as Vector2) * delta
+	p += (to - p) * (1.0 - exp(-1.0 * delta))
+	if (to - p).dot(v.vel) < 0.0:
+		p = to                               # (stopped or turned back: it does not run on past where it is)
+		v.vel = (v.vel as Vector2) * 0.5
+	v.p = p
+	return was.distance_to(p)

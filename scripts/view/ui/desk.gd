@@ -144,9 +144,8 @@ static func circle(ci: RID, c: Vector2, r: float, col: Color) -> void:
 
 
 ## Age on a sheet (v0.13.7, the keeper's picture of an old field-notebook page): its edges browned and darker in a soft
-## band, a few faint stains (the same on a sheet of the same size), and - `dog_ear` - its bottom right corner turned
-## up. Drawn over the paper already there.
-static func age(ci: RID, r: Rect2, dog_ear := false) -> void:
+## band. Drawn over the paper already there.
+static func age(ci: RID, r: Rect2) -> void:
 	var band := clampf(minf(r.size.x, r.size.y) * 0.2, 10.0, 46.0)
 	var inner := r.grow(-band)
 	var edge := Color(0.36, 0.2, 0.07, 0.6)
@@ -159,16 +158,7 @@ static func age(ci: RID, r: Rect2, dog_ear := false) -> void:
 			PackedColorArray([edge, edge, clear, clear]))
 	# (no stains since v0.13.9: placed by the sheet's size, they moved about as the panel grew - "round dots that keep
 	# changing", the keeper)
-	if dog_ear:
-		# the corner turned up: the paper's back showing, a shadow under the fold
-		var s := clampf(minf(r.size.x, r.size.y) * 0.08, 10.0, 22.0)
-		var e := r.end
-		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([e - Vector2(s, 0), e, e - Vector2(0, s)]),
-			PackedColorArray([Color(0.14, 0.09, 0.05)]))
-		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([e - Vector2(s, 0) + Vector2(1.5, 2.5), e - Vector2(0, s) + Vector2(2.5, 1.5),
-			e - Vector2(s, s) + Vector2(3, 3)]), PackedColorArray([Color(0, 0, 0, 0.25)]))
-		RenderingServer.canvas_item_add_polygon(ci, PackedVector2Array([e - Vector2(s, 0), e - Vector2(0, s), e - Vector2(s, s)]),
-			PackedColorArray([Color(0.86, 0.78, 0.62), Color(0.86, 0.78, 0.62), Color(0.97, 0.92, 0.8)]))
+	# (no turned-up corner since v0.13.10: "it doesn't look smooth", the keeper)
 
 
 # ---------------------------------------------------------------- the StyleBoxes
@@ -205,7 +195,7 @@ class ClipboardBox extends StyleBox:
 		D.poly(ci, D.round_rect(Rect2(sheet.position + Vector2(1.5, 2.5), sheet.size), 2), Color(0, 0, 0, 0.3))
 		var sp: PackedVector2Array = D.round_rect(sheet, 2)
 		D.poly_tex(ci, sp, D.paper(), 256.0)
-		D.age(ci, sheet, true)
+		D.age(ci, sheet)
 		D.outline(ci, sp, Color(0.55, 0.45, 0.32, 0.5), 1.0)
 		# the clip: a brass plate over the sheet's top, with a lever ring above the board
 		var cw := maxf(70.0, rect.size.x * clip_w)
@@ -350,7 +340,7 @@ class SheetBox extends StyleBox:
 		D.poly(ci, D.round_rect(Rect2(rect.position + Vector2(2, 4), rect.size), 4), Color(0, 0, 0, 0.32))
 		var pts: PackedVector2Array = D.round_rect(rect, 3)
 		D.poly_tex(ci, pts, D.paper(), 256.0)
-		D.age(ci, rect, true)
+		D.age(ci, rect)
 		D.outline(ci, pts, Color(0.45, 0.35, 0.24, 0.55), 1.0)
 
 
@@ -380,7 +370,7 @@ class WindowBox extends StyleBox:
 		D.poly(ci, D.round_rect(Rect2(sheet.position + Vector2(1.5, 2.5), sheet.size), 2), Color(0, 0, 0, 0.3))
 		var sp: PackedVector2Array = D.round_rect(sheet, 2)
 		D.poly_tex(ci, sp, D.paper(), 256.0)
-		D.age(ci, sheet, true)
+		D.age(ci, sheet)
 		D.outline(ci, sp, Color(0.55, 0.45, 0.32, 0.5), 1.0)
 		# the clip, on the board above the sheet
 		var cw := clampf(board.size.x * 0.3, 90.0, 220.0)
@@ -402,10 +392,7 @@ class WindowBox extends StyleBox:
 ## A page of the paper, aged at its edges (Paper.page() since v0.13.7: the windows' bodies, the banner, the Home's
 ## panels). No shadow or outline: it lies on whatever holds it.
 class PageBox extends StyleBox:
-	var dog_ear := false
-
-	func _init(pad_h := 18, pad_v := 16, ear := false) -> void:
-		dog_ear = ear
+	func _init(pad_h := 18, pad_v := 16) -> void:
 		content_margin_left = pad_h
 		content_margin_right = pad_h
 		content_margin_top = pad_v
@@ -414,7 +401,7 @@ class PageBox extends StyleBox:
 	func _draw(ci: RID, rect: Rect2) -> void:
 		var D = load("res://scripts/view/ui/desk.gd")
 		RenderingServer.canvas_item_add_texture_rect(ci, rect, D.paper().get_rid(), true)
-		D.age(ci, rect, dog_ear)
+		D.age(ci, rect)
 
 
 ## The keeper's journal on the side panel: a page with a stitched leather spine down its left edge (the keeper's picture).
@@ -429,7 +416,7 @@ class JournalBox extends StyleBox:
 		var D = load("res://scripts/view/ui/desk.gd")
 		D.poly(ci, D.round_rect(Rect2(rect.position + Vector2(1.5, 2.5), rect.size), 3), Color(0, 0, 0, 0.25))
 		RenderingServer.canvas_item_add_texture_rect(ci, rect, D.paper().get_rid(), true)
-		D.age(ci, rect, false)              # (no corner of its own: the sheet's under it showed two, v0.13.9)
+		D.age(ci, rect)
 		var spine := Rect2(rect.position, Vector2(14, rect.size.y))
 		D.poly_tex(ci, D.round_rect(spine, 3), D.leather(), 128.0)
 		D.outline(ci, D.round_rect(spine, 3), Color(0.18, 0.09, 0.04), 1.0)
