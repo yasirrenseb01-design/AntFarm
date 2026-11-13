@@ -76,6 +76,8 @@ $cropArgs = @("--headless", "--path", ".", "--script", "res://tests/crop_ledger_
 if (-not $Quick) { $cropArgs += @("--", "long") }          # (quick: ~30 s; long: three colonies for 100 days, ~5 min)
 $r = Run-Godot $cropArgs 1500
 Report "workers' crops and fat: their sums are the colony's sugar and fat, nothing made or lost, honeydew flows full to empty" ($r -match "CROP LEDGER TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/forage_hunger_test.gd") 300
+Report "workers go out by their own crops: emptier crops, more out; a full nest leaves the forager its load" ($r -match "FORAGE HUNGER TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/reach_test.gd") 300
 Report "ants reach food walled by stones" ($r -match "reached 8/8")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/enemy_test.gd") 300

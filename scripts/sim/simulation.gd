@@ -59,7 +59,7 @@ func step() -> void:
 	var t1 := Time.get_ticks_usec()
 	_spd = sp["walk_speed"] * (0.35 + 0.65 * activity)
 	_wild = scenario == "wild"
-	_want_sugar = sugar < sugar_cap() * 0.95
+	_want_sugar = crop_fill() < 0.95 if not workers.is_empty() else sugar < sugar_cap() * 0.95     # (step 3: the crops' mean)
 	_want_protein = protein < protein_cap() * 0.95
 	if _food_dirty:
 		_rebuild_food_grid()

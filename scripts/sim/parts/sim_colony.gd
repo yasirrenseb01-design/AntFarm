@@ -34,7 +34,9 @@ func _new_day() -> void:
 		"grown":
 			_log(T.chamber_grown)
 	nest.work_left = nest.count_work_left()
-	history.append(_snapshot())
+	var snap := _snapshot()
+	snap["fill"] = snappedf(crop_fill() * 100.0, 0.1)      # (step 3: the crops' mean fill, % - what the foragers answer to)
+	history.append(snap)
 	if history.size() > HISTORY_DAYS:
 		_thin_history()
 	# rain: outdoors only - a formicarium in the Home's room has none (it rained in the tanks until v0.11.77: the keeper,
@@ -103,7 +105,7 @@ func _colony(dt: float) -> void:
 	_place_brood(dt)
 	dev = dev_in(queen_at)                # (in her chamber: how fast she lays, and the larvae are fed)
 	activity = _activity(climate.surface()) * (0.1 if climate.raining() else 1.0)
-	hungry = sugar < workers.size() * 0.4 + 2.0 or protein < larvae.size() * 0.5 + 1.0
+	hungry = crop_fill() < HUNGRY_FILL or protein < larvae.size() * 0.5 + 1.0
 	var forager_age: float = sp["nurse_until_hungry"] if hungry else sp["nurse_until_days"]
 	if workers.size() < 8:
 		forager_age = sp["callow_days"]     # the first nanitics start foraging within days of emerging
@@ -177,27 +179,40 @@ func _colony(dt: float) -> void:
 				out_count += 1
 				defenders += 1
 
-	# Recruitment to forage depends on colony need: hungry → many, full stores → few.
-	var need_k := 1.6 if hungry else (0.3 if satiated() else 0.7)
-	if care_short:
-		need_k *= 0.5
-	# Only a minority of a colony forages at any moment.
-	var max_out := ceili(minf(3.0 + workers.size() * (0.32 if hungry else 0.2), workers.size() * 0.6))
+	# (PART 0.13 step 3) Who goes out to forage is each ant's own hunger: the emptier its crop, the likelier (R4, linear
+	# [C6]) - a hungry colony sends many, a full one few, with no threshold for the colony as a whole. Through v0.13.15
+	# the colony's stores set a fixed share (need_k 1.6 / 0.7 / 0.3, at most 32% / 20% of the workers out), and a kept
+	# colony stalled at ~200-250 workers: its foraging never rose above its upkeep (docs/roadmap/PLAN_CROP.md).
+	var need_k := GO_K * (0.5 if care_short else 1.0)
+	var max_out := ceili(workers.size() * OUT_SHARE)      # (a guard: the crops keep the share well under it)
+	# prey is the larvae's food, not kept in the crops: a colony short of it sends out some even on full crops (the
+	# larvae's hunger steers the food flow in fire ants [ญาติ C7], though in L. niger brood did not change the scouts'
+	# take of protein [C10] - a game rule, chosen: from below 60% of what it would keep - the old "satiated" - up to
+	# half as strongly as an empty crop)
+	var prey_k := PREY_K * clampf(1.0 - protein / (protein_cap() * 0.6), 0.0, 1.0) if not larvae.is_empty() else 0.0
 	var p_exit := 0.005 * (COLONY_EVERY / 10.0) * activity * need_k
 	if threatened and workers.size() < FIGHT_FROM:
 		p_exit = 0.0                      # a young colony keeps its workers in while an enemy prowls outside
-	# A forager arriving with food stirs up nestmates, who leave along its fresh trail.
-	while _recruits > 0 and not idle.is_empty() and out_count < max_out:
-		_send_out(idle.pop_back(), Ant.SEARCH)
-		out_count += 1
+	# A forager arriving with food stirs up nestmates, who leave along its fresh trail - the hungry ones (R6: starved
+	# L. niger nests send out ~2x as many [C4]); those it does not stir stay in the reserve.
+	var i_r := idle.size() - 1
+	while _recruits > 0 and i_r >= 0 and out_count < max_out:
+		var r: Ant = idle[i_r]
 		_recruits -= 1
+		if rng.randf() < RECRUIT_K * maxf(crop_empty(r), prey_k):
+			idle.remove_at(i_r)
+			_send_out(r, Ant.SEARCH)
+			out_count += 1
+		i_r -= 1
 	_recruits = 0
 	var forage_trait := colony_trait("forage")
 	var p_go := p_exit * forage_trait
+	var inv_cap := 1.0 / crop_cap()
 	for a in idle:
 		if out_count >= max_out:
 			break
-		if rng.randf() < p_go / a.sort_a:     # the eager go out more often (and some colonies)
+		# (crop_empty written out: this runs for every ant of the reserve every colony tick)
+		if rng.randf() < p_go * maxf(1.0 - a.crop * inv_cap, prey_k) / a.sort_a:     # the eager go out more often (and some colonies)
 			_send_out(a, Ant.SEARCH)
 			out_count += 1
 

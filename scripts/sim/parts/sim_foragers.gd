@@ -233,7 +233,7 @@ func _pick_up(a: Ant, f: Dictionary) -> void:
 	a.busy = rng.randi_range(h[0], h[1])
 	a.act = h[2]
 	a.ang = (f.pos - a.pos).angle()
-	f.amt -= 1.0
+	f.amt -= minf(f.amt, sugar_load(a)) if f.type == Ant.SUGAR else 1.0     # (R7: a hungry forager drinks more)
 	f["held_until"] = maxi(int(f.get("held_until", 0)), tick + a.busy)
 	if f.amt < 1.0:
 		_food_dirty = true
@@ -370,9 +370,13 @@ func _step_drags() -> void:
 
 func _arrive(a: Ant) -> void:
 	var had: bool = a.carry != Ant.NONE
+	var gave := 1.0                      # (share of the load handed over: R5 below)
 	if a.carry == Ant.SUGAR:
-		ledger_arrive(a, minf(sugar_cap(), sugar + 1.0))
-		sugar_income += 1.0
+		var load := sugar_load(a)
+		var c0 := a.crop
+		ledger_arrive(a, minf(sugar_cap(), sugar + load))
+		gave = 1.0 - clampf((a.crop - maxf(c0, crop_cap() * KEEP_OWN)) / load, 0.0, 1.0)
+		sugar_income += load
 		if humidity < 0.8:
 			humidity = minf(0.8, humidity + 0.004)  # honeydew is mostly water (the ants get rid of any excess)
 		stats.sugar_in += 1
@@ -389,7 +393,7 @@ func _arrive(a: Ant) -> void:
 	a.carry = Ant.NONE
 	if had and activity > 0.2:
 		_recruits += 2
-	if had and activity > 0.3 and rng.randf() < 0.75:
+	if had and activity > 0.3 and rng.randf() < REGO * gave:      # R5: out again as the nest took its load (full: it stays)
 		a.state = Ant.SEARCH
 		a.trip = 0
 		a.ang += PI
