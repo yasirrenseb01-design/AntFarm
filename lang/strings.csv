@@ -221,7 +221,7 @@ shop_shelf4_note,ที่วางตู้เล็ก 4 ตู้ (ตู้�
 shop_price,%s แต้ม,%s points
 shop_buy,ซื้อ,Buy
 shop_demo,เวอร์ชันเดโมซื้อไม่ได้,The demo cannot buy
-shop_demo_note,"เวอร์ชันเดโมซื้อของในร้านไม่ได้ — ในเกมเต็มซื้อตู้และชั้นวางด้วยแต้ม Colony Harmony ได้ และเปิดรังที่เลี้ยงในเดโมเล่นต่อได้เลย","The demo cannot buy from the shop. In the full game you buy tanks and shelves with Colony Harmony points, and the colonies you keep in the demo carry over"
+shop_demo_note,"เวอร์ชันเดโมซื้อได้แค่ตู้ใหญ่ 1 ตู้ — ในเกมเต็มซื้อตู้เล็กและชั้นวางด้วยแต้ม Colony Harmony ได้ และเปิดรังที่เลี้ยงในเดโมเล่นต่อได้เลย","The demo sells only the bigger tank. In the full game you buy small tanks and shelves with Colony Harmony points, and the colonies you keep in the demo carry over"
 shop_demo_go,เปิดหน้าร้านเกมเต็ม,Open the full game's store page
 shop_owned,มีแล้ว,Bought
 shop_no_place,ไม่มีที่ว่างบนชั้นวาง — ซื้อชั้นวางก่อน,No free place on a shelf — buy a shelf first
@@ -666,7 +666,7 @@ album_count,ได้แล้ว %d จาก %d แผ่น,%d of %d plates
 album_locked,ได้เมื่อรังมีมดงาน %d ตัวพร้อมกัน,Won when a colony has %d workers at once
 album_demo,ปลดล็อกได้ในเกมเต็ม,Unlocked in the full game
 demo_badge,DEMO,DEMO
-demo_badge_tip,"เวอร์ชันเดโมฟรี: ตู้ 2 ตู้ แปลงป่า 1 แปลง รังละไม่เกิน %d ตัว ร้านค้าซื้อไม่ได้ — เซฟเปิดเล่นต่อในเกมเต็มได้","The free demo: 2 tanks, 1 garden plot, colonies up to %d, nothing to buy in the shop - saves carry over to the full game"
+demo_badge_tip,"เวอร์ชันเดโมฟรี: ตู้เล็ก 1 ตู้ (ซื้อตู้ใหญ่เพิ่มได้ 1 ตู้) แปลงป่า 1 แปลง รังละไม่เกิน %d ตัว — เซฟเปิดเล่นต่อในเกมเต็มได้","The free demo: one small tank (and one bigger tank to buy), 1 garden plot, colonies up to %d - saves carry over to the full game"
 album_plate_a,แผ่น IIa · ราชินีและช่วงตั้งรัง: ไข่ ตัวอ่อน,Plate IIa · The queen and the founding: eggs and larvae
 album_plate_b,แผ่น IIb · มดงานและการเจริญ: รังไหม ดักแด้ มดงานใหม่ มดงานโต,"Plate IIb · The workers and their growing: cocoon, pupa, callow and grown worker"
 album_note,ภาพที่ได้แล้วเก็บไว้ตลอด แม้รังจะตายทีหลัง · มดชนิดใหม่จะมีสมุดภาพของตัวเอง,"A plate once won is kept, even if the colony dies later · each new species will have its own album"

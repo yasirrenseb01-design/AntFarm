@@ -73,8 +73,8 @@ func refresh() -> void:
 		note.custom_minimum_size.x = 250
 		info.add_child(note)
 		var why: String = home_ui.main.home.why_not(item, have)
-		if why != "" and why != "shop_demo":
-			info.add_child(h._label(tr(why), 12, Paper.LEAF if why == "shop_owned" else Paper.DANGER))
+		if why != "":
+			info.add_child(h._label(tr(why), 12, Paper.LEAF if why == "shop_owned" else (Paper.PENCIL if why == "shop_demo" else Paper.DANGER)))
 		row.add_child(info)
 		var right := VBoxContainer.new()
 		right.alignment = BoxContainer.ALIGNMENT_CENTER

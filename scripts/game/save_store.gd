@@ -306,9 +306,39 @@ static func _settings_file() -> ConfigFile:
 static func save_settings(s: Dictionary) -> void:
 	DirAccess.make_dir_recursive_absolute(base)
 	var cf := _settings_file()
+	# the album's plates: joined with those in the file, never written over - a plate won stays won whatever dict saves
+	# last (v0.13.19, the keeper: "New in the album: Plate IIb" again after an update, though it was won long before)
+	if s.has("album"):
+		s["album"] = album_union(String(cf.get_value("game", "album", "")), String(s["album"]))
 	for k in s:
 		cf.set_value("game", k, s[k])
 	cf.save(_settings_path())
+
+
+## The album's plates won as written in the settings ("species:id,id;species:id"), of `a` and `b` together - each
+## species once, `a`'s plates first.
+static func album_union(a: String, b: String) -> String:
+	var all := {}
+	for raw in [a, b]:
+		for part in String(raw).split(";", false):
+			var kv := part.split(":", true, 1)
+			if kv.size() != 2 or kv[0] == "":
+				continue
+			var ids: Array = all.get(kv[0], [])
+			for id in kv[1].split(",", false):
+				if not ids.has(id):
+					ids.append(id)
+			all[kv[0]] = ids
+	var parts := PackedStringArray()
+	for k in all:
+		parts.append("%s:%s" % [k, ",".join(PackedStringArray(all[k]))])
+	return ";".join(parts)
+
+
+## The album's plates as the settings file has them now ("" if none): hud.gd looks here before telling of a new one.
+static func album_on_disk() -> String:
+	var v = _settings_file().get_value("game", "album", "")
+	return v if v is String else ""
 
 
 static func away_rate(index: int) -> float:

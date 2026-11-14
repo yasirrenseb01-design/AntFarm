@@ -65,8 +65,6 @@ func load_layout() -> void:
 				farms.append(s)
 	if tanks.is_empty():
 		_first_time()
-	if Demo.on() and not dry:
-		_demo_tanks()
 	while wild.size() < tanks.size():
 		var w := _take(["wild"])
 		if w == 0:
@@ -100,20 +98,6 @@ func _first_time() -> void:
 	if garden != 0 and not wild.has(garden):
 		wild.append(garden)
 	tanks.append(_free())
-
-
-## The free demo (game/demo.gd, the keeper 2026-11-14): two tanks from the first day - the second a small one on a shelf
-## for two, given with it. Written to home.json like any tank bought: the full game keeps both.
-func _demo_tanks() -> void:
-	if tanks.size() >= Demo.TANKS:
-		return
-	if small_room() < Demo.TANKS and shelves.size() < MAX_SHELVES:
-		shelves.append(2)
-	while tanks.size() < Demo.TANKS:
-		var t := _take(["keeper"])
-		if t == 0:
-			break
-		tanks.append(t)
 
 
 func save_layout() -> void:
@@ -159,8 +143,8 @@ func nest_of(slot: int) -> String:
 
 ## Why that cannot be bought now (a key of lang/strings.csv), "" if it can.
 func why_not(item: String, points: float) -> String:
-	if Demo.on():
-		return "shop_demo"                # (the shop opens to look: home_shop.gd says why, with the way to the full game)
+	if Demo.on() and not Demo.SOLD.has(item):
+		return "shop_demo"                # (the free demo sells only the bigger tank: home_shop.gd says why, with the way to the full game)
 	if item == "big" and big != 0:
 		return "shop_owned"
 	if item.begins_with("shelf") and shelves.size() >= MAX_SHELVES:
@@ -178,8 +162,10 @@ func why_not(item: String, points: float) -> String:
 
 ## Buys it (the points are the caller's to take): true if it was.
 func buy(item: String) -> bool:
-	if Demo.on():
+	if Demo.on() and not Demo.SOLD.has(item):
 		return false
+	if item == "big" and big != 0:
+		return false                      # (one bigger tank: as why_not says - the shop asks it first, this holds besides)
 	match item:
 		"big", "farm":
 			# (a new slot, never a hidden one: the bigger box, or the glass slab, is set when a colony starts - an old one

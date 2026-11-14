@@ -254,6 +254,13 @@ func _check_album(delta: float) -> void:
 	var new: Array = Album.newly_won(sp_id, sim.workers.size(), won)
 	if new.is_empty():
 		return
+	# (won already as the settings file says - written by another dict, or before this one was read: taken in quietly, not
+	# told again - v0.13.19: "New in the album: Plate IIb" again after an update)
+	settings["album"] = Store.album_union(String(settings.get("album", "")), Store.album_on_disk())
+	won = album_won(sp_id)
+	new = Album.newly_won(sp_id, sim.workers.size(), won)
+	if new.is_empty():
+		return
 	won.append_array(new)
 	var all := _album_all()
 	all[sp_id] = won
