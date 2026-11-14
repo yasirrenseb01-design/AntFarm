@@ -10,7 +10,7 @@ their own nest, and the colony lives on while the game is closed.
 
 To play
   1. Unzip it anywhere (keep AntFarm.exe and AntDesk.exe in the same folder)
-  2. Run AntFarm.exe
+  2. Run AntFarm.exe (the free demo: AntFarm-demo.exe)
   3. Windows may say "Windows protected your PC" (the game is not digitally signed yet): click "More info", then "Run anyway"
 
 You need
@@ -51,7 +51,7 @@ Credits
 
 เริ่มเล่น
   1. แตกไฟล์ zip ไว้ที่ไหนก็ได้ (เก็บ AntFarm.exe กับ AntDesk.exe ไว้ในโฟลเดอร์เดียวกัน)
-  2. เปิด AntFarm.exe
+  2. เปิด AntFarm.exe (เดโมฟรี: AntFarm-demo.exe)
   3. Windows อาจขึ้น "Windows protected your PC" (เกมยังไม่ได้เซ็นชื่อดิจิทัล): กด "More info" แล้ว "Run anyway"
 
 เครื่องที่ต้องใช้
