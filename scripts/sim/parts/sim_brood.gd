@@ -4,7 +4,6 @@ extends "res://scripts/sim/parts/sim_warmth.gd"
 
 
 const QUEEN_KEEP := 20.0     # body reserve a founding queen will not spend on brood
-const LAY_COVER_WEEKS := Vector2(12.0, 24.0)   # full stores lay flat out only if they carry the shortfall this long (v0.12.11)
 
 
 func _queen(dt: float) -> void:
@@ -33,28 +32,6 @@ func _queen(dt: float) -> void:
 		rate *= 0.3
 	if winding_down() and workers.size() >= 5:
 		rate = 0.0
-	if workers.size() >= 5:
-		# workers feed the queen (and so her laying) by how much food the colony has in store: a colony
-		# grows only as far as its foraging ground can feed it
-		var stock := (sugar + fat) / (sugar_cap() * 0.5 + fat_cap() * 0.5)
-		rate *= clampf(stock, 0.1, 1.0)
-		# ...and above all by whether foraging brings in more than the colony will eat once it is warm,
-		# counting the brood that is about to become workers: when the income only just covers them there
-		# is nothing spare for more brood
-		var mouths := workers.size() + larvae.size() + pupae.size()
-		var upkeep: float = 7.0 * (mouths * sp["sugar_worker"] + sp["sugar_queen"])     # a week, at full warmth
-		var earning := sugar_income / upkeep
-		# ...unless the stores are well filled already (v0.12.0, the keeper's choice: before, full stores laid at 16%)
-		var fill := (sugar + fat) / (sugar_cap() + fat_cap())
-		# (v0.12.11) - and only while those stores would carry the shortfall a good while: in the wild, a colony whose
-		# stores were full in spring laid flat out, doubled by midsummer on foraging that fed half of it, and starved
-		# through the autumn and winter (year_run wild alone: 4 of 6 seeds). Weeks the stores last at today's shortfall:
-		# (the eggs already laid counted as mouths too: they will be workers within two months)
-		var ahead: float = 7.0 * ((mouths + eggs.size()) * sp["sugar_worker"] + sp["sugar_queen"])
-		var short := maxf(ahead - sugar_income, 0.001)
-		var lasts := (sugar + fat) / short
-		var full := clampf((fill - 0.4) / 0.2, 0.0, 1.0) * clampf((lasts - LAY_COVER_WEEKS.x) / (LAY_COVER_WEEKS.y - LAY_COVER_WEEKS.x), 0.0, 1.0)
-		rate *= lerpf(clampf((earning - 1.0) / 0.5, 0.05, 1.0), 1.0, full)
 	if not queen_tended:
 		rate *= UNTENDED_LAYING          # nobody attended her this half hour (parts/sim_duties.gd)
 	var whole := workers.size() + brood + pupae.size()      # (all of them may yet become workers)
@@ -68,6 +45,18 @@ func _queen(dt: float) -> void:
 	if whole >= most * 0.85 and not stats.get("near_limit", false):
 		stats["near_limit"] = true       # (said once a colony)
 		_log(T.colony_near_limit, "ok")
+	if workers.size() >= 5 and rate > 0.0:
+		# (PART 0.13 step 4, R9) She lays as far as she is fed: each egg takes EGG_SUGAR from her crop beyond a day of her
+		# own eating, and her attendants give her only what their crops hold above QUEEN_FROM (sim_duties._tend_queen) -
+		# so a colony lays as its foraging fills the crops [Ln: the queen's food sets her laying; the figures chosen].
+		# Through v0.13.20 the colony's stores and its income against its upkeep set it ("earning", and from v0.12.11
+		# how long the stores would carry a shortfall). A founding queen makes her first eggs from her body (yolk, above).
+		var want := rate * dt * EGG_SUGAR
+		var got := minf(maxf(0.0, queen.crop - sp["sugar_queen"]), want)
+		queen.crop -= got
+		sugar -= got
+		food_eaten += got
+		rate *= got / want
 	egg_acc += rate * dt
 	while egg_acc >= 1.0 and workers.size() + eggs.size() + larvae.size() + pupae.size() < most:
 		egg_acc -= 1.0

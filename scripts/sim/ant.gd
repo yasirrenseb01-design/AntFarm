@@ -35,7 +35,6 @@ var sort_a := 0.0                    # what it is sorted by this step (sim_colon
 var sort_b := 0.0
 var sort_c := 0.0                    # (its TH_AGE: sim_colony._ranked)
 var was_dig := false                 # (it was at the dig face before this colony tick: sim_colony._colony)
-var fed_in := false                  # (it was inside when this colony tick counted the crops there: sim_colony._metabolism)
 
 # what a worker inside is doing this half hour (its duty, set by parts/sim_duties.gd from the colony's needs; saved)
 const D_OUT := 0           # outside (foraging, defending, carrying out the dead, hauling)

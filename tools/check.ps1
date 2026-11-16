@@ -78,6 +78,8 @@ $r = Run-Godot $cropArgs 1500
 Report "workers' crops and fat: their sums are the colony's sugar and fat, nothing made or lost, honeydew flows full to empty" ($r -match "CROP LEDGER TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/forage_hunger_test.gd") 300
 Report "workers go out by their own crops: emptier crops, more out; a full nest leaves the forager its load" ($r -match "FORAGE HUNGER TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/queen_feed_test.gd") 900
+Report "the queen fed by her attendants lays as far as she is fed; nurses feed larvae from their own crops" ($r -match "QUEEN FEED TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/album_test.gd") 300
 Report "album plates won are never lost or told twice, whatever settings dict saves last" ($r -match "ALBUM TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/demo_test.gd") 1500

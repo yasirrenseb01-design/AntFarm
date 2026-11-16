@@ -120,16 +120,10 @@ func _colony(dt: float) -> void:
 	_ranked()
 	var callow_d: float = sp["callow_days"]
 	var aged := dt * age_k
-	_in_c = 0.0
-	_in_f = 0.0
 	for a in workers:
 		a.was_dig = a.task == Ant.TASK_DIG       # who was digging: they keep at it while digging is wanted
 		a.age += aged
-		a.fed_in = a.state == Ant.IN_NEST        # (what those inside hold, for _metabolism: counted here, not again)
-		if a.fed_in:
-			_in_c += a.crop
-			_in_f += a.body_fat
-		else:
+		if a.state != Ant.IN_NEST:
 			out_count += 1
 			outside.append(a)
 			a.task = Ant.TASK_DIG if a.state == Ant.DUMP else Ant.TASK_OUT      # (a digger out with its pellet)
@@ -251,30 +245,19 @@ func _colony(dt: float) -> void:
 func _metabolism(dt: float) -> void:
 	protein *= pow(0.92, dt)  # stored prey dries out and spoils
 	# (PART 0.13 step 2) Each worker eats from its own crop, then burns its own fat; out of both, it starves on its own.
-	# The queen and the larvae are still fed as a whole (step 4: mouth to mouth): the queen from her own crop, then
-	# both from the honeydew at the entrance and the crops - then the fat - of the workers inside, in proportion to what
-	# each holds. The workers feed the queen first; a cold nest burns little.
+	# (step 4) The queen eats from her own crop, which her attendants fill (sim_duties._tend_queen); with it empty she
+	# lives off her own body (reserve), and with that gone too she starves. The larvae are fed by the nurses, each from
+	# its own crop (sim_duties._feed_larvae): counted here only in what the colony eats. A cold nest burns little.
 	var heat := cold_factor(climate.nest)
 	var q_need: float = sp["sugar_queen"] * dt * heat if queen.alive else 0.0
 	var l_need: float = larvae.size() * sp["sugar_larva"] * clampf(dev, 0.1, 1.0) * dt * heat     # (still in diapause)
-	# (the crops and fat of those inside, as _colony counted them this tick: an ant sent out since gives its share too)
-	var in_c := _in_c
-	var in_f := _in_f
 	var q_own := minf(queen.crop, q_need)
-	var want := l_need
-	queen_fed = q_own + _pending_in + in_c + in_f >= q_need
-	if not queen_fed and queen.reserve > 0.0:
-		queen.reserve = maxf(0.0, queen.reserve - q_need)   # living off her own body
-		queen_fed = true
-	else:
-		queen.crop -= q_own
-		food_eaten += q_own
-		want += q_need - q_own
-	var k := _nest_gives(want, in_c, in_f)
+	queen.crop -= q_own
+	food_eaten += q_own
+	var q_body := q_need - q_own
+	queen_fed = q_body <= queen.reserve
+	queen.reserve = maxf(0.0, queen.reserve - q_body)   # living off her own body
 	var founding_w := workers.size() < 5
-	if founding_w and k[2] > 0.0:
-		# while founding, the queen regurgitates food from her reserves to her first larvae and workers
-		queen.reserve = maxf(0.0, queen.reserve - k[2])
 	var w_need: float = sp["sugar_worker"] * dt * heat
 	var need: float = workers.size() * w_need + l_need
 	# what the colony earns and eats, as running averages over about a week
@@ -301,9 +284,6 @@ func _metabolism(dt: float) -> void:
 	var short := 0
 	food_eaten += w_need * workers.size()      # (less what each could not find: below)
 	for a: Ant in workers:
-		if a.fed_in:
-			a.crop -= a.crop * k[0]
-			a.body_fat -= a.body_fat * k[1]
 		var miss := w_need - a.crop
 		if miss <= 0.0:
 			a.crop -= w_need

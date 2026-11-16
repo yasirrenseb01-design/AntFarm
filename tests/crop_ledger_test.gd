@@ -62,7 +62,8 @@ func _flow() -> void:
 		a.state = 0                # (Ant.IN_NEST: every one inside)
 		a.crop = 0.0
 	s.outside.clear()
-	s.queen.crop = 0.0
+	s.queen.crop = s.QUEEN_CROP      # (since step 4 her attendants would fill hers first, and the nurses feed larvae:
+	s.larvae.clear()                 # here only the flow between workers is looked at)
 	s._pending_in = 0.0
 	s._unloaded.clear()
 	s.workers[17].crop = s.crop_cap()

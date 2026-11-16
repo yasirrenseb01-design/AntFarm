@@ -6,8 +6,10 @@ extends "res://scripts/sim/parts/sim_state.gd"
 ## own fat (sim_colony._metabolism), honeydew passes from crop to crop (sim_duties._share_honeydew) and a forager home
 ## with a load regurgitates it at the entrance (_pending_in), handed out at the next duty round. sim.sugar and sim.fat
 ## are the sums, kept up as the ants change (sugar = the workers' crops + queen.crop + _pending_in, fat = their body fat),
-## so everything that reads them (the HUD, the charts, food_days, laying) reads them as before; since step 3 (v0.13.16)
-## "hungry" and the foragers read the crops' mean fill (crop_fill) and each its own crop.
+## so everything that reads them (the HUD, the charts, food_days) reads them as before; since step 3 (v0.13.16)
+## "hungry" and the foragers read the crops' mean fill (crop_fill) and each its own crop; since step 4 the queen eats
+## from her own crop, filled by her attendants, and lays as far as she is fed, and each nurse feeds a larva its honeydew
+## from its own crop (sim_duties._tend_queen, _feed_larvae; sim_brood._queen).
 ## Draws nothing from the random generators. Sources and the values chosen: docs/biology/crop_and_hunger.md.
 
 const KEEP_OWN := 0.3        # a forager home with a load keeps for itself up to this share of a full crop (chosen)
@@ -31,10 +33,15 @@ const RECRUIT_K := 2.0       # R6: a stirred nestmate follows with min(1, RECRUI
 const PREY_K := 0.5         # R4: a colony out of prey with larvae to feed stirs its reserve as a half-empty crop would
 const OUT_SHARE := 0.6       # R4: never more than this share of the workers out at once (a guard, chosen)
 const REGO := 0.75           # R5: chance a forager home with food goes straight out again, all its load given (as before)
+# PART 0.13 step 4: the queen and the larvae fed mouth to mouth (PLAN_CROP R8-R10)
+const QUEEN_CROP := 4.0      # units: what the queen's crop holds (8 days of her eating; chosen)
+const QUEEN_FROM := 0.3      # R8: an attendant gives the queen only what its crop holds above this share of full (chosen:
+                             # no figure in any ant) - so she is fed beyond her own needs, and lays, as foraging fills the crops
+const EGG_SUGAR := 0.03      # R9: units of her crop an egg takes (chosen: 30 eggs a day ~ 0.9 units, twice her own eating)
+const SUGARLESS_F := 0.5     # R10: a larva fed by a nurse with an empty crop gets its prey only - half a feeding (chosen)
+const FED_DAYS := 3.0        # queen.fed: what she was given, a running average over about this many days (units a day)
 
 var _pending_in := 0.0       # honeydew regurgitated at the entrance, handed out at the next duty round (saved)
-var _in_c := 0.0             # the crops and fat of the workers inside, counted by sim_colony._colony each tick
-var _in_f := 0.0
 var food_in := 0.0           # sugar brought home, and given by a founding queen to her workers (not saved: the tests)
 var food_eaten := 0.0        # sugar and fat eaten by the queen, the larvae and the workers (the same)
 
@@ -141,18 +148,3 @@ func ledger_dead() -> void:
 			if not a.dead:
 				a.body_fat += each
 
-
-## Takes `want` units for the queen and the larvae: first from the honeydew at the entrance, then from the crops of the
-## workers inside, then from their fat, each in proportion to what it holds (in_c, in_f: the sums inside). Returns
-## [share of each crop taken, share of each body fat taken, what could not be found]; _pending_in is taken from here, the rest by the caller
-## in its pass over the workers (sim_colony._metabolism: one pass, not two). Counts what is eaten (food_eaten).
-func _nest_gives(want: float, in_c: float, in_f: float) -> Array:
-	var p := minf(_pending_in, want)
-	_pending_in -= p
-	var left := maxf(0.0, want - p)
-	var kc := minf(1.0, left / in_c) if in_c > 0.0 else 0.0
-	left = maxf(0.0, left - in_c * kc)
-	var kf := minf(1.0, left / in_f) if in_f > 0.0 and left > 0.0 else 0.0
-	left = maxf(0.0, left - in_f * kf)
-	food_eaten += want - left
-	return [kc, kf, left]                # (not a Vector2: its floats are 32-bit)

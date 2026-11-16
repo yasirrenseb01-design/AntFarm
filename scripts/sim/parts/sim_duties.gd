@@ -5,8 +5,9 @@ extends "res://scripts/sim/parts/sim_colony.gd"
 ## (sim_colony._colony) and its own leanings (Ant.threshold), drawing only on duty_rng (its own generator, seeded from the
 ## colony's and saved: see sim_state): so it is the same every run and goes on while the game is closed.
 ## Rates and where they come from: docs/BIOLOGY.md "เวรงานของมดในรัง".
-## What the duties do: a larva grows only on the half hours it was fed (sim_colony._brood: Larva "f"); honeydew passes
-## from crop to crop (Ant.crop, since v0.13.1); a queen nobody attends lays a little less (queen_tended). Protein stays
+## What the duties do: a larva grows only on the half hours it was fed (sim_colony._brood: Larva "f"), its honeydew from
+## its nurse's crop (since step 4 of PART 0.13); honeydew passes from crop to crop (Ant.crop, since v0.13.1); the queen
+## is fed by her attendants alone (step 4), and one nobody attends lays a little less (queen_tended). Protein stays
 ## the colony's. Each ant counts what it did (Ant.n_*) for top_ants().
 
 const DUTY_EVERY := TPD / 48           # ticks: half an hour of game time
@@ -90,7 +91,8 @@ func _groom_mates(inside: Array) -> void:
 
 ## Larvae are fed one by one, the hungriest first (hungry larvae are fed more often [ญาติ]): one feeding a round,
 ## LARVAE_PER_FEEDER to a nurse. Nurses first, then the newly emerged, then those resting inside, the diggers last (fire
-## ants: below one worker per larva the larvae are fed less [ญาติ]). A larva's "f": fed this round (1) or not (0).
+## ants: below one worker per larva the larvae are fed less [ญาติ]). A larva's "f": fed this round (1; SUGARLESS_F to 1
+## without its honeydew: _feed_one) or not (0).
 ## (A hungry larva needing two feedings was tried: a protein shortage then left fewer larvae fed at all. The diggers
 ## help because v0.11.7 counted them in the care too.)
 func _feed_larvae(inside: Array) -> void:
@@ -119,11 +121,13 @@ func _feed_larvae(inside: Array) -> void:
 	feeds.sort_custom(func(x, y): return float(x.h) > float(y.h))
 	var li := 0
 	var given := 0
+	# (step 4) the honeydew a larva eats in a round, given with its feeding (as sim_colony._metabolism counted it before)
+	var s: float = sp["sugar_larva"] * clampf(dev, 0.1, 1.0) * cold_factor(climate.nest) * DUTY_H / 24.0
 	# a founding queen with few or no workers feeds them herself (trophic eggs, saliva)
 	if queen.alive and workers.size() < 15:
 		var q := roundi(QUEEN_FEEDS * (1.0 - workers.size() / 15.0))
 		while q > 0 and li < feeds.size():
-			li = _feed_one(feeds, li)
+			li = _feed_one(feeds, li, null, s)
 			q -= 1
 			given += 1
 	for a in order:
@@ -135,14 +139,33 @@ func _feed_larvae(inside: Array) -> void:
 		for i in LARVAE_PER_FEEDER:
 			if li >= feeds.size():
 				break
-			li = _feed_one(feeds, li)
+			li = _feed_one(feeds, li, a, s)
 			a.n_larvae += 1
 			given += 1
 
 
-## One feeding to the larva at feeds[li]; returns the index of the next one to feed.
-func _feed_one(feeds: Array, li: int) -> int:
-	feeds[li].f = 1.0
+## One feeding to the larva at feeds[li] by `g` (null: the queen), `s` units of honeydew; returns the index of the next.
+## Its prey comes from the colony's pile (sim_brood._brood), its honeydew from the feeder's own crop (R10, step 4): a
+## nurse with an empty crop gives prey alone, and the larva grows as on SUGARLESS_F of a feeding ("f"). The queen gives
+## from her crop, then from her body: down to nothing while founding (fewer than 5 workers), else to QUEEN_KEEP (as her
+## yolk for the eggs: LESSONS 44 - through v0.13.20 her reserve paid the founding colony's shortfall as a whole).
+func _feed_one(feeds: Array, li: int, g, s: float) -> int:
+	var got := 0.0
+	if g == null:
+		got = minf(queen.crop, s)
+		queen.crop -= got
+		var keep := 0.0 if workers.size() < 5 else QUEEN_KEEP
+		var body := clampf(s - got, 0.0, maxf(0.0, queen.reserve - keep))
+		queen.reserve -= body
+		sugar -= got
+		food_eaten += got
+		got += body                      # (from her body: not the colony's sugar)
+	else:
+		got = minf(g.crop, s)
+		g.crop -= got
+		sugar -= got
+		food_eaten += got
+	feeds[li].f = SUGARLESS_F + (1.0 - SUGARLESS_F) * (got / s) if s > 0.0 else 1.0
 	return li + 1
 
 
@@ -190,11 +213,36 @@ func _tend_queen(inside: Array) -> void:
 			if can.size() > want:
 				can.pop_back()
 	var chosen := can.map(func(x): return x[1]) + diggers
-	for i in mini(want, chosen.size()):
-		if chosen[i].duty == Ant.D_DIG:
-			chosen[i].dig_h -= DUTY_H
-		chosen[i].duty = Ant.D_QUEEN
+	chosen = chosen.slice(0, mini(want, chosen.size()))
+	for a in chosen:
+		if a.duty == Ant.D_DIG:
+			a.dig_h -= DUTY_H
+		a.duty = Ant.D_QUEEN
 	queen_tended = not chosen.is_empty()
+	_feed_queen(chosen)
+
+
+## R8 (step 4): her attendants feed the queen. Each gives what its crop holds above QUEEN_FROM of full, as far as her
+## crop has room; and while hers holds less than a day of her eating they top it up to that from their crops, then from
+## their body fat, whatever they hold (inferred: the workers feed her before themselves - through v0.13.20 she ate from
+## the whole colony's stores before anyone else). queen.fed: what she was given, averaged over FED_DAYS (units a day).
+func _feed_queen(att: Array) -> void:
+	var cap := crop_cap()
+	var day: float = sp["sugar_queen"]
+	var got := 0.0
+	for g: Ant in att:
+		var spare := clampf(g.crop - cap * QUEEN_FROM, 0.0, QUEEN_CROP - queen.crop)
+		var need := maxf(0.0, day - queen.crop - spare)
+		var more := minf(g.crop - spare, need)
+		var lean := minf(g.body_fat, need - more)
+		g.crop -= spare + more
+		g.body_fat -= lean
+		fat -= lean
+		sugar += lean
+		queen.crop += spare + more + lean
+		got += spare + more + lean
+	var per_day := got / (DUTY_H / 24.0)
+	queen["fed"] = lerpf(float(queen.get("fed", 0.0)), per_day, 1.0 - exp(-DUTY_H / 24.0 / FED_DAYS))
 
 
 ## Honeydew mouth to mouth (PART 0.13 step 2: real amounts, Ant.crop). What the foragers brought home since the last round
