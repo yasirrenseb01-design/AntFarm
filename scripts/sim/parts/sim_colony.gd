@@ -272,7 +272,7 @@ func _metabolism(dt: float) -> void:
 	var keep: float = sp["sugar_worker"] * 2.0 if winding_down() else crop_cap() * (0.25 if late_summer else 0.5)
 	var fat_each: float = sp["fat_cap_each"]
 	var store_max := 0.15 * dt
-	# ...and no more than the colony's cap in all (as through v0.13.0: the fat of the dead, shared among the living, can
+	# ...and no more than the colony's cap in all (through v0.13.21 the fat of the dead, shared among the living, could
 	# take some over their own cap - without this the colony kept more fat than before, laid more, and grew past what
 	# its fat carried through the winter)
 	var fat_room := fat_cap() - fat

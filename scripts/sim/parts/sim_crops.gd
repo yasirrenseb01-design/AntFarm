@@ -44,6 +44,7 @@ const FED_DAYS := 3.0        # queen.fed: what she was given, a running average 
 var _pending_in := 0.0       # honeydew regurgitated at the entrance, handed out at the next duty round (saved)
 var food_in := 0.0           # sugar brought home, and given by a founding queen to her workers (not saved: the tests)
 var food_eaten := 0.0        # sugar and fat eaten by the queen, the larvae and the workers (the same)
+var food_lost := 0.0         # the crops and fat of workers that died, gone with them (the same; ledger_dead)
 
 
 ## How much honeydew a worker's crop holds (species "crop_cap", in food units).
@@ -125,26 +126,16 @@ func ledger_count() -> void:
 	fat = f
 
 
-## Workers that died this step (still in `workers`, marked dead): their crops go to the entrance, handed out at the next
-## round, and their body fat is shared among the living - both stay the colony's, as the colony's stores did through
-## PART 0.12 (chosen for step 2, to change one thing at a time: really a forager lost outside takes its food with it).
+## Workers that died this step (still in `workers`, marked dead): their crops and their body fat go with them (the
+## keeper's choice, 2026-11-17: as with real ants - a forager lost outside takes its food with it, and the colony does
+## not eat its dead). Through v0.13.21 both stayed the colony's (crops to the entrance, fat shared among the living), as
+## the colony's stores did through PART 0.12. Counted in food_lost.
 func ledger_dead() -> void:
-	var lost_fat := 0.0
-	var alive := 0
 	for a: Ant in workers:
 		if a.dead:
-			_pending_in += a.crop
-			lost_fat += a.body_fat
+			sugar -= a.crop
+			fat -= a.body_fat
+			food_lost += a.crop + a.body_fat
 			a.crop = 0.0
 			a.body_fat = 0.0
-		else:
-			alive += 1
-	if alive == 0:
-		fat = 0.0
-		return
-	if lost_fat > 0.0:
-		var each := lost_fat / alive
-		for a: Ant in workers:
-			if not a.dead:
-				a.body_fat += each
 
