@@ -75,11 +75,6 @@ func _step_ant(a: Ant) -> void:
 		spd *= 1.0 - 0.35 * a.hurt
 	a.phase += spd * 0.95
 	var pos := a.pos
-	if pos.x < 3.0 or pos.y < 3.0 or pos.x > WORLD.x - 3.0 or pos.y > WORLD.y - 3.0:
-		# let go of an enemy at the edge of the ground (bitten loose, thrown off its nestmate, dropped by a spider) off it:
-		# back onto it (v0.13.22: one ant stuck off the edge, an error every tick - year_run wild seed 5 skip 4, year 3)
-		pos = pos.clamp(Vector2(4, 4), WORLD - Vector2(4, 4))
-		a.pos = pos
 	var ci := int(pos.y * INV_CELL) * gw + int(pos.x * INV_CELL)
 	if rock[ci] == 2:
 		spd *= 0.6                    # clambering over a small stone

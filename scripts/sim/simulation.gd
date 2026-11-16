@@ -88,6 +88,11 @@ func step() -> void:
 			if st == Ant.DEFEND:
 				_step_defender(a)
 			else:
+				var p := a.pos
+				if p.x < 3.0 or p.y < 3.0 or p.x > WORLD.x - 3.0 or p.y > WORLD.y - 3.0:
+					# let go of an enemy at the edge (bitten loose, thrown off, dropped by a spider): back onto the ground
+					# (v0.13.22: one stuck off it, an error every tick - year_run wild seed 5 skip 4, year 3)
+					a.pos = p.clamp(Vector2(4, 4), WORLD - Vector2(4, 4))
 				_step_ant(a)
 			prof.steps += 1
 	if hauling:
