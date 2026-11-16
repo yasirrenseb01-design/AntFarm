@@ -230,8 +230,9 @@ func _feed_queen(att: Array) -> void:
 	var cap := crop_cap()
 	var day: float = sp["sugar_queen"]
 	var got := 0.0
+	var from := minf(QUEEN_FROM + BROOD_K * float(eggs.size() + larvae.size()) / maxf(1.0, workers.size()), QUEEN_FROM_MAX)
 	for g: Ant in att:
-		var spare := clampf(g.crop - cap * QUEEN_FROM, 0.0, QUEEN_CROP - queen.crop)
+		var spare := clampf(g.crop - cap * from, 0.0, QUEEN_CROP - queen.crop)
 		var need := maxf(0.0, day - queen.crop - spare)
 		var more := minf(g.crop - spare, need)
 		var lean := minf(g.body_fat, need - more)

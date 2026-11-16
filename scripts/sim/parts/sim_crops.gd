@@ -39,6 +39,11 @@ const QUEEN_FROM := 0.3      # R8: an attendant gives the queen only what its cr
                              # no figure in any ant) - so she is fed beyond her own needs, and lays, as foraging fills the crops
 const EGG_SUGAR := 0.03      # R9: units of her crop an egg takes (chosen: 30 eggs a day ~ 0.9 units, twice her own eating)
 const SUGARLESS_F := 0.5     # R10: a larva fed by a nurse with an empty crop gets its prey only - half a feeding (chosen)
+const BROOD_K := 0.3         # step 5: per egg or larva a worker has to care for, an attendant keeps this much more of its
+                             # crop (QUEEN_FROM + BROOD_K x brood / workers, at most QUEEN_FROM_MAX) - a nest with brood
+                             # enough for its workers feeds the queen less (chosen: without it the eggs laid while the crops
+                             # were full became more larvae than the foragers could feed; keeper 14 ran out at day 30)
+const QUEEN_FROM_MAX := 0.9
 const FED_DAYS := 3.0        # queen.fed: what she was given, a running average over about this many days (units a day)
 
 var _pending_in := 0.0       # honeydew regurgitated at the entrance, handed out at the next duty round (saved)
