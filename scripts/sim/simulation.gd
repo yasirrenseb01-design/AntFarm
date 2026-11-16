@@ -101,7 +101,7 @@ func step() -> void:
 	if not creatures.is_empty():
 		_step_creatures()
 	if _any_dead:
-		ledger_dead()                                 # (their crops and fat go with them: sim_crops)
+		ledger_dead()                                 # (their crops and fat stay in the colony)
 		workers = workers.filter(func(w): return not w.dead)
 		outside = outside.filter(func(w): return not w.dead)
 		_out_ver += 1

@@ -41,7 +41,6 @@ func _run(start: int, scen: String, days: int) -> void:
 		var was: float = s.sugar + s.fat
 		s.food_in = 0.0
 		s.food_eaten = 0.0
-		s.food_lost = 0.0
 		for i in s.TPD:
 			s.step()
 		if d % 3 == 0 and scen == "keeper":
@@ -49,7 +48,7 @@ func _run(start: int, scen: String, days: int) -> void:
 		var sm := _sums(s)
 		worst_sum = maxf(worst_sum, maxf(absf(sm[0] - s.sugar), absf(sm[1] - s.fat)))
 		if s.workers.size() > 0:
-			worst_flow = maxf(worst_flow, absf(s.sugar + s.fat - (was + s.food_in - s.food_eaten - s.food_lost)))
+			worst_flow = maxf(worst_flow, absf(s.sugar + s.fat - (was + s.food_in - s.food_eaten)))
 		min_w = mini(min_w, s.workers.size())
 		max_w = maxi(max_w, s.workers.size())
 	_check("start=%d %s %d days  workers %d..%d  worst |sums - sugar,fat| %.9f  |change - (in - eaten)| %.9f  sugar %.2f fat %.2f" % [
