@@ -2,10 +2,26 @@ extends RefCounted
 ## Where the brood of a pile can lie (the nest view's brood piles, parts/nest_piles.gd: split out in v0.13.25, that file
 ## being at its size limit). `v` is the nest view.
 
+static var _cache := {}             # the places worked out, by view, soil, spots and centre: the brood is laid out again
+                                    # often (the queen turning, a count changing) and working them out each time (the floor
+                                    # under ~2,500 places and round them) took the nest at 300 ants from 59 to 11-19 fps
+
+
 ## Where brood can lie in a pile: every floor spot and four points around it, nearest the pile's centre first.
 static func places(v, spots: Array, centre: Vector3) -> Array:
 	if spots.is_empty():
 		return []
+	var key := "%d|%d|%d|%s" % [v.get_instance_id(), v._soil_gen, spots.hash(), centre.snapped(Vector3.ONE * 0.25)]
+	if _cache.has(key):
+		return (_cache[key] as Array).duplicate()
+	if _cache.size() > 64:
+		_cache.clear()
+	var got := _work_out(v, spots, centre)
+	_cache[key] = got
+	return got.duplicate()
+
+
+static func _work_out(v, spots: Array, centre: Vector3) -> Array:
 	var out := []
 	for s in spots:
 		if v._near_drop(Vector3i(roundi(s.x), roundi(s.y + 0.45), roundi(s.z))):
@@ -28,4 +44,20 @@ static func places(v, spots: Array, centre: Vector3) -> Array:
 			most = c
 			level = lj
 	var kept := out.filter(func(p): return absf(v._floor_cached(p) - level) <= 0.9)
-	return kept if kept.size() >= 4 else out
+	if kept.size() < 4:
+		return out
+	# then, once that level is full, the floor round it up the chamber's sides where it is not steep: a chamber floor is a
+	# bowl, its flat bottom held 15-20 of the keeper's 56 cocoons and the rest went on top (v0.13.25, the keeper's
+	# picture); a cocoon on a gentle slope still lies on the floor, on its own
+	var up := out.filter(func(p): return _gentle(v, p, level))
+	return kept + up
+
+
+## A place up the chamber's side: not more than ~2.5 voxels above or below the pile's level, and not steep there.
+static func _gentle(v, p: Vector3, level: float) -> bool:
+	var dl: float = absf(v._floor_cached(p) - level)
+	if dl <= 0.9 or dl > 2.6:
+		return false
+	var sx: float = absf(v._floor_cached(p + Vector3(0.8, 0, 0)) - v._floor_cached(p - Vector3(0.8, 0, 0)))
+	var sz: float = absf(v._floor_cached(p + Vector3(0, 0, 0.8)) - v._floor_cached(p - Vector3(0, 0, 0.8)))
+	return sx < 0.9 and sz < 0.9

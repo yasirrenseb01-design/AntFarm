@@ -893,15 +893,15 @@ func _queen_walk(adt: float) -> void:
 
 
 ## Between her moments she walks to another spot of her chamber floor now and then, slowly, and stays there (the eggs
-## she lays next lie by her there) - the keeper never saw her walk (2026-10-24) [inference: no measurement of how
-## often a Lasius niger queen moves about her chamber found].
+## she lays next lie by her there), not waiting for her laying (a big colony lays every second or two: she never walked -
+## the keeper, 2026-10-24 and 2026-11-17) [inference: how often a Lasius niger queen moves about her chamber: not found].
 func _queen_roam(adt: float) -> void:
-	if adt <= 0.0 or not _queen_path.is_empty() or _queen_busy() or not _room_of.has(_queen_room_ch) or not sim.queen.alive:
+	if adt <= 0.0 or not _queen_path.is_empty() or _anims.any(func(a): return a.k == "care" or (a.k == "eclose" and a.get("queen", false))) or not _room_of.has(_queen_room_ch) or not sim.queen.alive:
 		return
 	_queen_roam_left -= adt
 	if _queen_roam_left > 0.0:
 		return
-	_queen_roam_left = randf_range(25.0, 70.0)
+	_queen_roam_left = randf_range(12.0, 35.0)
 	var here: Vector3 = _spots.queen
 	var cands := []
 	for sp in _rooms[_room_of[_queen_room_ch]].spots:
@@ -925,8 +925,8 @@ func _queen_roam(adt: float) -> void:
 
 func _queen_busy() -> bool:
 	for a in _anims:
-		if a.k in ["egg", "care"] or (a.k == "eclose" and a.get("queen", false)):
-			return true
+		if a.k == "care" or (a.k == "eclose" and a.get("queen", false)) or (a.k == "egg" and (a.helper == null or a.t < 0.22 * a.d)):
+			return true                # (an egg: only while she lays it - then her attendant takes it; she never roamed)
 	return false
 
 

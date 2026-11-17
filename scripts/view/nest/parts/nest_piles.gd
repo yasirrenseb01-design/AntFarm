@@ -121,7 +121,7 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 			var centre := _pile_centre(src, kind)
 			# one layer over the floor, nearest the middle first, on top once it is full (a heap 0.9 + 0.75 sqrt(n) wide made
 			# towers of larvae 6 high with floor to spare; the keeper 2026-11-17: brood lies spread on the floor). Half length
-			cands[src] = {"list": BroodPlaces.places(self, src, centre), "next": 0, "centre": centre, "reach": INF, "kind": kind,
+			cands[src] = {"list": BroodPlaces.places(self, src, centre), "next": 0, "centre": centre, "reach": INF, "kind": kind, "src": src, "n": n,
 				"shape": Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62)}      # and width (larva ~1.7 x 0.76, cocoon 2.7 x 1.24)
 		var s: float = scale_fn.call(items[i])
 		var xf := _place_brood(cands[src], s, i)
@@ -175,12 +175,16 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 	var lift := 0.0
 	var fit := 0.0
 	if not c.get("full", false):
+		# (a place tried and not fit is not tried again in this layout - what lies there stays: with the floors of every
+		# chamber to try, each item tried them all and the layout took 3-9 s, v0.13.26)
+		var dead: Dictionary = c.get_or_add("dead", {})
 		for k in range(c.next, places.size()):
 			var p: Vector3 = places[k]
-			if _queen_here() and _queen_keep(p) < r + 0.5:
+			if dead.has(k) or (_queen_here() and _queen_keep(p) < r + 0.5):
 				continue
 			if p.distance_to(c.centre) > c.reach:
 				break                          # the heap is as wide as it gets: go on top instead
+			dead[k] = true
 			if _brood_free(p, r):
 				var turn := _fit_turn(p, s, c, i)
 				if turn < 0.0:
@@ -192,14 +196,30 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 				best = p
 				c.next = maxi(c.next, k - 8)      # the places before this are (nearly all) taken
 				break
+		if best == Vector3.INF and c.has("src") and c.kind == "pupae":
+			# its chamber's floor full: cocoons go on the floors of the other chambers, nearest first, before any on top (the
+			# keeper's 56 cocoons, 2026-11-17: a heap three deep in a bowl-shaped chamber with chambers to spare)
+			var mine := {}
+			for q in c.src:
+				mine[q] = true
+			c.home = c.list
+			c.list = BroodPlaces.places(self, _spots.all.filter(func(q): return not mine.has(q)), c.centre)
+			c.erase("src")
+			c.erase("dead")
+			c.next = 0
+			return _place_brood(c, s, i)
 		if best == Vector3.INF:
-			c.full = true                      # no floor left in this pile: the rest go on top
+			c.full = true                      # no floor left anywhere: the rest go on top
 	var on_top := false
 	var low := INF
 	if best == Vector3.INF and not places.is_empty():
 		# the heap's floor is full: lie on top, resting on whatever is highest there
 		on_top = true
-		var inner := places.filter(func(p): return p.distance_to(c.centre) <= c.reach and (not _queen_here() or _queen_keep(p) >= r + 0.5))
+		# (on the heap where it began, as wide as a heap of them: from anywhere on every floor no low place came up soon -
+		# 57 ms an item, a layout 4 s, v0.13.26)
+		places = c.get("home", places)
+		var heap: float = 0.9 + 0.75 * sqrt(float(c.get("n", 1)))
+		var inner := places.filter(func(p): return p.distance_to(c.centre) <= heap and (not _queen_here() or _queen_keep(p) >= r + 0.5))
 		if inner.is_empty():
 			inner = places
 		# the lowest place on the heap where it lies clear of the walls and roof (from a different place
