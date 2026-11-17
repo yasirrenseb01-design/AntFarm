@@ -4,6 +4,8 @@ extends "res://scripts/sim/parts/sim_warmth.gd"
 
 
 const QUEEN_KEEP := 20.0     # body reserve a founding queen will not spend on brood
+const FAT_READY := 0.6      # step 5: after midsummer a wild colony lays freely only with this much of a full fat cap for each
+                             # worker, egg, larva and pupa (less fat, fewer eggs) - see _queen
 
 
 func _queen(dt: float) -> void:
@@ -32,6 +34,12 @@ func _queen(dt: float) -> void:
 		rate *= 0.3
 	if winding_down() and workers.size() >= 5:
 		rate = 0.0
+	elif scenario == "wild" and doy_f() > 172.0 and workers.size() >= 5:
+		# (PART 0.13 step 5) after midsummer a wild queen lays only as far as the colony's fat would carry
+		# all it rears through the winter: eggs laid in July-August are workers in September, too late to fatten up
+		# [chosen; v0.13.21 wild seed 22 grew 154 -> 285 workers in August, its fat ran out and 15 starved in spring]
+		var will := float(workers.size() + eggs.size() + larvae.size() + pupae.size())
+		rate *= clampf(fat / (will * sp["fat_cap_each"] * FAT_READY), 0.0, 1.0)
 	if not queen_tended:
 		rate *= UNTENDED_LAYING          # nobody attended her this half hour (parts/sim_duties.gd)
 	var whole := workers.size() + brood + pupae.size()      # (all of them may yet become workers)

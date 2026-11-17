@@ -183,7 +183,11 @@ func describe(info: Dictionary) -> String:
 		elif sim.founding():
 			lines.append(tr("tip_queen_founding") % int(sim.queen.reserve / float(sim.sp["queen_reserve"]) * 100.0))
 		else:
-			lines.append(tr("tip_laying") if not (sim.starving or sim.queen.starve > 0.5) else tr("tip_queen_not_laying"))
+			# (PART 0.13 step 4: she lays only on what she is given beyond her own eating - sim_brood._queen)
+			var fed_x := float(sim.queen.get("fed", 0.0)) / float(sim.sp["sugar_queen"])
+			var lays: bool = not (sim.starving or sim.queen.starve > 0.5) and (fed_x > 1.05 or sim.workers.size() < 5)
+			lines.append(tr("tip_laying") if lays else tr("tip_queen_not_laying"))
+			lines.append(tr("tip_queen_fed") % fed_x)
 		lines.append(tr("tip_doing") + _act_name(int(info.get("act", 1))))
 		if character != "":
 			lines.append(character)          # (the colony's character: here, not in the side panel - v0.13.9)
@@ -203,6 +207,10 @@ func describe(info: Dictionary) -> String:
 			lines.append(tr("tip_carry_corpse"))
 		if w.hurt > 0.05:
 			lines.append(tr("tip_hurt"))
+		# (PART 0.13 step 6) its own crop and fat: hungry below the fill at which the colony counts as hungry
+		var cf: float = clampf(w.crop / sim.crop_cap(), 0.0, 1.0)
+		var state: String = tr("tip_fed_full") if cf >= 0.6 else (tr("tip_fed_low") if cf < sim.HUNGRY_FILL else tr("tip_fed_ok"))
+		lines.append(tr("tip_crop_fat") % [roundi(cf * 100.0), roundi(clampf(w.body_fat / float(sim.sp["fat_cap_each"]), 0.0, 1.0) * 100.0), state])
 		if w.energy < 0.6:
 			lines.append(tr("tip_hungry"))
 		var lean := _leanings(w)

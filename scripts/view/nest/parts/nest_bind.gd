@@ -159,6 +159,7 @@ func _bind_workers() -> void:
 	# (the size and who waits for a digger looked up once, not for each of 600 drawn: _dig_pending went through all the
 	# diggers for each - ~1.5 ms a frame; the same answers, v0.12.27)
 	var wscale := float(sim.sp.look.worker_scale)
+	var inv_cap: float = 1.0 / sim.crop_cap()
 	var pend := {}                        # worker id -> as _dig_pending: the first digger paired with it is not live yet
 	for id in _dig_wid:
 		if not pend.has(_dig_wid[id]):
@@ -168,6 +169,8 @@ func _bind_workers() -> void:
 		var w = by_id[wid]
 		m.size = w.size * wscale       # (the species' size: docs/SPECIES.md)
 		m.born = sim.tick - int(w.age * sim.TPD)
+		# (PART 0.13 step 6) the gaster as swollen as its crop is full ([C14]: a full crop shows; nest_feet._custom)
+		m.cf = clampf(w.crop * inv_cap, 0.0, 1.0)
 		if m.carry or m.has("script") or m.has("deliver") or m.role == "carry":
 			continue
 		var want := "todig" if pend.get(wid, false) else _role_for(m, w, attend.has(wid))

@@ -459,6 +459,7 @@ func _take_shot() -> void:
 				if nest_view.pick_ant(bsp).get("kind", "") == _opts["select"]:
 					hud.ant_tip._click(bsp)
 					break
+		elif i == 60 and _opts.get("select", "") == "queen" and mode == "nest": hud.ant_tip._select({"kind": "queen"})   # (not clicked: her retinue)
 		elif i == 60 and _opts.has("select") and mode == "nest":
 			# click on a nestmate (its gaster, not its middle: picking by the whole body) - its outline is drawn
 			for m in nest_view._mates:

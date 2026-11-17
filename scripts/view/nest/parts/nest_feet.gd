@@ -173,15 +173,13 @@ func _custom(v: Dictionary, act: int) -> Color:
 	var gx := AntModel.gait_x(v.get("gait", 0.0), v.get("bend", Vector2.ZERO))       # (and the waist and neck bent to the ground)
 	var cz := AntModel.clock_z(clock, v.get("lat", 0.0))                              # (and bent sideways round a turn)
 	cz += 16384.0 * float(_feet_mode(v))
-	var fill := float(v.get("fill", -1.0))
-	if fill >= 0.0 and fill < 1.0 and int(v.vact.y) == int(v.vact.x):
-		# the crop filling or emptying with the honeydew given (shared mouth to mouth): the swollen gaster eases in as far
-		# as it is full (the keeper, 2026-10-28: it swelled at once)
-		var c := float(int(v.vact.x))
-		return Color(gx, c + 100.0 + 128.0 * c + minf(1.0 - fill, 0.99), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))
-	if v.get("fed", false):
-		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))   # crop full of honeydew
-	return Color(gx, AntModel.act_y(v.vact, clock), cz, AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0)))
+	var gw := AntModel.gait_w(v.get("mv", 0.0), v.get("stride", 1.0), v.get("tshare", 0.0))
+	if v.get("fed", false) and not v.has("fill"):
+		return Color(gx, AntModel.act_y(v.vact, clock) + 100.0, cz, gw)   # crop full of honeydew, back from the aphids
+	# the gaster as swollen as its crop is full: as it is given honeydew mouth to mouth ("fill", nest_lifecycle; the
+	# keeper, 2026-10-28: it swelled at once), else as its worker's crop ("cf", nest_bind; PART 0.13 step 6, [C14])
+	var fill := float(v.get("fill", v.get("cf", 0.0)))
+	return Color(gx, AntModel.with_crop(AntModel.act_y(v.vact, clock), fill), cz, gw)
 
 
 ## Where its feet stand (the shader's z / 16384): 0 on the floor, 1 on a nestmate's back (not reaching for the soil),

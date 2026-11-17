@@ -283,6 +283,11 @@ tip_carry_prey,คาบชิ้นเหยื่อ,Carrying a piece of prey
 tip_carry_corpse,แบกศพเพื่อนร่วมรัง,Carrying a dead nestmate
 tip_hurt,บาดเจ็บ (ขาหรือหนวดขาด) เดินช้าลง,Injured (lost a leg or an antenna): walks slower
 tip_hungry,หิว / อ่อนแรง,Hungry / weak
+tip_crop_fat,กระเพาะพัก %d%% · ไขมัน %d%% · %s,Crop %d%% full · fat %d%% · %s
+tip_fed_full,อิ่ม,well fed
+tip_fed_ok,พอกิน,fed enough
+tip_fed_low,หิว,hungry
+tip_queen_fed,ถูกป้อนวันละ %.1f เท่าของที่กินเอง,Fed %.1fx what she eats herself a day
 tip_leanings,นิสัย: ,Tendencies: 
 job_dig,ขุดรัง,Digging the nest
 job_attend,ดูแลราชินี,Attending the queen

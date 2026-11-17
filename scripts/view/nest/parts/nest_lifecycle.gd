@@ -754,21 +754,21 @@ func _step_anims(adt: float) -> void:
 						g.script.act = ACT_FEED
 						r.script.act = ACT_TAKE
 						var k := smoothstep(0.12, 0.9, u)
-						g.fill = 1.0 - k                     # (its crop empties into the other's, slowly)
-						r.fill = k
+						# (its crop empties into the other's, slowly, to what the simulation has now: a third of a crop shown)
+						var gc := float(g.get("cf", 0.0))
+						var rc := float(r.get("cf", 0.0))
+						g.fill = lerpf(1.0 if g.get("fed", false) else minf(1.0, gc + 0.3), gc, k)
+						r.fill = lerpf(maxf(0.0, rc - 0.3), rc, k)
 					else:
 						g.script.act = ACT_ANTENNATE
 						r.script.act = ACT_ANTENNATE
 					if u >= 1.0:
 						a.done = true
-						g.fed = false                       # its crop shared out
-						r.fed = true
-						g.erase("fill")
-						r.erase("fill")
-						g.erase("partner")
-						r.erase("partner")
-						_release(g)
-						_release(r)
+						for e in [g, r]:
+							e.fed = false                   # (both as full as their crops now: "cf")
+							e.erase("fill")
+							e.erase("partner")
+							_release(e)
 						r.cool = randf_range(8.0, 14.0)
 						g.cool = randf_range(8.0, 14.0)
 						a.p = rp

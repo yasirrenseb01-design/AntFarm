@@ -8,7 +8,8 @@ uniform float outline_w = 0.022;
 //   x = gait phase (radians, advanced by distance walked, below 512) + 512 x how the body is bent at the waist
 //       and the neck to lie on the ground under it (0 none; else 1 + gaster + 21 x head, 21 steps of 0.06 rad
 //       from -0.4 each: ant_model3d.gd gait_x)
-//   y = activity code (id + 100 if full) + 128 x the code being left; fraction = how much of the old pose
+//   y = activity code (id + 100 if full) + 128 x the code being left + 16384 x how full its crop is in sevenths
+//       (0..7, ant_model3d.gd with_crop; PART 0.13 step 6 - "full" above wins); fraction = how much of the old pose
 //       still shows (ant_model3d.gd act_y: poses ease into one another instead of snapping)
 //   z = animation clock (seconds, per ant, below 600) + 600 x how the body is bent sideways round a turn (0 none;
 //       else 11 + steps of 0.04 rad, head turned in and gaster out: nest_bodies.gd _custom)
@@ -29,7 +30,8 @@ uniform float outline_w = 0.022;
 // 19 hauling prey with nestmates: head low, mandibles clamped on it, leaning back as it pulls.
 // 18 thrown on its back (the view rolls the body): legs flailing in the air, antennae waving, until it rights itself.
 // Walking, the head and gaster sway a little with each step and the gaster is carried clear of the ground.
-// y >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates).
+// code >= 100: the crop is full of honeydew (gaster swollen, pale membranes showing between the plates); else the
+// crop level above swells it part of the way.
 
 uniform float rim_amount = 0.35;
 // nest: the cut plane (xyz = normal toward the camera, w = offset): legs and antennae in front of it are cut away,
@@ -313,9 +315,10 @@ vec2 head_pose(float act, float t, float gait, float mv) {
 
 // The body's pose for one activity code (act + 100 if the crop is full): the vertex V (normal NR) of body
 // part `part` moved for that activity. Called twice while easing from one activity into the next.
-vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec3 bend, float fmode, int row, out float stretch_out) {
-	float full = code >= 99.5 ? 1.0 : 0.0;
-	float act = code - full * 100.0;
+vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, float gait, float t, float cw, bool probe, vec3 bend, float fmode, int row, out float stretch_out, float crop) {
+	float flag = code >= 99.5 ? 1.0 : 0.0;
+	float act = code - flag * 100.0;
+	float full = max(flag, crop);
 	stretch_out = 0.0;
 	float mv = cw;
 	// curling the gaster under the body, an ant first rises on its legs so the gaster clears the floor
@@ -627,6 +630,9 @@ void vertex() {
 	float y = INSTANCE_CUSTOM.y + 0.0005;
 	float whole = floor(y);
 	float left = y - whole - 0.0005;
+	float crop = floor(whole / 16384.0);
+	whole -= crop * 16384.0;
+	crop /= 7.0;
 	float code = mod(whole, 128.0);
 	float prev = floor(whole / 128.0);
 	vec3 n1 = NORMAL;
@@ -652,12 +658,12 @@ void vertex() {
 	if (lc > 0.5) {
 		bend.z = (lc - 11.0) * 0.04;
 	}
-	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS && on_back < 0.5, bend, fmode, row, s1);
+	vec3 v1 = pose(code, part, UV.x, VERTEX, n1, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, !IN_SHADOW_PASS && on_back < 0.5, bend, fmode, row, s1, crop);
 	stretch = s1;
 	if (left > 0.002 && prev != code && !IN_SHADOW_PASS) {      // (a shadow skips the easing)
 		vec3 n0 = NORMAL;
 		float s0;
-		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, on_back < 0.5, bend, fmode, row, s0);
+		vec3 v0 = pose(prev, part, UV.x, VERTEX, n0, MODEL_MATRIX, gait, clock, INSTANCE_CUSTOM.w, on_back < 0.5, bend, fmode, row, s0, crop);
 		v1 = mix(v1, v0, left);
 		n1 = normalize(mix(n1, n0, left) + vec3(0.0, 1e-4, 0.0));
 		stretch = mix(s1, s0, left);

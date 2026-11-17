@@ -342,3 +342,9 @@ static func act_y(st: Vector3, clock: float, blend := ACT_BLEND) -> float:
 	if left <= 0.001 or int(st.y) == int(st.x):
 		return st.x
 	return st.x + 128.0 * st.y + minf(left, 0.99)
+
+
+## act_y with how full the crop is (0..1, in sevenths): the gaster swollen that far whatever the pose (PART 0.13 step 6;
+## an activity code + 100 still shows it full - ant_core.gdshaderinc).
+static func with_crop(y: float, fill: float) -> float:
+	return y + 16384.0 * float(clampi(roundi(fill * 7.0), 0, 7))

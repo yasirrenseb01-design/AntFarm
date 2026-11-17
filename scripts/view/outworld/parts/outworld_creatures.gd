@@ -39,6 +39,7 @@ func _update_ants(delta: float) -> void:
 	var adt := delta * minf(speed, 1.0) if speed > 0 else 0.0     # (below 1x, real time, poses play in slow motion)
 	var body: Color = AntModel.body_linear(sim.sp["body_color"])
 	var young: Color = AntModel.body_linear(sim.sp["callow_color"])
+	var inv_cap: float = 1.0 / sim.crop_cap()
 	var xs := []
 	var cols := []
 	var cus := []
@@ -202,23 +203,21 @@ func _update_ants(delta: float) -> void:
 				a.vstem = Vector3.INF
 			if a.vfeed > 0.95 and act == 9:
 				dews.append(a.vpose.dew)
-		var fill := 1.0
+		# the gaster as swollen as its own crop is full (PART 0.13 step 6, [C14]); a load of honeydew on its way home: full
+		var fill := clampf(a.crop * inv_cap, 0.0, 1.0)
 		if a.carry == Ant.SUGAR and a.busy > 0 and (act == 9 or act == 10):
 			# still drinking: the crop fills as it drinks (the keeper, 2026-10-28: the gaster was full the moment it began)
 			a.vbusy0 = maxi(a.vbusy0, a.busy)
-			fill = 1.0 - float(a.busy) / float(maxi(1, a.vbusy0))
+			fill = lerpf(fill, 1.0, 1.0 - float(a.busy) / float(maxi(1, a.vbusy0)))
 		else:
 			a.vbusy0 = 0
-		if a.carry == Ant.SUGAR:
-			act += 100                      # a crop full of honeydew swells the gaster
+			if a.carry == Ant.SUGAR:
+				fill = 1.0
 		xs.append(tr)
 		a.vxf = tr
 		cols.append(body.lerp(young, clampf(1.0 - a.age / 6.0, 0.0, 1.0)))
 		a.vact = AntModel.act_step(a.vact, act, a.anim)                     # poses ease into one another
-		var ay := AntModel.act_y(a.vact, a.anim)
-		if fill < 1.0 and int(a.vact.y) == int(a.vact.x):
-			var c0 := float(act - 100)
-			ay = c0 + 100.0 + 128.0 * c0 + minf(1.0 - fill, 0.99)       # (eased from empty by how full it is)
+		var ay := AntModel.with_crop(AntModel.act_y(a.vact, a.anim), fill)
 		cus.append(Color(a.vgait, ay, fmod(a.anim, 600.0), AntModel.gait_w(a.vmv, stride)))
 		if sel_kind == "worker" and a.id == sel_id:
 			sel_at = [tr, cus[-1]]

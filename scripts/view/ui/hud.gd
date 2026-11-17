@@ -320,6 +320,8 @@ func refresh(delta: float) -> void:
 		_show(q, tr("queen_fat") % int(sim.queen.reserve / float(sim.sp["queen_reserve"]) * 100.0), LEAF)   # sealed in, living on her reserves
 	elif sim.starving or sim.queen.starve > 0.5:
 		_show(q, tr("queen_not_laying"), DANGER)
+	elif sim.workers.size() >= 5 and float(sim.queen.get("fed", 0.0)) <= float(sim.sp["sugar_queen"]) * 1.05:
+		_show(q, tr("queen_not_laying"), INK)  # (fed no more than she eats: nothing spare for eggs - PART 0.13 step 4)
 	else:
 		_show(q, tr("panel_laying"), LEAF)      # (short: the panel's narrow column)
 	_show(_vals["workers"], str(sim.workers.size()))
