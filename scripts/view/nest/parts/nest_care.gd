@@ -467,3 +467,28 @@ func _shown_act(m: Dictionary) -> int:
 		if m.script.get("qfeed", false) and int(m.act) == ACT_FEED:
 			return 26
 	return super(m)
+
+
+# ---------------------------------------------------------------- where the soil changed (v0.13.27)
+# The floor cache is dropped whole whenever ants dig anywhere (nest_view), and every item of brood on the floor was taken
+# as moved and set down on it again (its tilt, ~20 ms each): brood far from the digging lies as it did.
+var _chunk_gen := {}                  # soil chunk (nest_voxels CHUNK) -> _soil_gen when it last changed
+
+
+func _fcells_forget(k: Vector3i) -> void:
+	_chunk_gen[k] = _soil_gen
+	super(k)
+
+
+## Whether the soil changed by an item of brood since it was set down (its chunk or one next to it: its ends and the
+## floor round them reach over a chunk's edge).
+func _tilt_stale(pl: Dictionary) -> bool:
+	var b: Vector3 = pl.base
+	var k := Vector3i(floori(b.x / 16.0), floori(b.y / 16.0), floori(b.z / 16.0))
+	var t: int = int(pl.get("tgen", -1))
+	for dz in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			for dx in [-1, 0, 1]:
+				if int(_chunk_gen.get(k + Vector3i(dx, dy, dz), -1)) > t:
+					return true
+	return false

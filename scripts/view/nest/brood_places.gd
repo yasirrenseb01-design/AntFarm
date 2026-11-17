@@ -21,6 +21,30 @@ static func places(v, spots: Array, centre: Vector3) -> Array:
 	return got.duplicate()
 
 
+## A pile whose chamber floor is full (`own` its spots, n items): the floor of the chambers next to it, nearest the pile
+## first, before anything goes on top (the keeper's 56 cocoons, 2026-11-17: three deep in a bowl-shaped chamber with
+## chambers to spare). Only as many floor cells as it may need, the nearest: all of them (~500) took 3-9 s for larvae laid
+## out again as nurses carried them (v0.13.26). [Inference: nurses spread a crowded brood into the next chambers.]
+static func spill(v, own: Array, centre: Vector3, n: int) -> Array:
+	var mine := {}
+	for q in own:
+		mine[q] = true
+	# chamber by chamber, the nearest first, each on its own floor level (all of them as one list kept only the level of
+	# the nearest: the queen's chamber, full of eggs - 33 of 47 larvae still went on top)
+	var rooms := []
+	for r in v._rooms:
+		var sp: Array = (r.spots as Array).filter(func(q): return not mine.has(q))
+		if not sp.is_empty():
+			rooms.append([Vector3(r.cell).distance_squared_to(centre), sp])
+	rooms.sort_custom(func(a, b): return a[0] < b[0])
+	var out := []
+	for e in rooms:
+		out.append_array(places(v, e[1], centre))
+		if out.size() > 12 * n + 60:
+			break                          # (enough to try: a chamber's floor more than they need)
+	return out
+
+
 static func _work_out(v, spots: Array, centre: Vector3) -> Array:
 	var out := []
 	for s in spots:

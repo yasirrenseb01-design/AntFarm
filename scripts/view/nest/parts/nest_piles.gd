@@ -7,6 +7,7 @@ extends "res://scripts/view/nest/parts/nest_brood.gd"
 # ---------------------------------------------------------------- brood piles
 
 const BroodPlaces := preload("res://scripts/view/nest/brood_places.gd")
+var _tilt_budget := 0                    # items whose lie on the floor may be worked out again in this layout (_keep_at)
 
 ## A view tag for one item of brood (kept in its simulation entry; the simulation never reads it).
 func _vtag(item: Dictionary) -> int:
@@ -125,7 +126,8 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 				"shape": Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62)}      # and width (larva ~1.7 x 0.76, cocoon 2.7 x 1.24)
 		var s: float = scale_fn.call(items[i])
 		var xf := _place_brood(cands[src], s, i)
-		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top, "forced": _last_forced,
+		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top, "forced": _last_forced, "tb": xf.basis.orthonormalized(),
+			"tgen": _soil_gen, "ts": snappedf(s, 0.04), "lift": 0.0 if _last_top else _rest_on_floor(_register_brood(_last_base, xf.basis.orthonormalized(), s, kind, false, false), kind),
 			"src": _pile_key(kind, i < moved or old_spots.is_empty())}
 		if _brood_shown(xf, kind):
 			xs.append(xf)
@@ -180,11 +182,11 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 		var dead: Dictionary = c.get_or_add("dead", {})
 		for k in range(c.next, places.size()):
 			var p: Vector3 = places[k]
-			if dead.has(k) or (_queen_here() and _queen_keep(p) < r + 0.5):
-				continue
+			if float(dead.get(k, INF)) <= r or (_queen_here() and _queen_keep(p) < r + 0.5):
+				continue                       # (not fit for one this big or smaller: larvae are 0.3-1.1 the size)
 			if p.distance_to(c.centre) > c.reach:
 				break                          # the heap is as wide as it gets: go on top instead
-			dead[k] = true
+			dead[k] = minf(float(dead.get(k, INF)), r)
 			if _brood_free(p, r):
 				var turn := _fit_turn(p, s, c, i)
 				if turn < 0.0:
@@ -194,16 +196,12 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 					continue                       # its ends would lie in a neighbour's (it is long, the room a circle)
 				fit = turn
 				best = p
-				c.next = maxi(c.next, k - 8)      # the places before this are (nearly all) taken
+				c.next = maxi(c.next, k - 8); dead[k] = 0.0      # the places before this are (nearly all) taken; this one now
 				break
-		if best == Vector3.INF and c.has("src") and c.kind == "pupae":
-			# its chamber's floor full: cocoons go on the floors of the other chambers, nearest first, before any on top (the
-			# keeper's 56 cocoons, 2026-11-17: a heap three deep in a bowl-shaped chamber with chambers to spare)
-			var mine := {}
-			for q in c.src:
-				mine[q] = true
+		if best == Vector3.INF and c.has("src"):
+			# its chamber's floor full: the floors of the next chambers, nearest first, before any on top (BroodPlaces.spill)
 			c.home = c.list
-			c.list = BroodPlaces.places(self, _spots.all.filter(func(q): return not mine.has(q)), c.centre)
+			c.list = BroodPlaces.spill(self, c.src, c.centre, int(c.n))
 			c.erase("src")
 			c.erase("dead")
 			c.next = 0
@@ -212,7 +210,7 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 			c.full = true                      # no floor left anywhere: the rest go on top
 	var on_top := false
 	var low := INF
-	if best == Vector3.INF and not places.is_empty():
+	if best == Vector3.INF and not (c.get("home", places) as Array).is_empty():     # (no floor in the next chambers either)
 		# the heap's floor is full: lie on top, resting on whatever is highest there
 		on_top = true
 		# (on the heap where it began, as wide as a heap of them: from anywhere on every floor no low place came up soon -
@@ -225,7 +223,6 @@ func _place_brood(c: Dictionary, s: float, i: int) -> Transform3D:
 		# the lowest place on the heap where it lies clear of the walls and roof (from a different place
 		# for each item, so they spread over the heap instead of stacking into a tower)
 		var kind: String = c.get("kind", "larvae")
-		# (the heap first; if nowhere on it is clear of the roof, anywhere on the chamber floor out of her way)
 		var wide := places.filter(func(p): return not _queen_here() or _queen_keep(p) >= r + 0.2)
 		var nin := mini(inner.size(), 60)
 		for k in nin + mini(wide.size(), 36):
@@ -269,7 +266,9 @@ var _last_yaw := Basis.IDENTITY
 ## (the highest point of the floor under it touches, none is in it) - it never slides across the floor.
 func _keep_at(pl: Dictionary, s: float, kind: String, item, col_fn: Callable, xs: Array, cs: Array) -> void:
 	var sk := snappedf(s, 0.04)
-	if pl.get("tgen", -1) != _soil_gen or pl.get("ts", -1.0) != sk:
+	# (its lie on the floor again - ~20 ms - a few a layout as the soil changes or it grows: all took 0.5-3.6 s a layout)
+	if not pl.has("tb") or (call("_tilt_stale", pl) or pl.get("ts", -1.0) != sk) and _tilt_budget > 0:     # (nest_care)
+		_tilt_budget -= 1
 		pl.tb = _floor_tilt(pl.base, pl.b, _grown(kind, s)) if not pl.top else pl.b     # (as it was laid: see _brood_xf)
 		pl.tgen = _soil_gen
 		pl.ts = sk
@@ -627,6 +626,7 @@ func _brood_free(p: Vector3, r: float) -> bool:
 
 func _update_brood() -> void:
 	_brood_occ.clear()                       # larvae, cocoons and eggs share the floor: laid out together
+	_tilt_budget = 2
 	_brood_drawn = {"eggs": [], "larvae": [], "pupae": []}
 	var exs := []
 	if not _spots.eggs.is_empty():
