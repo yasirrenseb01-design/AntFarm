@@ -576,8 +576,10 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 			float side = V.z > 0.0 ? 1.0 : -1.0;
 			float open = 0.04;
 			if (act == 2.0) open = 0.35 + 0.35 * sin(t * 12.0);
-			if (act == 6.0) open = 0.45;
-			if (act == 21.0) open = 0.15 + 0.1 * sin(t * 9.0);
+			// giving: held open round the droplet, working a little as it wells up; taking: lapping at it (the keeper, 2026-11-17:
+			// "the ants just stand still" - the giver's were held still at 0.45, the taker's moved +-0.1)
+			if (act == 6.0) open = 0.4 + 0.08 * sin(t * 5.0) + 0.04 * sin(t * 13.0);
+			if (act == 21.0) open = 0.18 + 0.14 * sin(t * 8.0);
 			if (act == 7.0) open = 0.2 + 0.15 * sin(t * 6.0);
 			if (act == 10.0) open = 0.3;
 			if (act == 13.0) open = 0.25 + 0.2 * max(0.0, sin(t * 11.0));
