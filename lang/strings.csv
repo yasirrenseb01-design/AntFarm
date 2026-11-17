@@ -8,6 +8,7 @@ log_water_added,เติมน้ำในแท็งก์น้ำของ�
 log_chamber_planned,รังเริ่มแน่น มดเริ่มขุดปล่องลงไปทำห้องใหม่ (ห้องที่ %d),The nest is getting crowded: the ants have started digging a shaft down to a new chamber (chamber %d)
 log_chamber_opened,มดขุดทะลุถึงห้องใหม่แล้ว กำลังขยายห้องให้กว้าง,The ants have broken through to the new chamber and are widening it
 log_chamber_grown,มดขยายห้องรังให้กว้างขึ้นเพราะตัวอ่อนเริ่มแน่น,The ants are widening the brood chamber: the larvae are getting crowded
+log_toilet_first,มดเริ่มใช้มุมหนึ่งของห้องที่ %d เป็นที่ถ่าย (ห้องส้วม) คราบสีเข้มจะค่อย ๆ กว้างขึ้น,The ants have started using a corner of chamber %d as their toilet: a dark patch will slowly grow there
 log_rain_start,ฝนตก มดหลบเข้ารัง กลิ่นบนพื้นกำลังถูกชะล้าง,Rain: the ants shelter in the nest and the scent trails on the ground are being washed away
 log_warn_starve,น้ำตาลในรังหมด มดงานเริ่มอดอาหาร,The nest has run out of sugar: the workers are starving
 log_warn_dry,รังแห้งมาก มดงานเริ่มขาดน้ำ ควรเติมน้ำ,The nest is very dry: the workers are getting thirsty. Add water

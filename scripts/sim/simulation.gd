@@ -10,6 +10,7 @@ extends "res://scripts/sim/parts/sim_duties.gd"
 func setup(seed_value: int = 0, start_workers: int = 14, glass_nest := false, scen := "keeper", big_box := false,
 		species := Species.DEFAULT) -> void:
 	super(seed_value, start_workers, glass_nest, scen, big_box, species)
+	toilets = Toilets.new()
 	_nest_in_tank()
 
 
@@ -27,6 +28,7 @@ func _nest_in_tank() -> void:
 	var ox := clampi(roundi(nest_pos.x * px) - nest.entrance.x, 0, maxi(0, tank.x - nest.wx()))
 	var oz := clampi(roundi(nest_pos.y * px) - nest.entrance.z, 0, maxi(0, tank.y - nest.wz()))
 	nest.shift_xz(ox, oz)
+	toilets.shift(ox, oz)
 
 
 # ---------------------------------------------------------------- main step
@@ -134,7 +136,7 @@ func to_dict() -> Dictionary:
 		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
 		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "water": water, "mold": mold, "heater": heater, "enemies": enemies, "enemy_rate": enemy_rate,
 		"creatures": creatures, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
-		"queen_tended": queen_tended, "carry_due": _carry_due, "unloaded": _unloaded, "pending_in": _pending_in, "duty_rng": [duty_rng.seed, duty_rng.state],
+		"queen_tended": queen_tended, "carry_due": _carry_due, "unloaded": _unloaded, "pending_in": _pending_in, "toilets": toilets.to_save(), "duty_rng": [duty_rng.seed, duty_rng.state],
 		"history": history, "log": log_entries, "warned": _warned, "next_id": _next_id,
 		"cannibal_cd": _cannibal_cd, "recruits": _recruits,
 		# values the colony tick derives but foragers read in between
@@ -249,6 +251,7 @@ func from_dict(d: Dictionary) -> void:
 	_carry_due = d.carry_due
 	_unloaded = d.unloaded
 	_pending_in = maxf(0.0, float(d.get("pending_in", 0.0)))     # (saves before v0.13.1: none)
+	toilets.from_save(d.get("toilets", {}))                       # (saves before v0.13.24: none yet)
 	duty_rng.seed = d.duty_rng[0]
 	if d.duty_rng.size() > 1:
 		duty_rng.state = d.duty_rng[1]

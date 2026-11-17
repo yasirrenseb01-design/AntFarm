@@ -1,5 +1,5 @@
 extends "res://scripts/view/nest/parts/nest_scene.gd"
-## Nest view, layer 2 of 16 (split from parts/nest_scene.gd in v0.12.17): the soil as 3D textures for the shaders - the
+## Nest view, layer 2 of 17 (split from parts/nest_scene.gd in v0.12.17): the soil as 3D textures for the shaders - the
 ## cut face and the x-ray read the soil's, the ants' feet the soil with the brood stamped in - and where they sit
 ## (the box held: nest x_lo, y_lo, z_lo up).
 

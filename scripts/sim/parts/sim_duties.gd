@@ -22,6 +22,10 @@ const ALLOGROOM_SHARE := 0.29         # of the cleaners, those cleaning a nestma
 
 ## One duty round. Every ant inside gets a duty; outside it is D_OUT.
 func _duties() -> void:
+	var had_toilet: bool = not toilets.patches.is_empty()
+	toilets.round_done(nest, [queen_at, int(brood_at.larvae), int(brood_at.pupae)])             # (the half hour's waste to the toilets: sim/toilets.gd)
+	if not had_toilet and not toilets.patches.is_empty():
+		_log(T.toilet_first, "", [int(toilets.patches[0].ch) + 1])
 	var inside: Array = []
 	for a in workers:
 		if a.dead:
@@ -231,6 +235,7 @@ func _feed_queen(att: Array) -> void:
 	var day: float = sp["sugar_queen"]
 	var got := 0.0
 	var from := minf(QUEEN_FROM + BROOD_K * float(eggs.size() + larvae.size()) / maxf(1.0, workers.size()), QUEEN_FROM_MAX)
+	queen_given.clear()
 	for g: Ant in att:
 		var spare := clampf(g.crop - cap * from, 0.0, QUEEN_CROP - queen.crop)
 		var need := maxf(0.0, day - queen.crop - spare)
@@ -242,6 +247,8 @@ func _feed_queen(att: Array) -> void:
 		sugar += lean
 		queen.crop += spare + more + lean
 		got += spare + more + lean
+		if spare + more + lean > 0.0:
+			queen_given[g.id] = spare + more + lean
 	var per_day := got / (DUTY_H / 24.0)
 	queen["fed"] = lerpf(float(queen.get("fed", 0.0)), per_day, 1.0 - exp(-DUTY_H / 24.0 / FED_DAYS))
 

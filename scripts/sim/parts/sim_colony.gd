@@ -285,6 +285,7 @@ func _metabolism(dt: float) -> void:
 	food_eaten += w_need * workers.size()      # (less what each could not find: below)
 	for a: Ant in workers:
 		var miss := w_need - a.crop
+		var ate := w_need
 		if miss <= 0.0:
 			a.crop -= w_need
 			miss = 0.0
@@ -293,6 +294,7 @@ func _metabolism(dt: float) -> void:
 			var burn := minf(miss, a.body_fat)          # lean times: it lives on its own body fat
 			a.body_fat -= burn
 			miss -= burn
+			ate = w_need - miss
 			food_eaten -= miss
 			if a.carry == Ant.SUGAR:
 				miss = 0.0                               # a forager on its way home drinks from its load (in its crop)
@@ -303,6 +305,8 @@ func _metabolism(dt: float) -> void:
 				miss -= give
 				food_eaten += give
 				food_in += give
+		if a.state == Ant.IN_NEST:
+			toilets.due += ate                       # (step 7: its waste goes to the nest's toilets, sim/toilets.gd)
 		if a.crop > keep and a.body_fat < fat_each and fat_room > 0.0:
 			var store := minf(minf(a.crop - keep, fat_each - a.body_fat), minf(store_max, fat_room))
 			a.crop -= store
