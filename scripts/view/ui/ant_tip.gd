@@ -296,6 +296,8 @@ func _act_name(act: int) -> String:
 		19: return tr("act_drag")
 		20: return tr("act_glass")
 		24: return tr("act_beyond")          # (outworld info_for: the simulation's 22, off past the plot's edge)
+		25: return tr("act_toilet")          # (nest_care: standing over the toilet - its pose is a rest)
+		26: return tr("act_feed_queen")      # (nest_care: the drop at the queen's mouth)
 	return "-"
 
 

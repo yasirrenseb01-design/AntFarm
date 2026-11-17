@@ -331,6 +331,8 @@ act_flipped,ล้มหงาย กำลังพลิกตัว,"on its b
 act_drag,ลากเหยื่อ,dragging prey
 act_glass,ปีนผนังกระจก,climbing the glass
 act_beyond,ออกไปหากินนอกแปลง,foraging beyond the plot
+act_toilet,ถ่ายที่มุมส้วมของรัง,defecating in the nest's toilet corner
+act_feed_queen,ป้อนราชินีปากต่อปาก,feeding the queen mouth to mouth
 tip_brood_stopped,หยุดเจริญอยู่ (รังเย็นเกินไป),Not developing (the nest is too cold)
 tip_in_about,อีกราว %s,in about %s
 tip_developed,เจริญไปแล้ว %d%%,%d%% developed

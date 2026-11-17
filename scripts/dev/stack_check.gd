@@ -13,7 +13,7 @@ static func measure(nv, t: Dictionary) -> void:
 		for e in drawn:
 			ps.append((e[0] as Transform3D).origin)
 		var w := 1.1 if kind == "pupae" else 0.7         # (a cocoon is ~1.24 units thick, a larva ~0.76)
-		if OS.has_environment("STACKDUMP") and kind == "pupae" and int(t.get("dumped", 0)) < 2 and ps.size() > 0:
+		if OS.has_environment("STACKDUMP") and kind == OS.get_environment("STACKDUMP") and int(t.get("dumped", 0)) < 2 and ps.size() > 0:
 			t.dumped = int(t.get("dumped", 0)) + 1
 			for e in drawn:
 				var o: Vector3 = (e[0] as Transform3D).origin
@@ -28,6 +28,7 @@ static func measure(nv, t: Dictionary) -> void:
 			var k: String = kind + "_"
 			t[k + "n"] = int(t.get(k + "n", 0)) + 1
 			t[k + "2"] = int(t.get(k + "2", 0)) + (1 if under >= 2 else 0)
+			t[k + "1"] = int(t.get(k + "1", 0)) + (1 if under >= 1 else 0)          # (on another at all: not on the floor)
 			if under > int(t.get(k + "max", 0)) and kind == "pupae" and OS.has_environment("STACKFOLLOW"):
 				nv.target_t = p                              # (the camera on the highest stack yet)
 				nv.target = p
@@ -42,6 +43,7 @@ static func report(t: Dictionary) -> String:
 	for kind in ["pupae", "larvae"]:
 		var k: String = kind + "_"
 		var n := maxi(1, int(t.get(k + "n", 0)))
-		out.append("%s: %d item-frames, 2+ under it %.1f%%, most under one %d, highest %.1f thick off the floor" % [kind,
-			int(t.get(k + "n", 0)), 100.0 * int(t.get(k + "2", 0)) / n, int(t.get(k + "max", 0)), float(t.get(k + "lift", 0.0))])
+		out.append("%s: %d item-frames, on another %.1f%%, 2+ under it %.1f%%, most under one %d, highest %.1f thick off the floor" % [kind,
+			int(t.get(k + "n", 0)), 100.0 * int(t.get(k + "1", 0)) / n, 100.0 * int(t.get(k + "2", 0)) / n, int(t.get(k + "max", 0)),
+			float(t.get(k + "lift", 0.0))])
 	return "stacks: " + "; ".join(out)

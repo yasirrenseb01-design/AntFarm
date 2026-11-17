@@ -101,6 +101,7 @@ func _start_queen_feed_turned(m: Dictionary, vp: Vector3, turn: float) -> bool:
 			a.qturn = true
 		_hire(m, vp - Vector3(0, 0.45, 0), head, ACT_WALK)
 		m.script.k = "lick"
+		m.script.qfeed = true
 		m.script.pos = vp
 		m.script.goal = via
 		duty_stats["queen fed"] = int(duty_stats.get("queen fed", 0)) + 1
@@ -448,9 +449,21 @@ func _toilet_visit() -> bool:
 					"p": c0, "feeds": false, "queen": false, "r": 9.0, "toilet": true}
 				_hire(m, vp - Vector3(0, 0.45, 0), spot, ACT_WALK)
 				m.script.k = "lick"
+				m.script.toilet = true
 				m.script.pos = vp
 				m.script.goal = spot
 				duty_stats["toilet"] = int(duty_stats.get("toilet", 0)) + 1
 				_anims.append(a)
 				return true
 	return false
+
+
+## What the ant tip says it is doing (nest_bodies._shown_act): at the toilet it stands as resting, and feeding the queen
+## it is in the giving pose - said so in words (ant_tip: 25, 26).
+func _shown_act(m: Dictionary) -> int:
+	if m.has("script"):
+		if m.script.get("toilet", false) and int(m.act) != ACT_WALK:
+			return 25
+		if m.script.get("qfeed", false) and int(m.act) == ACT_FEED:
+			return 26
+	return super(m)

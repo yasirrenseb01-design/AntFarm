@@ -6,6 +6,8 @@ extends "res://scripts/view/nest/parts/nest_brood.gd"
 
 # ---------------------------------------------------------------- brood piles
 
+const BroodPlaces := preload("res://scripts/view/nest/brood_places.gd")
+
 ## A view tag for one item of brood (kept in its simulation entry; the simulation never reads it).
 func _vtag(item: Dictionary) -> int:
 	var v = item.get("_v")
@@ -117,10 +119,10 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		var src: Array = spots if (i < moved or old_spots.is_empty()) else old_spots
 		if not cands.has(src):
 			var centre := _pile_centre(src, kind)
-			cands[src] = {"list": _pile_places(src, centre), "next": 0, "centre": centre,
-				"reach": 0.9 + 0.75 * sqrt(float(n)),
-				# half length and half width of one item (mesh_kit larva ~1.7 x 0.76, cocoon 2.7 x 1.24)
-				"shape": Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62), "kind": kind}      # a compact heap: one layer about this wide, then on top
+			# one layer over the floor, nearest the middle first, on top once it is full (a heap 0.9 + 0.75 sqrt(n) wide made
+			# towers of larvae 6 high with floor to spare; the keeper 2026-11-17: brood lies spread on the floor). Half length
+			cands[src] = {"list": BroodPlaces.places(self, src, centre), "next": 0, "centre": centre, "reach": INF, "kind": kind,
+				"shape": Vector2(0.86, 0.38) if kind == "larvae" else Vector2(1.35, 0.62)}      # and width (larva ~1.7 x 0.76, cocoon 2.7 x 1.24)
 		var s: float = scale_fn.call(items[i])
 		var xf := _place_brood(cands[src], s, i)
 		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top, "forced": _last_forced,
@@ -160,28 +162,6 @@ func _pile_centre(spots: Array, kind: String) -> Vector3:
 		if s.distance_to(q) > far.distance_to(q):
 			far = s
 	return far
-
-
-## Where brood can lie in a pile: every floor spot and four points around it, nearest the pile's centre first.
-func _pile_places(spots: Array, centre: Vector3) -> Array:
-	if spots.is_empty():
-		return []
-	var out := []
-	for s in spots:
-		if _near_drop(Vector3i(roundi(s.x), roundi(s.y + 0.45), roundi(s.z))):
-			continue                         # (by the mouth of a shaft down from the floor: brood would roll in)
-		out.append(s)
-		for o in [Vector3(0.45, 0, 0), Vector3(-0.45, 0, 0), Vector3(0, 0, 0.45), Vector3(0, 0, -0.45)]:
-			out.append(s + o)
-	out.sort_custom(func(a, b): return a.distance_squared_to(centre) < b.distance_squared_to(centre))
-	# one floor level: a heap lies on the floor round its middle; places up or down a ramp or a shaft from there (their
-	# level more than ~half a cocoon off) are not used - brood laid down a steep ramp into a gallery lay one over the
-	# next like a column, 4-5 cocoons (the keeper, 2026-10-28); a pile with almost nothing at its level keeps them all
-	if out.is_empty():
-		return out
-	var level: float = _floor_cached(out[0])
-	var kept := out.filter(func(p): return absf(_floor_cached(p) - level) <= 0.9)
-	return kept if kept.size() >= 4 else out
 
 
 ## Lay one item of brood down like a real object: on the floor at the first free place (nothing overlapping
@@ -342,8 +322,8 @@ func _born_at(kind: String, spots: Array, v: int, s: float) -> bool:
 		q.y = _floor_cached(q)
 		if _density_at(q + Vector3(0, 0.3, 0)) >= 0.5:
 			continue
-		if kind == "pupae" and (not _brood_free(q, 0.95 * sf) or (_queen_here() and _queen_keep(q) < 0.95 * sf + 0.5)):
-			continue                    # (a cocoon is much bigger than the larva that spun it: not into its neighbours or the queen)
+		if not _brood_free(q, 0.95 * sf if kind == "pupae" else 0.6 * sf) or (_queen_here() and _queen_keep(q) < 0.95 * sf + 0.5):
+			continue                    # (not into its neighbours or the queen: new larvae lay on each other, 6 high, at the eggs)
 		for k in 8:
 			var b := Basis(Vector3.UP, yaw0 + k * TAU / 8.0)
 			if kind == "pupae" and _shape_lift(q, b, s, kind) > 0.02:
@@ -354,7 +334,7 @@ func _born_at(kind: String, spots: Array, v: int, s: float) -> bool:
 		if int(best[0]) == 0:
 			break
 	if best[1] == Vector3.INF:
-		if kind == "pupae":
+		if kind == "pupae" or kind == "larvae":
 			return false                # no room right there: laid with the rest of the pile (the nurse carries it there)
 		best[1] = p
 	_freed[from].pop_front()
