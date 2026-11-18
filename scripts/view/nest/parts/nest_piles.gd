@@ -103,6 +103,9 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 			_keep_at(_placed[v], scale_fn.call(items[i]), kind, items[i], col_fn, xs, cs)    # where the egg / larva it came from lay
 		else:
 			todo.append(i)
+	# the lowest first: one resting on another lying on top was checked before that one was registered, found nothing
+	# under it and was laid out again every layout (~60 ms each, the nest at 300 ants 41 fps: v0.13.27-28)
+	tops.sort_custom(func(a, b): return float(_placed[_vtag(items[a])].base.y) < float(_placed[_vtag(items[b])].base.y))
 	for i in tops:
 		var pl: Dictionary = _placed[_vtag(items[i])]
 		var s: float = scale_fn.call(items[i])
@@ -664,12 +667,3 @@ func _update_brood() -> void:
 		_spots.pupae_old if _pupa_group != _pupa_prev else [], _moved_p if _pupa_group != _pupa_prev else 1 << 20, func(p): return Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.75, 1.0, p.p)), "pupae")
 	_mark_brood_cells()
 	_brood_gen += 1
-
-
-## (dev, body_check --trace-crowd) how the item drawn at p was laid: on top, forced, where from.
-func _placed_at(p: Vector3) -> String:
-	for v in _placed:
-		var pl: Dictionary = _placed[v]
-		if (pl.base as Vector3).distance_to(p) < 1.2:
-			return "top %s forced %s src %s" % [pl.top, pl.get("forced", false), pl.src]
-	return "?"

@@ -85,3 +85,13 @@ static func _gentle(v, p: Vector3, level: float) -> bool:
 	var sx: float = absf(v._floor_cached(p + Vector3(0.8, 0, 0)) - v._floor_cached(p - Vector3(0.8, 0, 0)))
 	var sz: float = absf(v._floor_cached(p + Vector3(0, 0, 0.8)) - v._floor_cached(p - Vector3(0, 0, 0.8)))
 	return sx < 0.9 and sz < 0.9
+
+
+## (dev, body_check --trace-crowd) how the item drawn at p was laid: on top, forced, where from (moved out of
+## parts/nest_piles.gd in v0.13.29, that file at its size limit).
+static func placed_at(v, p: Vector3) -> String:
+	for k in v._placed:
+		var pl: Dictionary = v._placed[k]
+		if (pl.base as Vector3).distance_to(p) < 1.2:
+			return "top %s forced %s src %s" % [pl.top, pl.get("forced", false), pl.src]
+	return "?"

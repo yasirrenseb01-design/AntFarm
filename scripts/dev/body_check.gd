@@ -192,8 +192,8 @@ static func measure(nv, tally: Dictionary) -> void:
 				tally.brood_brood = int(tally.get("brood_brood", 0)) + 1
 				_worst(tally, "brood2", d, brood[i][1], key)
 				if tally.has("trace") and int(tally.get("frames", 0)) % 10 == 5:
-					var pi = nv._placed_at(brood[i][1])
-					var pj = nv._placed_at(brood[j][1])
+					var pi = preload("res://scripts/view/nest/brood_places.gd").placed_at(nv, brood[i][1])
+					var pj = preload("res://scripts/view/nest/brood_places.gd").placed_at(nv, brood[j][1])
 					print("  overlap %.2f %s at %s / %s  | %s | %s" % [d, key, brood[i][1], brood[j][1], pi, pj])
 	if nv._queen_mm.instance_count > 0:
 		var qx: Transform3D = nv._queen_xf
