@@ -1,6 +1,7 @@
 extends "res://scripts/sim/parts/sim_warmth.gd"
 ## Simulation, layer 8 of 11: the queen laying and the brood growing (eggs, larvae, cocoons, new workers);
-## the colony limit (species "colony_max"). Split from sim_colony.gd in v0.12.1.
+## the colony limit (species "colony_max"); the workers in fixed orders (_ranked, from sim_colony in v0.14.1).
+## Split from sim_colony.gd in v0.12.1.
 
 
 const QUEEN_KEEP := 20.0     # body reserve a founding queen will not spend on brood
@@ -48,11 +49,14 @@ func _queen(dt: float) -> void:
 		if not stats.get("demo_told", false):
 			stats["demo_told"] = true    # (said once a colony: else the keeper thinks it a fault)
 			_log(T.demo_limit, "ok", [demo_max])
-	var most: float = sp.get("colony_max", 1000.0)
+	var most: float = sp.get("colony_max", 2000.0)
 	rate *= clampf((most - whole) / (most * 0.15), 0.0, 1.0)
-	if whole >= most * 0.85 and not stats.get("near_limit", false):
-		stats["near_limit"] = true       # (said once a colony)
-		_log(T.colony_near_limit, "ok")
+	# (said once a colony for each limit: v0.14.1 raised it 1,000 -> 2,000, and a colony told at 850 is told again near
+	# 1,700 - "near_cap" keeps the limit it was told of; the "near_limit" of older saves is left as it was)
+	if whole >= most * 0.85 and float(stats.get("near_cap", 0.0)) < most:
+		stats["near_cap"] = most
+		var m := int(most)
+		_log(T.colony_near_cap, "ok", ["%d,%03d" % [m / 1000, m % 1000] if m >= 1000 else str(m)])
 	if workers.size() >= 5 and rate > 0.0:
 		# (PART 0.13 step 4, R9) She lays as far as she is fed: each egg takes EGG_SUGAR from her crop beyond a day of her
 		# own eating, and her attendants give her only what their crops hold above QUEEN_FROM (sim_duties._tend_queen) -
@@ -75,10 +79,15 @@ func _queen(dt: float) -> void:
 
 
 func _brood(dt: float) -> void:
+	# (v0.14.1) dev_in worked out once a chamber for this tick, not once a brood: the same numbers - a colony of 2,000 has
+	# ~2,800 brood in a few chambers
+	_dev_c.clear()
+	var k_egg: float = dt / sp["egg_days"]
 	for i in range(eggs.size() - 1, -1, -1):
-		eggs[i].p += dt / sp["egg_days"] * dev_in(int(eggs[i].get("c", -1)))      # (each at its own chamber's warmth)
-		if eggs[i].p >= 1.0:
-			var at := int(eggs[i].get("c", -1))
+		var e: Dictionary = eggs[i]
+		var at := int(e.get("c", -1))
+		e.p += k_egg * _dev_once(at)      # (each at its own chamber's warmth)
+		if e.p >= 1.0:
 			eggs.remove_at(i)
 			larvae.append({"p": 0.0, "h": 0.0, "q": 0.6, "c": at})
 
@@ -106,10 +115,11 @@ func _brood(dt: float) -> void:
 		var diapause := winding_down() or fridge_on
 		var cold := clampf(dev * 2.0, 0.0, 1.0)          # a larva held still by the cold does not go hungry
 		var r_all := r
+		var k_larva: float = dt / sp["larva_days"]
 		for i in range(n - 1, -1, -1):
 			var l = larvae[i]
 			r = r_all * float(l.get("f", 1.0))      # (a larva nobody fed this half hour: no growth, hungrier)
-			l.p += dt / sp["larva_days"] * dev_in(int(l.get("c", -1))) * r
+			l.p += k_larva * _dev_once(int(l.get("c", -1))) * r
 			if diapause:
 				l.p = minf(l.p, 0.95)
 			l.h = maxf(0.0, l.h + dt * (1.0 - r) * cold - dt * r * 0.5)
@@ -134,10 +144,11 @@ func _brood(dt: float) -> void:
 			if stats.cannibalized == 1 or stats.cannibalized % 10 == 0:
 				_log(T.cannibalism, "bad", [stats.cannibalized])
 
+	var k_pupa: float = dt / sp["pupa_days"]
 	for i in range(pupae.size() - 1, -1, -1):
-		pupae[i].p += dt / sp["pupa_days"] * dev_in(int(pupae[i].get("c", -1)))
-		if pupae[i].p >= 1.0:
-			var pupa: Dictionary = pupae[i]
+		var pupa: Dictionary = pupae[i]
+		pupa.p += k_pupa * _dev_once(int(pupa.get("c", -1)))
+		if pupa.p >= 1.0:
 			pupae.remove_at(i)
 			if workers.is_empty():
 				_log(T.first_worker, "ok")
@@ -164,3 +175,84 @@ func _brood(dt: float) -> void:
 		_warn("heat", true, T.warn_heat)
 	else:
 		_warn("heat", false, "")
+
+
+var _dev_c := {}           # chamber -> dev_in this colony tick (_brood)
+
+
+func _dev_once(c: int) -> float:
+	var d = _dev_c.get(c)
+	if d == null:
+		d = dev_in(c)
+		_dev_c[c] = d
+	return d
+
+
+# ---------------------------------------------------------------- the workers in fixed orders (sim_colony uses them)
+# (moved here from sim_colony.gd in v0.14.1: that file had grown past ~500 lines)
+
+## The index in `pool` of the worker readiest for this kind of need (lowest threshold, then lowest id).
+func _eagerest(pool: Array, kind: int) -> int:
+	var best := 0
+	for i in range(1, pool.size()):
+		var t: float = pool[i].threshold(kind)
+		var bt: float = pool[best].threshold(kind)
+		if t < bt or (t == bt and pool[i].id < pool[best].id):
+			best = i
+	return best
+
+
+# All the workers in two fixed orders, made again only when the workers change (born: appended; died: a new array).
+# Thresholds never change, so this gives the orders sorting the reserve each time gave (v0.12.2: that sort was most of
+# _colony's time in a colony of 1,000).
+var _rank_of: Array = []
+var _rank_n := -1
+var _by_forage: Array = []            # eagerest foragers last: TH_FORAGE high to low, then id high to low
+var _by_dig: Array = []               # readiest diggers first: TH_DIG low to high, then id low to high
+
+
+func _ranked() -> void:
+	if is_same(_rank_of, workers) and _rank_n == workers.size():
+		return
+	# (v0.14.1) only the workers born since put in their places, the dead taken out: the very orders the sort gives (each
+	# a strict order: threshold, then id), without sorting the whole colony again at every birth - 0.19 ms a step at 2,000
+	if _rank_in():
+		return
+	_rank_of = workers
+	_rank_n = workers.size()
+	for a in workers:
+		a.sort_a = a.threshold(Ant.TH_FORAGE)
+		a.sort_b = a.threshold(Ant.TH_DIG)
+		a.sort_c = a.threshold(Ant.TH_AGE)
+	_by_forage = workers.duplicate()
+	_by_forage.sort_custom(func(x, y): return x.sort_a > y.sort_a or (x.sort_a == y.sort_a and x.id > y.id))
+	_by_dig = workers.duplicate()
+	_by_dig.sort_custom(func(x, y): return x.sort_b < y.sort_b or (x.sort_b == y.sort_b and x.id < y.id))
+
+
+## _ranked's orders brought up to date in place: the workers are those ranked before (less the dead) and, at the end of
+## `workers`, the newborn (never ranked: sort_a 0 - thresholds are 0.6-1.4). False (sort them all) when it is not so.
+func _rank_in() -> bool:
+	if _by_forage.is_empty() or _by_forage.size() != _by_dig.size():
+		return false
+	var k := workers.size()
+	while k > 0 and workers[k - 1].sort_a == 0.0:
+		k -= 1
+	var born := workers.size() - k
+	if born > 64:
+		return false
+	if _by_forage.size() + born != workers.size():
+		_by_forage = _by_forage.filter(func(w): return not w.dead)
+		_by_dig = _by_dig.filter(func(w): return not w.dead)
+		if _by_forage.size() + born != workers.size() or _by_dig.size() != _by_forage.size():
+			return false
+	for i in range(k, workers.size()):
+		var a: Ant = workers[i]
+		a.sort_a = a.threshold(Ant.TH_FORAGE)
+		a.sort_b = a.threshold(Ant.TH_DIG)
+		a.sort_c = a.threshold(Ant.TH_AGE)
+		_by_forage.insert(_by_forage.bsearch_custom(a, func(x, y): return x.sort_a > y.sort_a or (x.sort_a == y.sort_a and x.id > y.id)), a)
+		_by_dig.insert(_by_dig.bsearch_custom(a, func(x, y): return x.sort_b < y.sort_b or (x.sort_b == y.sort_b and x.id < y.id)), a)
+	_rank_of = workers
+	_rank_n = workers.size()
+	return true

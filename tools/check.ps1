@@ -116,6 +116,8 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/files_fuz
 Report "harmony.json, home.json and the tanks' pictures broken or changed: no script error, a huge picture not decoded" ($r -match "FILES FUZZ TEST PASSED" -and $r -notmatch "SCRIPT ERROR")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/native_guard_test.gd") 120
 Report "the C++ part given wrong sizes: answers air, reads nothing past its arrays" ($r -match "NATIVE GUARD TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/native_sim_test.gd") 1500
+Report "the foragers and the workers' upkeep in C++: the same draws, sums and colonies as the GDScript to the last bit" ($r -match "NATIVE SIM TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/tank_spec_test.gd") 120
 Report "the tank's sizes: one set, the same as the simulation's" ($r -match "TANK SPEC TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/home_test.gd") 120

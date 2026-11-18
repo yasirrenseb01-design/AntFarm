@@ -35,6 +35,12 @@ func _nest_in_tank() -> void:
 
 func step() -> void:
 	tick += 1
+	if _fwd == null and not native_off and ClassDB.class_exists("ForagerStep"):
+		_fwd_k = _fwd_consts()
+		_fwd = ClassDB.instantiate("ForagerStep")
+		if not _fwd.check(_fwd_k):
+			push_warning("the C++ part's constants differ from the GDScript's: all in GDScript")
+			native_off = true
 	if tick % TPD == 0:
 		_new_day()
 	climate.doy = doy_f()
@@ -72,8 +78,12 @@ func step() -> void:
 	_noise_k = sqrt(n)
 	if n > 1:
 		_spd *= n
+	var native: bool = _fwd != null and not native_off
 	if tick % 4 == 0:
-		_encounters()
+		if native:
+			_fwd.meet(self, outside)           # (the C++ part: native/src/forager_meet.cpp)
+		else:
+			_encounters()
 	# those holding an item are moved together with it, below (only _start_drag makes one: _maybe_drag)
 	var hauling := false
 	if _maybe_drag:
@@ -84,19 +94,22 @@ func step() -> void:
 		_maybe_drag = hauling
 	# at a substep of n each ant walks every n-th tick: only those whose turn it is are gone through, in the order of
 	# `outside` as before (v0.12.3)
-	for a: Ant in (outside if n == 1 else _turn_of(n, phase)):
-		var st := a.state
-		if st != Ant.DRAG and st != Ant.IN_NEST and not a.dead:
-			if st == Ant.DEFEND:
-				_step_defender(a)
-			else:
-				var p := a.pos
-				if p.x < 3.0 or p.y < 3.0 or p.x > WORLD.x - 3.0 or p.y > WORLD.y - 3.0:
-					# let go of an enemy at the edge (bitten loose, thrown off, dropped by a spider): back onto the ground
-					# (v0.13.22: one stuck off it, an error every tick - year_run wild seed 5 skip 4, year 3)
-					a.pos = p.clamp(Vector2(4, 4), WORLD - Vector2(4, 4))
-				_step_ant(a)
-			prof.steps += 1
+	var list: Array = outside if n == 1 else _turn_of(n, phase)
+	if native:
+		# the C++ part walks them (native/src/forager_walk.cpp: the same sums and draws), handing back the ones whose tick
+		# takes a rare turn - walked here, then it goes on from the next
+		_fwd.begin(self, _holes(), _fwd_k)
+		var i := 0
+		while i < list.size():
+			i = _fwd.run(list, i)
+			if i < list.size():
+				_walk_one(list[i])
+				i += 1
+		prof.steps += _fwd.get_steps()
+		prof["native"] = prof.get("native", 0) + _fwd.get_steps()
+	else:
+		for a: Ant in list:
+			_walk_one(a)
 	if hauling:
 		_step_drags()
 	var t3 := Time.get_ticks_usec()
@@ -113,6 +126,35 @@ func step() -> void:
 	prof.grid += t2 - t1
 	prof.ants += t3 - t2
 	prof.other += t4 - t3
+
+
+## One forager's tick as the step's loop has it: all of them without the C++ part, with it the ones it hands back.
+func _walk_one(a: Ant) -> void:
+	var st := a.state
+	if st != Ant.DRAG and st != Ant.IN_NEST and not a.dead:
+		if st == Ant.DEFEND:
+			_step_defender(a)
+		else:
+			var p := a.pos
+			if p.x < 3.0 or p.y < 3.0 or p.x > WORLD.x - 3.0 or p.y > WORLD.y - 3.0:
+				# let go of an enemy at the edge (bitten loose, thrown off, dropped by a spider): back onto the ground
+				# (v0.13.22: one stuck off it, an error every tick - year_run wild seed 5 skip 4, year 3)
+				a.pos = p.clamp(Vector2(4, 4), WORLD - Vector2(4, 4))
+			_step_ant(a)
+		prof.steps += 1
+
+
+## The foragers' walk in C++ (PART 0.14 v0.14.1: ~65% of a step at 2,000 workers was _step_ant): ForagerStep, made at the
+## first step when the C++ part is there. native_off (or --no-native): every ant walked by the GDScript - the reference
+## the C++ is compared with (tests/native_sim_test.gd). The constants it is sent: it walks none if they differ from its own.
+## (native_off, _fwd, _fwd_k: parts/sim_state.gd - the colony tick uses the C++ part too)
+
+
+func _fwd_consts() -> PackedFloat64Array:
+	return PackedFloat64Array([SENSE_EVERY, INV_CELL, CELL, NEST_R, ACT_SCAN, ACT_AWAY, ACT_WALL, WALL_TICKS, WALL_CLIMB_P,
+		BEYOND_P, BEYOND_TICKS[0], BEYOND_TICKS[1], Field.MAX, Ant.IN_NEST, Ant.SEARCH, Ant.RETURN, Ant.HOME,
+		Ant.UNDERTAKER, Ant.DEFEND, Ant.DRAG, Ant.DUMP, Ant.NONE, Ant.SUGAR, Ant.PROTEIN, Ant.TASK_OUT, Ant.TASK_CALLOW,
+		Ant.TASK_NURSE, Ant.TASK_RESERVE, Ant.TASK_DIG, Ant.D_OUT, Ant.D_DIG])
 
 
 ## The complete state of the colony and its box. Loading it with from_dict() and stepping on gives

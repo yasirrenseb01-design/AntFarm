@@ -66,41 +66,6 @@ func _activity(t: float) -> float:
 	return maxf(0.0, 1.0 - (t - sp["forage_hot_c"]) / (sp["forage_max_c"] - sp["forage_hot_c"]))
 
 
-## The index in `pool` of the worker readiest for this kind of need (lowest threshold, then lowest id).
-func _eagerest(pool: Array, kind: int) -> int:
-	var best := 0
-	for i in range(1, pool.size()):
-		var t: float = pool[i].threshold(kind)
-		var bt: float = pool[best].threshold(kind)
-		if t < bt or (t == bt and pool[i].id < pool[best].id):
-			best = i
-	return best
-
-
-# All the workers in two fixed orders, made again only when the workers change (born: appended; died: a new array).
-# Thresholds never change, so this gives the orders sorting the reserve each time gave (v0.12.2: that sort was most of
-# _colony's time in a colony of 1,000).
-var _rank_of: Array = []
-var _rank_n := -1
-var _by_forage: Array = []            # eagerest foragers last: TH_FORAGE high to low, then id high to low
-var _by_dig: Array = []               # readiest diggers first: TH_DIG low to high, then id low to high
-
-
-func _ranked() -> void:
-	if is_same(_rank_of, workers) and _rank_n == workers.size():
-		return
-	_rank_of = workers
-	_rank_n = workers.size()
-	for a in workers:
-		a.sort_a = a.threshold(Ant.TH_FORAGE)
-		a.sort_b = a.threshold(Ant.TH_DIG)
-		a.sort_c = a.threshold(Ant.TH_AGE)
-	_by_forage = workers.duplicate()
-	_by_forage.sort_custom(func(x, y): return x.sort_a > y.sort_a or (x.sort_a == y.sort_a and x.id > y.id))
-	_by_dig = workers.duplicate()
-	_by_dig.sort_custom(func(x, y): return x.sort_b < y.sort_b or (x.sort_b == y.sort_b and x.id < y.id))
-
-
 func _colony(dt: float) -> void:
 	_place_brood(dt)
 	dev = dev_in(queen_at)                # (in her chamber: how fast she lays, and the larvae are fed)
@@ -120,26 +85,34 @@ func _colony(dt: float) -> void:
 	_ranked()
 	var callow_d: float = sp["callow_days"]
 	var aged := dt * age_k
-	for a in workers:
-		a.was_dig = a.task == Ant.TASK_DIG       # who was digging: they keep at it while digging is wanted
-		a.age += aged
-		if a.state != Ant.IN_NEST:
-			out_count += 1
-			outside.append(a)
-			a.task = Ant.TASK_DIG if a.state == Ant.DUMP else Ant.TASK_OUT      # (a digger out with its pellet)
-			continue
-		if a.age < callow_d:
-			callow += 1
-			a.task = Ant.TASK_CALLOW
-		elif a.age < forager_age * (0.5 + 0.5 * a.sort_c):     # some turn forager sooner than others
-			nurses += 1
-			a.task = Ant.TASK_NURSE
-		else:
-			a.task = Ant.TASK_RESERVE
-	# the reserve, eagerest foragers last (pop_back takes them first): picked out of all the workers kept in that order
-	for a in _by_forage:
-		if a.task == Ant.TASK_RESERVE:
-			idle.append(a)
+	if _fwd != null and not native_off:
+		# (v0.14.1) these two loops in C++ (native/src/colony_step.cpp tasks: the same, in the same order)
+		var r: Array = _fwd.tasks(workers, _by_forage, outside, PackedFloat64Array([aged, callow_d, forager_age]))
+		out_count = r[0]
+		callow = r[1]
+		nurses = r[2]
+		idle = r[3]
+	else:
+		for a in workers:
+			a.was_dig = a.task == Ant.TASK_DIG       # who was digging: they keep at it while digging is wanted
+			a.age += aged
+			if a.state != Ant.IN_NEST:
+				out_count += 1
+				outside.append(a)
+				a.task = Ant.TASK_DIG if a.state == Ant.DUMP else Ant.TASK_OUT      # (a digger out with its pellet)
+				continue
+			if a.age < callow_d:
+				callow += 1
+				a.task = Ant.TASK_CALLOW
+			elif a.age < forager_age * (0.5 + 0.5 * a.sort_c):     # some turn forager sooner than others
+				nurses += 1
+				a.task = Ant.TASK_NURSE
+			else:
+				a.task = Ant.TASK_RESERVE
+		# the reserve, eagerest foragers last (pop_back takes them first): picked out of all the workers kept in that order
+		for a in _by_forage:
+			if a.task == Ant.TASK_RESERVE:
+				idle.append(a)
 	# (who feeds which larva is worked out every half hour by the duties, parts/sim_duties.gd; the older ants resting
 	# inside help when nurses are short, and a founding queen feeds her first larvae herself)
 	var lpn: float = sp["larvae_per_nurse"]
@@ -283,51 +256,69 @@ func _metabolism(dt: float) -> void:
 	var f_sum := 0.0
 	var short := 0
 	food_eaten += w_need * workers.size()      # (less what each could not find: below)
-	for a: Ant in workers:
-		var miss := w_need - a.crop
-		var ate := w_need
-		if miss <= 0.0:
-			a.crop -= w_need
-			miss = 0.0
-		else:
-			a.crop = 0.0
-			var burn := minf(miss, a.body_fat)          # lean times: it lives on its own body fat
-			a.body_fat -= burn
-			miss -= burn
-			ate = w_need - miss
-			food_eaten -= miss
-			if a.carry == Ant.SUGAR:
-				miss = 0.0                               # a forager on its way home drinks from its load (in its crop)
-			if miss > 0.0 and founding_w and queen.reserve > 0.0:
-				# (the same, to her first workers)
-				var give := minf(miss, queen.reserve)
-				queen.reserve -= give
-				miss -= give
-				food_eaten += give
-				food_in += give
-		if a.state == Ant.IN_NEST:
-			toilets.due += ate                       # (step 7: its waste goes to the nest's toilets, sim/toilets.gd)
-		if a.crop > keep and a.body_fat < fat_each and fat_room > 0.0:
-			var store := minf(minf(a.crop - keep, fat_each - a.body_fat), minf(store_max, fat_room))
-			a.crop -= store
-			a.body_fat += store
-			fat_room -= store
-		c_sum += a.crop
-		f_sum += a.body_fat
-		var empty := miss > 1e-12
-		if empty:
-			short += 1
-			a.energy -= starve_k * (miss / w_need) / a.hardiness
-		elif dry:
-			a.energy -= dt / 6.0 / a.hardiness
-		else:
-			a.energy = minf(1.0, a.energy + dt)
-		if a.energy <= 0.0:
-			_kill(a, "starve" if empty else "thirst")
-		elif a.age > a.life:
-			_kill(a, "old")
-		elif a.state != Ant.IN_NEST and rng.randf() < risk:
-			_kill(a, "out")          # lost while foraging: a bird, a spider, a raindrop, a wrong turn
+	if _fwd != null and not native_off:
+		# (v0.14.1) the loop below in C++ (native/src/colony_step.cpp: the same sums, the same draws), the deaths after it
+		var r: Array = _fwd.metabolism(workers, PackedFloat64Array([w_need, keep, fat_each, store_max, fat_room, starve_k,
+			risk, dt, food_eaten, food_in, queen.reserve, toilets.due]), founding_w, dry, rng.state)
+		food_eaten = r[0]
+		food_in = r[1]
+		queen.reserve = r[2]
+		toilets.due = r[3]
+		fat_room = r[4]
+		c_sum = r[5]
+		f_sum = r[6]
+		short = r[7]
+		rng.state = r[8]
+		var kills: PackedInt32Array = r[9]
+		var causes: PackedInt32Array = r[10]
+		for j in kills.size():
+			_kill(workers[kills[j]], ["starve", "thirst", "old", "out"][causes[j]])
+	else:
+		for a: Ant in workers:
+			var miss := w_need - a.crop
+			var ate := w_need
+			if miss <= 0.0:
+				a.crop -= w_need
+				miss = 0.0
+			else:
+				a.crop = 0.0
+				var burn := minf(miss, a.body_fat)          # lean times: it lives on its own body fat
+				a.body_fat -= burn
+				miss -= burn
+				ate = w_need - miss
+				food_eaten -= miss
+				if a.carry == Ant.SUGAR:
+					miss = 0.0                               # a forager on its way home drinks from its load (in its crop)
+				if miss > 0.0 and founding_w and queen.reserve > 0.0:
+					# (the same, to her first workers)
+					var give := minf(miss, queen.reserve)
+					queen.reserve -= give
+					miss -= give
+					food_eaten += give
+					food_in += give
+			if a.state == Ant.IN_NEST:
+				toilets.due += ate                       # (step 7: its waste goes to the nest's toilets, sim/toilets.gd)
+			if a.crop > keep and a.body_fat < fat_each and fat_room > 0.0:
+				var store := minf(minf(a.crop - keep, fat_each - a.body_fat), minf(store_max, fat_room))
+				a.crop -= store
+				a.body_fat += store
+				fat_room -= store
+			c_sum += a.crop
+			f_sum += a.body_fat
+			var empty := miss > 1e-12
+			if empty:
+				short += 1
+				a.energy -= starve_k * (miss / w_need) / a.hardiness
+			elif dry:
+				a.energy -= dt / 6.0 / a.hardiness
+			else:
+				a.energy = minf(1.0, a.energy + dt)
+			if a.energy <= 0.0:
+				_kill(a, "starve" if empty else "thirst")
+			elif a.age > a.life:
+				_kill(a, "old")
+			elif a.state != Ant.IN_NEST and rng.randf() < risk:
+				_kill(a, "out")          # lost while foraging: a bird, a spider, a raindrop, a wrong turn
 	sugar = c_sum + queen.crop + _pending_in
 	fat = f_sum
 	starving = short > workers.size() * STARVING_SHARE

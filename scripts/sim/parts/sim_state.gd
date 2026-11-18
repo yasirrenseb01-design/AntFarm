@@ -117,6 +117,11 @@ var _out_ver := 0                        # counts the changes to `outside` (sim_
 var _wild := false                      # scenario == "wild", set at the start of each step (the foragers test it every step)
 var _recruits := 0                       # nestmates excited by successful foragers, sent out next colony tick
 var ant_substep := 1                     # >1 at high game speeds: each ant moves every N ticks with N× stride
+# the C++ part (native/src, PART 0.14 v0.14.1: simulation.step, sim_colony._metabolism): made at the first step when the
+# dll is there; native_off (or --no-native): all in GDScript - the reference it is compared with (tests/native_sim_test.gd)
+var native_off := OS.get_cmdline_user_args().has("--no-native")
+var _fwd: Object = null
+var _fwd_k := PackedFloat64Array()
 var _log_home := log(HOME_EVAP)
 var _log_food := log(FOOD_EVAP)
 var _log_rain := log(RAIN_EVAP)

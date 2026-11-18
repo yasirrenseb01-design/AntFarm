@@ -27,20 +27,23 @@ func _duties() -> void:
 	if not had_toilet and not toilets.patches.is_empty():
 		_log(T.toilet_first, "", [int(toilets.patches[0].ch) + 1])
 	var inside: Array = []
-	for a in workers:
-		if a.dead:
-			continue
-		a.partner = 0
-		if a.state == Ant.IN_NEST:
-			inside.append(a)
-			a.duty = -1
-		else:
-			a.duty = Ant.D_OUT
-	# digging: those the colony has at the dig face (sim_colony: task TASK_DIG)
-	for a in inside:
-		if a.task == Ant.TASK_DIG:
-			a.duty = Ant.D_DIG
-			a.dig_h += DUTY_H
+	if _fwd != null and not native_off:
+		inside = _fwd.duty_start(workers, DUTY_H)       # (v0.14.1: the two loops below in C++, colony_step.cpp)
+	else:
+		for a in workers:
+			if a.dead:
+				continue
+			a.partner = 0
+			if a.state == Ant.IN_NEST:
+				inside.append(a)
+				a.duty = -1
+			else:
+				a.duty = Ant.D_OUT
+		# digging: those the colony has at the dig face (sim_colony: task TASK_DIG)
+		for a in inside:
+			if a.task == Ant.TASK_DIG:
+				a.duty = Ant.D_DIG
+				a.dig_h += DUTY_H
 	_feed_larvae(inside)
 	_carry_brood(inside)
 	_tend_queen(inside)
