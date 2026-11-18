@@ -10,7 +10,8 @@ const FIXTURES := ["res://tests/fixtures/save_v1.antfarm", "res://tests/fixtures
 	"res://tests/fixtures/save_v4.antfarm",
 	"res://tests/fixtures/save_v5.antfarm", "res://tests/fixtures/save_v6.antfarm", "res://tests/fixtures/save_v7.antfarm",
 	"res://tests/fixtures/save_v8.antfarm", "res://tests/fixtures/save_v9.antfarm",
-	"res://tests/fixtures/save_v10.antfarm", "res://tests/fixtures/save_v11.antfarm"]
+	"res://tests/fixtures/save_v10.antfarm", "res://tests/fixtures/save_v11.antfarm",
+	"res://tests/fixtures/save_v12.antfarm"]          # (v12 as v0.13.0 wrote it: crops far over the cap - tests/_make_fixture_v12.gd)
 
 
 func _read(path: String) -> Dictionary:
@@ -56,7 +57,8 @@ func _init() -> void:
 		var had_spider: bool = not d.get("spider", {}).is_empty() or not d.get("creatures", []).is_empty()
 		var sim = Sim.new()
 		sim.from_dict(M.migrate(d, Sim.SAVE_VERSION))
-		var kept: bool = sim.workers.size() == workers and (sim.creatures.size() > 0) == had_spider and _ledger_off(sim) < 1e-6
+		var kept: bool = sim.workers.size() == workers and (sim.creatures.size() > 0) == had_spider and _ledger_off(sim) < 1e-6 \
+				and sim.workers.all(func(w): return w.crop <= sim.crop_cap() + 1e-9)
 		# play on for two days (the spider gets its fight), then a save/load round trip must match
 		for i in sim.TPD * 2:
 			sim.step()

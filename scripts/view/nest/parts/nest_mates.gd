@@ -508,8 +508,8 @@ func _update_ants(delta: float) -> void:
 		var tc := Time.get_ticks_usec()
 		us_smooth += tc - tb
 		if _visible(tr.origin):
-			if m.has("partner"):
-				m.sep = (m.get("sep", Vector3.ZERO) as Vector3).move_toward(Vector3.ZERO, 3.0 * md)   # (feeding: stands where it stepped to)
+			if m.has("partner") or m.has("script") and m.script.get("qfeed", false) and int(m.act) == ACT_FEED:     # (feeding a nestmate or the queen:
+				m.sep = (m.get("sep", Vector3.ZERO) as Vector3).move_toward(Vector3.ZERO, 3.0 * md)   # stands where it stepped to - kept apart, 1.4 voxels off her mouth)
 				tr.origin += m.sep
 				m.sep_d = m.sep
 			else:
@@ -851,7 +851,7 @@ func _update_ants(delta: float) -> void:
 		_queen_tshare = lerpf(_queen_tshare, tshare, minf(1.0, 6.0 * adt))
 		var qa := _queen_act if _queen_act >= 0 else (ACT_LAY if _queen_lay > 0.0 else _queen_mode)
 		_queen_vact = AntModel.act_step(_queen_vact, qa, _queen_anim, AntModel.QUEEN_BLEND)     # she eases slowly from one pose into the next
-		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim, AntModel.QUEEN_BLEND), fmod(_queen_anim, 600.0), AntModel.gait_w(_queen_mv, qs, _queen_tshare)))
+		_queen_mm.set_instance_custom_data(0, Color(_queen_gait, AntModel.act_y(_queen_vact, _queen_anim, AntModel.QUEEN_BLEND), fmod(_queen_anim, 600.0) + 16384.0 * QueenRoam.feet_mode, AntModel.gait_w(_queen_mv, qs, _queen_tshare)))
 	var q_sel: bool = sel_kind == "queen" and _queen_mm.instance_count > 0
 	_sel_queen_mm.instance_count = 1 if q_sel else 0
 	if q_sel:

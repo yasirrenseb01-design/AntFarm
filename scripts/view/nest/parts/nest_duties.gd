@@ -293,3 +293,31 @@ func _tilt_stale(pl: Dictionary) -> bool:
 				if int(_chunk_gen.get(k + Vector3i(dx, dy, dz), -1)) > t:
 					return true
 	return false
+
+
+# ---------------------------------------------------------------- its head up to the queen's mouth (v0.13.31)
+## Feeding the queen it lifts its head at the neck to her mouth (it stood ~0.3 voxels lower, its head level: the keeper's
+## leftover of v0.13.24) - the shader's neck bend (y, + up), eased, while it gives her the drop (nest_care).
+func _custom(v: Dictionary, act: int) -> Color:
+	var up := float(v.get("qup_want", 0.0)) if v.has("script") and v.script.get("qfeed", false) and act == ACT_FEED else 0.0
+	v.qup = move_toward(float(v.get("qup", 0.0)), up, 1.5 * get_process_delta_time())
+	var b: Vector2 = v.get("bend", Vector2.ZERO)
+	v.bend = b + Vector2(0.0, float(v.qup))
+	var c := super(v, act)
+	v.bend = b
+	return c
+
+
+## The neck lift (0-0.6 rad) that brings its mouth nearest hers.
+func _qfeed_raise(m: Dictionary, mouth: Vector3) -> float:
+	if not m.has("xf"):
+		return 0.0
+	var best := 0.0
+	var bd := INF
+	for k in 13:
+		var d: float = ((m.xf as Transform3D) * _bent(MOUTH, m.get("bend", Vector2.ZERO) + Vector2(0, 0.05 * k), 0.0)).distance_to(mouth)
+		if d < bd:
+			bd = d
+			best = 0.05 * k
+	return best
+

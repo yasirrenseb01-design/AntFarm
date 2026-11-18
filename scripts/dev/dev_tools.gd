@@ -694,8 +694,8 @@ func _take_shot() -> void:
 						if i == 0:
 							print("  fitted ant: %s act %d over %.2f tip %.2f on %s lat %.2f" % [fm.get("gfit"), fm.act, float(fm.get("over", 0.0)),
 								float(fm.get("over_tip", 0.0)), fm.has("over_on"), float(fm.get("lat", 0.0))])
-				if _opts.has("follow-queen") and mode == "nest" and nest_view._queen_mm.instance_count > 0:
-					nest_view.target_t = nest_view._queen_xf.origin        # (dev: watch her walk, --queen-to)
+				if _opts.has("follow-queen") and mode == "nest":     # (dev: watch her walk, --queen-to; her spot until she is drawn)
+					nest_view.target_t = nest_view._queen_xf.origin if nest_view._queen_mm.instance_count > 0 else nest_view._spots.queen
 					nest_view.target = nest_view.target_t
 				if _opts.has("follow-digger") and mode == "nest":
 					# watch a digger (the same one), seen from its side (--side) or above

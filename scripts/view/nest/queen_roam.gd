@@ -50,15 +50,16 @@ const TILT_V := 0.7                   # radians a second she tips at most (at 1.
 
 ## Walking over brood: her body raised onto it - each foot on what lies under it, not in it - and tipped front or back and
 ## side to side as the brood under her feet asks; and her gaster and head clear of it (eggs, larvae and cocoons are firm
-## enough to step on: nest_bodies._brood_top - a worker crossing the pile walks on top of it too). Her legs are drawn
-## straight from her body, not reaching down: a foot over the floor beside the brood stands off it, as on a step (her feet
-## went into the larvae she walked over, the body above them: the keeper, 2026-11-18). `was`: her lift (voxels), tilt
+## enough to step on: nest_bodies._brood_top - a worker crossing the pile walks on top of it too). Her legs reach down
+## for what is under each (feet_mode, v0.13.31: a foot over the bare floor beside the brood hung in the air before) - her
+## feet went into the larvae she walked over, the body above them (the keeper, 2026-11-18). `was`: her lift (voxels), tilt
 ## front-back and side to side (radians) last frame, eased toward the new; she is drawn so (nv._queen_xf and her
 ## instance). Not walking: back to none.
 static func over(nv, was: Vector3, dt: float) -> Vector3:
-	if nv._queen_path.is_empty() or nv._queen_mm.instance_count == 0:
-		return Vector3.ZERO
 	dt = minf(dt, 0.05)                 # (a slow frame: no jump up or down)
+	if nv._queen_path.is_empty() or nv._queen_mm.instance_count == 0:
+		_reach_to(0.0, nv, dt)
+		return Vector3.ZERO
 	var xf: Transform3D = nv._queen_xf
 	drawn_from = [xf, Engine.get_process_frames()]
 	var up: Vector3 = xf.basis.y.normalized()
@@ -97,7 +98,28 @@ static func over(nv, was: Vector3, dt: float) -> Vector3:
 		var t := _tipped(xf, now)
 		nv._queen_xf = Transform3D(t.basis, t.origin + up * now.x)
 		nv._queen_mm.set_instance_transform(0, nv._queen_xf)
+	# her legs reach down for what is under them as far as the body went up (the shader's feet mode, as a worker's on the
+	# brood: nest_feet._feet_mode) - a foot over the bare floor beside the brood hung in the air, ~a larva's height
+	var gap := 0.0
+	for f in FEET:
+		var w: Vector3 = nv._queen_xf * (f as Vector3)
+		gap = maxf(gap, w.y - nv._floor_cached(w) - nv._brood_top(w))
+	_reach_to(gap if now.x > 0.02 else 0.0, nv, dt)
 	return now
+
+
+## Her feet's reach (model units below where a straight leg ends, 0-0.6) eased toward the gap under her farthest-off foot,
+## and the shader's feet mode for it (0 on the floor; 2-7 reaching 0.1-0.6 further: ant_core set_down). The z of her
+## INSTANCE_CUSTOM carries it (nest_mates: + 16384 x feet_mode).
+static var _reach := 0.0
+static var feet_mode := 0
+static func _reach_to(gap_vox: float, nv, dt: float) -> void:
+	var want := clampf(gap_vox / float(nv.queen_scale) - 0.15, 0.0, 0.6)     # (0.25 it reaches anyway, less a margin)
+	_reach = move_toward(_reach, want, 1.2 * dt)
+	feet_mode = 0 if _reach < 0.05 else maxi(2, 1 + roundi(_reach / 0.1))
+	if OS.has_environment("QFEET") and gap_vox > 0.0:
+		var s: float = nv.queen_scale     # (dev: how far the farthest-off foot stays off, with the old reach and the new)
+		print("QFEET gap %.2f old %.2f new %.2f" % [gap_vox, maxf(0.0, gap_vox - 0.25 * s), maxf(0.0, gap_vox - (0.25 + (0.1 * (feet_mode - 1) if feet_mode >= 2 else 0.0)) * s)])
 
 
 ## Her back and sides, head to gaster tip (model units: dev/queen_check.gd BODY).

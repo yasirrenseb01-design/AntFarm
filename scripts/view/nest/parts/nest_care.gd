@@ -17,7 +17,7 @@ const QFEED_REST := Vector2(6.0, 14.0)    # seconds (at 1x) after one before the
 const QFEED_GAP := 0.3                 # between its mandible tips and hers: the droplet
 const QMOUTH := Vector3(1.18, 0.25, 0.0)   # her mandible tips taking a drop (act 21: head nodded -0.12 rad from MOUTH)
 var _q_round := -1                     # the simulation's duty round last looked at
-var _q_owed := false                   # she was given something since the last drop drawn
+var _q_owed := 0                       # drops she was given (one a giver, up to 3 a round) not drawn yet (one a round: ~0-2 a minute)
 var _q_rest := 0.0                     # seconds until the next drop may be drawn
 var _q_dev := "--qfeed" in OS.get_cmdline_user_args()   # dev (--qfeed): one after another, every round given or not (pose checks)
 
@@ -156,15 +156,15 @@ func _step_anims(adt: float) -> void:
 		_q_round = r
 		for id in sim.queen_given:
 			if float(sim.queen_given[id]) >= QFEED_MIN:
-				_q_owed = true
+				_q_owed = mini(_q_owed + 1, 3)
 	_q_rest -= adt
 	if _q_dev:
-		_q_owed = true
+		_q_owed = 1
 		_q_rest = minf(_q_rest, 1.0)
-	if _q_owed and _q_rest <= 0.0 and adt > 0.0:
+	if _q_owed > 0 and _q_rest <= 0.0 and adt > 0.0:
 		_q_rest = 0.5                                  # (tried every half second until one can go)
 		if _queen_feed_now():
-			_q_owed = false
+			_q_owed -= 1
 			_q_rest = randf_range(QFEED_REST.x, QFEED_REST.y)
 	for a in _anims:
 		if not a.get("qfeed", false) or a.get("done", false) or a.t >= a.d:
@@ -201,6 +201,7 @@ func _step_anims(adt: float) -> void:
 			a.t = minf(a.t, 0.1 * a.d)                 # (the drop is given once it is there)
 			continue
 		var u: float = a.t / a.d
+		lm.qup_want = _qfeed_raise(lm, qm[0])         # (its head lifted to her mouth: nest_duties)
 		lm.script.act = ACT_FEED
 		if _queen_act < 0:
 			_queen_act = ACT_TAKE
@@ -223,7 +224,8 @@ func _draw_anims() -> void:
 			continue
 		var mid: Vector3 = (((lm.xf as Transform3D) * MOUTH) + (_queen_mouth()[0] as Vector3)) * 0.5
 		if _q_dev:
-			print("QFEED u%.2f mouths %.2f" % [a.t / a.d, ((lm.xf as Transform3D) * MOUTH).distance_to(_queen_mouth()[0])])
+			var bm: Vector3 = (lm.xf as Transform3D) * _bent(MOUTH, lm.get("bend", Vector2.ZERO) + Vector2(0, float(lm.get("qup", 0.0))), 0.0)
+			print("QFEED u%.2f mouths %.2f her mouth above its %.2f, its body off its spot %.2f" % [a.t / a.d, bm.distance_to(_queen_mouth()[0]), (_queen_mouth()[0] as Vector3).y - bm.y, Vector2((lm.xf as Transform3D).origin.x - a.spot.x, (lm.xf as Transform3D).origin.z - a.spot.z).length()])
 		var left := 1.0 - clampf(a.t / a.d, 0.0, 1.0)
 		if _visible(mid):
 			_anim_drops.append(Transform3D(Basis.from_scale(Vector3.ONE * (0.35 + 0.45 * left) * (1.0 + 0.08 * sin(a.t * 6.0))), mid))
