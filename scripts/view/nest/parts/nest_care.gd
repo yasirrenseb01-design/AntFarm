@@ -469,26 +469,22 @@ func _shown_act(m: Dictionary) -> int:
 	return super(m)
 
 
-# ---------------------------------------------------------------- where the soil changed (v0.13.27)
-# The floor cache is dropped whole whenever ants dig anywhere (nest_view), and every item of brood on the floor was taken
-# as moved and set down on it again (its tilt, ~20 ms each): brood far from the digging lies as it did.
-var _chunk_gen := {}                  # soil chunk (nest_voxels CHUNK) -> _soil_gen when it last changed
 
-
-func _fcells_forget(k: Vector3i) -> void:
-	_chunk_gen[k] = _soil_gen
-	super(k)
-
-
-## Whether the soil changed by an item of brood since it was set down (its chunk or one next to it: its ends and the
-## floor round them reach over a chunk's edge).
-func _tilt_stale(pl: Dictionary) -> bool:
-	var b: Vector3 = pl.base
-	var k := Vector3i(floori(b.x / 16.0), floori(b.y / 16.0), floori(b.z / 16.0))
-	var t: int = int(pl.get("tgen", -1))
-	for dz in [-1, 0, 1]:
-		for dy in [-1, 0, 1]:
-			for dx in [-1, 0, 1]:
-				if int(_chunk_gen.get(k + Vector3i(dx, dy, dz), -1)) > t:
-					return true
-	return false
+## Where a nestmate resting in a toilet's chamber is drawn to (nest_rest._settle_on): the patch, 2 in 5 of them - ants were
+## "often aggregating" on the toilets, so many that a patch could not be watched forming week by week ([Ln] Czaczkes et al.
+## 2015; how many and how long: not measured - the share is chosen). Vector3.INF: none near, or not this one.
+const TREST_P := 0.4
+func _toilet_rest(c: Vector3i) -> Vector3:
+	if randf() > TREST_P:
+		return Vector3.INF
+	var best := Vector3.INF
+	var bd := 144.0                                   # (within 12 voxels, ~1.8 cm: its own chamber)
+	for t in sim.toilets.patches:
+		if float(t.amt) < 0.3 or t.old:
+			continue
+		var p := _toilet_at(t)
+		var d := Vector3(c).distance_squared_to(p)
+		if d < bd and absf(p.y - c.y) < 3.0:
+			best = p
+			bd = d
+	return best

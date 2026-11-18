@@ -7,6 +7,7 @@ extends "res://scripts/view/nest/parts/nest_brood.gd"
 # ---------------------------------------------------------------- brood piles
 
 const BroodPlaces := preload("res://scripts/view/nest/brood_places.gd")
+const BroodCarry := preload("res://scripts/view/nest/brood_carry.gd")
 var _tilt_budget := 0                    # items whose lie on the floor may be worked out again in this layout (_keep_at)
 
 ## A view tag for one item of brood (kept in its simulation entry; the simulation never reads it).
@@ -132,7 +133,8 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top, "forced": _last_forced, "tb": xf.basis.orthonormalized(),
 			"tgen": _soil_gen, "ts": snappedf(s, 0.04), "lift": 0.0 if _last_top else _rest_on_floor(_register_brood(_last_base, xf.basis.orthonormalized(), s, kind, false, false), kind),
 			"src": _pile_key(kind, i < moved or old_spots.is_empty())}
-		if _brood_shown(xf, kind):
+		var held: bool = cands[src].has("home") and not _last_top and BroodCarry.hold(self, _vtag(items[i]), kind, cands[src].centre, _last_base, s)
+		if _brood_shown(xf, kind) and not held:          # (spilled to another chamber: shown once a nurse has carried it there)
 			xs.append(xf)
 			cs.append(col_fn.call(items[i]) if col_fn.is_valid() else Color.WHITE)
 			_brood_drawn[kind].append([xf, items[i]])
@@ -277,7 +279,7 @@ func _keep_at(pl: Dictionary, s: float, kind: String, item, col_fn: Callable, xs
 		pl.ts = sk
 		pl.lift = 0.0 if pl.top else _rest_on_floor(_register_brood(pl.base, pl.tb, s, kind, false, false), kind)
 	var xf := _register_brood(pl.base + Vector3(0, float(pl.lift), 0), pl.tb, s, kind, false)
-	if _brood_shown(xf, kind):
+	if _brood_shown(xf, kind) and not pl.has("wait"):     # (still to be carried there: brood_carry.gd)
 		xs.append(xf)
 		cs.append(col_fn.call(item) if col_fn.is_valid() else Color.WHITE)
 		_brood_drawn[kind].append([xf, item])

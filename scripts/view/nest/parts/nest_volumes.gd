@@ -251,9 +251,12 @@ func _set_chunk(k: Vector3i, mesh: ArrayMesh) -> void:
 ## Every chunk still waiting made at once, the meshes on every core (nest_view.warm: behind the time-away summary or
 ## the first frame; ~0.3 s for a big nest's 441). Each job writes only its own array (distinct objects across threads).
 func _make_all_chunks() -> void:
+	# (the ones in flight set in here: once waited for, a task's id is gone - _pump_chunks asked is_task_completed of it,
+	# "Invalid Task ID" every frame, ~8,000 lines in 15 s, and that chunk was never set nor made again: v0.12.30-v0.13.29)
 	for k in _meshing.keys():
 		WorkerThreadPool.wait_for_task_completion(_meshing[k].task)
-	_pump_chunks([])                       # (the ones in flight set in)
+		_set_chunk(k, _meshing[k].out[0] if not _meshing[k].out.is_empty() else null)
+	_meshing.clear()
 	var ks: Array = []
 	var ds: Array = []
 	for k in _queue:

@@ -393,6 +393,7 @@ func _settle_on(m: Dictionary) -> bool:
 		"nurse": near_to = _nearest_spot(Vector3(start), _spots.larvae) if not _spots.larvae.is_empty() else Vector3.INF
 		"attend": near_to = _spots.queen if _spots.queen != Vector3.ZERO else Vector3.INF
 		"giver", "groomer": near_to = m.get("near_to", Vector3.INF)       # (its partner: nest_duties)
+		"idle": near_to = call("_toilet_rest", start)                    # (on the toilet in its chamber, some: nest_care)
 	if _native != null and not _no_native_settle:
 		# (the search below in C++: the same steps and sums, ~4 ms a frame in GDScript with 600 drawn - v0.12.28)
 		var r: Array = _native.settle_find(m, start, near_to, [nest.rho, PackedInt32Array([nest.x_lo, nest.y_lo, nest.z_lo,
