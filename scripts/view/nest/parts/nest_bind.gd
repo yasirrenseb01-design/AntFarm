@@ -12,29 +12,46 @@ var draw_cap := 250                # nestmates drawn at most: by the graphics qu
 var _io_was := {}                 # (dev --io: worker id -> in the nest at the last bind)
 var _bind_tick := -(1 << 60)      # sim.tick at the last bind (a worker that came in after it went out and back unseen)
 
+var _bind_key := []               # (the workers looked through again only when this changes: see _bind_workers)
+var _bind_all := {}
+var _bind_sorted := []            # the workers inside at that time, youngest first
+var _io_on: bool = OS.get_cmdline_user_args().has("--io")
+
 func _bind_workers() -> void:
-	var all := {}
-	var inside := []
-	for w in sim.workers:
-		all[w.id] = w
+	# every worker read, and those inside sorted by age, only when one is born, dies or goes out, and each colony tick
+	# (ages and tasks change only then) - every frame it was ~5 ms at 1,000 workers, ~8 at 2,000 (PART 0.14 step 0.5).
+	# One just in from outside is in the list at the next colony tick (20 ticks: a third of a second at 1x).
+	var key := [sim.workers.size(), sim._out_ver, sim.tick / sim.COLONY_EVERY]
+	if key != _bind_key:
+		_bind_key = key
+		_bind_all = {}
+		var srt := []
+		for w in sim.workers:
+			_bind_all[w.id] = w
+			if w.state == Ant.IN_NEST:
+				srt.append([w.age, w.id, w])
+		# (youngest first, then by id: as [age, id, worker] sorted by the engine - the sort_custom with a lambda it was,
+		# ~4x slower every frame with a thousand workers; the same order, v0.12.5)
+		srt.sort()
+		_bind_sorted.resize(srt.size())
+		for i in srt.size():
+			_bind_sorted[i] = srt[i][2]
+	var all: Dictionary = _bind_all
 	_pair_diggers(all)
-	for w in sim.workers:
+	var inside := []
+	for w in _bind_sorted:
 		if w.state == Ant.IN_NEST and not _dug_by.has(w.id):      # (a worker at the dig face is drawn as its digger)
-			inside.append([w.age, w.id, w])
-	# (youngest first, then by id: as [age, id, worker] sorted by the engine - the sort_custom with a lambda it was, ~4x
-	# slower every frame with a thousand workers; the same order, v0.12.5)
-	inside.sort()
-	for i in inside.size():
-		inside[i] = inside[i][2]
-	if not _io_was.is_empty():
+			inside.append(w)
+	if _io_on and not _io_was.is_empty():
 		for w in sim.workers:
 			var now_in: bool = w.state == Ant.IN_NEST
 			if _io_was.has(w.id) and _io_was[w.id] != now_in:
 				var k := "sim_in" if now_in else "sim_out"
 				io[k] = int(io.get(k, 0)) + 1
-	_io_was.clear()
-	for w in sim.workers:
-		_io_was[w.id] = w.state == Ant.IN_NEST
+	if _io_on:                          # (dev --io only: every worker, every frame)
+		_io_was.clear()
+		for w in sim.workers:
+			_io_was[w.id] = w.state == Ant.IN_NEST
 	var by_id := {}
 	for i in range(_pending("eclose"), inside.size()):      # the youngest are still being born
 		if by_id.size() >= draw_cap:
