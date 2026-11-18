@@ -63,6 +63,7 @@ static func measure_walk(nv, t: Dictionary) -> void:
 			t.max_ang = maxf(float(t.get("max_ang", 0.0)), ang)
 			t.jerks = int(t.get("jerks", 0)) + (1 if ang > 3.0 or moved > 0.25 else 0)
 			t.sum_ang = float(t.get("sum_ang", 0.0)) + ang
+	_roam(nv, t, xf, walking)
 	t.last_xf = xf
 	t.was_walking = walking
 	if not walking:
@@ -98,7 +99,104 @@ static func measure_walk(nv, t: Dictionary) -> void:
 	t.bad = int(t.get("bad", 0)) + (1 if inside >= 3 else 0)
 
 
+## (her walks about her chamber - the keeper, 2026-11-18: "walk farther, over the brood too") Each walk: how far from
+## where she set off to where she stopped, and the way she went; while she walks, the frames with brood under her and
+## the frames with a point of her body (or under her feet) inside an egg, larva or cocoon.
+const UNDER := [Vector3(1.1, -0.02, 0.0), Vector3(0.4, 0.0, 0.0), Vector3(0.4, 0.0, 0.3), Vector3(0.4, 0.0, -0.3), Vector3(-0.7, -0.12, 0.0),
+	Vector3(-1.2, -0.24, 0.0), Vector3(-1.7, -0.18, 0.0), Vector3(-2.15, 0.05, 0.0), Vector3(-1.2, -0.12, 0.45), Vector3(-1.2, -0.12, -0.45)]
+
+
+static func _roam(nv, t: Dictionary, xf: Transform3D, walking: bool) -> void:
+	var qp: Vector3 = nv._spots.queen
+	t.all = int(t.get("all", 0)) + 1
+	t.busy = int(t.get("busy", 0)) + (1 if nv._queen_busy() else 0)
+	t.stuck = int(t.get("stuck", 0)) + (1 if walking and qp == t.get("last_qp", Vector3.INF) else 0)
+	if walking and not t.get("was_walking", false):
+		t.from = qp
+		t.way = 0.0
+		t.last_qp = qp
+	if walking:
+		t.way = float(t.get("way", 0.0)) + qp.distance_to(t.get("last_qp", qp))
+		t.last_qp = qp
+		t.wn = int(t.get("wn", 0)) + 1
+		if UNDER.any(func(lp): return nv._brood_top(xf * (lp as Vector3)) > 0.05):
+			t.over = int(t.get("over", 0)) + 1
+		var QueenRoam = load("res://scripts/view/nest/queen_roam.gd")
+		# her feet into the brood: the top of the brood under each foot over the foot as drawn (the floor found under where
+		# the foot would be unraised: raised, it is out of _floor_y's reach)
+		var base: Transform3D = QueenRoam.drawn_from[0] if int(QueenRoam.drawn_from[1]) >= Engine.get_process_frames() - 1 else xf
+		for f in QueenRoam.FEET:
+			var w: Vector3 = xf * (f as Vector3)
+			var hb: float = nv._brood_top(base * (f as Vector3))     # (where the foot would be: raised, the floor is out of reach)
+			if hb > 0.02:
+				t.foot_over = int(t.get("foot_over", 0)) + 1
+				var deep: float = nv._floor_cached(base * (f as Vector3)) + hb - w.y     # (the brood's top over her foot)
+				if deep > 0.05:
+					t.foot_in = int(t.get("foot_in", 0)) + 1
+					t.foot_deep = maxf(float(t.get("foot_deep", 0.0)), deep)
+					t.foot_sum = float(t.get("foot_sum", 0.0)) + deep
+		var hit := 0.0
+		for lp in BODY + UNDER:
+			var w: Vector3 = xf * (lp as Vector3)
+			for o in nv._brood_near(w):
+				var d: Vector3 = nv._brood_offset(w, o)
+				var half: float = float(o[3] if o.size() > 3 else o[1])
+				hit = maxf(hit, half - d.length())
+		if hit > 0.05:
+			t.in_brood = int(t.get("in_brood", 0)) + 1
+			t.deep_b = maxf(float(t.get("deep_b", 0.0)), hit)
+	elif t.get("was_walking", false) and t.has("from"):
+		var walks: Array = t.get("walks", [])
+		walks.append([(t.from as Vector3).distance_to(qp), float(t.get("way", 0.0))])
+		t.walks = walks
+	if OS.has_environment("QCROSS") and not walking:
+		_cross(nv, t, qp)
+
+
+## (QCROSS=1: to watch her on the brood) Every ~6 s she is free, sent to the spot of her chamber whose way there from her
+## crosses the most brood.
+static func _cross(nv, t: Dictionary, qp: Vector3) -> void:
+	t.wait = int(t.get("wait", 0)) + 1
+	if t.wait < 360 or nv._queen_busy() or not nv._room_of.has(nv._queen_room_ch):
+		return
+	t.wait = 0
+	var best := Vector3.INF
+	var most := 0
+	for sp in nv._rooms[nv._room_of[nv._queen_room_ch]].spots:
+		var d := (sp as Vector3).distance_to(qp)
+		if d < 4.0 or nv._brood_cells.has(Vector3i(roundi(sp.x), roundi(sp.y), roundi(sp.z))):
+			continue
+		var n := 0
+		for k in int(d * 2.0):
+			var w: Vector3 = qp.lerp(sp, (k + 0.5) / (d * 2.0))
+			if nv._brood_top(w) > 0.05:
+				n += 1
+		if n > most:
+			most = n
+			best = sp
+	if best != Vector3.INF:
+		var way: Array = QueenWay.find(nv, qp, best, qp.distance_to(best) + 6.0)       # (as nest_lifecycle._queen_roam)
+		nv._queen_path = nv._smooth_path(way) if not way.is_empty() else nv._path_to(qp, best)
+		print("  QCROSS: to %s, %d half-voxels over the brood on the straight way" % [str(best.snapped(Vector3.ONE * 0.1)), most])
+
+
 static func report_walk(t: Dictionary) -> String:
+	var walks: Array = t.get("walks", [])
+	print("  queen busy (laying, tending) %.1f%% of all frames; walking but standing still %d frames" % [100.0 * int(t.get("busy", 0)) / maxi(1, int(t.get("all", 0))), int(t.get("stuck", 0))])
+	if not walks.is_empty():
+		var far := 0.0
+		var way := 0.0
+		var most := 0.0
+		for w in walks:
+			far += float(w[0])
+			way += float(w[1])
+			most = maxf(most, float(w[0]))
+		var wn := maxi(1, int(t.get("wn", 0)))
+		print("  queen feet: over the brood %d foot-frames, into it %d (%.0f%%; deepest %.2f, on average %.2f voxels)" % [int(t.get("foot_over", 0)), int(t.get("foot_in", 0)),
+			100.0 * int(t.get("foot_in", 0)) / maxi(1, int(t.get("foot_over", 0))), float(t.get("foot_deep", 0.0)), float(t.get("foot_sum", 0.0)) / maxi(1, int(t.get("foot_in", 0)))])
+		print("  queen roam: %d walks, from set-off to stop %.1f voxels on average (most %.1f), way walked %.1f; brood under her %.1f%% of walking frames, her body in the brood %.1f%% (deepest %.2f)" % [
+			walks.size(), far / walks.size(), most, way / walks.size(), 100.0 * int(t.get("over", 0)) / wn,
+			100.0 * int(t.get("in_brood", 0)) / wn, float(t.get("deep_b", 0.0))])
 	var n := maxi(1, int(t.get("n", 0)))
 	var names := ["head front", "head L", "head R", "thorax L", "thorax R", "thorax top", "waist L", "waist R", "gaster L", "gaster R", "gaster top", "gaster tip"]
 	var parts := []

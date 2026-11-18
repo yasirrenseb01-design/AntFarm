@@ -893,34 +893,32 @@ func _queen_walk(adt: float) -> void:
 
 
 ## Between her moments she walks to another spot of her chamber floor now and then, slowly, and stays there (the eggs
-## she lays next lie by her there), not waiting for her laying (a big colony lays every second or two: she never walked -
-## the keeper, 2026-10-24 and 2026-11-17) [inference: how often a Lasius niger queen moves about her chamber: not found].
+## she lays next lie by her there), between eggs: not while she lays one (_queen_busy: on her way then she stood still
+## 47 s, v0.13.28), but not waiting for all her laying (a big colony lays every second or two: she never walked - the
+## keeper, 2026-10-24 and 2026-11-17) [inference: how often a Lasius niger queen moves about her chamber: not found].
 func _queen_roam(adt: float) -> void:
-	if adt <= 0.0 or not _queen_path.is_empty() or _anims.any(func(a): return a.k == "care" or (a.k == "eclose" and a.get("queen", false))) or not _room_of.has(_queen_room_ch) or not sim.queen.alive:
+	if adt <= 0.0 or not _queen_path.is_empty() or not _room_of.has(_queen_room_ch) or not sim.queen.alive:
 		return
 	_queen_roam_left -= adt
-	if _queen_roam_left > 0.0:
-		return
+	if _queen_roam_left > 0.0 or _queen_busy():
+		return                  # (the time counted while she lays too: busy ~45% of the time, she walked half as often)
 	_queen_roam_left = randf_range(12.0, 35.0)
-	var here: Vector3 = _spots.queen
-	var cands := []
-	for sp in _rooms[_room_of[_queen_room_ch]].spots:
-		var d := (sp as Vector3).distance_to(here)
-		if d > 1.5 and d < 6.0 and not _brood_cells.has(Vector3i(roundi(sp.x), roundi(sp.y), roundi(sp.z))):
-			# (room for her all round: her gaster is long and turned any way - by a wall it lay in the soil)
-			var clear := true
-			for o in [Vector3(1.6, 0.6, 0), Vector3(-1.6, 0.6, 0), Vector3(0, 0.6, 1.6), Vector3(0, 0.6, -1.6), Vector3(1.1, 0.6, 1.1),
-					Vector3(-1.1, 0.6, 1.1), Vector3(1.1, 0.6, -1.1), Vector3(-1.1, 0.6, -1.1)]:
-				if _density_at((sp as Vector3) + o) >= 0.5:
-					clear = false
-					break
-			if clear:
-				cands.append(sp)
-	if cands.is_empty():
+	var to: Vector3 = QueenRoam.goal(self, _spots.queen, _rooms[_room_of[_queen_room_ch]].spots)   # (anywhere across her floor)
+	if to == Vector3.INF:
 		return
-	var path := _path_to(here, cands[randi() % cands.size()])
-	if not path.is_empty():
-		_queen_path = path
+	# (across the chamber's middle, where her body fits - the walking field's way kept to the walls: some of her in the soil
+	# 20% of the frames; straight over the brood between, neither goes round it)
+	var way: Array = QueenWay.find(self, _spots.queen, to, _spots.queen.distance_to(to) + 6.0)      # (~7 ms, slot 3)
+	_queen_path = _smooth_path(way) if not way.is_empty() else _path_to(_spots.queen, to)
+
+
+const QueenRoam := preload("res://scripts/view/nest/queen_roam.gd")
+var _queen_over := Vector3.ZERO    # her lift (voxels) and tilts (radians) on the brood she walks over (QueenRoam.over)
+
+
+func _queen_pose() -> void:
+	super()
+	_queen_over = QueenRoam.over(self, _queen_over, get_process_delta_time())
 
 
 func _queen_busy() -> bool:

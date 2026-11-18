@@ -12,14 +12,15 @@ const FLOOR_FEET := 0.05              # her feet's point over the floor, and off
 const WALL_FEET := 0.1
 
 
-## The way from p to goal, or [] if there is none (the caller then has the walking field's).
-static func find(nv, p: Vector3, goal: Vector3) -> Array:
+## The way from p to goal, or [] if there is none (the caller then has the walking field's). `near`: only through the
+## cells this far from p (her walks about her chamber, nest_lifecycle._queen_roam: not the whole nest each time).
+static func find(nv, p: Vector3, goal: Vector3, near := INF) -> Array:
 	var nest = nv.nest
 	var from := Vector3i(roundi(p.x), roundi(p.y + 0.45), roundi(p.z))
 	var to := Vector3i(roundi(goal.x), roundi(goal.y + 0.45), roundi(goal.z))
 	if not nest.is_open(from) or not nest.is_open(to):
 		return []
-	var clear := _room(nest, from)
+	var clear := _room(nest, from, near)
 	if not clear.has(to):
 		return []
 	var cost := _steps_to(clear, to)
@@ -47,7 +48,7 @@ static func find(nv, p: Vector3, goal: Vector3) -> Array:
 
 
 ## Every open cell reached from start, with its steps to the nearest soil (1 beside it, up to CLEAR_MAX).
-static func _room(nest, start: Vector3i) -> Dictionary:
+static func _room(nest, start: Vector3i, near := INF) -> Dictionary:
 	var clear := {start: 0}
 	var q: Array[Vector3i] = [start]
 	var head := 0
@@ -60,7 +61,7 @@ static func _room(nest, start: Vector3i) -> Dictionary:
 			var n: Vector3i = c + d
 			if not nest.is_open(n):
 				beside = true
-			elif not clear.has(n):
+			elif not clear.has(n) and Vector3(n - start).length() <= near:
 				clear[n] = 0
 				q.append(n)
 		if beside:
