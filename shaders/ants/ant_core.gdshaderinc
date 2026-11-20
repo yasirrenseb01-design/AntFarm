@@ -64,6 +64,8 @@ uniform int feet_row = -1;
 uniform sampler2D feet_tex : filter_nearest;   // appendages are lighter than the body: amber-orange in L. niger queens
 varying float stretch;
 varying float limb;
+uniform float gaster_back = 0.0;  // design units the waist and gaster sit further back (a queen's longer thorax, v0.14.3: body.py GBACK)
+varying float wing;               // 1 on an alate's wings (part 12, PART 0.14: tools/blender/ant/wings.py)
 varying float gband;              // gaster: 1 on the stretched membranes between the plates (a full crop)
 const float K = 0.34;   // model design units -> mesh units
 
@@ -594,7 +596,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 	} else if (part == 10.0) {
 		// gaster: slow breathing pulse; the queen curls hers down to lay. rot_z(+) swings the tip down and
 		// forward under the body, rot_z(-) raises it
-		piv = vec3(-0.9, 1.05, 0.0) * K;
+		piv = vec3(-0.9 - gaster_back, 1.05, 0.0) * K;
 		float curl = act == 5.0 ? 0.35 + 0.08 * sin(t * 2.0) : 0.0;
 		if (act == 13.0) curl = 0.8 + 0.08 * sin(t * 7.0);   // tip brought forward between the legs to spray
 		if (act == 14.0) curl = -0.12;                         // alarmed: gaster raised
@@ -613,6 +615,12 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		vec3 sc = vec3(b) * (1.0 + full * vec3(0.22, 0.3, 0.32));
 		R = R * rot_z(curl) * mat3(vec3(sc.x, 0, 0), vec3(0, sc.y, 0), vec3(0, 0, sc.z));
 		stretch_out = full;
+	} else if (part == 12.0 && act == 30.0) {
+		// an alate in flight (PART 0.14, outworld_flight.gd): the wings, folded back over the gaster at rest, swung out
+		// to the sides from where they join the thorax and beating (much slower than the real ~100+ Hz: seen as a blur)
+		float side = V.z < 0.0 ? -1.0 : 1.0;
+		piv = vec3(-0.25, 2.4, 0.5 * side) * K;
+		R = rot_x(-side * (0.15 + 0.65 * sin(t * 47.0))) * rot_y(side * 1.35);
 	}
 	V = piv + R * (V - piv);
 	NR = normalize(R * NR);
@@ -626,6 +634,7 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 
 void vertex() {
 	float part = floor(COLOR.a * 16.0 + 0.5);
+	wing = part == 12.0 ? 1.0 : 0.0;       // (moved with the trunk: no case of its own in pose())
 	if (!IN_SHADOW_PASS || shadow_pose) {
 	limb = (part >= 2.0 && part <= 9.0) || part == 11.0 ? 1.0 : 0.0;
 	// y: code + 128 x the code being left, fraction = how much of the old pose still shows

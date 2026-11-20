@@ -27,7 +27,7 @@ static var _started := false          # _ready has run once in this process (the
 ##       --food-left=<0..1> [--food-age=<days>] (cricket state)   --rain   --colonies (open the slots window)   --newcolony   --fridge
 ##       --enemy=wolf_spider [--enemy-at=x,y] [--fight=<ticks>] (stage a fight next to the nest) [--enemy-state=back|dying]
 ##       --quality=low|medium|high (graphics)   --guide[=<step>] (the first-colony guide)   --clip (clip mode, as F8)   --title [--title-hover=<i>] (the title screen, as the game opens on it; with --shot too; the pointer on word i)   --species   --settings   --album (those windows open)   --enemy-panel (the enemy panel open)   --release=<kind> [--fight=<ticks>] (let one in from the panel)
-##   --draw-cap=<n> (nest: draw up to n nestmates, not 250 - measuring only)   --no-native (the C++ part left unused: its GDScript instead)
+##   --draw-cap=<n> (nest: draw up to n nestmates, not 250 - measuring only)   --no-native (the C++ part left unused: its GDScript instead)   --alates=<gynes>,<males>[,<gyne larvae>,<male larvae>] [--flight] [--queens=<n> [--catch]] [--tubes=<n> --home] (with --shot: winged ones in the nest, flying now, mated queens on the plot - PART 0.14)
 ##   --view-hash=<seed> (with godot's --fixed-fps 60 and --frames: the views' random draws seeded; at the end a hash of where every
 ##       nestmate is drawn and how - the same before and after a change that should not alter the view)
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
@@ -148,13 +148,13 @@ func _ready() -> void:
 		var parts := choice.split(":")
 		var start: int = int(_opts.get("workers", "14")) if parts[1] == "young" else 0
 		var scen: String = parts[2] if parts.size() > 2 else String(_opts.get("scenario", "keeper"))
-		# (the Home's bigger tank: a bigger box; --big-box: dev)
-		var big_box: bool = _opts.has("big-box") or (_persist and not _opts.has("testsave") and home.big != 0 and home.big == slot)
-		# (the species picked on the species page: its id, 5th - none before v0.11.55, and from the menu: the first one)
-		var species: String = parts[4] if parts.size() > 4 and parts[4] != "" else String(_opts.get("species-id", "lasius_niger"))
+		var big_box: bool = _opts.has("big-box")      # (the Home's bigger tank: a bigger box; --big-box: dev) or (_persist and not _opts.has("testsave") and home.big != 0 and home.big == slot)
+		var species: String = parts[4] if parts.size() > 4 and parts[4] != "" else String(_opts.get("species-id", "lasius_niger"))   # (the species page's pick, 5th - none before v0.11.55; the menu: the first)
 		sim.setup(int(_opts.get("seed", "0")), start, parts[0] == "glass", scen, big_box, species)
 		if parts.size() > 3:
 			sim.set_enemy_rate(float(parts[3]))            # (the keeper's choice in the new-colony window)
+		if parts.size() > 5:
+			sim.WildQueens.found_with(sim, float(parts[5]))     # (a queen from a founding tube: her weight - PART 0.14)
 	sim.ant_substep = int(_opts.get("substep", "1"))
 	if _opts.has("selftest"):
 		_selftest(int(_opts["selftest"]), _opts.has("autokeep"))

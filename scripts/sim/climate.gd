@@ -122,3 +122,33 @@ func from_dict(d: Dictionary) -> void:
 	scenario = d.scenario
 	rain_ticks = d.rain_ticks if scenario == "wild" else 0      # (a tank saved while it rained in it, before v0.11.78)
 	fridge = d.fridge
+
+
+# ---------------------------------------------------------------- wind (PART 0.14, the wild plot only)
+# The keeper, 2026-11-18: wind only outdoors, a condition of the flight day and seen (leaves and grass sway more on a
+# windy day). No draws from the colony's generator (each colony's chances stay as they were) and nothing saved: worked
+# out from the colony's seed, the day and the hour by an integer hash. Speeds in m/s at ~2 m: a day's mean 0.8-7.8,
+# about half the days under ~3 [inference: a lowland temperate summer; no figure used], calm at night, strongest in the
+# afternoon [general meteorology]; the alates fly below 6.3 m/s [A5] and most readily when calm [A4].
+
+const WIND_MOST := 6.3       # m/s: alates were seen only below this [A5: Hayes et al. 2018]
+
+
+## The wind at a time of day (0..1) on a day of the colony's life, m/s; 0 indoors.
+func wind_at(seed: int, day: int, tod: float) -> float:
+	if scenario != "wild":
+		return 0.0
+	var a := _hash01(seed, day)
+	var b := _hash01(seed, day + 1)
+	var base := 0.8 + 7.0 * pow(lerpf(a, b, smoothstep(0.7, 1.0, tod)), 1.6)     # (the next day's weather by late evening)
+	var daily := 0.55 + 0.6 * sin(PI * clampf((tod - 0.25) / 0.6, 0.0, 1.0))     # (calm at night, most at ~15:00)
+	var gust := 0.85 + 0.3 * _hash01(seed ^ 0x5bd1e995, day * 24 + int(tod * 24.0))
+	return base * daily * gust
+
+
+static func _hash01(seed: int, n: int) -> float:
+	var x: int = (seed * 0x9E3779B1 + n * 0x85EBCA77 + 0x165667B1) & 0xFFFFFFFF
+	x = ((x ^ (x >> 15)) * 0x2C1B3C6D) & 0xFFFFFFFF
+	x = ((x ^ (x >> 12)) * 0x297A2D39) & 0xFFFFFFFF
+	x = x ^ (x >> 15)
+	return float(x & 0xFFFFFF) / 16777216.0

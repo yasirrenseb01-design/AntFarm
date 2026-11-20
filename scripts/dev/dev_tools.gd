@@ -17,14 +17,14 @@ func _take_shot() -> void:
 		sim.step()
 		if _opts.has("autokeep") and sim.tick % sim.TPD == 0:
 			_keeper(sim.day())
-	if _opts.has("harmony") and days > 0.0:
-		# (--harmony with --warm: what the colony did over those days, and the Colony Harmony points it makes a real hour)
+	if _opts.has("harmony") and days > 0.0:      # (--harmony with --warm: what the colony did over those days, and its Colony Harmony points a real hour)
 		var Hm := preload("res://scripts/game/harmony.gd")
 		var h: Dictionary = sim.harmony_n
 		var raw: float = (h.born + h.big) * Hm.BORN + h.survived * Hm.SURVIVED + h.fed * Hm.FED + sim.nest.dug * Hm.DUG
 		var per_h: float = raw / days * Hm.GAME_DAYS_PER_HOUR_1X
 		print("harmony over %.0f days, %d workers now: born %d (big %d), survived a fight %d, fed %d, dug %d -> %.0f points; a real hour: playing %.0f, away %.0f, wild %.0f" % [
 			days, sim.workers.size(), h.born, h.big, h.survived, h.fed, sim.nest.dug, raw, per_h * Hm.LIVE, per_h * Hm.AWAY, per_h * Hm.WILD])
+	load("res://scripts/dev/alate_dev.gd").setup(self)      # (--alates, --queens, --flight, --tubes: PART 0.14)
 	if _opts.has("tod"):
 		var target := int(float(_opts["tod"]) * sim.TPD)
 		while sim.tick % sim.TPD != target:
@@ -76,8 +76,7 @@ func _take_shot() -> void:
 				if _opts.has("food-age"):
 					f.age = float(_opts["food-age"])
 					f.found = true
-	if _opts.has("food"):
-		# (dev: --food=<sugar>,<protein>: the stores set so, the food lying in the box taken away - the keeper's warnings)
+	if _opts.has("food"):      # (dev: --food=<sugar>,<protein>: the stores set so, the food lying in the box taken away - the keeper's warnings)
 		var fp: PackedStringArray = String(_opts["food"]).split(",")
 		sim.ledger_set_sugar(float(fp[0]))
 		sim.protein = float(fp[1]) if fp.size() > 1 else sim.protein
@@ -181,8 +180,7 @@ func _take_shot() -> void:
 		outworld.snap_camera()
 	if _opts.has("heater"):
 		sim.heater = true                 # (dev: the heat mat on - the brood is carried down toward it)
-	if _opts.has("queen-to"):
-		# (dev: the colony sends the queen to that chamber - she walks there through the tunnels)
+	if _opts.has("queen-to"):      # (dev: the colony sends the queen to that chamber - she walks there through the tunnels)
 		get_tree().create_timer(2.0).timeout.connect(func():
 			var qt := clampi(int(_opts["queen-to"]), 0, sim.nest.chambers.size() - 1)
 			if not _opts.has("no-widen"):                  # (as the colony sends her: the way widened - sim_warmth)
@@ -474,6 +472,7 @@ func _take_shot() -> void:
 			# (--named-death: the banner a named ant's death puts up, with the words the simulation would use)
 			var TT = load("res://scripts/sim/text_th.gd")
 			sim._log(TT.named_died, "named", ["Mimi", sim.L.k(TT.death_causes.starve), 42])
+		load("res://scripts/dev/alate_dev.gd").frame(self, i)      # (--catch: PART 0.14)
 		if i == 60 and _opts.has("hover"):
 			_hover_some_ant(String(_opts["hover"]))
 		elif i > 10 and _opts.has("perf"):
@@ -1163,6 +1162,7 @@ func _hover_some_ant(what: String) -> void:
 	if mode == "nest":
 		if what == "queen":
 			p = nest_view._queen_xf.origin
+		elif what == "alate": p = load("res://scripts/dev/alate_dev.gd").hover(self)
 		else:
 			for m in nest_view._mates:
 				if m.has("xf") and m.role == what and nest_view._visible((m.xf as Transform3D).origin):

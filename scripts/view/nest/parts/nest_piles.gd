@@ -60,7 +60,7 @@ func _next_egg_slot() -> int:
 
 
 func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Callable, old_spots := [], moved := 1 << 20,
-		col_fn := Callable(), kind := "larvae") -> void:
+		col_fn := Callable(), kind := "larvae", tag := "") -> void:      # (tag: a pile of its own - the alates' larvae, nest_alates)
 	var n := mini(items.size(), max_n)
 	if _queen_here():
 		# not under the queen (a larva is ~2 units long); in a tiny founding chamber keep the spots farthest from her
@@ -85,7 +85,7 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 	var tops := []
 	var born := []
 	for i in n:
-		var src_key := _pile_key(kind, i < moved or old_spots.is_empty())
+		var src_key := _pile_key(kind, i < moved or old_spots.is_empty()) + tag
 		var v := _vtag(items[i])
 		var s: float = scale_fn.call(items[i])
 		var pl: Dictionary = _placed.get(v, {})
@@ -132,7 +132,7 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		var xf := _place_brood(cands[src], s, i)
 		_placed[_vtag(items[i])] = {"base": _last_base, "b": _last_yaw, "top": _last_top, "forced": _last_forced, "tb": xf.basis.orthonormalized(),
 			"tgen": _soil_gen, "ts": snappedf(s, 0.04), "lift": 0.0 if _last_top else _rest_on_floor(_register_brood(_last_base, xf.basis.orthonormalized(), s, kind, false, false), kind),
-			"src": _pile_key(kind, i < moved or old_spots.is_empty())}
+			"src": _pile_key(kind, i < moved or old_spots.is_empty()) + tag}
 		var held: bool = cands[src].has("home") and not _last_top and BroodCarry.hold(self, _vtag(items[i]), kind, cands[src].centre, _last_base, s)
 		if _brood_shown(xf, kind) and not held:          # (spilled to another chamber: shown once a nurse has carried it there)
 			xs.append(xf)
@@ -652,7 +652,7 @@ func _update_brood() -> void:
 	_fill(_egg_mm, exs)
 	# young larvae are tiny; they grow about tenfold in mass before pupating
 	_collect_freed_larvae()
-	_pile(_larva_mm, _spots.larvae, sim.larvae, 300, func(l): return 0.28 + l.p * 0.8, _spots.larvae_old, _moved, Callable(), "larvae")
+	_pile(_larva_mm, _spots.larvae, sim.larvae if not (sim.brood_at.has("g") or sim.brood_at.has("m")) else sim.larvae.filter(func(l): return not (l.has("x") and sim.brood_at.has(l.x))), 300, func(l): return (0.28 + l.p * 0.8) * (1.0 if not l.has("x") else (2.0 if l.x == "g" else 1.35)), _spots.larvae_old, _moved, Callable(), "larvae")
 	_freed.eggs.clear()                      # (a hatching larva appears in the same layout as its egg goes)
 	var bits := []
 	if not sim.larvae.is_empty() and not _spots.larvae.is_empty():

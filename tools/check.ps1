@@ -80,6 +80,8 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/forage_hu
 Report "workers go out by their own crops: emptier crops, more out; a full nest leaves the forager its load" ($r -match "FORAGE HUNGER TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/queen_feed_test.gd") 900
 Report "the queen fed by her attendants lays as far as she is fed; nurses feed larvae from their own crops" ($r -match "QUEEN FEED TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/alates_test.gd") 900
+Report "alates (PART 0.14): the autumn batch, the spring choice, reared apart, fed, the flight, queens on the plot caught, saved and loaded identically" ($r -match "ALATES TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/toilets_test.gd") 600
 Report "toilets: made in chamber corners from the waste eaten inside, the same every run and after a save" ($r -match "TOILETS TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/album_test.gd") 300

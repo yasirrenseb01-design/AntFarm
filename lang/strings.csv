@@ -23,6 +23,14 @@ log_colony_near_limit,"รังใกล้ขนาดสูงสุดขอ
 log_colony_near_cap,"รังใกล้ขนาดสูงสุดของเกมแล้ว (%s ตัว รวมไข่ ตัวอ่อน รังไหม) ราชินีจะวางไข่ช้าลงเรื่อย ๆ ให้พอแทนมดที่ตาย — รังจริงโตได้มากกว่านี้","The colony is nearing the game's largest size (%s, counting eggs, larvae and cocoons). The queen will lay more and more slowly, enough to replace the ants that die. Real colonies grow far larger"
 log_demo_limit,"รังถึงขีดจำกัดของเวอร์ชันเดโมแล้ว (%d ตัว รวมไข่ ตัวอ่อน ดักแด้) ราชินีจะวางไข่ต่อเมื่อมีมดตายลง — ในเกมเต็มรังโตต่อได้ และเปิดเซฟนี้เล่นต่อได้เลย","The colony has reached the demo's limit (%d, counting eggs, larvae and pupae). The queen lays again as ants die - in the full game the colony grows on, and this save carries over"
 log_new_worker,มดงานตัวใหม่ออกจากรังไหม (รวม %d ตัว),A new worker has come out of her cocoon (%d in all)
+log_alates_chosen,"รังโตพอแล้ว: ตัวอ่อนที่ข้ามหนาวมา %d ตัวจะเป็นราชินีใหม่ และ %d ตัวจะเป็นตัวผู้ (มดงานเลี้ยงให้ใหญ่กว่ามดงาน)","The colony has come of age: of the larvae that wintered, %d will be new queens and %d males (the workers rear them bigger than workers)"
+log_alates_first,ตัวมีปีกตัวแรกของปีออกจากรังไหม — มดงานป้อนอาหารให้จนถึงวันบิน,The year's first winged ant has come out of her cocoon - the workers feed the winged ones until their flight day
+log_queens_landed,"วันบินของรังรอบ ๆ: ราชินีที่ผสมพันธุ์แล้ว %d ตัวร่อนลงในแปลง สลัดปีกแล้วเดินหาที่ขุดรัง — คลิกเพื่อเก็บใส่หลอดตั้งรังก่อนเธอมุดลงดิน","A flight day round about: %d newly mated queens have come down on the plot, shed their wings and are looking for a spot to dig - click one to catch her in a founding tube before she goes into the soil"
+log_queens_landed_own,"ราชินีใหม่จากรังนี้ %d ตัวผสมพันธุ์แล้วร่อนลงในแปลง — คลิกเพื่อเก็บใส่หลอดตั้งรัง","%d of this colony's own new queens have come down on the plot, mated - click one to catch her in a founding tube"
+log_founding_tube,ราชินีตัวนี้มาจากหลอดตั้งรังบนโต๊ะ — ราชินีที่ผู้เลี้ยงเก็บได้หลังวันบิน,This queen came from a founding tube on the desk - one the keeper caught after a flight day
+log_tubes_full,หลอดตั้งรังบนโต๊ะเต็มแล้ว (%d หลอด) — เริ่มรังใหม่ด้วยราชินีในหลอดก่อน แล้วค่อยมาเก็บตัวใหม่,The founding tubes on the desk are full (%d) - start a colony with a queen from one first
+log_queen_caught,ผู้เลี้ยงเก็บราชินีที่ผสมแล้วตัวหนึ่งใส่หลอดตั้งรัง (อยู่บนโต๊ะในห้อง Home),The keeper caught a mated queen in a founding tube (on the desk in the Home)
+log_alates_flew,"วันบินผสมพันธุ์: ราชินีใหม่ %d ตัวกับตัวผู้ %d ตัวออกจากรังบินขึ้นฟ้า","Nuptial flight: %d new queens and %d males have left the nest and flown"
 log_warn_heat,ในรังร้อนเกินไป ตัวอ่อนเริ่มตาย,The nest is too hot: larvae are dying
 log_fly_fell,มีแมลงวันตายตกลงมาในกล่อง มดจะหาเจอเองถ้าออกสำรวจ,A dead fly has fallen into the box. The ants will find it if they go exploring
 log_spider_arrives,แมงมุมหมาป่าเดินเข้ามาในพื้นที่หาอาหาร,A wolf spider has wandered into the outworld
@@ -346,6 +354,17 @@ tip_larva_underfed,ได้อาหารไม่เต็มที่ (ร�
 tip_larva_fed,อิ่ม ได้อาหารเต็มที่,Well fed
 tip_larva_size,ถ้าได้อาหารแบบที่ผ่านมา จะเป็นมดงานยาวราว %.1f มม.,"Fed as it has been, it will be a worker about %.1f mm long"
 tip_pupa,ดักแด้ (อยู่ในรังไหม),Pupa (in its cocoon)
+tip_pupa_g,ดักแด้ราชินีใหม่ (รังไหมใหญ่),A new queen's pupa (a big cocoon)
+tip_pupa_m,ดักแด้ตัวผู้,A male's pupa
+tip_larva_g,ตัวอ่อนราชินีใหม่ (เลี้ยงในห้องบนสุด),A new queen's larva (reared in the topmost chamber)
+tip_larva_m,ตัวอ่อนตัวผู้ (เลี้ยงแยกห้องจากตัวอ่อนราชินี),A male's larva (reared apart from the new queens')
+tip_larva_size_x,ตัวที่จะออกมายาวราว %.1f มม. มีปีก,It will come out about %.1f mm long and winged
+tip_alate_g,ราชินีใหม่ (มีปีก ยังไม่ผสมพันธุ์),A new queen (winged; not yet mated)
+tip_alate_m,ตัวผู้ (มีปีก),A male (winged)
+tip_alate_age,ออกจากรังไหมมาแล้ว %d วัน,Out of the cocoon %d days
+tip_alate_g_fat,อ้วนแล้ว %d%% ของน้ำหนักตอนบิน (~%.1f มก.),Fattened to %d%% of her flying weight (~%.1f mg)
+tip_alate_g_note,มดงานป้อนเธอจนอ้วนพอ แล้วจะบินออกในบ่ายวันที่อุ่น ลมสงบ ช่วง ก.ค.–ส.ค.,"The workers feed her till she is fat enough, then she flies on a warm, calm afternoon in July or August"
+tip_alate_m_note,ตัวผู้ไม่ทำงาน มดงานป้อน — บินวันเดียวกับราชินีใหม่ ผสมพันธุ์แล้วตายในไม่กี่วัน,"Males do no work and are fed by the workers - they fly on the flight day, mate and die within days"
 tip_ecloses,จะออกเป็นมดงาน: ,Comes out as a worker: 
 tip_pupa_size,จะเป็นมดงานยาวราว %.1f มม.,Will be a worker about %.1f mm long
 hours_d,%d ชั่วโมง,%d hours
@@ -361,6 +380,8 @@ start_queen_note,ราชินีหลังบินผสมพันธุ
 start_young,รังอายุ 3 เดือน (14 ตัว),A 3-month-old colony (14 workers)
 start_young_note,ราชินีกับมดงาน 14 ตัว เริ่มกลางเดือนเมษายน,"A queen and 14 workers, starting in mid-April"
 start_queen,ราชินีตัวเดียว,A lone queen
+start_tube,ราชินีจากหลอดตั้งรัง,A queen from a founding tube
+start_tube_note,ราชินีที่ผสมแล้วซึ่งผู้เลี้ยงเก็บได้หลังวันบิน (ตัวแรกที่เก็บไว้) — น้ำหนักของเธอมีผลต่อจำนวนไข่และไขมันสำรองเหมือนราชินีทั่วไป,"A mated queen the keeper caught after a flight day (the first one caught) - her weight sets her eggs and her fat reserve, as any queen's does"
 new_scene,ฉาก,Setting
 new_nest,รัง,Nest
 new_start,เริ่มจาก,Start with

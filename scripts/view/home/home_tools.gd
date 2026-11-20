@@ -84,8 +84,11 @@ func _tray(c: Vector3) -> void:
 
 
 ## Two founding tubes lying in a little wooden cradle: water at the closed end behind a cotton plug, a cotton plug
-## closing the open end, a queen in the first one (8-9 mm, Lasius niger).
+## closing the open end; a queen (8-9 mm, Lasius niger) in each the keeper has filled - one caught on the wild plot
+## after a flight (PART 0.14: home_store.tubes; show_tube_queens).
+var _tube_queens: Array = []          # per tube: its queen's nodes
 func _tubes(at: Vector3, turn := 0.08) -> void:
+	_tube_queens.clear()
 	var g := Node3D.new()
 	g.position = at
 	g.rotation.y = turn
@@ -114,14 +117,13 @@ func _tubes(at: Vector3, turn := 0.08) -> void:
 		var cap := _cyl(0.0075, 0.014, Vector3(0.07, ty, tz), cotton, g, -1.0, 12)           # cotton closing the mouth
 		cap.rotation.z = PI * 0.5
 		_blob(Vector3(0.006, 0.006, 0.0072), Vector3(0.077, ty, tz), cotton, g)              # (fluffed out)
-		if i == 0:
-			# the queen: head, thorax, a big gaster; legs suggested by a dark band under her
-			var ant := flat(Color(0.07, 0.055, 0.047), 0.3)
-			_blob(Vector3(0.0014, 0.0012, 0.0013), Vector3(0.012, ty - 0.0055, tz), ant, g)
-			_blob(Vector3(0.0018, 0.0015, 0.0014), Vector3(0.0092, ty - 0.0053, tz), ant, g)
-			_blob(Vector3(0.0032, 0.0022, 0.0024), Vector3(0.0045, ty - 0.005, tz), ant, g)
+		# the queen: head, thorax, a big gaster; legs suggested by a dark band under her (shown when the tube has one)
+		var ant := flat(Color(0.07, 0.055, 0.047), 0.3)
+		_tube_queens.append([_blob(Vector3(0.0014, 0.0012, 0.0013), Vector3(0.012, ty - 0.0055, tz), ant, g),
+			_blob(Vector3(0.0018, 0.0015, 0.0014), Vector3(0.0092, ty - 0.0053, tz), ant, g),
+			_blob(Vector3(0.0032, 0.0022, 0.0024), Vector3(0.0045, ty - 0.005, tz), ant, g)])
 	# a label on the second tube: date and species in pencil
-	_box(Vector3(0.03, 0.0004, 0.012), Vector3(0.0, 0.0322, 0.012), flat(Color(0.95, 0.93, 0.85), 0.9), g)
+	_box(Vector3(0.024, 0.0004, 0.012), Vector3(0.046, 0.0322, 0.012), flat(Color(0.95, 0.93, 0.85), 0.9), g)     # (clear of a queen in it)
 
 
 ## An aspirator ("pooter"): a clear vial standing on its foot, a rubber stopper, a short glass pipe out of it to suck
@@ -277,3 +279,11 @@ func _fluon(at: Vector3) -> void:
 	_cyl(0.0163, 0.005, Vector3(0, 0.03, 0), flat(Color(0.12, 0.35, 0.7), 0.6), g, -1.0, 20)
 	_cyl(0.008, 0.006, Vector3(0, 0.053, 0), flat(Color(0.93, 0.93, 0.92), 0.35), g, -1.0, 16)    # neck
 	_cyl(0.0095, 0.022, Vector3(0, 0.067, 0), flat(Color(0.1, 0.1, 0.11), 0.5), g, 0.009, 16)      # the cap
+
+
+## A queen in each of the first n tubes (the keeper's caught queens), the others empty.
+func show_tube_queens(n: int) -> void:
+	for i in _tube_queens.size():
+		for part in _tube_queens[i]:
+			if is_instance_valid(part):
+				part.visible = i < n

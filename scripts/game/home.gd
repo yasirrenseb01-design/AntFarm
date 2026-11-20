@@ -248,6 +248,7 @@ func rebuild_room() -> void:
 	if main.sim != null and not main._demo and main.slot > 0:
 		live_cold = int(main.sim.fridge_on)          # (the colony just left: as it is now, not as last saved)
 	_room.build(main.home.places(), main.home.shelves, func(s): return Store.exists(s), _hour(), _env, 0, -1, main.slot, live_cold)
+	_room.show_tube_queens(main.home.tubes.size())      # (the founding tubes: the queens caught on the wild plot, PART 0.14)
 	_hot = null
 
 

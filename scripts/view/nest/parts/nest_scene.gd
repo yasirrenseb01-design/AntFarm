@@ -149,7 +149,7 @@ var _queen_cells := {}           # voxel cells the queen's body fills: nestmates
 var _queen_near := {}            # cells beside her, where a nestmate's body would be in hers or her legs: not walked through
 # the queen's body as a capsule, in her model's units (scaled by her transform)
 const QUEEN_HEAD := Vector3(1.25, 0.5, 0.0)
-const QUEEN_TAIL := Vector3(-1.45, 0.5, 0.0)
+const QUEEN_TAIL := Vector3(-1.62, 0.5, 0.0)       # (v0.14.3: her waist and gaster 0.5 design units further back - body.py GBACK)
 const QUEEN_R := 1.05
 const QUEEN_LIFT := 0.38      # her model reaches 0.24 below her feet (gaster) x queen_scale
 const QUEEN_UNDER_TAIL := [Vector3(-0.7, -0.12, 0.0), Vector3(-1.2, -0.24, 0.0), Vector3(-1.7, -0.18, 0.0), Vector3(-2.15, 0.05, 0.0),

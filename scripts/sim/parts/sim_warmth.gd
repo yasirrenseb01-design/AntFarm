@@ -130,12 +130,17 @@ func _place_brood(dt: float) -> void:
 		elif best != cur and _brood_stay[kind] > (0.08 if kind == "larvae" else 0.25) and (winter or _score(best, up) > _score(cur, up) + 0.08):
 			brood_at[kind] = best
 			_brood_stay[kind] = 0.0
+	_sexual_rooms(open, n, winter)
 	# the nurses carry a few at a time (eggs stay where she laid them: she lays new ones where she goes)
 	var hands := maxi(1, int(nurses * 0.3))
 	for pair in [[eggs, -1], [larvae, int(brood_at.larvae)], [pupae, int(brood_at.pupae)]]:
 		var list: Array = pair[0]
 		var to: int = pair[1]
 		for item in list:
+			if list == larvae and item.has("x") and brood_at.has(item.x):
+				to = int(brood_at[item.x])          # (a gyne's or a male's larva: their own chamber, below)
+			elif list == larvae:
+				to = pair[1]
 			var c := int(item.get("c", -1))
 			if c < 0 or c >= n:
 				item["c"] = to if to >= 0 else queen_at     # (brood from before v0.11.19: where it should be)
@@ -164,3 +169,27 @@ func _score(i: int, up: float) -> float:
 	if i < 0 or i >= _ch_t.size() or _ch_t[i] < -999.0:
 		return -INF
 	return _dev_rate(_ch_t[i]) + 0.001 * _ch_t[i] - up * chamber_depth_cm(i)
+
+
+## PART 0.14: gyne and male larvae are reared apart from each other - the gynes' in the topmost chamber (11 of 14 nests
+## had only gyne larvae there; where both were found, in different chambers) [A1, docs/biology/alates.md]. brood_at
+## "g" / "m": their chambers while there are any (else no keys: the colonies without them save as before). Gynes: the
+## best of the higher chambers (strongly up); males: the best of the others. In winter all lie with the rest, deepest.
+func _sexual_rooms(open: Array, n: int, winter: bool) -> void:
+	var has := {"g": false, "m": false}
+	for l in larvae:
+		if l.has("x"):
+			has[l.x] = true
+	for k in ["g", "m"]:
+		if not has[k] or winter:
+			brood_at.erase(k)
+	if winter or not (has.g or has.m):
+		return
+	if has.g:
+		brood_at["g"] = _best_chamber(open, 0.05)
+	if has.m:
+		var others := open.filter(func(i): return i != int(brood_at.get("g", -9))) if open.size() > 1 else open
+		var cur := int(brood_at.get("m", -1))
+		var best := _best_chamber(others, 0.0)
+		if cur < 0 or cur >= n or not cur in others or _score(best, 0.0) > _score(cur, 0.0) + 0.08:
+			brood_at["m"] = best

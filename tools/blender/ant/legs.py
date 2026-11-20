@@ -3,6 +3,7 @@
 # ---------------------------------------------------------------- legs
 
 LEGS = [[0.85, 0.75, 1.8], [0.2, 0.1, -0.1], [-0.4, -0.65, -2.2]]
+LR = 0.8 if (QUEEN or MALE) else 1.0      # (v0.14.3) a queen's and a male's legs slender for their size (the photo); the joints as they were
 for li, L in enumerate(LEGS):
     for side in (-1, 1):
         part = 4 + li * 2 + (0 if side < 0 else 1)
@@ -14,13 +15,13 @@ for li, L in enumerate(LEGS):
         CUR_SEG[1] = [hip, coxa, knee, ankle, foot]
         if HI:
             CUR_SEG[0] = 1
-            tube("coxa", [hip, lerp(hip, coxa, 0.5), coxa], [0.2, 0.22, 0.17], part, LIMB, segs)
+            tube("coxa", [hip, lerp(hip, coxa, 0.5), coxa], [r * LR for r in (0.2, 0.22, 0.17)], part, LIMB, segs)
             CUR_SEG[0] = 2
             fem = [lerp(coxa, knee, t) for t in (0.0, 0.12, 0.4, 0.75, 1.0)]
-            tube("femur", fem, [0.12, 0.15, 0.18, 0.15, 0.12], part, LIMB, segs)
+            tube("femur", fem, [r * LR for r in (0.12, 0.15, 0.18, 0.15, 0.12)], part, LIMB, segs)
             CUR_SEG[0] = 3
             tib = [lerp(knee, ankle, t) for t in (0.0, 0.1, 0.6, 1.0)]
-            tube("tibia", tib, [0.1, 0.095, 0.11, 0.12], part, LIMB, segs)
+            tube("tibia", tib, [r * LR for r in (0.1, 0.095, 0.11, 0.12)], part, LIMB, segs)
             spur = lerp(ankle, foot, 0.25)
             tube("spur", [ankle, (spur[0], spur[1] + 0.05, spur[2] - 0.1 * side)], [0.035, 0.01], part, LIMB, 4)
             # tarsus: five segments, a little arched, the last with a pair of claws
@@ -31,7 +32,7 @@ for li, L in enumerate(LEGS):
                 p = lerp(ankle, foot, t)
                 p = (p[0], p[1] + 0.08 * math.sin(t * math.pi), p[2])
                 r = 0.075 - 0.004 * k
-                tube("tarsomere", [prev, lerp(prev, p, 0.6), p], [r * 0.85, r * 1.08, r * 0.9], part, TARSUS, 4, cap=False)
+                tube("tarsomere", [prev, lerp(prev, p, 0.6), p], [r * 0.85 * LR, r * 1.08 * LR, r * 0.9 * LR], part, TARSUS, 4, cap=False)
                 prev = p
             fwd = Vector(foot) - Vector(ankle)
             fwd.normalize()
@@ -41,7 +42,7 @@ for li, L in enumerate(LEGS):
         else:
             # far-away ants: no segments, so the shader swings the legs whole (cheap) instead of solving IK
             CUR_SEG[0] = 0
-            tube("leg", [hip, coxa, knee], [0.18, 0.16, 0.13], part, LIMB, segs)
-            tube("leg", [knee, ankle, foot], [0.11, 0.11, 0.07], part, LIMB, segs)
+            tube("leg", [hip, coxa, knee], [r * LR for r in (0.18, 0.16, 0.13)], part, LIMB, segs)
+            tube("leg", [knee, ankle, foot], [r * LR for r in (0.11, 0.11, 0.07)], part, LIMB, segs)
 CUR_SEG[0] = 0
 CUR_SEG[1] = None

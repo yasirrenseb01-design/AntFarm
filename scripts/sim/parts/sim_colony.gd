@@ -13,6 +13,7 @@ func _new_day() -> void:
 		cold_days += 1
 		if cold_days == 42:
 			queen["rested"] = 1.0
+			stats["winters"] = int(stats.get("winters", 0)) + 1     # (sim/alates.gd: a colony's age in winters)
 			_log(T.winter_rest_done, "ok")
 			if fridge_on:
 				_log(T.fridge_ready, "ok")
@@ -34,6 +35,7 @@ func _new_day() -> void:
 		"grown":
 			_log(T.chamber_grown)
 	nest.work_left = nest.count_work_left()
+	Alates.new_day(self)
 	var snap := _snapshot()
 	snap["fill"] = snappedf(crop_fill() * 100.0, 0.1)      # (step 3: the crops' mean fill, % - what the foragers answer to)
 	history.append(snap)
@@ -45,7 +47,13 @@ func _new_day() -> void:
 		var ticks := int(TPD * rng.randf_range(0.15, 0.4))
 		if scenario == "wild":
 			climate.rain_ticks = ticks
+			stats["rain_day"] = day()       # (the alates fly more readily after rain: sim/alates.gd)
 			_log(T.rain_start)
+
+
+## The wind on the plot now, m/s (PART 0.14: outdoors only, climate.wind_at; 0 in a tank).
+func wind(tod := -1.0) -> float:
+	return climate.wind_at(rng.seed, day(), time_of_day() if tod < 0.0 else tod)
 
 
 # ---------------------------------------------------------------- colony physiology
@@ -212,6 +220,8 @@ func _colony(dt: float) -> void:
 	_moisture(dt)
 	_queen(dt)
 	_brood(dt)
+	Alates.step(self, dt)
+	WildQueens.step(self)
 	_outworld(dt)
 
 

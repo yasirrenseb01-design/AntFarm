@@ -25,7 +25,17 @@
   - ภาพในรัง: `nest_bind._bind_workers()` มดที่วาดหนึ่งตัวต่อมดงานจริงที่อยู่ในรัง (`mate.wid`); มดที่ออกไปเดินขึ้นปากรังก่อน,
     มดที่เพิ่งกลับ (`ant.came_in`) เดินเข้าจากปากรัง; มดขุดวาดแยก (`_dig_vis`) ผูกกับมดหน้าที่ขุดตามลำดับ id
 - **การลากเหยื่อ** (v0.8.20): `Ant.DRAG` (`foe` = seed ของอาหาร, `ang` = ตำแหน่งที่จับ) — `sim_foragers._step_drags()`, อาหารที่มี `drag` ในตาราง
-- **วรรณะ** `ant.caste`: `Ant.WORKER` (ตอนนี้ทุกตัว), `Ant.GYNE`, `Ant.MALE` (PART 10)
+- **วรรณะ** `ant.caste`: `Ant.WORKER` (ทุกตัวใน `workers`; `Ant.GYNE`/`Ant.MALE` ยังไม่ใช้)
+- **ตัวมีปีก** (PART 0.14, `scripts/sim/alates.gd` static รับ sim): **ไม่ใช่ Ant** — ตัวอ่อน/ดักแด้ของราชินีใหม่/ตัวผู้คือรายการใน
+  `larvae`/`pupae` ที่มี `"x": "g"|"m"` (ดักแด้มี `"q"`), ตัวโตอยู่ใน `sim.alates` `{x, w (อาหารที่สะสม), age, h, id}` จนวันบิน;
+  ห้องเลี้ยง `brood_at["g"/"m"]` (มีเฉพาะตอนมีตัวอ่อนนั้น: `sim_warmth._sexual_rooms`); เรียกจาก `_new_day` (วันเลือก, ไข่ชุดฤดูใบไม้ร่วง),
+  `_brood` (กิน/โต/ออกจากรังไหม), `_duties` (ป้อน), `_colony` (`Alates.step`: วันบิน); `stats` เก็บ `winters`, `food_mark`,
+  `alate_log`, `alates_y`, `flight` (วันบินล่าสุด: ภาพอ่านอันนี้), `rain_day`
+- **ราชินีบนพื้นแปลงป่า** (`scripts/sim/wild_queens.gd`, `sim.ground_queens` `{id, x, y, a, walk, t0, w, from}`): ร่อนลงหลังวันบิน
+  ตำแหน่งคิดจาก tick (`pos_of`), ไม่ใช้ `sim.rng` (ตัวสุ่มของตัวเองต่อวัน); ผู้เล่นคลิก → `outworld_view.catch_queen` → หลอด
+  `home_store.tubes` (home.json, สูงสุด `MAX_TUBES`) → หน้าต่างรังใหม่ "ราชินีจากหลอด" → `next_nest` ช่องที่ 6 = น้ำหนัก → `WildQueens.found_with`
+- **ลม** (`climate.wind_at`, `sim.wind()` ใน sim_colony): m/s ฉากป่าเท่านั้น คิดจาก hash ของ seed+วัน+ชั่วโมง (ไม่ใช้ตัวสุ่ม ไม่เซฟ);
+  ภาพ: `outworld_view` คูณแรงไหวของหญ้า/พืช (`_wind_k`)
 - **สายพันธุ์** `scripts/sim/species/lasius_niger.gd` (`sim.sp`): ตัวเลขชีววิทยา + นิสัยเฉพาะ (`founding`, `queen_reserve`, `founding_eggs`,
   `nanitic_size`, `tends_aphids`, `buries_prey`) — โค้ดอ่านจากที่นี่ ไม่เขียนค่าตายตัว
 
@@ -93,7 +103,12 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
 แกน Godot: x หน้า, y ขึ้น, z ขวา; Blender (z ขึ้น) แปลงด้วย `G(x,y,z) = (x, -z, y)`
 
 ## โมเดลมดและอนิเมชัน
-- โมเดลมาจาก `tools/blender/build_ant.py` → `assets/models/ants/{worker,queen}_{hi,lo}.antmesh` (hi ตอนซูมใกล้, lo ตอนไกล)
+- โมเดลมาจาก `tools/blender/build_ant.py` → `assets/models/ants/{worker,queen,gyne,male}_{hi,lo}.antmesh` (hi ตอนซูมใกล้, lo ตอนไกล;
+  gyne/male = ตัวมีปีก PART 0.14: ปีก `tools/blender/ant/wings.py` รหัสส่วน **12** — shader วาดสว่างกว่าและโปร่ง (ทิ้งพิกเซลสลับ),
+  ค่าเส้นปีกอยู่ใน UV.x = 20 + 10×ค่า (เส้น < 0.9 ไม่โปร่ง); รหัสกิจกรรม **30** = บิน: ปีกกางออกข้างและกระพือ)
+- ตัวมีปีกในรัง `view/nest/nest_alates.gd` (ไม่ใช่ชั้น: nest_view สร้าง/เรียกทุกเฟรม; ยืนในห้องสูงสุดที่ไม่ใช่ห้องราชินี/ลูกมด, กองตัวอ่อน
+  ราชินี/ตัวผู้ในห้องของมันเอง `_pile(..., tag)`); วันบินในแปลง `view/outworld/outworld_flight.gd` (ภาพล้วน ตัวสุ่มของภาพ: ออกปากรัง
+  ปีนพืชที่สูงสุดใกล้ ๆ กางปีก บินตามลม; ราชินีบนพื้น + คลิกจับ)
 - vertex color = ตัวคูณสีบนสี tint ของแต่ละตัว; **alpha = รหัสส่วนร่างกาย / 16**:
   0 ลำตัว, 1 หัว, 2/3 หนวดซ้าย/ขวา, 4–9 ขา (หน้าซ้าย, หน้าขวา, กลางซ้าย, กลางขวา, หลังซ้าย, หลังขวา), 10 ท้อง, 11 กราม ("ซ้าย" = ด้าน -z)
 - `shaders/ants/ant.gdshader` หมุนแต่ละส่วนรอบข้อต่อ (จุดหมุนใน design units × K) ตาม INSTANCE_CUSTOM = (จังหวะเดิน, กิจกรรม, นาฬิกา, ปริมาณการเดิน);
@@ -145,7 +160,7 @@ reference/     ภาพอ้างอิงจากผู้ใช้ + ท�
     ใช้กับเซฟ, `slotN.json`, `harmony.json`, `home.json`, ชุดกราฟ (`stats_chart`); `Store.exists` นับช่องที่เหลือแค่ `.tmp`/`.bak` ด้วย,
     `Store.delete` ลบทุกชิ้น, `Store.backup` คัดลอกทุกชิ้นและคืน false ถ้าไม่สำเร็จ (main.gd แล้วเปิดรังทดลองไม่บันทึกทับ)
   - **ขนาด:** `scripts/sim/save_limits.gd` ชุดเดียวทั้งตัวอ่านไฟล์และตัวตรวจ: voxel สูงสุด 16.5 ล้าน × 13 ไบต์ + 96 MB ส่วนอื่น
-- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 12)
+- เนื้อหา = `sim.to_dict()` (ข้อมูลล้วน ไม่มี path ของสคริปต์ — ย้ายไฟล์ได้โดยเซฟไม่พัง), `SAVE_VERSION` ใน `sim_state.gd` (ตอนนี้ 13: v0.14.2 เพิ่ม `alates`, `ground_queens`, `stats.winters`)
 - **เปลี่ยนรูปแบบเซฟ:** เพิ่ม `SAVE_VERSION` + ขั้นแปลง `_vN_to_vN+1()` ใน `scripts/sim/save_migrations.gd` + ขยาย `tests/migration_test.gd`
 - ตอนโหลด (`scripts/game/main.gd`): เซฟเก่ากว่า → สำรองเป็น `slotN.before-vX.antfarm` แล้วแปลง; เซฟจากเกมใหม่กว่า → เล่นรังทดลอง
   และ**ไม่บันทึกทับ**; อ่านไม่ได้ (ทั้งไฟล์, `.tmp`, `.bak`) → สำรองเป็น `slotN.unreadable-<เวลา>.antfarm` แล้วเริ่มรังใหม่ (สำรองไม่สำเร็จ: รังทดลอง ไม่บันทึกทับ; บอกผู้เล่นทุกกรณี)

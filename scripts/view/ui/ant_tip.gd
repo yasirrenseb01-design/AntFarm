@@ -105,12 +105,19 @@ func _click(at: Vector2) -> void:
 
 
 func _select(info: Dictionary) -> void:
+	if not info.is_empty() and info.kind == "ground_queen":
+		var v = _active_view()                # (a mated queen on the wild plot: caught at once - PART 0.14)
+		if v != null and v.has_method("catch_queen"):
+			v.catch_queen(int(info.id))
+		info = {}
 	if info.is_empty():
 		sel = {}
 	elif info.kind == "digger":
 		sel = {"kind": "digger", "id": int(info.get("dig", -1))}
 	elif info.kind == "queen":
 		sel = {"kind": "queen", "id": -1}
+	elif info.kind == "alate":
+		sel = {"kind": "alate", "id": int(info.id)}
 	elif info.kind in ["eggs", "larvae", "pupae"]:
 		sel = {"kind": info.kind, "id": int(info.get("id", -1))}
 	else:
@@ -135,7 +142,11 @@ func _process(delta: float) -> void:
 		return                                 # (the words are refreshed four times a second)
 	_t = 0.0
 	var v = _active_view()
-	var info: Dictionary = v.info_for(sel.kind, sel.id) if v != null else {}
+	var info: Dictionary = v.info_for(sel.kind, sel.id) if v != null and sel.kind != "alate" else {}
+	if sel.kind == "alate":
+		for al in sim.alates:          # (a winged one in the nest: sim.alates - PART 0.14)
+			if int(al.id) == int(sel.id):
+				info = {"kind": "alate", "al": al}
 	if info.is_empty() and sel.kind == "worker":
 		# not in this view (gone into the nest, or out): still say who it is and where
 		for w in sim.workers:
@@ -173,6 +184,16 @@ func _update_name_box() -> void:
 func describe(info: Dictionary) -> String:
 	if info.kind in ["eggs", "larvae", "pupae"]:
 		return _brood_words(info.kind, info.item)
+	if info.kind == "alate":
+		var al: Dictionary = info.al
+		var A = sim.Alates
+		if al.x == "m":
+			return "
+".join([tr("tip_alate_m"), tr("tip_alate_age") % int(al.age), tr("tip_alate_m_note")])
+		var full: int = roundi(float(al.w) / A.GYNE_COST * 100.0)
+		return "
+".join([tr("tip_alate_g"), tr("tip_alate_age") % int(al.age), tr("tip_alate_g_fat") % [full,
+			float(al.w) / A.GYNE_COST * 15.5], tr("tip_alate_g_note")])
 	if info.kind == "queen":
 		var qn := String(sim.queen.get("name", ""))
 		var lines := [tr("queen") if qn == "" else tr("tip_queen_named") % qn]
@@ -316,7 +337,7 @@ func _brood_words(kind: String, it: Dictionary) -> String:
 			lines.append(tr("tip_developed") % int(p * 100.0))
 			lines.append(tr("tip_hatches") + left)
 		"larvae":
-			lines.append(tr("larvae"))
+			lines.append(tr("larvae") if not it.has("x") else (tr("tip_larva_g") if it.x == "g" else tr("tip_larva_m")))     # (PART 0.14)
 			lines.append(tr("tip_grown") % int(p * 100.0))
 			if sim.winding_down() and p >= 0.94:
 				lines.append(tr("tip_diapause"))
@@ -329,9 +350,9 @@ func _brood_words(kind: String, it: Dictionary) -> String:
 				lines.append(tr("tip_larva_underfed") % int(sim.larva_fed * 100.0))
 			else:
 				lines.append(tr("tip_larva_fed"))
-			lines.append(tr("tip_larva_size") % (sim._adult_size(float(it.get("q", 0.6))) * 4.2))
+			lines.append(tr("tip_larva_size") % (sim._adult_size(float(it.get("q", 0.6))) * 4.2) if not it.has("x") else tr("tip_larva_size_x") % (sim.Alates.SIZE[it.x] * 4.2))
 		"pupae":
-			lines.append(tr("tip_pupa"))
+			lines.append(tr("tip_pupa") if not it.has("x") else (tr("tip_pupa_g") if it.x == "g" else tr("tip_pupa_m")))
 			lines.append(tr("tip_developed") % int(p * 100.0))
 			lines.append(tr("tip_ecloses") + left)
 			lines.append(tr("tip_pupa_size") % (float(it.get("s", 1.0)) * 4.2))

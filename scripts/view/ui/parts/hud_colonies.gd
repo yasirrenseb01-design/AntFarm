@@ -388,7 +388,10 @@ func _open_new_colony(slot: int, occupied: bool, scen := "", nest := "", species
 	body.add_child(col)
 	var picked := {}
 	var rates := EnemyRate.new(self, 0.0 if scen == "keeper" else 1.0, "keeper" if scen == "keeper" else "wild", true)
-	var groups: Array = [["start", "new_start", NEW_STARTS]]
+	var starts: Array = NEW_STARTS.duplicate()
+	if home != null and not home.tubes.is_empty():
+		starts.append(["tube", "start_tube", "start_tube_note"])      # (a queen caught on the wild plot: PART 0.14)
+	var groups: Array = [["start", "new_start", starts]]
 	if nest == "" and scen == "wild":
 		nest = "soil"              # (a garden plot is the ground itself: no ant farm to pick - the keeper, 2026-10-29)
 	if nest == "":
@@ -444,7 +447,11 @@ func _open_new_colony(slot: int, occupied: bool, scen := "", nest := "", species
 	var go := _button(tr("new_go"), false)
 	go.pressed.connect(func():
 		win.queue_free()
-		colony_new.emit(slot, "%s:%s:%s:%s:%s" % [picked.nest, picked.start, picked.scenario, picked.rate, species]))
+		var tube := ""
+		if picked.start == "tube":
+			var q: Dictionary = home.take_tube()           # (out of her tube: the first caught)
+			tube = ":%s" % float(q.get("w", 1.0))
+		colony_new.emit(slot, "%s:%s:%s:%s:%s%s" % [picked.nest, picked.start, picked.scenario, picked.rate, species, tube]))
 	foot.add_child(go)
 	col.add_child(foot)
 	win.reset_size()

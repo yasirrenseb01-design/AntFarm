@@ -88,6 +88,7 @@ var _last_paint := Vector2(-999, -999)
 var hover := Vector3.INF
 var _t := 0.0
 var _wet := 0.0
+var _wind_k := 1.0          # how hard the plants sway with the plot's wind (outworld_view, PART 0.14)
 var _plant_mat: ShaderMaterial      # host plants and fallen leaves move in the air
 var _litter_mat: ShaderMaterial
 var _weed_mat: ShaderMaterial       # the garden's weeds (shaders/plants/weed_leaf)

@@ -641,6 +641,10 @@ func can_select() -> bool:
 func pick_ant(sp: Vector2) -> Dictionary:
 	# the ant whose body (head to gaster tip on screen) the click is on, or nearest to within a finger's breadth
 	# (it was measured to the middle of the body only: a click on the head or gaster missed it)
+	var fl = get("_flight")                 # (a mated queen on the ground first: the keeper catches her - PART 0.14)
+	var gq: Dictionary = fl.pick(self, sp) if fl != null else {}
+	if not gq.is_empty():
+		return gq
 	var best := {}
 	var best_d := 14.0
 	for a in sim.outside:

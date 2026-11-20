@@ -28,6 +28,11 @@ var wild: Array = []
 var big := 0                   # the bigger tank's slot (0: not bought)
 var shelves: Array = []        # each shelf bought: how many tanks it holds (2 or 4)
 var screen_refund := false     # home.json said the wall screen was bought: its points to go back (main._ready), once
+# (PART 0.14) the founding tubes on the desk: mated queens the keeper caught on the wild plot (sim/wild_queens.gd), each
+# {"w": her weight against the mean (0.78-1.25), "from": "area" | "own", "day": the plot's day she was caught}, waiting -
+# not laying [chosen: a keeper would let her found in the tube] - until a new colony is started with her
+const MAX_TUBES := 2           # the desk's cradle holds two (view/home/home_tools.gd) [chosen: a limited number]
+var tubes: Array = []
 var farms: Array = []          # the slots of the ant farms bought (a flat glass frame: its colony nests in the glass slab,
                                # sim nest.slab; the keeper, 2026-10-27: sold in the shop, a little cheaper than a small tank)
 
@@ -42,6 +47,7 @@ func load_layout() -> void:
 	big = 0
 	shelves = []
 	farms = []
+	tubes = []
 	screen_refund = false
 	# (only numbers are taken from it: nothing in the file is run; v0.12.32: a file cut short is read from its .bak - else
 	# the tanks were worked out again and written over it at once, the bigger tank and the shelves bought gone)
@@ -60,6 +66,12 @@ func load_layout() -> void:
 			for c in sh:
 				if (c is float or c is int) and (int(c) == 2 or int(c) == 4) and shelves.size() < MAX_SHELVES:
 					shelves.append(int(c))
+		var tb = d.get("tubes")
+		if tb is Array:
+			for q in tb:
+				if q is Dictionary and (q.get("w") is float or q.get("w") is int) and tubes.size() < MAX_TUBES:
+					tubes.append({"w": clampf(float(q.w), 0.78, 1.25), "from": "own" if q.get("from") == "own" else "area",
+						"day": int(q.get("day", 0)) if (q.get("day") is float or q.get("day") is int) else 0})
 		for s in _slots(d.get("farms")):
 			if tanks.has(s) and s != big:
 				farms.append(s)
@@ -103,7 +115,26 @@ func _first_time() -> void:
 func save_layout() -> void:
 	if dry:
 		return
-	SafeFile.write_text(_path(), JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves, "farms": farms}))
+	SafeFile.write_text(_path(), JSON.stringify({"v": 1, "tanks": tanks, "wild": wild, "big": big, "shelves": shelves, "farms": farms,
+		"tubes": tubes}))
+
+
+## A caught queen into a free tube (false: they are full).
+func add_tube(q: Dictionary) -> bool:
+	if tubes.size() >= MAX_TUBES or q.is_empty():
+		return false
+	tubes.append({"w": float(q.w), "from": String(q.get("from", "area")), "day": int(q.get("day", 0))})
+	save_layout()
+	return true
+
+
+## The first tube's queen taken out to start a colony ({} if none).
+func take_tube() -> Dictionary:
+	if tubes.is_empty():
+		return {}
+	var q: Dictionary = tubes.pop_front()
+	save_layout()
+	return q
 
 
 ## Another tank: one more colony at home and one more in the wild mode; its slot (0 if there can be no more).

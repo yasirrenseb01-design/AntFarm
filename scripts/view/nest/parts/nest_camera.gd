@@ -94,7 +94,8 @@ func reset_view() -> void:
 
 var _hole_k := 0                        # the way out the entrance button showed last (0: the main entrance)
 
-## Glide the camera to something worth looking at: "queen", "larvae", "pupae", "entrance".
+## Glide the camera to something worth looking at: "queen", "larvae", "pupae", "entrance", "alates" (the winged ones:
+## nest_view._alates).
 func focus(what: String) -> void:
 	follow_wid = -1
 	var p := Vector3.INF
@@ -107,6 +108,16 @@ func focus(what: String) -> void:
 		"pupae":
 			if not _spots.pupae.is_empty():
 				p = _spots.pupae[_spots.pupae.size() / 2]
+		"larvae_g", "larvae_m":         # (the gynes' / the males' larvae: their own chambers, PART 0.14)
+			var ch := int(sim.brood_at.get(what.substr(7), -1))
+			if _room_of.has(ch):
+				var rs: Array = _rooms[_room_of[ch]].spots
+				p = rs[rs.size() / 2]
+		"alates":
+			var al = get("_alates")
+			if al != null:
+				al.update(self, 0.0)          # (laid out now: the camera may be sent before the first frame)
+				p = al.middle()
 		"entrance":
 			# the main entrance first; again while still there, the next open way out (v0.13.9)
 			var holes: Array = [Vector3(nest.entrance)]

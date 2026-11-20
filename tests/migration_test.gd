@@ -11,7 +11,8 @@ const FIXTURES := ["res://tests/fixtures/save_v1.antfarm", "res://tests/fixtures
 	"res://tests/fixtures/save_v5.antfarm", "res://tests/fixtures/save_v6.antfarm", "res://tests/fixtures/save_v7.antfarm",
 	"res://tests/fixtures/save_v8.antfarm", "res://tests/fixtures/save_v9.antfarm",
 	"res://tests/fixtures/save_v10.antfarm", "res://tests/fixtures/save_v11.antfarm",
-	"res://tests/fixtures/save_v12.antfarm"]          # (v12 as v0.13.0 wrote it: crops far over the cap - tests/_make_fixture_v12.gd)
+	"res://tests/fixtures/save_v12.antfarm",          # (v12 as v0.13.0 wrote it: crops far over the cap - tests/_make_fixture_v12.gd)
+	"res://tests/fixtures/save_v12b.antfarm"]         # (v12 as v0.14.1 wrote it, a wild colony in its 2nd year: _make_fixture_v12b.gd)
 
 
 func _read(path: String) -> Dictionary:

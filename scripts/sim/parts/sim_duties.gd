@@ -47,6 +47,7 @@ func _duties() -> void:
 	_feed_larvae(inside)
 	_carry_brood(inside)
 	_tend_queen(inside)
+	Alates.feed(self, inside, DUTY_H)            # (the winged gynes and males: sim/alates.gd)
 	_share_honeydew(inside)
 	# the rest: standing still (more at night, in the cold, when full - and when hungry: a starved L. niger colony is less
 	# active in the nest [Ln]), the laziest first and the same ones again; some cleaning; the others walking about
@@ -157,6 +158,8 @@ func _feed_larvae(inside: Array) -> void:
 ## from her crop, then from her body: down to nothing while founding (fewer than 5 workers), else to QUEEN_KEEP (as her
 ## yolk for the eggs: LESSONS 44 - through v0.13.20 her reserve paid the founding colony's shortfall as a whole).
 func _feed_one(feeds: Array, li: int, g, s: float) -> int:
+	if feeds[li].has("x"):
+		s *= Alates.eat_k(feeds[li])     # (a gyne's or male's larva: sim/alates.gd)
 	var got := 0.0
 	if g == null:
 		got = minf(queen.crop, s)

@@ -175,7 +175,7 @@ func to_dict() -> Dictionary:
 		"world": [WORLD.x, WORLD.y], "plot_seed": plot_seed, "nest_pos": nest_pos, "midden_pos": midden_pos, "traits": traits,
 		"brood_at": brood_at, "queen_at": queen_at, "queen_stay": _queen_stay, "ch_mean": ch_mean, "surf_mean": surf_mean,
 		"rock": rock, "rocks": rocks, "foods": foods, "corpses": corpses, "workers": ants, "outside": out_ids, "dumps": _dumps,
-		"eggs": eggs, "larvae": larvae, "pupae": pupae, "queen": queen,
+		"eggs": eggs, "larvae": larvae, "pupae": pupae, "alates": alates, "ground_queens": ground_queens, "queen": queen,
 		"sugar": sugar, "fat": fat, "sugar_income": sugar_income, "sugar_spend": sugar_spend, "protein": protein, "humidity": humidity, "water": water, "mold": mold, "heater": heater, "enemies": enemies, "enemy_rate": enemy_rate,
 		"creatures": creatures, "corpses_inside": corpses_inside, "egg_acc": egg_acc, "stats": stats,
 		"queen_tended": queen_tended, "carry_due": _carry_due, "unloaded": _unloaded, "pending_in": _pending_in, "toilets": toilets.to_save(), "duty_rng": [duty_rng.seed, duty_rng.state],
@@ -224,7 +224,7 @@ func from_dict(d: Dictionary) -> void:
 	brood_at = {"larvae": -1, "pupae": -1}
 	var ba = d.get("brood_at", {})
 	if ba is Dictionary:
-		for k in ["larvae", "pupae"]:
+		for k in ["larvae", "pupae", "g", "m"]:          # (g, m: the gynes' and the males' larvae, PART 0.14 - when any)
 			if ba.get(k) is int or ba.get(k) is float:
 				brood_at[k] = int(ba[k])
 	queen_at = int(d.get("queen_at", -1)) if (d.get("queen_at") is int or d.get("queen_at") is float) else -1
@@ -272,6 +272,8 @@ func from_dict(d: Dictionary) -> void:
 	eggs = d.eggs
 	larvae = d.larvae
 	pupae = d.pupae
+	Alates.from_save(self, d)           # (saves before v0.14.2: none)
+	WildQueens.from_save(self, d)
 	queen = d.queen
 	if not queen.has("crop"):
 		queen["crop"] = 0.0

@@ -27,11 +27,17 @@ func _init():
 		if x.begins_with("skip="):
 			for i in int(x.substr(5)):
 				s.rng.randf()
+		if x.begins_with("winters="):         # (PART 0.14: a colony set up as one that has wintered n times - sim/alates.gd)
+			s.stats["winters"] = int(x.substr(8))
+	s.logged.connect(func(e):
+		if String(e.key).begins_with("log_alates"):
+			print("   LOG %s %s: %s" % [s.date_text(), s.year(), s.L.entry_text(e)]))
 	var r := RandomNumberGenerator.new(); r.seed = 3
 	print("%s start %s  workers %d" % [scen, s.date_text(), workers])
 	var fill_of := func(): return clampf(s.sugar / (s.workers.size() * 2.5), 0.0, 1.0) if s.workers.size() > 0 else 0.0
 	var bins := [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]   # out share by crop fill 0-20-40-60-80-100%
 	var bins_p := [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]] # (the same while prey is not short)
+	var starved := 0
 	var out_sum := 0.0
 	var out_n := 0
 	for d in days:
@@ -47,6 +53,18 @@ func _init():
 					bins_p[b][1] += 1.0
 				out_sum += o
 				out_n += 1
+		var st: int = int(s.stats.dead_by.get("starve", 0))
+		if st > starved:
+			# (PART 0.14 step 5: when the starvations happen, and how the colony was then)
+			var empty := 0
+			var no_fat := 0
+			for w in s.workers:
+				empty += 1 if w.crop < 0.05 else 0
+				no_fat += 1 if w.body_fat < 0.05 else 0
+			print("   STARVE +%d %s y%d: workers %d (crop empty %d, no fat %d) fill %d%% fat %.1f larvae %d out %d hibernating %s" % [
+				st - starved, s.date_text(), s.year(), s.workers.size(), empty, no_fat, int(fill_of.call() * 100.0), s.fat,
+				s.larvae.size(), s.out_count, s.hibernating()])
+			starved = st
 		if alone: pass
 		elif s.humidity < 0.45: s.add_water()
 		if scen == "keeper": s.fridge_on = s.doy_f() > 320.0 or s.doy_f() < 20.0
@@ -56,6 +74,18 @@ func _init():
 		if not alone and s.sugar < s.sugar_cap() * 0.7 and s.climate.season_mean() > 8.0:
 			for k in 1 + s.workers.size() / 50:
 				s.place_food("honey", s.food_spot(300.0, 560.0, r))
+		if d % 10 == 0 and (not s.alates.is_empty() or s.larvae.any(func(l): return l.has("x")) or s.pupae.any(func(l): return l.has("x"))):
+			var nl := [0, 0, 0, 0, 0, 0]
+			for l in s.larvae:
+				if l.has("x"): nl[0 if l.x == "g" else 1] += 1
+			for l in s.pupae:
+				if l.has("x"): nl[2 if l.x == "g" else 3] += 1
+			var gw := 0.0
+			for al in s.alates:
+				nl[4 if al.x == "g" else 5] += 1
+				if al.x == "g": gw += al.w
+			print("   alates: larvae g %d m %d  pupae g %d m %d  adults g %d (mean %.1f) m %d" % [nl[0], nl[1], nl[2], nl[3], nl[4],
+				gw / maxf(1.0, nl[4]), nl[5]])
 		if d % 10 == 0:
 			print("%-8s y%d %-9s workers %3d eggs %3d larvae %3d pupae %3d  nest %5.1f air %5.1f  reserve %5.1f sugar %5.1f fat %5.1f prot %5.1f hum %.2f rested %.2f cold %d dead %d fill %3d%% out %3d%%" % [
 				s.date_text(), s.year(), s.season_name(), s.workers.size(), s.eggs.size(), s.larvae.size(), s.pupae.size(),
@@ -75,5 +105,7 @@ func _init():
 		for b in 5:
 			bl += "  %d-%d%%: %s" % [b * 20, b * 20 + 20, ("%.0f%% (n %d)" % [100.0 * bb[b][0] / bb[b][1], bb[b][1]]) if bb[b][1] > 0 else "-"]
 		print(bl)
+	print("alates: winters %d  made %s  this year %s  last flight %s" % [s.stats.get("winters", 0), s.stats.get("alate_log", []),
+		s.stats.get("alates_y", {}), s.stats.get("flight", {})])
 	print("workers dead %d by %s · brood dead %d · larvae eaten %d · born %d" % [s.stats.dead, s.stats.dead_by, s.stats.brood_dead, s.stats.cannibalized, s.stats.born])
 	quit()

@@ -35,6 +35,8 @@ static func migrate(d: Dictionary, target: int) -> Dictionary:
 				pass        # v0.11.12: journal lines are {key, args} now; the older ones keep their Thai text and show as saved
 			11:
 				_v11_to_v12(d)
+			12:
+				_v12_to_v13(d)
 		v += 1
 		d["version"] = v
 	return d
@@ -140,3 +142,19 @@ static func _v11_to_v12(d: Dictionary) -> void:
 		row.append(each_fat)
 	d.queen["crop"] = maxf(0.0, sugar - crop * n)
 	d.queen["fed"] = float(Species.data(String(d.get("species", Species.DEFAULT)))["sugar_queen"])
+
+
+## v0.14.2 (PART 0.14 steps 1-4): the alates in the nest and the mated queens on the plot (none yet), and the winters a colony has come through (counted from
+## now on as its cold rests the queen: sim_colony._new_day). An older wild colony is given the 1 Februaries it has seen
+## [chosen: by then a temperate winter has rested her - sim/alates.gd needs two]; a tank's winters were the keeper's
+## fridge, not known: 0 (keeper colonies make no alates in 0.14).
+static func _v12_to_v13(d: Dictionary) -> void:
+	d["alates"] = []
+	d["ground_queens"] = []
+	var n := 0
+	if String(d.get("scenario", "")) == "wild":
+		var days := int(d.tick) / 3600
+		var first := (31 - int(d.start_doy) + 365) % 365
+		if days >= first:
+			n = 1 + (days - first) / 365
+	d.stats["winters"] = n

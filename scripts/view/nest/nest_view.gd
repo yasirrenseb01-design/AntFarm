@@ -6,6 +6,7 @@ extends "res://scripts/view/nest/parts/nest_mates.gd"
 
 
 const Look := preload("res://scripts/game/look_prefs.gd")
+var _alates = preload("res://scripts/view/nest/nest_alates.gd").new()       # the winged gynes and males (PART 0.14)
 func setup(s) -> void:
 	sim = s
 	queen_scale = float(sim.sp.look.queen_scale)
@@ -173,9 +174,11 @@ func setup(s) -> void:
 	ant_mat.set_shader_parameter("vol", _foot_vol)          # (the soil and the brood on it: nest_scene._upload_foot_volume)
 	var queen_mat: ShaderMaterial = ant_mat.duplicate()
 	queen_mat.set_shader_parameter("limb_gain", sim.sp.look.queen_limbs)
+	queen_mat.set_shader_parameter("gaster_back", 0.5)       # (her gaster's joint behind her longer thorax: tools/blender/ant/body.py GBACK)
 	var queen_mesh := AntModel.make(0.0, true, true, sim.sp.look)
 	_queen_mm = _multimesh(queen_mesh, queen_mat, true)
 	_queen_mm.use_custom_data = true
+	_alates.setup(self, queen_mat, ant_mat, larva_mat)
 	# the selection outline: the clicked ant's body drawn again, white, from the inside
 	var outline: Shader = load("res://shaders/ants/ant_outline.gdshader")
 	var sel_mat: ShaderMaterial = ant_mat.duplicate()
@@ -418,9 +421,11 @@ func refresh(delta: float) -> void:
 	if sig != _brood_sig:
 		_brood_sig = sig
 		_update_brood()
+		_alates.brood(self)             # (the gynes' and the males' larvae, each in their own chamber)
 		_clear_brood_of_ants()
 	t0 = _nprof("brood layout", t0)
 	_queen_pose()
+	_alates.update(self, delta)
 	t0 = _nprof("queen", t0)
 	_update_ants(delta)
 	t0 = _nprof("nestmates", t0)
@@ -467,31 +472,6 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 # ---------------------------------------------------------------- dev traces (moved from parts/nest_mates.gd in v0.8.56)
-
-## Dev (--trace): the nestmates within reach of the queen: role, activity, rest/wander left, position.
-func trace_near_queen() -> String:
-	var out := []
-	for m in _mates:
-		if m.has("xf") and (m.xf as Transform3D).origin.distance_to(_spots.queen) < 7.0:
-			var o: Vector3 = (m.xf as Transform3D).origin
-			out.append("%s%s a%d r%d w%d (%.1f,%.1f,%.1f) sep%.2f" % [m.role, "*" if m.has("script") else "", m.act, m.rest, m.wander,
-				o.x, o.y, o.z, (m.get("sep", Vector3.ZERO) as Vector3).length()])
-	return " | ".join(out)
-
-
-## Dev (--trace-mates): every nestmate: role, activity, cell, goal room, carrying what, settle/step state.
-func trace_mates() -> String:
-	var out := []
-	for m in _mates:
-		var o: Vector3 = (m.xf as Transform3D).origin if m.has("xf") else Vector3(m.cell)
-		var line := "w%s %s%s a%d c%s->%s goal%s carry%s/%s r%d w%d t%.2f set%d" % [m.get("wid", -1), m.role,
-			"*" if m.has("script") else "", m.act, m.cell, m.to, m.get("goal", -9), m.carry, m.get("item", ""),
-			m.rest, m.wander, m.t, (m.get("settle", []) as Array).size()]
-		out.append(line + " here%d free%s lift%.2f" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell), float(m.get("over", 0.0))])
-	for id in _dig_vis:
-		out.append("dig%d" % id)
-	return " | ".join(out)
-
 
 ## Dev (--trace-crowd, --follow-soil): whether part of a nestmate's body (belly height) is in the soil.
 func _ant_in_soil(m: Dictionary) -> bool:

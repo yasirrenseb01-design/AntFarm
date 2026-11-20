@@ -7,6 +7,9 @@ extends "res://scripts/view/outworld/parts/outworld_camera.gd"
 
 const Look := preload("res://scripts/game/look_prefs.gd")
 const ROCK_KINDS := ["rock", "rock_slate", "rock_granite"]      # the stone tools, by kind (view/common/rock_mesh.gd)
+var _flight = preload("res://scripts/view/outworld/outworld_flight.gd").new()     # the nuptial flight on the plot
+
+
 func setup(s) -> void:
 	sim = s
 	ANT_SCALE = Spec.ANT_SCALE * float(sim.sp.look.worker_scale)      # (the species' size: docs/SPECIES.md)
@@ -71,6 +74,7 @@ func setup(s) -> void:
 	_ant_meshes = {"hi": AntModel.make(0.0, false, true, sim.sp.look), "lo": AntModel.make(0.0, false, false, sim.sp.look)}
 	_ant_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
 	_corpse_mm = _multimesh(_ant_meshes.lo, ant_mat, true, true)
+	_flight.setup(self, ant_mat, float(sim.sp.look.queen_scale), sim.sp.look.queen_limbs)     # (the alates' flight, PART 0.14)
 	var sel_mat: ShaderMaterial = ant_mat.duplicate()       # the selection outline (filled with litter heights below)
 	sel_mat.shader = load("res://shaders/ants/ant_outline.gdshader")
 	_sel_mm = _multimesh(_ant_meshes.lo, sel_mat, true, false)
@@ -173,10 +177,13 @@ func refresh(delta: float) -> void:
 	var raining: bool = sim.climate.raining()
 	_wet = move_toward(_wet, 1.0 if raining else 0.0, delta * 0.3 * maxf(speed, 0.5))
 	_ground_mat.set_shader_parameter("wet", _wet)
-	_grass_mat.set_shader_parameter("wind", 1.3 + 1.8 * _wet)
-	_plant_mat.set_shader_parameter("wind", 0.45 + 0.7 * _wet)
-	_weed_mat.set_shader_parameter("wind", 0.45 + 0.7 * _wet)
-	_litter_mat.set_shader_parameter("wind", 0.35 + 0.6 * _wet)
+	# (PART 0.14) outdoors the plot's wind sways them: calm (~1 m/s) half as much as before, a windy afternoon (~7) 2.5x -
+	# the keeper 2026-11-18: windy days seen; indoors as it always was (climate.wind_at)
+	_wind_k = move_toward(_wind_k, clampf(1.0 + (sim.wind() - 2.5) / 3.0, 0.5, 2.6) if sim.scenario == "wild" else 1.0, delta * 0.4)
+	_grass_mat.set_shader_parameter("wind", (1.3 + 1.8 * _wet) * _wind_k)
+	_plant_mat.set_shader_parameter("wind", (0.45 + 0.7 * _wet) * _wind_k)
+	_weed_mat.set_shader_parameter("wind", (0.45 + 0.7 * _wet) * _wind_k)
+	_litter_mat.set_shader_parameter("wind", (0.35 + 0.6 * _wet) * _wind_k)
 	_seasons(delta)
 	_light()
 	var lod := "hi" if cam_dist < 80.0 else "lo"
@@ -188,11 +195,27 @@ func refresh(delta: float) -> void:
 	_update_ants(delta)
 	_update_corpses()
 	_update_creatures(delta)
+	_flight.update(self, delta)
 	_update_rain(delta, raining)
 	_update_ring()
 
 
 # ---------------------------------------------------------------- input
+
+## The keeper clicked a mated queen on the ground (ui/ant_tip.gd, PART 0.14): into a founding tube on the Home's desk
+## (main.home: home_store.gd) if one is free; else she stays, and the journal says the tubes are full.
+func catch_queen(id: int) -> void:
+	var main = get_parent()
+	var home = main.get("home") if main != null else null
+	if home == null:
+		return
+	if home.tubes.size() >= home.MAX_TUBES:
+		sim._log(sim.T.tubes_full, "bad", [home.MAX_TUBES])
+		return
+	var q: Dictionary = sim.WildQueens.catch(sim, id)
+	if not q.is_empty():
+		home.add_tube(q)
+
 
 func _unhandled_input(e: InputEvent) -> void:
 	if not active:

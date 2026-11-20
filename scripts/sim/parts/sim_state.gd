@@ -55,6 +55,10 @@ var outside: Array = []               # workers currently in the outworld (rebui
 var eggs: Array = []
 var larvae: Array = []
 var pupae: Array = []
+const Alates := preload("res://scripts/sim/alates.gd")
+var alates: Array = []                # winged gynes and males in the nest until they fly (sim/alates.gd; PART 0.14, saved)
+const WildQueens := preload("res://scripts/sim/wild_queens.gd")
+var ground_queens: Array = []         # mated queens come down on the wild plot, the keeper's to catch (sim/wild_queens.gd; saved)
 var water := 1.0               # the nest's water tank (keeper's formicarium), 0..1: keeps the nest damp while it lasts
 var queen := {"alive": true, "starve": 0.0, "reserve": 0.0, "name": "", "crop": 0.0, "fed": 0.0}   # reserve: fat body + dissolved wing muscle; name: the keeper's
 var sugar := 6.0
@@ -160,7 +164,7 @@ var _unloaded: Array = []                # foragers (ids) who brought honeydew h
 
 # ---------------------------------------------------------------- save / load
 
-const SAVE_VERSION := 12             # raise together with a step in save_migrations.gd
+const SAVE_VERSION := 13             # raise together with a step in save_migrations.gd
 const ANT_FIELDS := ["id", "age", "life", "state", "pos", "ang", "carry", "trip", "since", "energy", "size",
 	"hardiness", "patience", "follow", "slide", "busy", "act", "meet_cd", "turn_after", "phase", "caste", "foe", "hurt", "name",
 	"duty", "partner", "sweet", "n_larvae", "n_brood", "n_mates", "rest_h", "dig_h", "n_sugar", "n_prey", "n_corpses", "n_fights", "task", "crop", "body_fat"]

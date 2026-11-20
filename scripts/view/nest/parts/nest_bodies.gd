@@ -447,8 +447,8 @@ func pick_ant(sp: Vector2) -> Dictionary:
 		var qd := AntModel.screen_gap(_cam, _queen_xf, sp, QUEEN_HEAD + Vector3(0.25, 0, 0), QUEEN_TAIL - Vector3(0.2, 0, 0), 0.32)
 		if qd < 14.0:
 			cands.append([qd, eye.distance_to(_queen_xf.origin) + 0.8, {"kind": "queen", "act": _queen_act if _queen_act >= 0 else _queen_mode}])
-	# the brood: an egg, a larva or a cocoon can be clicked as well (what stage, how far on, fed or hungry)
-	for kind in ["eggs", "larvae", "pupae"]:
+	cands.append_array(get("_alates").pick(self, sp, eye) if get("_alates") != null else [])      # (the winged ones: PART 0.14)
+	for kind in ["eggs", "larvae", "pupae"]:          # (the brood can be clicked as well: what stage, how far on, fed or hungry)
 		var ends: Array = [Vector3(0.3, 0, 0), Vector3(-0.3, 0, 0), 0.7] if kind == "eggs" else \
 			([Vector3(1.0, 0.3, 0), Vector3(-0.8, 0.3, 0), 0.32] if kind == "larvae" else [Vector3(1.3, 0, 0), Vector3(-1.3, 0, 0), 0.36])
 		for e in _brood_drawn[kind]:

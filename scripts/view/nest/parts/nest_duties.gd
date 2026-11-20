@@ -321,3 +321,29 @@ func _qfeed_raise(m: Dictionary, mouth: Vector3) -> float:
 			best = 0.05 * k
 	return best
 
+
+# ---------------------------------------------------------------- dev traces (moved from nest_view.gd in v0.14.3: its size)
+
+## Dev (--trace): the nestmates within reach of the queen: role, activity, rest/wander left, position.
+func trace_near_queen() -> String:
+	var out := []
+	for m in _mates:
+		if m.has("xf") and (m.xf as Transform3D).origin.distance_to(_spots.queen) < 7.0:
+			var o: Vector3 = (m.xf as Transform3D).origin
+			out.append("%s%s a%d r%d w%d (%.1f,%.1f,%.1f) sep%.2f" % [m.role, "*" if m.has("script") else "", m.act, m.rest, m.wander,
+				o.x, o.y, o.z, (m.get("sep", Vector3.ZERO) as Vector3).length()])
+	return " | ".join(out)
+
+
+## Dev (--trace-mates): every nestmate: role, activity, cell, goal room, carrying what, settle/step state.
+func trace_mates() -> String:
+	var out := []
+	for m in _mates:
+		var o: Vector3 = (m.xf as Transform3D).origin if m.has("xf") else Vector3(m.cell)
+		var line := "w%s %s%s a%d c%s->%s goal%s carry%s/%s r%d w%d t%.2f set%d" % [m.get("wid", -1), m.role,
+			"*" if m.has("script") else "", m.act, m.cell, m.to, m.get("goal", -9), m.carry, m.get("item", ""),
+			m.rest, m.wander, m.t, (m.get("settle", []) as Array).size()]
+		out.append(line + " here%d free%s lift%.2f" % [(_fields.get(m.goal, {}) as Dictionary).get(m.cell, -1), _cell_free(m, m.cell), float(m.get("over", 0.0))])
+	for id in _dig_vis:
+		out.append("dig%d" % id)
+	return " | ".join(out)

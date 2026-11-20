@@ -5,7 +5,8 @@
 # Modelled in the game's "design units" (1 unit ~ 0.5 mm, ant facing +x, feet at y = 0) so the
 # joints line up with the pivots in shaders/ant.gdshader; exported scaled by K = 0.34.
 # Every vertex carries colour (a multiplier on the per-ant tint) and in alpha the body-part id / 16:
-# 0 trunk, 1 head, 2/3 left/right antenna, 4-9 legs (FL, FR, ML, MR, HL, HR), 10 gaster, 11 mandibles.
+# 0 trunk, 1 head, 2/3 left/right antenna, 4-9 legs (FL, FR, ML, MR, HL, HR), 10 gaster, 11 mandibles, 12 wings
+# (the alates, PART 0.14: VARIANT=gyne / male - tools/blender/ant/wings.py).
 # "Left" is the -z side in Godot. Output: assets/models/ants/<variant>_<lod>.antmesh (see ant_model3d.gd).
 # Leg vertices also carry which leg segment they belong to (1 coxa, 2 femur, 3 tibia, 4 tarsus; 0 elsewhere),
 # so the shader can bend the knee and plant the foot (inverse kinematics on the joints listed in LEGS).
@@ -25,10 +26,13 @@ VARIANT = globals().get("VARIANT", "worker")
 LOD = globals().get("LOD", "hi")
 OUT = globals().get("OUT", "E:/AntFarm/assets/models/ants")
 SHOT = globals().get("SHOT", "")
-QUEEN = VARIANT == "queen"
+QUEEN = VARIANT in ("queen", "gyne")     # (a gyne: the queen's body before her flight - her wings still on)
+GYNE = VARIANT == "gyne"
+MALE = VARIANT == "male"
+WINGED = GYNE or MALE
 HI = LOD == "hi"
 K = 0.34
-random.seed(7 if not QUEEN else 11)
+random.seed(13 if MALE else (7 if not QUEEN else 11))
 
 BODY = (0.55, 0.55, 0.55)
 SUTURE = (0.47, 0.47, 0.47)
@@ -195,7 +199,7 @@ def lerp(a, b, t):
 
 # ---------------------------------------------------------------- the model, one file per body region (tools/blender/ant/)
 ANT_DIR = "E:/AntFarm/tools/blender/ant"
-for _name in ("body", "antennae", "legs", "setae"):
+for _name in ("body", "antennae", "legs", "setae") + (("wings",) if WINGED else ()):
     with open(os.path.join(ANT_DIR, _name + ".py"), encoding="utf-8") as _fh:
         exec(compile(_fh.read(), _name + ".py", "exec"), globals())
 
@@ -214,6 +218,8 @@ for o in PARTS:
         if part in (2, 3) or 4 <= part <= 9:
             pass
         col = list(rgb)
+        if "vein" in o:
+            col = [o["vein"][i]] * 3                     # (the wings: veins and stigma darker - ant/wings.py)
         if part == 10 and rgb == BODY:
             # the hind margin of each tergite is thinner and paler than the plate
             band = 0.0
@@ -262,6 +268,8 @@ def export(path):
                 n = f.normal if flat else v.normal
                 c = v[col_layer] if col_layer else (rgb[0], rgb[1], rgb[2], a)
                 sg = seg if seg >= 0 else _nearest_seg(Vector((v.co.x, v.co.z, -v.co.y)), joints)
+                if "vein" in o:
+                    sg = 20.0 + 10.0 * o["vein"][v.index]         # (a wing: its membrane / veins, for the shader's see-through)
                 verts.append((v.co.x * K, v.co.z * K, -v.co.y * K, n.x, n.z, -n.y, c[0], c[1], c[2], a, float(sg)))
                 tri.append(len(verts) - 1)
                 if key is not None:
@@ -311,11 +319,15 @@ if SHOT:
     cam = bpy.data.objects.new("pv_cam", bpy.data.cameras.new("pv_cam"))
     scn.collection.objects.link(cam)
     view = globals().get("VIEW", "3q")
-    target = Vector((0.4 if not QUEEN else 0.0, 0, 1.0))
+    target = Vector((0.4 if not QUEEN else 0.0, 0, 1.0)) if not WINGED else Vector((-1.5, 0, 1.5))
     dirs = {"3q": Vector((0.7, -1.0, 0.55)), "side": Vector((0.0, -1.0, 0.12)), "top": Vector((0.0, -0.05, 1.0)),
         "front": Vector((1.0, -0.35, 0.3))}
     d = dirs.get(view, dirs["3q"]).normalized()
-    cam.location = target + d * (24.0 if not QUEEN else 30.0)
+    cam.location = target + d * (24.0 if not QUEEN else 30.0) * (1.25 if WINGED else 1.0)
+    if globals().get("CLOSE", "") != "":
+        # CLOSE=meso: the mesosoma and the wing roots filling the frame (PART 0.14: checked against reference/ photos)
+        target = G(0.0, 1.6, 0.0) if QUEEN else G(0.2, 1.3, 0.0)
+        cam.location = target + d * (11.0 if QUEEN else 8.0)
     cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
     cam.data.lens = 60
     scn.camera = cam
