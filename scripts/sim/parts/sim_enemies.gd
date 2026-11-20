@@ -349,7 +349,7 @@ func _release(c: Dictionary, clinging: Array) -> void:
 	for a in clinging:
 		a.busy = 0
 		a.act = 0
-		a.pos = a.pos.clamp(Vector2(4, 4), WORLD - Vector2(4, 4))
+		a.pos = _off_stone(a.pos.clamp(Vector2(4, 4), WORLD - Vector2(4, 4)))
 	for a in outside:
 		if a.foe == c.id:
 			a.foe = 0
@@ -366,7 +366,7 @@ func _bite(a: Ant, c: Dictionary) -> void:
 		a.hurt = minf(0.9, a.hurt + 0.5)
 		if a.busy > 0:
 			a.busy = 0                     # let go
-			a.pos += (a.pos - c.pos).normalized() * 5.0
+			a.pos = _off_stone(a.pos + (a.pos - c.pos).normalized() * 5.0)
 
 
 func _shake_off(a: Ant, c: Dictionary) -> void:
@@ -374,7 +374,31 @@ func _shake_off(a: Ant, c: Dictionary) -> void:
 	a.meet_cd = REGRAB_TICKS        # (on its feet again before it goes back: it was back on its spot the next tick, v0.13.7)
 	a.busy = 0
 	a.hurt = minf(0.9, a.hurt + 0.15)
-	a.pos = (a.pos + (a.pos - c.pos).normalized() * 7.0).clamp(Vector2(4, 4), WORLD - Vector2(4, 4))
+	a.pos = _off_stone((a.pos + (a.pos - c.pos).normalized() * 7.0).clamp(Vector2(4, 4), WORLD - Vector2(4, 4)))
+
+
+## An ant a fight left on a big stone (rode an enemy there, thrown or pushed onto it - no step walks out of its cells)
+## climbs down to the nearest free cell. Until v0.14.4 it stayed, turning on the spot, till it starved or was lost
+## (PART 0.14 step 5: every starved worker of the unkept wild runs). Draws nothing; off the stones, unchanged.
+func _off_stone(p: Vector2) -> Vector2:
+	var cx := int(p.x * INV_CELL)
+	var cy := int(p.y * INV_CELL)
+	if not blocked(p):
+		return p
+	var best := p
+	var bd := INF
+	for r in range(1, 41):               # (rings of cells round it, the nearest free cell's middle; 40 cells = 200 px)
+		for y in range(cy - r, cy + r + 1):
+			for x in range(cx - r, cx + r + 1):
+				if maxi(absi(x - cx), absi(y - cy)) != r:
+					continue
+				var q := Vector2((x + 0.5) * CELL, (y + 0.5) * CELL)
+				if not blocked(q) and q.distance_squared_to(p) < bd:
+					bd = q.distance_squared_to(p)
+					best = q
+		if bd < INF:
+			return best
+	return p
 
 
 ## A worker answering the alarm: run to the nearest enemy, seize it, bite and spray.
@@ -393,6 +417,8 @@ func _step_defender(a: Ant) -> void:
 		a.foe = c.id
 	var S: Dictionary = ENEMY_KINDS[c.kind].STATS
 	var taken := _taken_on(c)
+	if a.busy <= 0:
+		a.pos = _off_stone(a.pos)    # (let go some other way while on a stone: no step walks it off)
 	if a.busy > 0:
 		# clinging on: ride with the enemy at its spot, biting and spraying formic acid
 		a.pos = _grip(a, c)

@@ -268,6 +268,8 @@ func from_dict(d: Dictionary) -> void:
 	for id in d.outside:
 		if by_id.has(id):
 			outside.append(by_id[id])
+			if by_id[id].busy <= 0:
+				by_id[id].pos = _off_stone(by_id[id].pos)     # (stuck on a big stone by a fight, saved by v0.14.3 or before)
 	_dumps = d.get("dumps", {})
 	eggs = d.eggs
 	larvae = d.larvae

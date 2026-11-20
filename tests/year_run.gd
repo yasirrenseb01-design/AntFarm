@@ -8,6 +8,8 @@ extends SceneTree
 ## "alone": nobody waters or feeds (outdoors the colony must live on rain, aphids and what it hunts).
 ## skip=<n> (anywhere after the others): n draws of the colony's generator thrown away after setup - the same colony on
 ## another run of chance (LESSONS 3e/3n: compare several, not one)
+## why (anywhere after the others): each worker that starves, how it came to (from when its crop and fat ran out), and
+## workers stuck standing on a big stone (PART 0.14 step 5, v0.14.4: a fight left them there - LESSONS 51). Slower.
 ## save-name: the colony is saved at the end of each year to user://growtest/<save-name>/ (slot = year), to open
 ## in the game with --testsave=<save-name> [--slot=<year>] (performance and nest-shape checks on a grown colony).
 func _init():
@@ -40,9 +42,64 @@ func _init():
 	var starved := 0
 	var out_sum := 0.0
 	var out_n := 0
+	# (PART 0.14 step 5, "why": each worker that starves, how it came to - from when it ran out of crop and fat: where it
+	# was, what it did, how much food its nestmates had then)
+	var why: bool = args.has("why")
+	var hungry := {}                     # id -> {a, t0, n, nest, task {}, duty {}, mates_crop, mates_fat}
+	var stuck_n := 0
+	var trapped := {}
 	for d in days:
 		for i in s.TPD:
 			s.step()
+			if why:
+				# (an ant outside, not riding an enemy, standing in a big stone's cell for 100 ticks: stuck - no step walks
+				# it off; counted once each time, with what it was doing)
+				for w in s.workers:
+					if w.dead or w.state == 0 or w.busy > 0 or s.rock[s.home.index(w.pos.x, w.pos.y)] != 1:
+						trapped.erase(w.id)
+						continue
+					trapped[w.id] = int(trapped.get(w.id, 0)) + 1
+					if trapped[w.id] == 100:
+						stuck_n += 1
+						if stuck_n <= 10:
+							print("   STUCK ON STONE %s y%d id %d: state %d act %d carry %d at %s" % [s.date_text(), s.year(), w.id,
+								w.state, w.act, w.carry, w.pos.round()])
+			if why and i % 10 == 0:
+				var ins := 0
+				var c_in := 0.0
+				var f_in := 0.0
+				for w in s.workers:
+					if w.state == 0 and not w.dead:
+						ins += 1
+						c_in += w.crop
+						f_in += w.body_fat
+				for w in s.workers:
+					if w.dead or w.crop + w.body_fat >= 0.02:
+						if not w.dead:
+							hungry.erase(w.id)
+						continue
+					var h: Dictionary = hungry.get(w.id, {})
+					if h.is_empty():
+						h = {"a": w, "t0": s.tick, "n": 0, "nest": 0, "task": {}, "duty": {}, "c_in": 0.0, "f_in": 0.0, "age": w.age,
+							"p0": w.pos, "path": 0.0, "last": w.pos}
+						hungry[w.id] = h
+					h.n += 1
+					h.path += w.pos.distance_to(h.last)
+					h.last = w.pos
+					h.nest += 1 if w.state == 0 else 0
+					h.task[w.task] = int(h.task.get(w.task, 0)) + 1
+					h.duty[w.duty] = int(h.duty.get(w.duty, 0)) + 1
+					h.c_in += c_in / maxf(1.0, ins)
+					h.f_in += f_in / maxf(1.0, ins)
+				for id in hungry.keys():
+					var h: Dictionary = hungry[id]
+					if h.a.dead:
+						var n: float = maxf(1.0, h.n)
+						print("   WHY %s y%d id %d age %.0f hardy %.2f size %.2f: empty %.1f d, in nest %d%%, task %s duty %s, state %d carry %d, nest mates' mean crop %.2f fat %.2f | from %s to %s (home %s, %.0f px off) walked %.0f px, trip %d act %d busy %d follow %d rock %d" % [
+							s.date_text(), s.year(), id, h.age, h.a.hardiness, h.a.size, float(s.tick - h.t0) / s.TPD, int(100.0 * h.nest / n),
+							h.task, h.duty, h.a.state, h.a.carry, h.c_in / n, h.f_in / n, h.p0.round(), h.a.pos.round(), s._home_at(h.a.pos).round(),
+							h.a.pos.distance_to(s._home_at(h.a.pos)), h.path, h.a.trip, h.a.act, h.a.busy, h.a.follow, s.rock[s.home.index(h.a.pos.x, h.a.pos.y)]])
+						hungry.erase(id)
 			if i % 60 == 0 and s.activity > 0.8 and s.workers.size() >= 20:
 				var o: float = float(s.out_count) / s.workers.size()
 				var b: int = mini(4, int(fill_of.call() * 5.0))
@@ -107,5 +164,7 @@ func _init():
 		print(bl)
 	print("alates: winters %d  made %s  this year %s  last flight %s" % [s.stats.get("winters", 0), s.stats.get("alate_log", []),
 		s.stats.get("alates_y", {}), s.stats.get("flight", {})])
+	if why:
+		print("stuck on a stone (100 ticks, not riding): %d times" % stuck_n)
 	print("workers dead %d by %s · brood dead %d · larvae eaten %d · born %d" % [s.stats.dead, s.stats.dead_by, s.stats.brood_dead, s.stats.cannibalized, s.stats.born])
 	quit()

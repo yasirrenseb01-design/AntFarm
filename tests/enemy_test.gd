@@ -85,5 +85,38 @@ func _init():
 		ids.append(s2.release_enemy("wolf_spider"))
 	print("released ids %s (at most %d)" % [str(ids), s2.RELEASE_MAX])
 	ok = ok and s2.creatures.size() == s2.RELEASE_MAX and ids.count(0) == 5 - s2.RELEASE_MAX
+	# PART 0.14 step 5 (v0.14.4): an ant a fight leaves on a big stone climbs off it - thrown, bitten loose, let go or
+	# loaded so (until then it stayed, turning on the spot, and starved: every starved worker of the unkept wild runs)
+	var s3 = Sim.new()
+	s3.setup(5, 60, false, "keeper")
+	var st: Vector2 = s3.nest_pos + Vector2(160, 120)
+	var placed: bool = s3.add_rock(st, 30.0)           # (a big stone: CLIMB_R and smaller are climbed over)
+	print("a stone at %s (nest %s): placed %s, blocked %s" % [st, s3.nest_pos, placed, s3.blocked(st)])
+	ok = ok and placed and s3.blocked(st)
+	var foe := {"pos": st + Vector2(-40, 0), "id": 999}
+	var off := [st, st + Vector2(3, -2), st + Vector2(-6, 4)]
+	var ant = s3.workers[0]
+	ant.state = 5
+	var free_ok := true
+	for p in off:
+		ant.pos = p
+		s3._shake_off(ant, foe)                    # (thrown away from the foe: further onto the stone)
+		print("  thrown from %s: at %s, %.0f px, on the stone %s" % [p.round(), ant.pos.round(), ant.pos.distance_to(p), s3.blocked(ant.pos)])
+		free_ok = free_ok and not s3.blocked(ant.pos) and ant.pos.distance_to(p) < 30.0 + 2.0 * s3.CELL   # (to the stone's edge)
+		ant.pos = p
+		ant.busy = 0
+		s3._release(foe, [ant])
+		free_ok = free_ok and not s3.blocked(ant.pos)
+	ant.pos = st
+	ant.busy = 0
+	if not s3.outside.has(ant):
+		s3.outside.append(ant)
+	var copy = Sim.new()
+	copy.from_dict(bytes_to_var(var_to_bytes(s3.to_dict())))
+	var loaded = copy.workers.filter(func(w): return w.id == ant.id)
+	print("off the stone: thrown, let go, loaded")
+	free_ok = free_ok and loaded.size() == 1 and not copy.blocked(loaded[0].pos)
+	print("  ", "ok" if free_ok else "FAIL")
+	ok = ok and free_ok
 	print("ENEMY TEST PASSED" if ok else "ENEMY TEST FAILED")
 	quit()
