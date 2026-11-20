@@ -80,9 +80,20 @@ static func _land(s, g: RandomNumberGenerator, w: float, from: String) -> void:
 		var i: int = s.home.index(at.x, at.y)
 		if i >= 0 and s.rock[i] == 0 and at.distance_to(s.nest_pos) > 40.0:
 			break
-	s.ground_queens.append({"id": int(s._next_cid), "x": at.x, "y": at.y, "a": g.randf() * TAU,
+	s.ground_queens.append({"id": _next_id(s), "x": at.x, "y": at.y, "a": g.randf() * TAU,
 		"walk": g.randf_range(2.0, 4.0), "t0": int(s.tick), "w": snappedf(w, 0.001), "from": from})
-	s._next_cid += 1
+
+
+## A queen's id: a counter of her own (sim.stats "gq_id", saved), not the creatures' (sim._next_cid) - until v0.14.2
+## she took the next creature id, so every queen landing moved the ids of the enemies after her, and with them which
+## way each turns at a wall (int(id) % 2): an unkept wild colony's run changed though nothing new drew on sim.rng.
+## Above every queen on the plot, so a save from v0.14.2 (ids taken from the creatures' counter) never gets two alike.
+static func _next_id(s) -> int:
+	var id: int = int(s.stats.get("gq_id", 1))
+	for q in s.ground_queens:
+		id = maxi(id, int(q.id) + 1)
+	s.stats["gq_id"] = id + 1
+	return id
 
 
 ## Where a queen is now (px), and whether she is still walking: out from where she came down, wandering a little

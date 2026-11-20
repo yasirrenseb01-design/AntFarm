@@ -145,8 +145,13 @@ func _init() -> void:
 
 	print("6. queens on the ground")
 	var gen: RandomNumberGenerator = Q._gen(s, 1)
+	var cid: int = s._next_cid
 	Q._land(s, gen, 1.1, "area")
 	var q: Dictionary = s.ground_queens[-1]
+	Q._land(s, gen, 1.0, "area")
+	check("her id is her own: the creatures' ids stay (%d -> %d), two queens %d, %d" % [cid, s._next_cid, q.id, s.ground_queens[-1].id],
+		s._next_cid == cid and int(s.ground_queens[-1].id) != int(q.id))
+	s.ground_queens.pop_back()
 	var p0: Vector2 = Q.pos_of(s, q)
 	for i in int(s.TPD / 24.0):
 		s.step()
