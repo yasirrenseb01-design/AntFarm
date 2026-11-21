@@ -888,3 +888,12 @@ dev_copy_head,หรือเริ่มจากสำเนารังขอ
 dev_copy_one,ช่อง %d · %s · %s ตัว · %d ห้อง,Slot %d · %s · %s workers · %d chambers
 dev_test_head,หรือรังทดสอบที่โตแล้ว (จาก year_run อ่านอย่างเดียว — รังป่าใช้ดูตัวมีปีกและวันบิน),"Or a grown test colony (from year_run, read only - a wild one for the alates and the flight)"
 dev_test_one,%s · %s · %s ตัว · %d ห้อง · v%s,%s · %s · %s workers · %d chambers · v%s
+mdl_flying,บิน (กางปีกกระพือ),Flying (wings out and beating)
+mdl_shed_wings,ปีกที่ราชินีสลัดทิ้ง,The wings a queen sheds
+catch_title,เก็บราชินีใส่หลอดตั้งรัง?,Catch this queen in a founding tube?
+catch_ask,"ราชินีที่ผสมพันธุ์แล้วตัวนี้หนัก %d%% ของค่าเฉลี่ย (หนักมาก = ไข่และไขมันสำรองมาก) · %s\nหลอดว่างบนโต๊ะใน Home: %d จาก %d หลอด — เก็บแล้วเริ่มรังใหม่ด้วยเธอได้ (คลิกตู้ว่าง)","This mated queen weighs %d%% of the mean (heavier: more eggs and fat in reserve) · %s\nFree founding tubes on the Home's desk: %d of %d - once caught, a new colony can be started with her (click an empty tank)"
+catch_from_own,มาจากรังนี้เอง,one of this colony's own
+catch_from_area,มาจากรังรอบ ๆ แปลง,from a colony round about
+catch_ok,เก็บใส่หลอด,Catch her
+catch_play_note,สนามทดสอบ: เก็บได้ แต่ไม่เข้าหลอดจริงในห้อง Home ของคุณ (ไฟล์อยู่ในโฟลเดอร์ทดสอบ),"Playground: she can be caught, but goes into no real tube in your Home (its files are the test folder's)"
+log_queen_caught_play,เก็บราชินีที่ผสมแล้วตัวหนึ่ง (สนามทดสอบ: ไม่เข้าหลอดจริงในห้อง Home),Caught a mated queen (playground: no real tube in the Home)

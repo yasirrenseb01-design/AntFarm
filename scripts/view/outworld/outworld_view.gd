@@ -1,4 +1,5 @@
 extends "res://scripts/view/outworld/parts/outworld_camera.gd"
+const DevPlay := preload("res://scripts/dev/dev_play.gd")
 ## The outworld box in 3D: the same simulation and scenery layout as the top-down view, seen
 ## through an orbit camera. 1 unit = 1.5 mm (a nest voxel) = 3 px of the simulation's outworld.
 ## This file is the top of the chain: building the scene, the per-frame update and input.
@@ -215,6 +216,31 @@ func catch_queen(id: int) -> void:
 	var q: Dictionary = sim.WildQueens.catch(sim, id)
 	if not q.is_empty():
 		home.add_tube(q)
+		if DevPlay.active():
+			sim.log_entries[0].key = "log_queen_caught_play"     # (the playground's Home is not the keeper's: no tube of hers)
+
+
+## The keeper clicked a queen on the ground (ui/ant_tip.gd): asked first - her weight, where she came from, the tubes
+## free (v0.14.12, the keeper 2026-11-21: "it caught her at once, no question asked"); in the playground, that she goes
+## into no real tube. --catch (dev): caught without asking.
+func ask_catch(id: int) -> void:
+	var main = get_parent()
+	var q: Dictionary = {}
+	for g in sim.ground_queens:
+		if int(g.id) == id:
+			q = g
+	if q.is_empty() or main == null or main.get("hud") == null:
+		return
+	if main._opts.has("catch") and main._opts["catch"] != "ask":
+		catch_queen(id)                          # (dev --catch: no question; --catch=ask shows it)
+		return
+	var home = main.get("home")
+	var free: int = (home.MAX_TUBES - home.tubes.size()) if home != null else 0
+	var text: String = tr("catch_ask") % [int(round(float(q.w) * 100.0)), tr("catch_from_own" if String(q.get("from", "")) == "own" else "catch_from_area"),
+		free, home.MAX_TUBES if home != null else 0]
+	if DevPlay.active():
+		text += "\n\n" + tr("catch_play_note")
+	main.hud.confirm(tr("catch_title"), text, tr("catch_ok"), func(): catch_queen(id))
 
 
 func _unhandled_input(e: InputEvent) -> void:

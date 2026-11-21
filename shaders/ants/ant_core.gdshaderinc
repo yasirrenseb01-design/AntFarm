@@ -617,10 +617,11 @@ vec3 pose(float code, float part, float uvx, vec3 V, inout vec3 NR, mat4 M, floa
 		stretch_out = full;
 	} else if (part == 12.0 && act == 30.0) {
 		// an alate in flight (PART 0.14, outworld_flight.gd): the wings, folded back over the gaster at rest, swung out
-		// to the sides from where they join the thorax and beating (much slower than the real ~100+ Hz: seen as a blur)
+		// to the sides from where they join the thorax and beating - far slower than the real ~100+ Hz: 7.5 a second
+		// (until v0.14.11) beat faster than a frame shows and read as wings held still; ~4.5 a second, wide, is seen
 		float side = V.z < 0.0 ? -1.0 : 1.0;
 		piv = vec3(-0.25, 2.4, 0.5 * side) * K;
-		R = rot_x(-side * (0.15 + 0.65 * sin(t * 47.0))) * rot_y(side * 1.35);
+		R = rot_x(-side * (0.2 + 0.8 * sin(t * 28.0))) * rot_y(side * 1.35);
 	}
 	V = piv + R * (V - piv);
 	NR = normalize(R * NR);

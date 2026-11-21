@@ -244,6 +244,7 @@ func _pose_all(pivot: Node3D, pose: String) -> void:
 	for mmi in pivot.find_children("*", "MultiMeshInstance3D", true, false):
 		if mmi.has_meta("creature"):
 			_pose(mmi, pose)
+     # (its wings beating: act 30)
 
 
 ## The shader's INSTANCE_CUSTOM as creature_pose.update gives it: x the gait, y 0..1 a strike / 3 + kick on its back /

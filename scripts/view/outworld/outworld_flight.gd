@@ -15,13 +15,14 @@ extends RefCounted
 ## stop when it is paused (they ran on in real time); calm, the alates scatter every way, in wind mostly downwind.
 
 const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
+const Glass := preload("res://scripts/view/nest/nest_alates.gd")
 const DRAW_MOST := {"g": 12, "m": 40}
 const MALE_SCALE := 1.07                    # x a worker (sim/alates.gd SIZE)
 const ACT_FLY := 30                         # (shaders/ants/ant_core.gdshaderinc: wings out and beating)
 const ACT_GROOM := 4
 const STALK := 1.0                          # units (~3 mm) of plant over the ground: something to climb
 const ACT_ANTENNATE := 3
-const FALL_S := 3.0                         # s (at 1x) a landing queen is seen coming down
+const FALL_S := 4.5                         # s (at 1x) a landing queen is seen coming down
 const FALL_H := 28.0                        # units (~4 cm) above the ground she is first seen
 const SHED_H := Vector2(0.3, 1.4)           # game hours after landing she sheds her wings (each her own) [chosen]
 
@@ -33,7 +34,7 @@ var _qmm: MultiMesh = null                  # the queens on the ground
 var _qxf := {}                              # their id -> transform drawn (picking)
 var _qgait := {}
 var _qwmm: MultiMesh = null                 # the queens on the ground (or coming down) still winged
-var _wingmm: MultiMesh = null               # the wings shed, lying on the ground
+var _wingmm := {}                           # "l" / "r": her shed wings (each side's pair, as they lay on her), on the ground
 var _qst := {}                              # queen id -> {"fall": s left coming down, "shed": where she shed them, "yaw"}
 
 
@@ -45,24 +46,21 @@ func setup(v, ant_mat: ShaderMaterial, queen_scale: float, queen_limbs: Vector3)
 	var qm: ShaderMaterial = ant_mat.duplicate()
 	qm.set_shader_parameter("limb_gain", queen_limbs)
 	qm.set_shader_parameter("gaster_back", 0.5)              # (a queen's longer thorax: tools/blender/ant/body.py GBACK)
-	_mm["g"] = v._multimesh(gyne, qm, true, true)
-	_mm["m"] = v._multimesh(male, ant_mat, true, true)
+	var qg: ShaderMaterial = Glass.glass(qm)                 # (their wings see-through: nest_alates.glass, step 11)
+	_mm["g"] = v._multimesh(gyne, qg, true, true)
+	_mm["m"] = v._multimesh(male, Glass.glass(ant_mat), true, true)
 	for k in _mm:
 		_mm[k].use_custom_data = true
 	_mm["qs"] = queen_scale
 	_qmm = v._multimesh(AntModel.make(0.0, true, true, v.sim.sp.look), qm, true, true)
-	_qwmm = v._multimesh(gyne, qm, true, true)
-	var wing := SphereMesh.new()                # (a long thin oval, flat: scaled per wing below)
-	wing.radius = 1.0
-	wing.height = 2.0
-	wing.radial_segments = 14
-	wing.rings = 4
-	var wmat := StandardMaterial3D.new()
-	wmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	wmat.albedo_color = Color(0.74, 0.7, 0.62, 0.32)     # (clear, a little smoky - as the alates' wings are drawn)
-	wmat.roughness = 0.2
-	wmat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_wingmm = v._multimesh(wing, wmat, false)
+	_qwmm = v._multimesh(gyne, qg, true, true)
+	# her shed wings: the gyne model's own (part 12), each side's pair as one piece laid flat (v0.14.11: plain ovals
+	# until then - "not like real ones")
+	var wmat := ShaderMaterial.new()
+	wmat.shader = preload("res://shaders/ants/wing_shed.gdshader")
+	var halves := _wing_halves(gyne)
+	for side in halves:
+		_wingmm[side] = v._multimesh(halves[side], wmat, false)
 	var f = v.sim.stats.get("flight", {})
 	_seen_day = int(f.get("day", -1)) if f is Dictionary else -1      # (a flight before this view opened: not shown again)
 
@@ -82,6 +80,9 @@ func update(v, delta: float) -> void:
 		return
 	var sim = v.sim
 	delta = delta * minf(v.speed, 1.0) if v.speed > 0.0 else 0.0     # (paused: still; below 1x, slower - as the enemies' poses)
+	# (the wings' clock runs whether or not a flight is on: a queen coming down beat no wings until v0.14.11 - "lowered
+	# on a rope", the keeper)
+	_clock = fmod(_clock + delta, 600.0)
 	_ground_queens(v, delta)
 	var f = sim.stats.get("flight", {})
 	if f is Dictionary and int(f.get("day", -1)) != _seen_day:
@@ -92,8 +93,6 @@ func update(v, delta: float) -> void:
 		for k in ["g", "m"]:
 			_mm[k].instance_count = 0
 		return
-	# (in real time, whatever the game's speed: a flight takes ~half a minute to watch)
-	_clock = fmod(_clock + delta, 600.0)
 	var xs := {"g": [], "m": []}
 	var cs := {"g": [], "m": []}
 	for i in range(_actors.size() - 1, -1, -1):
@@ -232,8 +231,18 @@ func _ground_queens(v, delta: float) -> void:
 		var s: float = v.ANT_SCALE * _mm.qs * float(q.w) ** (1.0 / 3.0)          # (a heavier queen a little bigger)
 		var ground: float = v.ground_top(p2.x, p2.y)
 		var k: float = float(st.fall) / FALL_S                                      # 1 high up .. 0 landed
-		var at := Vector3(p2.x, ground + FALL_H * k * k, p2.y) + Vector3(cos(st.yaw), 0, sin(st.yaw)) * 6.0 * k
-		var xf := Transform3D(_facing(f, Vector3.UP).scaled(Vector3.ONE * s), at)
+		var at := Vector3(p2.x, ground, p2.y)
+		var face := _facing(f, Vector3.UP)
+		if k > 0.0:
+			# coming down in a widening-to-narrowing spiral, bobbing with her wingbeats, nose a little up; slowing as
+			# she nears the ground (v0.14.11: a straight drop "on a rope")
+			var turn: float = float(st.yaw) + (1.0 - k) * TAU * 1.3
+			var r: float = 9.0 * k * (0.6 + 0.4 * sin(k * PI))
+			var h: float = FALL_H * pow(k, 1.6) + 0.35 * sin(_clock * 28.0) * smoothstep(0.0, 0.3, k)
+			at += Vector3(cos(turn), 0, sin(turn)) * r + Vector3(0, h, 0)
+			var head := Vector3(-sin(turn), 0, cos(turn))                          # (along the spiral)
+			face = _facing(head + Vector3(0, 0.25 * k, 0), Vector3.UP).rotated(head, 0.25 * sin(_clock * 3.1) * k)
+		var xf := Transform3D(face.scaled(Vector3.ONE * s), at)
 		var g: float = _qgait.get(q.id, 0.0) + (dir.length() / maxf(0.01, 0.3 * s) if walking and k <= 0.0 else 0.0)
 		_qgait[q.id] = fmod(g, TAU * 64.0)
 		keep[q.id] = xf
@@ -244,7 +253,8 @@ func _ground_queens(v, delta: float) -> void:
 		else:
 			plain.append([xf, cd])
 			if not st.has("shed"):
-				st["shed"] = Vector3(p2.x, ground + 0.03, p2.y)          # (where she was when they came off)
+				st["shed"] = Vector3(p2.x, ground + 0.02, p2.y)          # (where she was when they came off)
+				st["s"] = s
 			wings.append(st)
 	for pair in [[_qmm, plain], [_qwmm, winged]]:
 		var mm: MultiMesh = pair[0]
@@ -254,17 +264,16 @@ func _ground_queens(v, delta: float) -> void:
 			mm.set_instance_transform(j, list[j][0])
 			mm.set_instance_color(j, AntModel.body_linear(Color(0.07, 0.055, 0.047)))
 			mm.set_instance_custom_data(j, list[j][1])
-	# her four wings where she shed them, lying flat, a little apart (two fore, two hind: the hind ones smaller)
-	_wingmm.instance_count = wings.size() * 4
-	for j in wings.size():
-		var at0: Vector3 = wings[j].shed
-		var y0: float = float(wings[j].yaw)
-		for w in 4:
-			var yaw := y0 + float(w) * 1.6 + 0.4 * sin(float(w) * 7.0 + y0)
-			var off := Vector3(cos(yaw), 0, sin(yaw)) * (0.9 + 0.3 * float(w))
-			var k := 1.0 if w < 2 else 0.75             # (a forewing ~3.6 x 1 mm, the hind ones smaller)
-			var b := Basis(Vector3.UP, yaw).scaled(Vector3(1.2 * k, 0.015, 0.33 * k))
-			_wingmm.set_instance_transform(j * 4 + w, Transform3D(b, at0 + off))
+	# her wings where she shed them, lying flat, the two sides a little apart (each side's pair as it lay on her back)
+	for side in _wingmm:
+		var mm: MultiMesh = _wingmm[side]
+		mm.instance_count = wings.size()
+		for j in wings.size():
+			var at0: Vector3 = wings[j].shed
+			var y0: float = float(wings[j].yaw) + (0.5 if side == "l" else -0.4)
+			var sc: float = float(wings[j].s)
+			var off := Vector3(cos(y0 + 1.7), 0, sin(y0 + 1.7)) * (0.8 if side == "l" else -0.8) * sc
+			mm.set_instance_transform(j, Transform3D(Basis(Vector3.UP, -y0).scaled(Vector3.ONE * sc), at0 + off))
 	_qxf = keep
 	for id in _qgait.keys():
 		if not keep.has(id):
@@ -272,6 +281,57 @@ func _ground_queens(v, delta: float) -> void:
 	for id in _qst.keys():
 		if not keep.has(id):
 			_qst.erase(id)
+
+
+## The gyne model's wings (part 12: vertex colour alpha x 16), cut out as two pieces - her left pair and her right -
+## each laid flat about its own middle, at the ground (y 0) - the shed wings' meshes.
+static func _wing_halves(gyne: ArrayMesh) -> Dictionary:
+	var a := gyne.surface_get_arrays(0)
+	var vs: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+	var ns: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+	var cs: PackedColorArray = a[Mesh.ARRAY_COLOR]
+	var uvs: PackedVector2Array = a[Mesh.ARRAY_TEX_UV]
+	var idx: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	var out := {}
+	for side in ["l", "r"]:
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var tris := []
+		var lo := Vector3.INF
+		var hi := -Vector3.INF
+		for t in range(0, idx.size(), 3):
+			var ok := true
+			for q in 3:
+				var c: Color = cs[idx[t + q]]
+				if absf(c.a * 16.0 - 12.0) > 0.4 or ((vs[idx[t + q]].z < 0.0) != (side == "l")):
+					ok = false
+			if ok:
+				tris.append(t)
+				for q in 3:
+					lo = lo.min(vs[idx[t + q]])
+					hi = hi.max(vs[idx[t + q]])
+		# (folded on her they stand at a slant, roof-like: turned so their own plane lies on the soil, they show their whole
+		# shape - squashed flat instead they were thin slivers)
+		var nsum := Vector3.ZERO
+		for t in tris:
+			var e := (vs[idx[t + 1]] - vs[idx[t]]).cross(vs[idx[t + 2]] - vs[idx[t]])
+			nsum += e if e.y >= 0.0 else -e
+		var flat := Basis(Quaternion(nsum.normalized(), Vector3.UP)) if nsum.length() > 0.0 else Basis.IDENTITY
+		var mid := (lo + hi) * 0.5
+		var low := INF
+		for t in tris:
+			for q in 3:
+				low = minf(low, (flat * (vs[idx[t + q]] - mid)).y)
+		for t in tris:
+			for q in 3:
+				var vi: int = idx[t + q]
+				st.set_normal(flat * ns[vi])
+				st.set_color(cs[vi])
+				st.set_uv(uvs[vi] if uvs.size() > vi else Vector2.ZERO)
+				var p: Vector3 = flat * (vs[vi] - mid)
+				st.add_vertex(Vector3(p.x, (p.y - low) * 0.3, p.z))     # (the fore wing over the hind, a hair apart)
+		out[side] = st.commit()
+	return out
 
 
 static func _h01(n: int) -> float:

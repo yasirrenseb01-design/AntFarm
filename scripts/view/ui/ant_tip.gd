@@ -107,8 +107,8 @@ func _click(at: Vector2) -> void:
 func _select(info: Dictionary) -> void:
 	if not info.is_empty() and info.kind == "ground_queen":
 		var v = _active_view()                # (a mated queen on the wild plot: caught at once - PART 0.14)
-		if v != null and v.has_method("catch_queen"):
-			v.catch_queen(int(info.id))
+		if v != null and v.has_method("ask_catch"):
+			v.ask_catch(int(info.id))           # (asked first: outworld_view.ask_catch)
 		info = {}
 	if info.is_empty():
 		sel = {}

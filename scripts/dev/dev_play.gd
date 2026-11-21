@@ -62,7 +62,7 @@ static func grown_tests(most := 500) -> Array:
 	var out := []
 	var root := "user://growtest/"
 	for d in DirAccess.get_directories_at(root):
-		if d == "devplay":
+		if d == "devplay" or not DirAccess.dir_exists_absolute(root + d + "/saves"):
 			continue
 		for f in DirAccess.get_files_at(root + d + "/saves"):
 			if f.begins_with("slot") and f.ends_with(".json") and f.trim_prefix("slot").trim_suffix(".json").is_valid_int():

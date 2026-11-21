@@ -39,7 +39,13 @@ static func _ants() -> Array:
 		for d in [["mdl_near", "hi"], ["mdl_far", "lo"]]:
 			var path := "res://assets/models/ants/%s_%s.antmesh" % [n, d[1]]
 			vars.append([d[0], func(): return ant(AntModel.load_antmesh(path))])
+		if n == "gyne" or n == "male":
+			var fpath := "res://assets/models/ants/%s_hi.antmesh" % n
+			var q: bool = n == "gyne"
+			vars.append(["mdl_flying", func(): return alate_flying(AntModel.load_antmesh(fpath), q)])
 		out.append({"key": "mdl_" + n, "src": "ants/%s_{hi,lo}.antmesh" % n, "mm": GAME_MM, "vars": vars})
+	out.append({"key": "mdl_shed_wings", "src": "outworld_flight._wing_halves() + wing_shed.gdshader", "mm": GAME_MM,
+		"vars": [["mdl_one", func(): return shed_wings()]]})
 	# the brood: each stage, and played one after another (the cycle)
 	var stages := [["mdl_egg", func(): return egg()], ["mdl_larva_s", func(): return larva(0.0)], ["mdl_larva_m", func(): return larva(0.5)],
 		["mdl_larva_l", func(): return larva(1.0)], ["mdl_cocoon", func(): return cocoon(0.0)], ["mdl_cocoon_late", func(): return cocoon(1.0)],
@@ -152,15 +158,16 @@ static func _home(holder: Node) -> Array:
 ## The ants: vertex colours times a tint as the game's shader takes them; the wings (part 12) pale and clear.
 const ANT_SHADER := """
 shader_type spatial;
-render_mode cull_disabled;
+render_mode cull_disabled, depth_prepass_alpha;
 uniform vec3 tint = vec3(0.16, 0.13, 0.11);
 uniform float fade = 1.0;
 void fragment() {
 	float part = floor(COLOR.a * 16.0 + 0.5);
 	bool wing = part > 11.5 && part < 12.5;
-	ALBEDO = wing ? mix(COLOR.rgb, vec3(0.86, 0.84, 0.8), 0.6) : COLOR.rgb * tint;
-	ROUGHNESS = wing ? 0.3 : 0.7;
-	ALPHA = (wing ? 0.55 : 1.0) * fade;
+	float membrane = smoothstep(0.8, 0.98, clamp((UV.x - 20.0) / 10.0, 0.0, 1.0));     // (as the game's: ant_frag.gdshaderinc)
+	ALBEDO = wing ? mix(vec3(0.07, 0.04, 0.02), vec3(0.6, 0.58, 0.54), membrane) : COLOR.rgb * tint;
+	ROUGHNESS = wing ? 0.15 : 0.7;
+	ALPHA = (wing ? mix(0.9, 0.12, membrane) : 1.0) * fade;
 }
 """
 static var _ant_shader: Shader = null
@@ -177,6 +184,66 @@ static func ant(m: Mesh) -> MeshInstance3D:
 	sm.set_shader_parameter("tint", Vector3(ANT_TINT.r, ANT_TINT.g, ANT_TINT.b))
 	mi.material_override = sm
 	return mi
+
+
+## An alate in flight: wings out and beating as ant_core act 30 does it (same pivot, turns, ~4.5 beats/s), see-through
+## (ant_frag GLASS_WINGS) - the game's whole ant shader drew nothing on a card here, so its wing part is done again.
+const ALATE_FLY_SHADER := """
+shader_type spatial;
+render_mode cull_disabled, depth_prepass_alpha;
+uniform vec3 tint = vec3(0.16, 0.13, 0.11);
+const float K = 0.34;
+mat3 rot_x(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(1, 0, 0), vec3(0, c, s), vec3(0, -s, c)); }
+mat3 rot_y(float a) { float c = cos(a); float s = sin(a); return mat3(vec3(c, 0, -s), vec3(0, 1, 0), vec3(s, 0, c)); }
+void vertex() {
+	float part = floor(COLOR.a * 16.0 + 0.5);
+	if (part > 11.5 && part < 12.5) {
+		float side = VERTEX.z < 0.0 ? -1.0 : 1.0;
+		vec3 piv = vec3(-0.25, 2.4, 0.5 * side) * K;
+		mat3 R = rot_x(-side * (0.2 + 0.8 * sin(TIME * 28.0))) * rot_y(side * 1.35);
+		VERTEX = piv + R * (VERTEX - piv);
+		NORMAL = R * NORMAL;
+	}
+}
+void fragment() {
+	float part = floor(COLOR.a * 16.0 + 0.5);
+	bool wing = part > 11.5 && part < 12.5;
+	float membrane = smoothstep(0.8, 0.98, clamp((UV.x - 20.0) / 10.0, 0.0, 1.0));
+	ALBEDO = wing ? mix(vec3(0.07, 0.04, 0.02), vec3(0.6, 0.58, 0.54), membrane) : COLOR.rgb * tint;
+	ROUGHNESS = wing ? 0.15 : 0.7;
+	ALPHA = wing ? mix(0.9, 0.12, membrane) : 1.0;
+}
+"""
+static var _fly_shader: Shader = null
+
+
+static func alate_flying(m: Mesh, _queen: bool) -> Node3D:
+	if _fly_shader == null:
+		_fly_shader = Shader.new()
+		_fly_shader.code = ALATE_FLY_SHADER
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	var sm := ShaderMaterial.new()
+	sm.shader = _fly_shader
+	mi.material_override = sm
+	return mi
+
+
+## A mated queen's shed wings as they lie on the plot (outworld_flight._wing_halves: her own, laid flat).
+static func shed_wings() -> Node3D:
+	var n := Node3D.new()
+	var mat := ShaderMaterial.new()
+	mat.shader = preload("res://shaders/ants/wing_shed.gdshader")
+	var halves: Dictionary = preload("res://scripts/view/outworld/outworld_flight.gd")._wing_halves(AntModel.load_antmesh("res://assets/models/ants/gyne_hi.antmesh"))
+	var i := 0
+	for side in halves:
+		var mi := MeshInstance3D.new()
+		mi.mesh = halves[side]
+		mi.material_override = mat
+		mi.position = Vector3(0, 0, 1.4 * (i - 0.5))
+		n.add_child(mi)
+		i += 1
+	return n
 
 
 ## An egg as the nest draws it (nest_scene._ellipsoid(0.32, 0.2), nest_view's egg material).
