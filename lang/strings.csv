@@ -739,3 +739,28 @@ dev_st_panic,พล่าน,panicking
 dev_st_fleeing,หนี,fleeing
 dev_st_back,หงาย,on its back
 dev_st_dying,กำลังตาย,dying
+dev_tab_enemies,ศัตรู,Enemies
+dev_tab_scenes,มดและสถานการณ์,Ants and scenes
+dev_sec_food,อาหารและมด (ข้างรัง),Food and ants (by the nest)
+dev_cricket,จิ้งหรีด,A cricket
+dev_honey,น้ำผึ้ง,Honey
+dev_dead_ant,มดงานตายในรัง (ดูมดขนศพ),A worker dies in the nest (the undertakers)
+dev_sec_alates,ตัวมีปีกและวันบิน,The winged ones and the flight
+dev_add_gynes,+ ราชินีใหม่ 3,+ 3 new queens
+dev_add_males,+ ตัวผู้ 10,+ 10 males
+dev_flight,วันบินตอนนี้,The flight now
+dev_queens,ราชินีร่อนลง 3 ตัว,3 mated queens come down
+dev_sec_weather,อากาศ,Weather
+dev_rain,ฝนตก,Rain
+dev_rain_stop,ฝนหยุด,Rain stops
+dev_calm,ลมสงบ,Calm
+dev_windy,ลมแรง,Windy
+dev_wind_real,ลมตามจริง,The day's own wind
+dev_sec_time,ข้ามไปเวลา,On to the time
+dev_sec_season,ข้ามไปเดือน,On to the month
+dev_apr,เม.ย.,April
+dev_jul,ก.ค.,July
+dev_oct,ต.ค.,October
+dev_jan,ม.ค.,January
+dev_jump_note,ข้ามเวลาแบบไม่จำลองระหว่างทาง: นาฬิกา วันที่ และอากาศเปลี่ยนทันที แต่ช่วงที่ข้ามไม่มีอะไรเกิด (ลูกมดไม่โต ไม่มีการขุด),"A jump without living the time between: the clock, the date and the weather change at once, but nothing happens in the time skipped (no brood grows, nothing is dug)"
+dev_wild_only,(แปลงป่าเท่านั้น),(the wild plot only)

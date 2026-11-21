@@ -20,6 +20,7 @@ var day_amp := 6.5
 var air := 18.0
 var nest := 21.0
 var rain_ticks := 0
+var wind_force := -1.0       # (the developer's playground: a wind set by hand, m/s - ui/dev_panel.gd; -1 none, never saved)
 var sun := 0.0              # daylight 0..1 (set by the simulation), warms a wild nest
 
 
@@ -138,6 +139,8 @@ const WIND_MOST := 6.3       # m/s: alates were seen only below this [A5: Hayes 
 func wind_at(seed: int, day: int, tod: float) -> float:
 	if scenario != "wild":
 		return 0.0
+	if wind_force >= 0.0:
+		return wind_force
 	var a := _hash01(seed, day)
 	var b := _hash01(seed, day + 1)
 	var base := 0.8 + 7.0 * pow(lerpf(a, b, smoothstep(0.7, 1.0, tod)), 1.6)     # (the next day's weather by late evening)

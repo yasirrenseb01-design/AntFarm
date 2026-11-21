@@ -39,6 +39,18 @@ func _init() -> void:
 	Play.apply(m2)
 	_case("in it: its options, its own folder for every file", m2._opts.get("dev-play") == "1" and m2._opts.get("workers") == "200"
 		and Store.base == Play.BASE and load("res://scripts/game/harmony.gd").base == Play.BASE)
+	# the playground's wind by hand (step 9): that wind while set, the day's own again after; none in a tank
+	var w = load("res://scripts/sim/simulation.gd").new()
+	w.setup(5, 0, false, "wild")
+	var own: float = w.wind()
+	w.climate.wind_force = 9.0
+	var set_w: float = w.wind()
+	w.climate.wind_force = -1.0
+	_case("wind by hand: 9 m/s while set, the day's own (%.2f) after" % own, set_w == 9.0 and w.wind() == own)
+	var t = load("res://scripts/sim/simulation.gd").new()
+	t.setup(5, 0, false, "keeper")
+	t.climate.wind_force = 9.0
+	_case("no wind in a tank, set or not", t.wind() == 0.0)
 	Play.opts = {}
 	Store.base = "user://"
 	load("res://scripts/game/harmony.gd").base = "user://"

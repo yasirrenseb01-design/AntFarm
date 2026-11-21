@@ -102,7 +102,25 @@ func setup(m) -> void:
 	hide_b.pressed.connect(func(): visible = false)
 	head.add_child(hide_b)
 	col.add_child(head)
-	col.add_child(h._label(tr("dev_enemies"), 13, Paper.PENCIL))
+	# two pages, one shown (the panel no taller than the window): the enemies, the ants and the scenes (step 9)
+	var tabs := HBoxContainer.new()
+	var tg := ButtonGroup.new()
+	var en := VBoxContainer.new()
+	en.add_theme_constant_override("separation", 6)
+	var sc := _scenes_page()
+	sc.visible = false
+	for tb in [["dev_tab_enemies", en], ["dev_tab_scenes", sc]]:
+		var b: Button = h._button(tr(tb[0]), true, tg)
+		b.button_pressed = tb[1] == en
+		var page: Control = tb[1]
+		b.pressed.connect(func():
+			en.visible = page == en
+			sc.visible = page == sc)
+		tabs.add_child(b)
+	col.add_child(tabs)
+	col.add_child(en)
+	col.add_child(sc)
+	en.add_child(h._label(tr("dev_enemies"), 13, Paper.PENCIL))
 	var sim = m.sim
 	for kind in sim.ENEMY_KINDS:
 		var r := HBoxContainer.new()
@@ -116,16 +134,17 @@ func setup(m) -> void:
 		var near: Button = h._button(tr("dev_by_nest"), false)
 		near.pressed.connect(func(): _let_in(k, true))
 		r.add_child(near)
-		col.add_child(r)
-	col.add_child(HSeparator.new())
-	col.add_child(h._label(tr("dev_in_now"), 13, Paper.PENCIL))
+		en.add_child(r)
+	en.add_child(HSeparator.new())
+	en.add_child(h._label(tr("dev_in_now"), 13, Paper.PENCIL))
 	_list = VBoxContainer.new()
 	_list.add_theme_constant_override("separation", 4)
-	col.add_child(_list)
-	var foot := HBoxContainer.new()
+	en.add_child(_list)
 	var all_out: Button = h._button(tr("en_remove"), false)
 	all_out.pressed.connect(func(): main.sim.remove_enemies())
-	foot.add_child(all_out)
+	en.add_child(all_out)
+	col.add_child(HSeparator.new())
+	var foot := HBoxContainer.new()
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(gap)
@@ -133,11 +152,27 @@ func setup(m) -> void:
 	out.pressed.connect(func(): DevPlay.leave(main))
 	foot.add_child(out)
 	col.add_child(foot)
+	if m._opts.has("dev-press"):                # (dev: --dev-press=<word key or label>[,...] - pressed after 2 s, a second apart)
+		get_tree().create_timer(2.0).timeout.connect(_dev_press)
+	if m._opts.has("dev-tab"):                  # (dev: --dev-tab=scenes - that page open, for shots)
+		en.visible = false
+		sc.visible = true
+		tg.get_buttons()[1].button_pressed = true
 	# (dev, for shots: --dev-let-in=<kind>[,nest] after a second, then --dev-act=<follow|flip|panic|flee|kill> on it after 3 s)
 	if m._opts.has("dev-leave-after"):          # (dev: --dev-leave-after=<s> - out of the playground then)
 		get_tree().create_timer(float(m._opts["dev-leave-after"])).timeout.connect(func(): DevPlay.leave(main))
 	if m._opts.has("dev-let-in"):
 		get_tree().create_timer(1.0).timeout.connect(_dev_shot)
+
+
+func _dev_press() -> void:
+	for key in String(main._opts["dev-press"]).split(","):
+		for b in find_children("*", "Button", true, false):
+			if b.text == tr(key) or b.text == key:
+				b.pressed.emit()
+				print("dev-press: %s" % key)
+				break
+		await get_tree().create_timer(1.0).timeout
 
 
 func _dev_shot() -> void:
@@ -229,3 +264,129 @@ func _state(c: Dictionary) -> String:
 		if c.get("fleeing", false) else (tr("dev_st_panic") if main.sim.panicking(c) else tr("dev_st_hunting"))))
 	return tr("dev_enemy_line") % [int(c.id), h._cap(tr(main.sim.ENEMY_KINDS[c.kind].NAME)), maxi(0, int(100.0 * float(c.hp) / float(S.hp))),
 		int(c.held), st]
+
+
+# ---------------------------------------------------------------- the ants and the scenes (step 9)
+
+const TIMES := [["07:00", 7.0], ["12:00", 12.0], ["15:00", 15.0], ["19:00", 19.0], ["23:00", 23.0]]
+const SEASONS := [["dev_apr", 105.0], ["dev_jul", 190.0], ["dev_oct", 280.0], ["dev_jan", 10.0]]     # (day of the year)
+
+
+## The second page: food and a dead nestmate by the nest, the winged ones and their flight, mated queens coming down,
+## rain and wind, a time of day or a season - each now, as the simulation itself would have it happen.
+func _scenes_page() -> VBoxContainer:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	var wild: bool = main.sim.scenario == "wild"
+	_buttons(box, "dev_sec_food", [["dev_cricket", func(): _food("cricket")], ["dev_honey", func(): _food("honey")],
+		["dev_dead_ant", _dead_ant]], true)
+	_buttons(box, "dev_sec_alates", [["dev_add_gynes", func(): _alates("g", 3)], ["dev_add_males", func(): _alates("m", 10)],
+		["dev_flight", _flight], ["dev_queens", _queens]], wild)
+	_buttons(box, "dev_sec_weather", [["dev_rain", func(): _rain(true)], ["dev_rain_stop", func(): _rain(false)],
+		["dev_calm", func(): main.sim.climate.wind_force = 0.6], ["dev_windy", func(): main.sim.climate.wind_force = 9.0],
+		["dev_wind_real", func(): main.sim.climate.wind_force = -1.0]], wild)
+	var times: Array = []
+	for t in TIMES:
+		var hour: float = t[1]
+		times.append([t[0], func(): _jump(fposmod(hour / 24.0 - main.sim.time_of_day(), 1.0))])
+	_buttons(box, "dev_sec_time", times, true, false)
+	var seasons: Array = []
+	for se in SEASONS:
+		var d: float = se[1]
+		seasons.append([se[0], func(): _jump(floorf(fposmod(d - main.sim.doy_f(), 365.0)))])
+	_buttons(box, "dev_sec_season", seasons, true)
+	box.add_child(h._wrapped(tr("dev_jump_note"), 11, Paper.PENCIL))
+	return box
+
+
+## A heading and a row of buttons (off, with a note why, where the scene does not have it: outdoors only).
+func _buttons(box: VBoxContainer, head: String, list: Array, on: bool, words := true) -> void:
+	box.add_child(h._label(tr(head) if on else tr(head) + " " + tr("dev_wild_only"), 13, Paper.PENCIL))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 4)
+	row.add_theme_constant_override("v_separation", 4)
+	for it in list:
+		var b: Button = h._button(tr(it[0]) if words else String(it[0]), false)
+		b.disabled = not on
+		b.pressed.connect(it[1])
+		row.add_child(b)
+	box.add_child(row)
+
+
+## The camera over this spot of the outworld (as the dev shots of the alates: dev/alate_dev.gd).
+func _look_at(p: Vector2) -> void:
+	var ow = main.outworld
+	if main.mode != "outworld":
+		return
+	if p == main.sim.nest_pos:
+		ow.focus_nest()                       # (the entrance button's own: following nothing, near)
+		return
+	ow.follow_cid = 0
+	ow.follow_wid = -1
+	ow.target_t = ow._on_ground(p)
+
+
+func _food(kind: String) -> void:
+	var sim = main.sim
+	for k in 16:                               # (round the nest, the first free spot: not on a stone, not in the entrance)
+		var p: Vector2 = sim.nest_pos + Vector2.from_angle(k * 0.785 + 0.3) * (55.0 + 6.0 * (k / 8))
+		if sim.place_food(kind, p):
+			_look_at(p)
+			return
+
+
+## A worker dies in the nest (old age): the undertakers carry her out to the refuse pile.
+func _dead_ant() -> void:
+	for w in main.sim.workers:
+		if w.state == 0 and not w.dead:
+			main.sim._kill(w, "old")
+			return
+
+
+func _alates(x: String, n: int) -> void:
+	for i in n:
+		main.sim.Alates.eclose(main.sim, {"x": x, "q": 1.0})
+
+
+## The flight now: those in the nest made ready (some put in first if there are none), as on a flight afternoon.
+func _flight() -> void:
+	var sim = main.sim
+	if sim.alates.is_empty():
+		_alates("g", 3)
+		_alates("m", 10)
+	for al in sim.alates:
+		al.age = 30.0
+		if al.x == "g":
+			al.w = sim.Alates.GYNE_COST
+	sim.Alates._fly(sim)
+	_look_at(sim.nest_pos)
+
+
+## Three mated queens come down round the nest, as after a flight day (click one: into a founding tube - not here).
+func _queens() -> void:
+	var sim = main.sim
+	var g: RandomNumberGenerator = sim.WildQueens._gen(sim, sim.tick)
+	for i in 3:
+		sim.WildQueens._land(sim, g, g.randf_range(0.8, 1.2), "area")
+		var q: Dictionary = sim.ground_queens[-1]
+		var at: Vector2 = sim.nest_pos + Vector2.from_angle(i * 2.1) * (35.0 + 12.0 * i)
+		q.x = at.x
+		q.y = at.y
+	_look_at(sim.nest_pos)
+
+
+func _rain(on: bool) -> void:
+	var sim = main.sim
+	sim.climate.rain_ticks = int(sim.TPD * 0.2) if on else 0
+	if on:
+		sim.stats["rain_day"] = sim.day()
+		sim._log(sim.T.rain_start)
+
+
+## On by `days` (a fraction: to that time of day) without living them: the clock, the date and the weather of then -
+## nothing in between happens (brood, digging, the days' own events).
+func _jump(days: float) -> void:
+	var sim = main.sim
+	sim.tick += int(days * sim.TPD)
+	sim.climate.doy = sim.doy_f()
+	sim.climate.settle(sim.time_of_day(), sim.heater)
