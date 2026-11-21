@@ -35,7 +35,7 @@ static func title_page(m, parent: Control) -> Control:
 	p.anchor_top = 0.5
 	p.anchor_bottom = 0.5
 	p.offset_left = -W * 0.5
-	p.offset_top = -190
+	p.offset_top = -410                    # (from near the top: the colonies to start from make it tall)
 	p.visible = false
 	parent.add_child(p)
 	var col := VBoxContainer.new()
@@ -75,6 +75,32 @@ static func title_page(m, parent: Control) -> Control:
 	var go: Button = h._button(m.tr("dev_play_start"), false)
 	go.pressed.connect(func(): DevPlay.start(m, pick.scen, pick.n))
 	col.add_child(go)
+	# (step 11) or a copy of one of the keeper's own colonies, grown - read only
+	var own: Array = DevPlay.colonies()
+	if not own.is_empty():
+		col.add_child(h._label(m.tr("dev_copy_head"), 13, Paper.PENCIL))
+		var flow := HFlowContainer.new()
+		for c in own.slice(0, 6):
+			var meta: Dictionary = c[1]
+			var b: Button = h._button(m.tr("dev_copy_one") % [int(c[0]), m.tr("dev_scene_wild" if String(meta.get("scenario", "")) == "wild" else "dev_scene_keeper"),
+				h._thousands(int(meta.get("workers", 0))), int(meta.get("chambers", 0))], false)
+			var sl: int = c[0]
+			b.pressed.connect(func(): DevPlay.start_copy(m, sl))
+			flow.add_child(b)
+		col.add_child(flow)
+	var grown: Array = DevPlay.grown_tests()
+	if not grown.is_empty():
+		col.add_child(h._label(m.tr("dev_test_head"), 13, Paper.PENCIL))
+		var flow2 := HFlowContainer.new()
+		for c in grown.slice(0, 4):
+			var meta: Dictionary = c[2]
+			var b: Button = h._button(m.tr("dev_test_one") % [String(c[0]), m.tr("dev_scene_wild" if String(meta.get("scenario", "")) == "wild" else "dev_scene_keeper"),
+				h._thousands(int(meta.get("workers", 0))), int(meta.get("chambers", 0)), String(meta.get("version", "?"))], false)
+			var nm: String = c[0]
+			var sl2: int = c[1]
+			b.pressed.connect(func(): DevPlay.start_test(m, nm, sl2))
+			flow2.add_child(b)
+		col.add_child(flow2)
 	col.add_child(HSeparator.new())
 	var room: Button = h._button(m.tr("mdl_open"), false)          # (step 10: the 3D model room - ui/model_room.gd)
 	room.pressed.connect(func(): open_model_room(m))

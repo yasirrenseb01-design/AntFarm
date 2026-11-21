@@ -136,6 +136,10 @@ var _sel_queen_mm: MultiMesh
 var _sel_brood_mm: MultiMesh       # the rim round a clicked egg, larva or cocoon
 var fprof := {}                 # dev (--perf): microseconds per part of refresh(), summed
 var _brood_occ := {}             # brood laid this layout, binned (see nest_brood _place_brood)
+## (v0.14.11) the time one layout may spend placing brood not yet placed: the rest wait for the next frames. A young
+## colony of 1,000 put into a 2-chamber nest (the developer's playground) froze the first frame 66 s, 600 ms a frame after.
+const LAYOUT_US := 12000
+var _layout_until := 0
 var _brood_gen := 0               # counts brood layouts (what is cached against the brood is worked out again)
 # where each item of brood lies, kept from one layout to the next so a pile stays still when an egg is added
 # or one hatches (items are told apart by a view tag "_v" written into the simulation's brood entries)

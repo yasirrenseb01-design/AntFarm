@@ -884,3 +884,7 @@ mdl_tree_a,ต้นที่ 1,Tree 1
 mdl_tree_b,ต้นที่ 2,Tree 2
 mdl_grass_green,หญ้าเขียว,Green grass
 mdl_grass_dry,หญ้าแห้ง (ฤดูหนาว),Dry grass (winter)
+dev_copy_head,หรือเริ่มจากสำเนารังของคุณที่โตแล้ว (อ่านอย่างเดียว ไม่เซฟกลับ),"Or start from a copy of one of your grown colonies (read only, never saved back)"
+dev_copy_one,ช่อง %d · %s · %s ตัว · %d ห้อง,Slot %d · %s · %s workers · %d chambers
+dev_test_head,หรือรังทดสอบที่โตแล้ว (จาก year_run อ่านอย่างเดียว — รังป่าใช้ดูตัวมีปีกและวันบิน),"Or a grown test colony (from year_run, read only - a wild one for the alates and the flight)"
+dev_test_one,%s · %s · %s ตัว · %d ห้อง · v%s,%s · %s · %s workers · %d chambers · v%s

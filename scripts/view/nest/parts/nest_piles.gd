@@ -120,6 +120,8 @@ func _pile(mm: MultiMesh, spots: Array, items: Array, max_n: int, scale_fn: Call
 		else:
 			todo.append(i)                       # what it rested on has hatched: it settles onto the floor
 	for i in todo:
+		if Time.get_ticks_usec() > _layout_until:
+			break                                # (out of this layout's time: the rest next frame - nest_scene LAYOUT_US)
 		# items not yet carried over stay in the old pile
 		var src: Array = spots if (i < moved or old_spots.is_empty()) else old_spots
 		if not cands.has(src):
@@ -632,6 +634,7 @@ func _brood_free(p: Vector3, r: float) -> bool:
 func _update_brood() -> void:
 	_brood_occ.clear()                       # larvae, cocoons and eggs share the floor: laid out together
 	_tilt_budget = 2
+	_layout_until = Time.get_ticks_usec() + LAYOUT_US
 	_brood_drawn = {"eggs": [], "larvae": [], "pupae": []}
 	var exs := []
 	if not _spots.eggs.is_empty():
