@@ -215,6 +215,7 @@ new_title_wild,เริ่มรังใหม่ในแปลงสวน %
 new_title_tank,เริ่มรังใหม่ในตู้ %d,New colony in tank %d
 home_help,"เดิน: W A S D · มองรอบ: ขยับเมาส์ · คลิก: ตู้ เก้าอี้ ประตู สมุดภาพ · Tab: ปล่อยเมาส์ไว้กดปุ่ม/ร้านค้า · ซูม: ลูกกลิ้ง · Esc กลับหน้าแรก","Walk: W A S D · look round: move the mouse · click: a tank, the chair, the door, the album · Tab: free the pointer for the buttons and the shop · zoom: wheel · Esc: title page"
 home_purse,Colony Harmony %s,Colony Harmony %s
+home_purse_full,Colony Harmony %s (เต็ม),Colony Harmony %s (full)
 home_door,ประตู,The door
 home_lamp_off,"โคมไฟ · คลิก: ปิด","The lamp · click: switch it off"
 home_lamp_on,"โคมไฟ · คลิก: เปิด","The lamp · click: switch it on"
@@ -561,6 +562,7 @@ timebar_tip,"แถบเวลา: ตรงกลางคือตอนน�
 มดบนเส้นคือการออกหากิน ยิ่งมดหนาแน่นยิ่งออกหากินมาก (ข้างหน้าคาดจากอากาศวันนี้)","The time bar: now is the middle, the hours gone by to the left, the hours to come to the right.
 The ants on the line are the foraging: the thicker they walk, the more go out (ahead: reckoned from today's weather)."
 harmony_line,Colony Harmony %s,Colony Harmony %s
+harmony_line_full,Colony Harmony %s (เต็ม),Colony Harmony %s (full)
 fps_line,%d FPS · จริง %.1f×,%d FPS · real %.1f×
 queen_fat,ไขมัน %d%%,Fat %d%%
 queen_not_laying,หยุดวางไข่,Not laying

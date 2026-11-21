@@ -18,6 +18,11 @@ const AWAY := 1.0
 const WILD := 0.3
 const GAME_DAYS_PER_HOUR_1X := 60.0     # (1 game day a minute at 1x)
 const MAX_POINTS := 1.0e12
+# a player's purse holds at most this (the keeper, 2026-11-21: v0.14.6 - none until then, and points came faster than
+# anything to buy; one over it at v0.14.6 is cut to it); more earned is lost and the purse shows it full. The developer's
+# machine has none (game/dev_machine.gd).
+const PLAYER_CAP := 50000.0
+const DevMachine := preload("res://scripts/game/dev_machine.gd")
 # the keeper filling a tank's water when it was under 30 % - more than 70 % in one go (the keeper, 2026-11-03): WATER, at
 # most once a tank in WATER_WAIT real seconds (a tank lasts ~25 min at 1x and seconds at 100x: not a tap to farm)
 const WATER := 30.0
@@ -25,6 +30,7 @@ const WATER_LOW := 0.3
 const WATER_WAIT := 3600.0
 
 static var base := "user://"            # (tests point this at a sandbox, as the save store)
+static var cap := PLAYER_CAP           # (set as the purse is read: MAX_POINTS on the developer's machine)
 var points := 0.0
 var water_paid := {}                    # slot (as text) -> the unix time a filling was last paid for
 var _last := {}                         # the colony's counts already paid for (sim.harmony_n and nest.dug)
@@ -51,19 +57,21 @@ func collect(sim, game_days_per_hour: float, live: bool) -> void:
 		raw += d * (BORN if k == "born" else (BORN if k == "big" else (SURVIVED if k == "survived" else (FED if k == "fed" else DUG))))
 	_last = now
 	var mult := WILD if sim.scenario == "wild" else (LIVE if live else AWAY)
-	points = minf(MAX_POINTS, points + raw * mult * GAME_DAYS_PER_HOUR_1X / game_days_per_hour)
+	add(raw * mult * GAME_DAYS_PER_HOUR_1X / game_days_per_hour)
 
 
 ## (v0.12.32: written and read through game/safe_file.gd - a file cut short is read from its .bak, not taken as 0 points
 ## and saved over)
 func load_purse() -> void:
 	points = 0.0
+	cap = MAX_POINTS if DevMachine.is_dev() else PLAYER_CAP
 	# (only a number is taken from it: nothing in the file is run)
 	var d = SafeFile.read_text(base + "harmony.json", 4096, _purse_of)
 	if d != null:
 		points = clampf(float(d.points), 0.0, MAX_POINTS)
 		if not (d.get("v") is float or d.get("v") is int):
 			points /= 10.0                              # (earned at v0.11.39's ten-times values)
+		points = minf(points, cap)                      # (a player's over the cap, from before v0.14.6: cut to it)
 		var wp = d.get("water_paid")
 		water_paid = {}
 		if wp is Dictionary:
@@ -87,6 +95,17 @@ func pay_water(slot: int, before: float) -> float:
 	if before >= WATER_LOW or now - float(water_paid.get(str(slot), 0.0)) < WATER_WAIT:
 		return 0.0
 	water_paid[str(slot)] = now
-	points = minf(MAX_POINTS, points + WATER)
+	var had := points
+	add(WATER)
 	save_purse()
-	return WATER
+	return points - had                  # (0 with the purse full: nothing to show)
+
+
+## Points earned (or given back): into the purse, up to its cap - the rest is lost.
+func add(p: float) -> void:
+	points = clampf(points + p, 0.0, maxf(points, cap))
+
+
+## The purse is full: what is earned now is lost (the Home's and the colony's purse lines say so).
+func full() -> bool:
+	return points >= cap

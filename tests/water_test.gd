@@ -54,6 +54,28 @@ func _init() -> void:
 	var h2 := Harmony.new()
 	h2.load_purse()
 	_case("the hour kept in harmony.json", h2.pay_water(1, 0.1) == 0.0 and h2.points == 60.0, h2.points)
+	# the cap (v0.14.6): a player's purse holds 50,000 - one over it is cut on reading; more earned is lost; the
+	# developer's machine (game/dev_machine.gd) has none
+	var D = load("res://scripts/game/dev_machine.gd")
+	h2.points = 744222.6
+	h2.save_purse()
+	D.forced = 0
+	var hp := Harmony.new()
+	hp.load_purse()
+	_case("a player's 744,222 read as 50,000, full", hp.points == Harmony.PLAYER_CAP and hp.full(), hp.points)
+	_case("a filling with the purse full: nothing", hp.pay_water(3, 0.1) == 0.0 and hp.points == Harmony.PLAYER_CAP, hp.points)
+	hp.points -= 1000.0
+	hp.add(400.0)
+	_case("spent 1,000, earned 400: 49,400", hp.points == 49400.0 and not hp.full(), hp.points)
+	hp.add(5000.0)
+	_case("earned 5,000 more: stops at 50,000", hp.points == Harmony.PLAYER_CAP, hp.points)
+	h2.points = 744222.6
+	h2.save_purse()                  # (the player's filling above saved it cut)
+	D.forced = 1
+	var hd := Harmony.new()
+	hd.load_purse()
+	_case("the developer's machine: 744,222 kept", is_equal_approx(hd.points, 744222.6) and not hd.full(), hd.points)
+	D.forced = -1
 	for f in DirAccess.get_files_at(DIR + "saves"):
 		DirAccess.remove_absolute(DIR + "saves/" + f)
 	for f in DirAccess.get_files_at(DIR):

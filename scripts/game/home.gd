@@ -369,7 +369,7 @@ func _leave() -> void:
 
 func _update_purse() -> void:
 	var p: float = main.harmony.points
-	_purse.text = tr("home_purse") % (Shop.num(p) if p >= 100.0 else "%.1f" % p)
+	_purse.text = tr("home_purse_full" if main.harmony.full() else "home_purse") % (Shop.num(p) if p >= 100.0 else "%.1f" % p)
 	if shop.visible and shop.purse != null and is_instance_valid(shop.purse):
 		shop.purse.text = _purse.text
 

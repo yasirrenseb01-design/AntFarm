@@ -33,7 +33,7 @@ static var _started := false          # _ready has run once in this process (the
 ##   --seed=<n>   --workers=<n> (start with a young colony instead of a lone queen)   --nest=soil|glass
 ##   --scenario=keeper|wild (indoor formicarium, or a plot of ground with seasons and predators)
 ##   --substep=<n>   --sandbox [--pretend-away=<hours>]   use a separate save folder (tests)
-##   --testsave=<name> [--slot=<year>]   open a colony grown by tests/year_run.gd (read-only)
+##   --testsave=<name> [--slot=<year>]   open a colony grown by tests/year_run.gd (read-only)   --as-player (the developer's machine as a player's: game/dev_machine.gd)
 ##   --desktop   start as the desktop wallpaper (desktop_mode.gd; back to the game from the tray icon)
 ##       [--win=x,y,w,h,mode] (the game window to go back to: passed on when the game starts itself again)
 ##       [--no-cover-check] (dev: draw even under a full-screen app)   --quit-after=<s> (dev: close after s seconds)
@@ -108,7 +108,7 @@ func _ready() -> void:
 		if home.screen_refund:
 			# (the wall screen bought in v0.11.92 is no more: its points back. home.json was written without it as it was read)
 			home.screen_refund = false
-			harmony.points += home.SCREEN_REFUND
+			harmony.add(home.SCREEN_REFUND)            # (up to the cap)
 			harmony.save_purse()
 		next_slot = 0
 		if next_nest == "":

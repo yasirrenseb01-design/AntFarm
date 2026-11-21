@@ -288,7 +288,7 @@ func refresh(delta: float) -> void:
 	if _frame % 30 == 0:
 		_refresh_postit()
 	if harmony >= 0.0:
-		_harmony_l.text = tr("harmony_line") % _thousands(int(harmony))
+		_harmony_l.text = tr("harmony_line_full" if harmony >= load("res://scripts/game/harmony.gd").cap else "harmony_line") % _thousands(int(harmony))
 	_frame += 1
 	if _frame == 2:
 		_fps_label.visible = bool(settings.get("show_fps", false))
