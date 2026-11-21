@@ -764,3 +764,61 @@ dev_oct,ต.ค.,October
 dev_jan,ม.ค.,January
 dev_jump_note,ข้ามเวลาแบบไม่จำลองระหว่างทาง: นาฬิกา วันที่ และอากาศเปลี่ยนทันที แต่ช่วงที่ข้ามไม่มีอะไรเกิด (ลูกมดไม่โต ไม่มีการขุด),"A jump without living the time between: the clock, the date and the weather change at once, but nothing happens in the time skipped (no brood grows, nothing is dug)"
 dev_wild_only,(แปลงป่าเท่านั้น),(the wild plot only)
+mdl_open,ห้องดูโมเดล 3 มิติ,3D model room
+mdl_title,ห้องดูโมเดล 3 มิติ (นักพัฒนา),3D model room (developer)
+mdl_note,การ์ดแต่ละใบหมุนเอง · คลิกการ์ดเพื่อดูใหญ่ · ขนาดจริงในเกม (ยาว × กว้าง × สูง รวมขา/หนวด) · สีตามไฟล์ — ในเกม shader แต่งสีและท่าทางทับอีกชั้น · ดูอย่างเดียว ไม่แตะเกม,"Each card turns by itself · click one to see it big · sizes as in the game (length × width × height, legs and antennae in) · colours as in the file - in the game the shaders tint and pose them · looking only, nothing in the game is touched"
+mdl_big_help,ลากซ้าย: หมุน · ล้อเมาส์: ซูม,Left drag: turn · wheel: zoom
+mdl_size_mm,%.1f × %.1f × %.1f มม.,%.1f × %.1f × %.1f mm
+mdl_size_cm,%.1f × %.1f × %.1f ซม.,%.1f × %.1f × %.1f cm
+mdl_size_none,ขนาดตามที่ย่อขยายในฉาก,sized where it stands in the scene
+mdl_verts,%d จุด,%d vertices
+mdl_tab_ants,มดและลูกมด,Ants and brood
+mdl_tab_enemies,ศัตรู,Enemies
+mdl_tab_prey,เหยื่อและอาหาร,Prey and food
+mdl_tab_plants,พืช,Plants
+mdl_tab_ground,หิน ดิน และตู้,"Stones, ground and tanks"
+mdl_tab_home,ของในห้อง Home,The Home's things
+mdl_worker_hi,มดงาน (ละเอียด),Worker (near)
+mdl_worker_lo,มดงาน (ไกล),Worker (far)
+mdl_queen_hi,ราชินี (ละเอียด),Queen (near)
+mdl_queen_lo,ราชินี (ไกล),Queen (far)
+mdl_gyne_hi,ราชินีใหม่มีปีก (ละเอียด),Winged new queen (near)
+mdl_gyne_lo,ราชินีใหม่มีปีก (ไกล),Winged new queen (far)
+mdl_male_hi,ตัวผู้ (ละเอียด),Male (near)
+mdl_male_lo,ตัวผู้ (ไกล),Male (far)
+mdl_larva,ตัวอ่อน,Larva
+mdl_cocoon,รังไหม (ดักแด้),Cocoon (pupa)
+mdl_wolf_spider,แมงมุมหมาป่า,Wolf spider
+mdl_centipede,ตะขาบหิน,Stone centipede
+mdl_ground_beetle,ด้วงดิน,Ground beetle
+mdl_aphid_adult,เพลี้ยอ่อน (ตัวเต็มวัย),Aphid (adult)
+mdl_aphid_nymph,เพลี้ยอ่อน (ตัวอ่อน),Aphid (nymph)
+mdl_aphid_winged,เพลี้ยอ่อนมีปีก,Winged aphid
+mdl_cricket,จิ้งหรีด,Cricket
+mdl_cricket_rotten,จิ้งหรีด (เน่า),Cricket (rotten)
+mdl_fly,แมลงวัน,Fly
+mdl_plant,พืช (แบบ/ขั้นโตตามชื่อไฟล์),Plant (kind/stage: the file's name)
+mdl_aphid_plant,ต้นถั่วมีเพลี้ย,Bean plant with aphids
+mdl_stone,หิน,Stone
+mdl_twig,กิ่งไม้,Twig
+mdl_leaf,ใบไม้แห้ง,Dry leaf
+mdl_blade,ใบหญ้า,Grass blade
+mdl_tank_small,ตู้เล็ก (ดิน + กระจก),Small tank (soil and glass)
+mdl_tank_big,ตู้ใหญ่ (ดิน + กระจก),Big tank (soil and glass)
+mdl_tubes,หลอดตั้งรัง,Founding tubes
+mdl_aspirator,ที่ดูดมด,Aspirator
+mdl_forceps,ปากคีบ,Forceps
+mdl_brush,พู่กัน,Brush
+mdl_syringe,หลอดฉีดยา,Syringe
+mdl_petri,จานเพาะเชื้อ,Petri dish
+mdl_lens,แว่นขยาย,Magnifier
+mdl_fluon,ขวดฟลูออน,Fluon bottle
+mdl_tray,ถาดใส่อุปกรณ์,Kit tray
+mdl_notebook,สมุดบันทึก,Notebook
+mdl_pencil,ดินสอ,Pencil
+mdl_chair,เก้าอี้,Chair
+mdl_fridge,ตู้เย็นจำศีล,Wintering fridge
+mdl_hand_open,มือ (แบ),Hand (open)
+mdl_hand_point,มือ (ชี้),Hand (pointing)
+mdl_sleeve,แขนเสื้อ,Sleeve
+mdl_tree,ต้นไม้นอกหน้าต่าง,Tree outside the window

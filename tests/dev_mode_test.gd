@@ -51,6 +51,25 @@ func _init() -> void:
 	t.setup(5, 0, false, "keeper")
 	t.climate.wind_force = 9.0
 	_case("no wind in a tank, set or not", t.wind() == 0.0)
+	# the 3D model room (step 10): every card's model made, with a size; nothing of the game's touched
+	var room = load("res://scripts/view/ui/model_room.gd").new()
+	var made := 0
+	var bad := []
+	var cats: Array = room._cats()
+	for cat in cats:
+		for it in cat[1]:
+			var mdl: Node3D = (it[3] as Callable).call()
+			var b: AABB = room._box_of(mdl)
+			if b.size.length() > 0.0:
+				made += 1
+			else:
+				bad.append(it[1])
+			mdl.free()
+	var total := 0
+	for cat in cats:
+		total += cat[1].size()
+	_case("the model room: %d of %d models made, each with a size %s" % [made, total, bad], made == total and total >= 50)
+	room.free()
 	Play.opts = {}
 	Store.base = "user://"
 	load("res://scripts/game/harmony.gd").base = "user://"

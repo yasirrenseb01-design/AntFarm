@@ -75,10 +75,23 @@ static func title_page(m, parent: Control) -> Control:
 	var go: Button = h._button(m.tr("dev_play_start"), false)
 	go.pressed.connect(func(): DevPlay.start(m, pick.scen, pick.n))
 	col.add_child(go)
+	col.add_child(HSeparator.new())
+	var room: Button = h._button(m.tr("mdl_open"), false)          # (step 10: the 3D model room - ui/model_room.gd)
+	room.pressed.connect(func(): open_model_room(m))
+	col.add_child(room)
+	if m._opts.has("model-room"):                                  # (dev: --model-room=<tab> [--model-big=<card>])
+		m.get_tree().create_timer(1.0).timeout.connect(func(): open_model_room(m))
 	if m._opts.has("dev-play-go") and not DevPlay.auto_done:     # (dev: --dev-play-go - the button pressed after 3 s, once)
 		DevPlay.auto_done = true
 		m.get_tree().create_timer(3.0).timeout.connect(func(): go.pressed.emit())
 	return p
+
+
+## The 3D model room over everything (closed by its ×).
+static func open_model_room(m) -> void:
+	var r = preload("res://scripts/view/ui/model_room.gd").new()
+	m.add_child(r)
+	r.setup(m)
 
 
 ## In the playground: built on the HUD (title.gd setup), shown at once.
@@ -148,6 +161,9 @@ func setup(m) -> void:
 	var gap := Control.new()
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(gap)
+	var models: Button = h._button(tr("mdl_open"), false)
+	models.pressed.connect(func(): open_model_room(main))
+	foot.add_child(models)
 	var out: Button = h._button(tr("dev_leave"), false)
 	out.pressed.connect(func(): DevPlay.leave(main))
 	foot.add_child(out)
