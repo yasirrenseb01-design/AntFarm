@@ -778,14 +778,6 @@ mdl_tab_prey,เหยื่อและอาหาร,Prey and food
 mdl_tab_plants,พืช,Plants
 mdl_tab_ground,หิน ดิน และตู้,"Stones, ground and tanks"
 mdl_tab_home,ของในห้อง Home,The Home's things
-mdl_worker_hi,มดงาน (ละเอียด),Worker (near)
-mdl_worker_lo,มดงาน (ไกล),Worker (far)
-mdl_queen_hi,ราชินี (ละเอียด),Queen (near)
-mdl_queen_lo,ราชินี (ไกล),Queen (far)
-mdl_gyne_hi,ราชินีใหม่มีปีก (ละเอียด),Winged new queen (near)
-mdl_gyne_lo,ราชินีใหม่มีปีก (ไกล),Winged new queen (far)
-mdl_male_hi,ตัวผู้ (ละเอียด),Male (near)
-mdl_male_lo,ตัวผู้ (ไกล),Male (far)
 mdl_larva,ตัวอ่อน,Larva
 mdl_cocoon,รังไหม (ดักแด้),Cocoon (pupa)
 mdl_wolf_spider,แมงมุมหมาป่า,Wolf spider
@@ -795,10 +787,7 @@ mdl_aphid_adult,เพลี้ยอ่อน (ตัวเต็มวัย),
 mdl_aphid_nymph,เพลี้ยอ่อน (ตัวอ่อน),Aphid (nymph)
 mdl_aphid_winged,เพลี้ยอ่อนมีปีก,Winged aphid
 mdl_cricket,จิ้งหรีด,Cricket
-mdl_cricket_rotten,จิ้งหรีด (เน่า),Cricket (rotten)
 mdl_fly,แมลงวัน,Fly
-mdl_plant,พืช (แบบ/ขั้นโตตามชื่อไฟล์),Plant (kind/stage: the file's name)
-mdl_aphid_plant,ต้นถั่วมีเพลี้ย,Bean plant with aphids
 mdl_stone,หิน,Stone
 mdl_twig,กิ่งไม้,Twig
 mdl_leaf,ใบไม้แห้ง,Dry leaf
@@ -822,3 +811,76 @@ mdl_hand_open,มือ (แบ),Hand (open)
 mdl_hand_point,มือ (ชี้),Hand (pointing)
 mdl_sleeve,แขนเสื้อ,Sleeve
 mdl_tree,ต้นไม้นอกหน้าต่าง,Tree outside the window
+mdl_kinds,%d แบบ,%d kinds
+mdl_poses,%d ท่า,%d poses
+mdl_kind,แบบ:,Kind:
+mdl_pose,ท่า:,Pose:
+mdl_cycle,เล่นวงจร (ไข่ → มดงาน),Play the cycle (egg → worker)
+mdl_near,ละเอียด (ซูมใกล้),Near (detailed)
+mdl_far,ไกล (ซูมออก),Far
+mdl_worker,มดงาน,Worker
+mdl_queen,ราชินี,Queen
+mdl_gyne,ราชินีใหม่มีปีก,Winged new queen
+mdl_male,ตัวผู้,Male
+mdl_brood,ลูกมด (ไข่ ตัวอ่อน รังไหม),"Brood (egg, larva, cocoon)"
+mdl_egg,ไข่,Egg
+mdl_larva_s,ตัวอ่อนเล็ก,Small larva
+mdl_larva_m,ตัวอ่อนกลาง,Middle larva
+mdl_larva_l,ตัวอ่อนโตเต็มที่,Full-grown larva
+mdl_cocoon_late,รังไหมใกล้ออก,Cocoon near eclosion
+mdl_larva_g,ตัวอ่อนราชินีใหม่,New queen's larva
+mdl_larva_m_x,ตัวอ่อนตัวผู้,Male's larva
+mdl_shader,ตามที่เกมวาด (shader),As the game draws it (shader)
+mdl_pose_walk,เดิน,Walking
+mdl_pose_stand,ยืน,Standing
+mdl_pose_strike,กัด/ฉก,Striking
+mdl_pose_held,ถูกมดเกาะ (ดิ้น),Held by ants (writhing)
+mdl_pose_back,หงายดิ้น,On its back kicking
+mdl_pose_dead,ตาย (ซาก),Dead (carcass)
+mdl_pose_feed,กินเหยื่อ,Feeding on prey
+mdl_pose_shake,เขย่าเหยื่อ,Shaking prey
+mdl_aphid,เพลี้ยอ่อน,Aphid
+mdl_whole,ทั้งตัว,Whole
+mdl_half_eaten,ถูกกินไปครึ่ง,Half eaten
+mdl_leg_off,ขาหลังหลุด (ซ้าย),Hind leg off (left)
+mdl_leg_off_other,ขาหลังหลุด (ขวา),Hind leg off (right)
+mdl_rotten,เน่า,Rotten
+mdl_rotten_eaten,เน่า + ถูกกิน,Rotten and eaten
+mdl_honey,น้ำหวาน,Sweets
+mdl_honey_drop,หยดน้ำผึ้ง,A drop of honey
+mdl_honeydew,หยดน้ำหวานเพลี้ย,A drop of honeydew
+mdl_stage_0,ขั้นโต 1 (ต้นอ่อน),Stage 1 (seedling)
+mdl_stage_1,ขั้นโต 2,Stage 2
+mdl_stage_2,ขั้นโต 3,Stage 3
+mdl_stage_3,ขั้นโต 4 (โตเต็มที่),Stage 4 (full grown)
+mdl_bean_0,ต้นถั่ว (แบบ 1),Bean plant (1)
+mdl_bean_1,ต้นถั่ว (แบบ 2),Bean plant (2)
+mdl_bean_2,ต้นถั่ว (แบบ 3),Bean plant (3)
+mdl_weeds,วัชพืชในแปลง,The plot's weeds
+mdl_plantain,ผักกาดน้ำ (Plantago),Plantain
+mdl_dandelion,แดนดิไลออน,Dandelion
+mdl_clover,โคลเวอร์,Clover
+mdl_grass,หญ้า,Grass
+mdl_moss,มอส,Moss
+mdl_moss_0,มอสเป็นกระจุก,Moss cushion
+mdl_moss_1,มอสแผ่เป็นแผ่น,Moss mat
+mdl_rocks,หิน,Stones
+mdl_rock_round,หินกลม (หินในแปลง),Rounded field stone
+mdl_rock_slate,หินชนวนแบน,Flat slate
+mdl_rock_granite,หินแกรนิตเหลี่ยม,Angular granite
+mdl_grains,เม็ดดิน (ที่มดขุดออก),Soil pellets (dug out)
+mdl_grain_0,ก้อนเหลี่ยมตัด,Cut clod
+mdl_grain_1,เศษแบน,Flat crumb
+mdl_grain_2,สองก้อนติดกัน,Two lobes
+mdl_grain_3,เศษแตกคม,Broken chip
+mdl_grain_4,เศษยาวงอ,Long crumb
+mdl_grain_carried,ก้อนที่มดคาบ,The lump an ant carries
+mdl_pebble,กรวดเม็ดเล็ก,Pebble
+mdl_litter,ใบไม้และกิ่งบนพื้น,Litter
+mdl_tanks,ตู้ (ดิน + กระจก),Tanks (soil and glass)
+mdl_one,แบบเดียว,One kind
+mdl_hand,มือ,Hand
+mdl_tree_a,ต้นที่ 1,Tree 1
+mdl_tree_b,ต้นที่ 2,Tree 2
+mdl_grass_green,หญ้าเขียว,Green grass
+mdl_grass_dry,หญ้าแห้ง (ฤดูหนาว),Dry grass (winter)

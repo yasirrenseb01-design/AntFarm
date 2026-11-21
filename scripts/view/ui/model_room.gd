@@ -1,30 +1,29 @@
 extends CanvasLayer
 ## The developer's 3D model room (PART 0.14 step 10, the keeper 2026-11-21: "open the files of the tools, the buildings,
-## the soils that were made, as 3D cards"). From the title's Developer page (ui/dev_panel.gd), the developer's machine
-## only. Each model on a card of its own (a SubViewport with a world of its own), turning; under it its name, its file
-## or the code that makes it, its size in life and its vertices; a click shows it big - drag to turn it, the wheel to
-## come nearer. Reads the models only: nothing of the game's state is touched.
-##   the ants and brood, the enemies, the prey, the plants, stones and ground, the Home's things (game units of 1.5 mm,
-##   the Home's in metres - ARCHITECTURE "units")
+## the soils that were made, as 3D cards"; gone over in step 11: "near and far in one card, chosen inside"; the brood's
+## stages and how one turns into the next; each enemy's poses; the cricket's states). From the title's Developer page and
+## the playground (ui/dev_panel.gd), the developer's machine only. What there is: dev/model_catalog.gd.
+## Each thing on a card of its own (a SubViewport with a world of its own), turning; under it its name, its file or the
+## code that makes it, its size in life, its vertices and how many kinds it has; a click shows it big - its kinds (and
+## an enemy's poses, the brood's cycle) chosen there, dragged to turn, the wheel to come nearer. Reads the models only.
 
-const AntModel := preload("res://scripts/view/common/ant_model3d.gd")
-const MeshKit := preload("res://scripts/view/common/mesh_kit.gd")
-const Props := preload("res://scripts/view/common/parts/mesh_kit_base.gd")
-const HomeTools := preload("res://scripts/view/home/home_tools.gd")
-const HomeFridge := preload("res://scripts/view/home/home_fridge.gd")
+const Catalog := preload("res://scripts/dev/model_catalog.gd")
+const CreaturePose := preload("res://scripts/view/outworld/creature_pose.gd")
+const CreatureRig := preload("res://scripts/view/outworld/creature_rig.gd")
 const Paper := preload("res://scripts/view/ui/paper.gd")
-const GAME_MM := 1.5             # mm a game unit (the ants, the enemies, the prey, the plants)
-const M_MM := 1000.0             # the Home's things: metres
 const CARD := Vector2(300, 210)
-const ANT_TINT := Color(0.16, 0.13, 0.11)     # (the ants' vertex colours multiply a tint: a dark worker's, for a look)
+const CYCLE := 12.0              # s: egg -> larva growing -> cocoon -> worker out, once round
 
 var main
 var h
 var _tabs: HBoxContainer
 var _grid: GridContainer
+var _cats: Array = []
 var _big: PanelContainer
 var _big_vp: SubViewport
 var _big_label: Label
+var _big_row: HFlowContainer     # its kinds, its poses
+var _big_item: Dictionary = {}
 var _pivots: Array = []          # the cards' turning pivots
 var _big_pivot: Node3D
 var _big_cam: Camera3D
@@ -33,12 +32,16 @@ var _pitch := 0.35
 var _zoom := 1.0
 var _r := 1.0
 var _drag := false
+var _t := 0.0
+var _cycle_on := false
+var _cycle: Dictionary = {}      # the brood cycle's pieces in the big view
 
 
 func setup(m) -> void:
 	main = m
 	h = m.hud
 	layer = 20
+	_cats = Catalog.cats(self)
 	var root := PanelContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.theme = h._paper_theme
@@ -67,141 +70,28 @@ func setup(m) -> void:
 	_grid.add_theme_constant_override("v_separation", 10)
 	scroll.add_child(_grid)
 	var g := ButtonGroup.new()
-	var cats := _cats()
-	for i in cats.size():
-		var b: Button = h._button(tr(cats[i][0]), true, g)
-		b.button_pressed = i == 0
+	for i in _cats.size():
+		var b: Button = h._button(tr(_cats[i][0]), true, g)
 		var k: int = i
 		b.pressed.connect(func(): _show(k))
 		_tabs.add_child(b)
 	_build_big(root)
-	var start := clampi(int(m._opts.get("model-room", "0")), 0, cats.size() - 1)     # (dev: --model-room=<tab>)
+	var start := clampi(int(m._opts.get("model-room", "0")), 0, _cats.size() - 1)     # (dev: --model-room=<tab>)
 	_tabs.get_child(start).button_pressed = true
 	_show(start)
-	if m._opts.has("model-big"):                                   # (dev: --model-big=<card>: shown big)
-		get_tree().create_timer(0.5).timeout.connect(func(): _open_big(cats[start][1][clampi(int(m._opts["model-big"]), 0, cats[start][1].size() - 1)]))
+	if m._opts.has("model-big"):                 # (dev: --model-big=<card>[,<kind or pose word key>]: shown big)
+		get_tree().create_timer(0.5).timeout.connect(_dev_big.bind(start))
 
 
-# ---------------------------------------------------------------- what there is
-
-## [tab word key, [item]]; an item: [word key, where it comes from, mm a unit, maker -> Node3D].
-func _cats() -> Array:
-	var ants := []
-	for n in ["worker", "queen", "gyne", "male"]:
-		for d in ["hi", "lo"]:
-			var path := "ants/%s_%s.antmesh" % [n, d]
-			ants.append(["mdl_" + n + "_" + d, path, GAME_MM, func(): return _mesh(AntModel.load_antmesh("res://assets/models/" + path), ANT_TINT)])
-	ants.append(["mdl_larva", "mesh_kit.larva()", GAME_MM, func(): return _mesh(MeshKit.larva())])
-	ants.append(["mdl_cocoon", "mesh_kit.cocoon()", GAME_MM, func(): return _mesh(MeshKit.cocoon())])
-	var foes := []
-	for n in ["wolf_spider", "centipede", "ground_beetle"]:
-		var path := "creatures/%s.antmesh" % n
-		foes.append(["mdl_" + n, path, GAME_MM, func(): return _mesh(AntModel.load_antmesh("res://assets/models/" + path))])
-	var prey := []
-	for n in ["aphid_adult", "aphid_nymph", "aphid_winged"]:
-		var path := "prey/%s.antmesh" % n
-		prey.append(["mdl_" + n, path, GAME_MM, func(): return _mesh(AntModel.load_antmesh("res://assets/models/" + path))])
-	prey.append(["mdl_cricket", "mesh_kit.cricket()", GAME_MM, func(): return _mesh(MeshKit.cricket(1.0, false))])
-	prey.append(["mdl_cricket_rotten", "mesh_kit.cricket(rotten)", GAME_MM, func(): return _mesh(MeshKit.cricket(1.0, true))])
-	prey.append(["mdl_fly", "mesh_kit.fly()", GAME_MM, func(): return _mesh(MeshKit.fly(1.0))])
-	var plants := []
-	for p in 3:
-		for st in 4:
-			var path := "plants/plant%d_%d.antmesh" % [p, st]
-			var key := "mdl_plant"
-			plants.append([key, path, GAME_MM, func(): return _mesh(AntModel.load_antmesh("res://assets/models/" + path))])
-	plants.append(["mdl_aphid_plant", "mesh_kit.aphid_plant()", GAME_MM, func(): return _mesh(Props.aphid_plant(3, 3))])
-	var ground := []
-	for k in 3:
-		var tone: float = k * 0.5
-		var sd: int = 11 + k * 7
-		ground.append(["mdl_stone", "mesh_kit.rock()", GAME_MM, func(): return _mesh(Props.rock(_round(14.0, sd), 14.0, tone, sd))])
-	ground.append(["mdl_twig", "mesh_kit.twig()", GAME_MM, func(): return _mesh(Props.twig(16.0, 5))])
-	ground.append(["mdl_leaf", "mesh_kit.leaf()", GAME_MM, func(): return _mesh(Props.leaf(9.0, 4.0, Color(0.55, 0.38, 0.16), 0.4))])
-	ground.append(["mdl_blade", "mesh_kit.blade()", GAME_MM, func(): return _mesh(Props.blade())])
-	ground.append(["mdl_tank_small", "home_kit._tank()", M_MM, func(): return _kit("_tank", [false])])
-	ground.append(["mdl_tank_big", "home_kit._tank(big)", M_MM, func(): return _kit("_tank", [true])])
-	var home := []
-	for it in [["mdl_tubes", "_tubes", [Vector3.ZERO, 0.0]], ["mdl_aspirator", "_aspirator", [Vector3.ZERO, true]],
-			["mdl_forceps", "_forceps", [Vector3.ZERO, 0.0]], ["mdl_brush", "_brush", [Vector3.ZERO, 0.0]],
-			["mdl_syringe", "_syringe", [Vector3.ZERO, 0.0]], ["mdl_petri", "_petri", [Vector3.ZERO, true]],
-			["mdl_lens", "_lens", [Vector3.ZERO, 0.0]], ["mdl_fluon", "_fluon", [Vector3.ZERO]], ["mdl_tray", "_tray", [Vector3.ZERO]],
-			["mdl_notebook", "_notebook", [Vector3.ZERO, 0.0]], ["mdl_pencil", "_pencil", [Vector3.ZERO, 0.0]], ["mdl_chair", "_chair", []]]:
-		var meth: String = it[1]
-		var args: Array = it[2]
-		home.append([it[0], "home_tools.%s()" % meth, M_MM, func(): return _kit(meth, args)])
-	home.append(["mdl_fridge", "home_fridge.build()", M_MM, func():
-		var n := Node3D.new()
-		HomeFridge.build(n, Vector3.ZERO, 0.0)
-		return n])
-	for n in ["hand_open", "hand_point", "sleeve"]:
-		var path := "hand/%s.antmesh" % n
-		home.append(["mdl_" + n, path, M_MM, func(): return _mesh(AntModel.load_antmesh("res://assets/models/" + path))])
-	for n in ["tree_a", "tree_b"]:
-		var path := "trees/%s.antmesh" % n
-		home.append(["mdl_tree", path, 0.0, func(): return _mesh(AntModel.load_antmesh("res://assets/models/" + path))])
-	return [["mdl_tab_ants", ants], ["mdl_tab_enemies", foes], ["mdl_tab_prey", prey], ["mdl_tab_plants", plants],
-		["mdl_tab_ground", ground], ["mdl_tab_home", home]]
-
-
-## The ants: their vertex colours times a tint, as the game's shader takes them, the wings (part 12) pale and clear
-## instead (ARCHITECTURE "ant models": alpha = part id / 16).
-const ANT_SHADER := """
-shader_type spatial;
-render_mode cull_disabled;
-uniform vec3 tint = vec3(0.16, 0.13, 0.11);
-void fragment() {
-	float part = floor(COLOR.a * 16.0 + 0.5);
-	bool wing = part > 11.5 && part < 12.5;
-	ALBEDO = wing ? mix(COLOR.rgb, vec3(0.86, 0.84, 0.8), 0.6) : COLOR.rgb * tint;
-	ROUGHNESS = wing ? 0.3 : 0.7;
-	ALPHA = wing ? 0.55 : 1.0;
-}
-"""
-static var _ant_shader: Shader = null
-
-
-func _mesh(m: Mesh, tint := Color.WHITE) -> Node3D:
-	var mi := MeshInstance3D.new()
-	mi.mesh = m
-	if tint != Color.WHITE:
-		if _ant_shader == null:
-			_ant_shader = Shader.new()
-			_ant_shader.code = ANT_SHADER
-		var sm := ShaderMaterial.new()
-		sm.shader = _ant_shader
-		sm.set_shader_parameter("tint", Vector3(tint.r, tint.g, tint.b))
-		mi.material_override = sm
-		return mi
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true      # (the models carry their colours per vertex; alpha is a part's id, not see-through)
-	mat.albedo_color = tint
-	mat.roughness = 0.75
-	mi.material_override = mat
-	return mi
-
-
-## One of the Home's things, made by the room's own code (view/home/home_tools.gd, home_kit.gd) on a builder of its own.
-func _kit(meth: String, args: Array) -> Node3D:
-	var k = HomeTools.new()
-	if meth == "_tank":
-		if is_inside_tree():
-			add_child(k)                     # (_tank reads its global place for the Home's hand: in the tree while it is made)
-		k._tank(k, Vector3.ZERO, args[0], false, 0, 1, true, 0.0)       # (slot 0: no save of the keeper's read - plain soil)
-		if k.get_parent() == self:
-			remove_child(k)
-	else:
-		k.callv(meth, args)
-	return k
-
-
-func _round(r: float, sd: int) -> PackedVector2Array:
-	var g := RandomNumberGenerator.new()
-	g.seed = sd
-	var o := PackedVector2Array()
-	for i in 14:
-		o.append(Vector2.from_angle(TAU * i / 14.0) * r * g.randf_range(0.75, 1.1))
-	return o
+func _dev_big(start: int) -> void:
+	var mb: PackedStringArray = String(main._opts["model-big"]).split(",")
+	var items: Array = _cats[start][1]
+	_open_big(items[clampi(int(mb[0]), 0, items.size() - 1)])
+	if mb.size() > 1:
+		for b in _big_row.get_children():
+			if b is Button and b.text == tr(mb[1]):
+				b.pressed.emit()
+				b.button_pressed = true
 
 
 # ---------------------------------------------------------------- the cards
@@ -210,11 +100,11 @@ func _show(i: int) -> void:
 	for c in _grid.get_children():
 		c.queue_free()
 	_pivots.clear()
-	for it in _cats()[i][1]:
+	for it in _cats[i][1]:
 		_grid.add_child(_card(it))
 
 
-func _card(it: Array) -> Control:
+func _card(it: Dictionary) -> Control:
 	var box := VBoxContainer.new()
 	var svc := SubViewportContainer.new()
 	svc.custom_minimum_size = CARD
@@ -225,18 +115,23 @@ func _card(it: Array) -> Control:
 	vp.msaa_3d = Viewport.MSAA_4X
 	svc.add_child(vp)
 	box.add_child(svc)
-	var got := _stage(vp, it)
-	_pivots.append(got[0])
-	box.add_child(h._label(tr(it[0]), 13, Paper.INK))
-	box.add_child(h._label(_about(it, got[1], got[2]), 11, Paper.PENCIL))
+	var got := _stage(vp, it.vars[0][1])
+	_pivots.append(got.pivot)
+	box.add_child(h._label(tr(it.key), 13, Paper.INK))
+	var more := ""
+	if it.vars.size() > 1:
+		more = " · " + tr("mdl_kinds") % it.vars.size()
+	if it.has("poses"):
+		more += " · " + tr("mdl_poses") % it.poses.size()
+	box.add_child(h._label(_about(it, got.box, got.verts) + more, 11, Paper.PENCIL))
 	svc.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			_open_big(it))
 	return box
 
 
-## The model in its own world, lit, the camera framing it: [pivot, its box, its vertices].
-func _stage(vp: SubViewport, it: Array) -> Array:
+## A model in its own world, lit, the camera framing it: {pivot, model, box, verts, cam, r}.
+func _stage(vp: SubViewport, maker: Callable) -> Dictionary:
 	var world := Node3D.new()
 	vp.add_child(world)
 	var env := WorldEnvironment.new()
@@ -252,21 +147,32 @@ func _stage(vp: SubViewport, it: Array) -> Array:
 	world.add_child(sun)
 	var pivot := Node3D.new()
 	world.add_child(pivot)
-	var model: Node3D = (it[3] as Callable).call()
+	var model: Node3D = maker.call()
 	pivot.add_child(model)
 	var box := _box_of(model)
 	model.position = -box.get_center()
 	var verts := 0
-	for mi in model.find_children("*", "MeshInstance3D", true, false) + ([model] if model is MeshInstance3D else []):
-		verts += _verts(mi.mesh)
+	for mi in _meshes(model):
+		verts += _verts(mi.multimesh.mesh if mi is MultiMeshInstance3D else mi.mesh)
 	var cam := Camera3D.new()
 	var r := maxf(0.0001, box.size.length() * 0.5)
 	cam.fov = 35.0
 	cam.near = r * 0.01
 	cam.far = r * 40.0
 	world.add_child(cam)
-	cam.transform = Transform3D.IDENTITY.looking_at(-Vector3(0, r * 0.9, r * 2.9), Vector3.UP).translated(Vector3(0, r * 0.9, r * 2.9))
-	return [pivot, box, verts, cam, r]
+	_place_cam(cam, Vector3(0, r * 0.9, r * 2.9))
+	return {"pivot": pivot, "model": model, "box": box, "verts": verts, "cam": cam, "r": r}
+
+
+func _place_cam(cam: Camera3D, at: Vector3) -> void:
+	cam.transform = Transform3D.IDENTITY.looking_at(-at, Vector3.UP).translated(at)
+
+
+func _meshes(model: Node3D) -> Array:
+	var list: Array = model.find_children("*", "MeshInstance3D", true, false) + model.find_children("*", "MultiMeshInstance3D", true, false)
+	if model is MeshInstance3D or model is MultiMeshInstance3D:
+		list.append(model)
+	return list
 
 
 func _verts(m: Mesh) -> int:
@@ -280,67 +186,129 @@ func _verts(m: Mesh) -> int:
 	return 0
 
 
+## Its box in the model's own frame (its own scale in: an egg, a larva grown so far).
 func _box_of(model: Node3D) -> AABB:
 	var box := AABB()
 	var first := true
-	var list: Array = model.find_children("*", "MeshInstance3D", true, false)
-	if model is MeshInstance3D:
-		list.append(model)
-	for mi in list:
-		if mi.mesh == null:
+	for mi in _meshes(model):
+		var mesh: Mesh = mi.multimesh.mesh if mi is MultiMeshInstance3D else mi.mesh
+		if mesh == null:
 			continue
-		var b: AABB = _xf_to(mi, model) * mi.mesh.get_aabb()
+		var xf := _xf_to(mi, model)
+		if mi is MultiMeshInstance3D:
+			xf = xf * mi.multimesh.get_instance_transform(0)
+		var b: AABB = xf * mesh.get_aabb()
 		box = b if first else box.merge(b)
 		first = false
 	return box
 
 
+## n's transform into top's parent's frame (top's own transform in).
 func _xf_to(n: Node3D, top: Node3D) -> Transform3D:
 	var xf := Transform3D.IDENTITY
 	var cur: Node = n
-	while cur != null and cur != top:
+	while cur != null:
 		xf = (cur as Node3D).transform * xf
+		if cur == top:
+			break
 		cur = cur.get_parent()
 	return xf
 
 
 ## Its source, its size in life (length x width x height) and its vertices.
-func _about(it: Array, box: AABB, verts: int) -> String:
-	var mm: float = it[2]
+func _about(it: Dictionary, box: AABB, verts: int) -> String:
+	var mm: float = it.mm
 	var size := tr("mdl_size_none") if mm <= 0.0 else (tr("mdl_size_cm") % [box.size.x * mm / 10.0, box.size.z * mm / 10.0, box.size.y * mm / 10.0]
 		if box.size.x * mm >= 100.0 else tr("mdl_size_mm") % [box.size.x * mm, box.size.z * mm, box.size.y * mm])
-	return "%s\n%s · %s" % [it[1], size, tr("mdl_verts") % verts]
+	return "%s\n%s · %s" % [it.src, size, tr("mdl_verts") % verts]
 
 
 func _process(delta: float) -> void:
+	_t += delta
 	for p in _pivots:
 		if is_instance_valid(p):
 			p.rotation.y += delta * 0.5
+			_pose_all(p, "mdl_pose_walk")
 	if _big.visible and _big_cam != null:
 		var d := _r * 2.9 * _zoom
-		var at := Vector3(sin(_yaw) * cos(_pitch), sin(_pitch), cos(_yaw) * cos(_pitch)) * d
-		_big_cam.transform = Transform3D.IDENTITY.looking_at(-at, Vector3.UP).translated(at)
+		_place_cam(_big_cam, Vector3(sin(_yaw) * cos(_pitch), sin(_pitch), cos(_yaw) * cos(_pitch)) * d)
+		if is_instance_valid(_big_pivot):
+			_pose_all(_big_pivot, String(_big_pivot.get_meta("pose", "mdl_pose_walk")))
+		if _cycle_on:
+			_play_cycle()
+
+
+# ---------------------------------------------------------------- an enemy's poses (its own shader: creature_pose.gd)
+
+func _pose_all(pivot: Node3D, pose: String) -> void:
+	for mmi in pivot.find_children("*", "MultiMeshInstance3D", true, false):
+		if mmi.has_meta("creature"):
+			_pose(mmi, pose)
+
+
+## The shader's INSTANCE_CUSTOM as creature_pose.update gives it: x the gait, y 0..1 a strike / 3 + kick on its back /
+## 5 feeding / 6 shaking prey, z the clock, w walking + 2 held (+ the centipede's bend packed above); on its back the
+## body rolled over and lifted by its back's height.
+func _pose(mmi: MultiMeshInstance3D, pose: String) -> void:
+	var c: Dictionary = mmi.get_meta("creature")
+	var mm := mmi.multimesh
+	var t := _t
+	var gait := 0.0
+	var y := 0.0
+	var w := 0.0
+	var back := false
+	match pose:
+		"mdl_pose_walk":
+			gait = fmod(t * 1.6 * TAU, TAU * 64.0)
+			w = 1.0
+		"mdl_pose_strike":
+			y = smoothstep(0.0, 1.0, maxf(0.0, sin(t * 2.6)))
+		"mdl_pose_held":
+			gait = fmod(t * CreatureRig.HELD_TURNS * TAU, TAU * 64.0)
+			w = 2.0
+		"mdl_pose_back":
+			back = true
+			y = 3.0 + 0.85 + 0.15 * sin(t * 2.0)
+			w = 2.0
+		"mdl_pose_dead":
+			back = true
+			y = 3.0
+		"mdl_pose_feed":
+			y = 5.0
+		"mdl_pose_shake":
+			y = 6.0
+	if c.kind == "centipede":
+		w += 4.0 * 50.0                       # (its bend packed above: straight - centipede.gdshader)
+	var sc: float = c.scale
+	var xf := Transform3D(Basis.from_scale(Vector3.ONE * sc), Vector3.ZERO)
+	if back:
+		var turn := PI + (0.22 * sin(t * 3.4) + 0.1 * sin(t * 7.9)) * (1.0 if pose == "mdl_pose_back" else 0.0)
+		xf = Transform3D(Basis(Vector3.RIGHT, turn).scaled(Vector3.ONE * sc), Vector3(0, float(CreaturePose.BACK_LIFT.get(c.kind, 2.0)) * sc, 0))
+	mm.set_instance_transform(0, xf)
+	mm.set_instance_custom_data(0, Color(gait, y, fmod(t, 600.0), w))
 
 
 # ---------------------------------------------------------------- one shown big
 
 func _build_big(root: Control) -> void:
 	_big = PanelContainer.new()
-	_big.set_anchors_preset(Control.PRESET_CENTER)
 	_big.visible = false
 	root.add_child(_big)
 	var col := VBoxContainer.new()
 	_big.add_child(col)
 	var head := HBoxContainer.new()
-	_big_label = h._label("", 15, Paper.ACCENT)
+	_big_label = h._label("", 14, Paper.ACCENT)
 	_big_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_big_label)
 	var x: Button = h._button("×", false)
 	x.pressed.connect(func(): _big.visible = false)
 	head.add_child(x)
 	col.add_child(head)
+	_big_row = HFlowContainer.new()
+	_big_row.add_theme_constant_override("h_separation", 4)
+	col.add_child(_big_row)
 	var svc := SubViewportContainer.new()
-	svc.custom_minimum_size = Vector2(900, 620)
+	svc.custom_minimum_size = Vector2(1000, 580)
 	svc.stretch = true
 	_big_vp = SubViewport.new()
 	_big_vp.own_world_3d = true
@@ -351,20 +319,93 @@ func _build_big(root: Control) -> void:
 	svc.gui_input.connect(_big_input)
 
 
-func _open_big(it: Array) -> void:
-	for c in _big_vp.get_children():
+func _open_big(it: Dictionary) -> void:
+	_big_item = it
+	_cycle_on = false
+	for c in _big_row.get_children():
 		c.queue_free()
-	var got := _stage(_big_vp, it)
-	_big_pivot = got[0]
-	_big_cam = got[3]
-	_r = got[4]
+	var g := ButtonGroup.new()
+	if it.vars.size() > 1 or it.get("cycle", false):
+		_big_row.add_child(h._label(tr("mdl_kind"), 12, Paper.PENCIL))
+		for i in it.vars.size():
+			var b: Button = h._button(tr(it.vars[i][0]), true, g)
+			b.button_pressed = i == 0
+			var k: int = i
+			b.pressed.connect(func(): _load_big(k))
+			_big_row.add_child(b)
+	if it.get("cycle", false):
+		var cy: Button = h._button(tr("mdl_cycle"), true, g)
+		cy.pressed.connect(_start_cycle)
+		_big_row.add_child(cy)
+	if it.has("poses"):
+		var gp := ButtonGroup.new()
+		_big_row.add_child(h._label(tr("mdl_pose"), 12, Paper.PENCIL))
+		for p in it.poses:
+			var b: Button = h._button(tr(p), true, gp)
+			b.button_pressed = p == it.poses[0]
+			var pose: String = p
+			b.pressed.connect(func():
+				if is_instance_valid(_big_pivot):
+					_big_pivot.set_meta("pose", pose))
+			_big_row.add_child(b)
+	_load_big(0)
 	_yaw = 0.0
 	_pitch = 0.35
 	_zoom = 1.0
-	_big_label.text = "%s — %s" % [tr(it[0]), _about(it, got[1], got[2]).replace("\n", " · ")]
 	_big.visible = true
 	_big.reset_size()
 	_big.position = (get_viewport().get_visible_rect().size - _big.size) * 0.5
+
+
+func _load_big(i: int) -> void:
+	_cycle_on = false
+	for c in _big_vp.get_children():
+		c.queue_free()
+	var it := _big_item
+	var got := _stage(_big_vp, it.vars[i][1])
+	_big_pivot = got.pivot
+	_big_cam = got.cam
+	_r = got.r
+	_big_label.text = "%s (%s) — %s" % [tr(it.key), tr(it.vars[i][0]), _about(it, got.box, got.verts).replace("\n", " · ")]
+
+
+## The brood's stages one after another, each turning into the next (an egg; the larva growing; the cocoon spun round
+## it and greying; the worker out of it) - the stages' own models and sizes; how the nest acts those moments out
+## (nurses carrying, helping her out of the cocoon: nest_lifecycle.gd) is the nest's, not shown here.
+func _start_cycle() -> void:
+	for c in _big_vp.get_children():
+		c.queue_free()
+	var got := _stage(_big_vp, func():
+		var n := Node3D.new()
+		n.add_child(Catalog.egg())
+		n.add_child(Catalog.larva(1.0))
+		n.add_child(Catalog.cocoon(0.0))
+		n.add_child(Catalog.ant(Catalog.AntModel.load_antmesh("res://assets/models/ants/worker_hi.antmesh")))
+		return n)
+	_big_pivot = got.pivot
+	_big_cam = got.cam
+	_r = got.r * 0.8
+	var parts: Array = got.model.get_children()
+	_cycle = {"egg": parts[0], "larva": parts[1], "cocoon": parts[2], "ant": parts[3], "t0": _t}
+	_cycle_on = true
+
+
+func _play_cycle() -> void:
+	var c := _cycle
+	var k := fmod(_t - float(c.t0), CYCLE) / CYCLE       # 0..1 round the cycle
+	var eg := 1.0 - smoothstep(0.14, 0.2, k)
+	var lv := smoothstep(0.14, 0.2, k) * (1.0 - smoothstep(0.55, 0.62, k))
+	var co := smoothstep(0.55, 0.62, k) * (1.0 - smoothstep(0.82, 0.9, k))
+	var an := smoothstep(0.82, 0.9, k)
+	var p := clampf((k - 0.17) / 0.4, 0.0, 1.0)          # the larva's growth
+	(c.egg as Node3D).scale = Vector3(0.32 / 0.2, 1, 1) * maxf(0.001, eg)
+	(c.larva as Node3D).scale = Vector3.ONE * (0.28 + 0.8 * p) * maxf(0.001, lv)
+	(c.cocoon as Node3D).scale = Vector3.ONE * maxf(0.001, co)
+	((c.cocoon as MeshInstance3D).material_override as StandardMaterial3D).albedo_color = Color.WHITE.lerp(Color(0.72, 0.72, 0.72), smoothstep(0.66, 0.82, k))
+	(c.ant as Node3D).scale = Vector3.ONE * maxf(0.001, an)
+	var stage := "mdl_egg" if k < 0.17 else ("mdl_larva_s" if k < 0.3 else ("mdl_larva_l" if k < 0.58 else ("mdl_cocoon" if k < 0.72
+		else ("mdl_cocoon_late" if k < 0.86 else "mdl_worker"))))
+	_big_label.text = "%s — %s (%d%%)" % [tr("mdl_cycle"), tr(stage), int(k * 100.0)]
 
 
 func _big_input(e: InputEvent) -> void:

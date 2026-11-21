@@ -51,24 +51,36 @@ func _init() -> void:
 	t.setup(5, 0, false, "keeper")
 	t.climate.wind_force = 9.0
 	_case("no wind in a tank, set or not", t.wind() == 0.0)
-	# the 3D model room (step 10): every card's model made, with a size; nothing of the game's touched
+	# the 3D model room (steps 10-11): every kind of every card made, with a size; every word in both languages
+	load("res://scripts/sim/lang.gd").load_all()
 	var room = load("res://scripts/view/ui/model_room.gd").new()
+	var cats: Array = load("res://scripts/dev/model_catalog.gd").cats(null)
 	var made := 0
-	var bad := []
-	var cats: Array = room._cats()
-	for cat in cats:
-		for it in cat[1]:
-			var mdl: Node3D = (it[3] as Callable).call()
-			var b: AABB = room._box_of(mdl)
-			if b.size.length() > 0.0:
-				made += 1
-			else:
-				bad.append(it[1])
-			mdl.free()
 	var total := 0
+	var bad := []
+	var words := []
 	for cat in cats:
-		total += cat[1].size()
-	_case("the model room: %d of %d models made, each with a size %s" % [made, total, bad], made == total and total >= 50)
+		words.append(cat[0])
+		for it in cat[1]:
+			words.append(it.key)
+			words.append_array(it.get("poses", []))
+			for v in it.vars:
+				total += 1
+				words.append(v[0])
+				var mdl: Node3D = (v[1] as Callable).call()
+				if room._box_of(mdl).size.length() > 0.0:
+					made += 1
+				else:
+					bad.append("%s/%s" % [it.key, v[0]])
+				mdl.free()
+	var untold := []
+	for loc in ["th", "en"]:
+		TranslationServer.set_locale(loc)
+		for wd in words:
+			if TranslationServer.translate(wd) == wd and not untold.has(wd):
+				untold.append(wd)
+	_case("the model room: %d of %d kinds made, each with a size %s" % [made, total, bad], made == total and total >= 80)
+	_case("the model room's words in both languages %s" % [untold], untold.is_empty())
 	room.free()
 	Play.opts = {}
 	Store.base = "user://"
