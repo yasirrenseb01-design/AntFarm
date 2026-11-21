@@ -342,7 +342,7 @@ func _take_shot() -> void:
 					home_room._sit(it)
 		if _opts.has("home-point"):
 			var pp: PackedStringArray = String(_opts["home-point"]).split(",")
-			home_room._point(Vector2(float(pp[0]), float(pp[1])))     # (as if the pointer were there)
+			home_room._point(Vector2(float(pp[0]), float(pp[1])) if pp.size() > 1 else load("res://scripts/dev/alate_dev.gd").item_point(home_room, pp[0]))     # (as if the pointer were there; a name: on that item)
 	if _opts.has("side-open"):
 		hud.set_side_open(true)              # (dev: the side panel open, whatever the window's width)
 	if _opts.has("follow-prey"):

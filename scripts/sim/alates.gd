@@ -152,7 +152,10 @@ static func _choose(s) -> void:
 		var l: Dictionary = s.larvae[pool[j]]
 		l["x"] = "g" if j < n_g else "m"
 		l.p = 0.1                # (late March a male larva has ~11% of its weight [A1]; it grows on from there)
-	s._log(s.T.alates_chosen, "ok", [n_g, n_m])
+	if n_g == 0:
+		s._log(s.T.alates_chosen_m, "ok", [n_m])       # (a poor year: food for males only)
+	else:
+		s._log(s.T.alates_chosen, "ok", [n_g, n_m])
 
 
 ## A sexual larva eats this much more than a worker's (protein and honeydew), 1.0 for a worker's.
@@ -281,7 +284,10 @@ static func _fly(s) -> void:
 	s.stats["flight"] = {"day": s.day(), "g": g, "m": m, "w": queens, "wind": snappedf(s.wind(), 0.1)}
 	s._event("flight", float(g + m))
 	s.WildQueens.own_flight(s, queens)          # (a few come down on the plot again, mated: sim/wild_queens.gd)
-	s._log(s.T.alates_flew, "ok", [g, m])
+	if g == 0 or m == 0:
+		s._log(s.T.alates_flew_m if g == 0 else s.T.alates_flew_g, "ok", [m if g == 0 else g])
+	else:
+		s._log(s.T.alates_flew, "ok", [g, m])
 
 
 static func _count(s, key: String, n := 1) -> void:

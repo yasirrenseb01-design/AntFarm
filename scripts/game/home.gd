@@ -549,6 +549,9 @@ func _describe(it) -> String:
 		return tr("home_stand") if _seated else tr("home_chair")
 	if it.kind == "notebook":
 		return tr("home_notebook")
+	if it.kind == "tubes":                 # (the founding tubes: queens caught on the wild plot - PART 0.14)
+		var n: int = main.home.tubes.size()
+		return tr("home_tubes_none") if n == 0 else tr("home_tubes") % [n, main.home.MAX_TUBES]
 	var s: int = it.slot
 	var m: Dictionary = Store.meta(s)
 	if m.is_empty():
@@ -585,6 +588,8 @@ func _click(it) -> void:
 	if it.kind == "notebook":
 		main.hud.open_album(main.hud.album_species())       # (the plate album: ui/album.gd)
 		return
+	if it.kind == "tubes":
+		return                                  # (only words: a colony is started with one from an empty tank)
 	var s: int = it.slot
 	if not Store.exists(s):
 		main.hud.open_species(s, false, "keeper", main.home.nest_of(s))

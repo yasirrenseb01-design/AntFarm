@@ -139,9 +139,13 @@ func _init() -> void:
 	check("the underweight gyne waits, and the male with her; the ready gynes fly: %d left" % s.alates.size(),
 		s.alates.size() == 2 and s.alates.any(func(a): return a.x == "m"))
 	check("the flight told: %s" % s.stats.get("flight", {}), int(s.stats.flight.g) == 6 and int(s.stats.flight.m) == 0)
+	check("the journal: queens only, not \"0 males\" (%s)" % s.log_entries[0].key, s.log_entries[0].key == "log_alates_flew_g"
+		and s.log_entries[0].args == [6])
 	gy.w = A.GYNE_COST
 	A._fly(s)
 	check("once she is fat enough, both go", s.alates.is_empty() and int(s.stats.flight.g) == 1 and int(s.stats.flight.m) == 1)
+	check("the journal: both (%s %s)" % [s.log_entries[0].key, s.log_entries[0].args], s.log_entries[0].key == "log_alates_flew"
+		and s.log_entries[0].args == [1, 1])
 
 	print("6. queens on the ground")
 	var gen: RandomNumberGenerator = Q._gen(s, 1)

@@ -124,6 +124,8 @@ func _tubes(at: Vector3, turn := 0.08) -> void:
 			_blob(Vector3(0.0032, 0.0022, 0.0024), Vector3(0.0045, ty - 0.005, tz), ant, g)])
 	# a label on the second tube: date and species in pencil
 	_box(Vector3(0.024, 0.0004, 0.012), Vector3(0.046, 0.0322, 0.012), flat(Color(0.95, 0.93, 0.85), 0.9), g)     # (clear of a queen in it)
+	# the hand on them says what they hold (game/home.gd _describe; v0.14.5 - nothing until then)
+	items.append({"kind": "tubes", "mats": [], "box": g.transform * AABB(Vector3(-0.085, 0.0, -0.025), Vector3(0.17, 0.035, 0.05))})
 
 
 ## An aspirator ("pooter"): a clear vial standing on its foot, a rubber stopper, a short glass pipe out of it to suck

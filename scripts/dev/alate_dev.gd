@@ -65,3 +65,11 @@ static func frame(m, i: int) -> void:
 static func hover(m) -> Vector3:
 	var al: Array = m.nest_view._alates._xf.m + m.nest_view._alates._xf.g
 	return (al[0] as Transform3D).origin + Vector3.UP * 0.4 if not al.is_empty() else Vector3.INF
+
+
+## --home-point=<kind> (e.g. tubes): where the middle of that Home item is on the screen.
+static func item_point(home_room, kind: String) -> Vector2:
+	for it in home_room._room.items:
+		if it.kind == kind:
+			return home_room._cam.unproject_position(home_room._room.to_global((it.box as AABB).get_center()))
+	return Vector2.ZERO

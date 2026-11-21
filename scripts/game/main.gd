@@ -148,7 +148,7 @@ func _ready() -> void:
 		var parts := choice.split(":")
 		var start: int = int(_opts.get("workers", "14")) if parts[1] == "young" else 0
 		var scen: String = parts[2] if parts.size() > 2 else String(_opts.get("scenario", "keeper"))
-		var big_box: bool = _opts.has("big-box")      # (the Home's bigger tank: a bigger box; --big-box: dev) or (_persist and not _opts.has("testsave") and home.big != 0 and home.big == slot)
+		var big_box: bool = _opts.has("big-box") or (_persist and not _opts.has("testsave") and home.big != 0 and home.big == slot)   # (the Home's bigger tank; --big-box: dev - LESSONS 53)
 		var species: String = parts[4] if parts.size() > 4 and parts[4] != "" else String(_opts.get("species-id", "lasius_niger"))   # (the species page's pick, 5th - none before v0.11.55; the menu: the first)
 		sim.setup(int(_opts.get("seed", "0")), start, parts[0] == "glass", scen, big_box, species)
 		if parts.size() > 3:
