@@ -712,3 +712,30 @@ home_notebook,สมุดภาพสะสม (คลิกเปิดดู)
 home_tubes,"หลอดตั้งรัง · มีราชินีที่ผสมแล้ว %d จาก %d หลอด\nเริ่มรังด้วยราชินีในหลอด: คลิกตู้ที่ว่าง แล้วเลือก ""ราชินีจากหลอดตั้งรัง""","Founding tubes · a mated queen in %d of %d\nStart a colony with one: click an empty tank, then pick ""A queen from a founding tube"""
 home_tubes_none,"หลอดตั้งรัง (ว่าง)\nหลังวันบิน ก.ค.–ส.ค. ราชินีที่ผสมแล้วร่อนลงแปลงป่า — คลิกตัวที่เดินอยู่เพื่อเก็บใส่หลอด","Founding tubes (empty)\nAfter a flight day in July-August mated queens come down on the wild plot - click one walking there to catch her"
 journal_colors,"สีของข้อความ: แดง = อันตราย ต้องดู (ศัตรูเข้ามา น้ำหมด ราชินีตาย) · เขียว = ข่าวดี (ฆ่าศัตรูได้ ช่วยเพื่อนรอด มดงานตัวแรก) · ส้ม = มดที่ตั้งชื่อไว้ · ดำ = เรื่องทั่วไป (เจออาหาร มดเกิดใหม่ ขุดห้อง เติมน้ำ)","Colours: red = danger, look now (an enemy in, the water out, the queen dead) · green = good news (an enemy killed, a nestmate saved, the first worker) · amber = an ant you named · ink = the everyday (food found, a worker born, a chamber dug, water added)"
+# developer (the developer's machine only: game/dev_machine.gd, ui/dev_panel.gd),,
+dev_title,นักพัฒนา,Developer
+dev_play_note,"สนามทดสอบ: รังใหม่ชั่วคราวสำหรับเรียกดูของในเกม ไม่เซฟ (ไฟล์ที่เกมเขียนระหว่างนั้นไปที่ user://devplay/) — รังที่เปิดอยู่ถูกเซฟก่อนเข้า ออกแล้วกลับรังเดิม","The playground: a throwaway colony to call things up in, never saved (whatever the game writes meanwhile goes to user://devplay/) - the colony open now is saved first, and leaving goes back to it"
+dev_scene,ฉาก,Setting
+dev_scene_keeper,ตู้ในห้อง,A keeper's tank
+dev_scene_wild,แปลงป่า,The wild plot
+dev_workers,มดงานเริ่มต้น,Workers to start with
+dev_play_start,เข้าสนามทดสอบ,Open the playground
+dev_play_title,สนามทดสอบ (ไม่เซฟ),Playground (not saved)
+dev_hide_tip,ซ่อนแผง (ปุ่มเมนูเปิดกลับมา),Hide the panel (the menu button brings it back)
+dev_enemies,ศัตรู: เรียกเข้ามาเลย,Enemies: in now
+dev_from_edge,จากขอบ,From an edge
+dev_by_nest,ข้างรัง,By the nest
+dev_in_now,ตัวที่อยู่ตอนนี้,In there now
+dev_none,ยังไม่มี,None yet
+dev_follow,ตาม,Follow
+dev_flip,หงาย,On its back
+dev_panic,พล่าน,Panic
+dev_flee,หนี,Flee
+dev_kill,ตาย,Kill
+dev_leave,ออกจากสนามทดสอบ,Leave the playground
+dev_enemy_line,#%d %s · พลัง %d%% · มดเกาะ %d · %s,#%d %s · health %d%% · ants on it %d · %s
+dev_st_hunting,ล่า/เดิน,hunting
+dev_st_panic,พล่าน,panicking
+dev_st_fleeing,หนี,fleeing
+dev_st_back,หงาย,on its back
+dev_st_dying,กำลังตาย,dying

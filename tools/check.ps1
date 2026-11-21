@@ -100,6 +100,8 @@ $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/stats_tes
 Report "statistics: saved chart sets read back, a hand-changed file taken safely" ($r -match "STATS TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/water_test.gd") 300
 Report "water tanks: filled from the Home, the helper, Colony Harmony for a filling" ($r -match "WATER TEST PASSED")
+$r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/dev_mode_test.gd") 120
+Report "the developer's tab and playground: on the developer's machine only, never the keeper's files" ($r -match "DEV MODE TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/lang_test.gd") 300
 Report "words: every key in both languages, same placeholders, no Thai left in the code" ($r -match "LANG TEST PASSED")
 $r = Run-Godot @("--headless", "--path", ".", "--script", "res://tests/duty_test.gd") 300

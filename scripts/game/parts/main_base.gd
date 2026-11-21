@@ -321,6 +321,7 @@ func _hours_text(h: float) -> String:
 
 ## A new simulation - in the free demo (game/demo.gd; --demo in the editor) with its colony limit, which is never saved.
 func _new_sim():
+	preload("res://scripts/dev/dev_play.gd").apply(self)     # (the developer's playground: its options, its own folder)
 	Demo.forced = _opts.has("demo")
 	var s = Sim.new()
 	s.demo_max = Demo.MAX_COLONY if Demo.on() else 0

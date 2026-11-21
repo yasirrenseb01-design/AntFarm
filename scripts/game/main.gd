@@ -62,7 +62,7 @@ func _ready() -> void:
 			_opts.erase(k)
 	_started = true
 	sim = _new_sim()                     # (the free demo's limit: parts/main_base.gd)
-	_persist = not (_opts.has("selftest") or _opts.has("shot")) or _opts.has("sandbox")
+	_persist = not (_opts.has("selftest") or _opts.has("shot") or _opts.has("dev-play")) or _opts.has("sandbox")
 	if _opts.has("sandbox"):
 		Store.base = "user://sandbox/"
 	# one game at a time: a game running already (maybe as the wallpaper) is told to come forward, and this copy goes

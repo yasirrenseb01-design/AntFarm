@@ -18,6 +18,9 @@ var main
 var is_open := false
 var clip := false                     # the tour alone, no menu, nothing on screen (F8: the keeper films it, PART EA-R)
 var _root: Control
+const DevPanel := preload("res://scripts/view/ui/dev_panel.gd")
+const DevPlay := preload("res://scripts/dev/dev_play.gd")
+var _dev_panel = null                    # (the developer's playground: its panel, ui/dev_panel.gd)
 var _go_on: Button                    # tr("title_go_on") (not for the colony shown before the first one is started)
 var _go_on_note: Label
 var _caption: Label                   # what the camera is looking at, bottom right
@@ -89,6 +92,13 @@ func setup(m) -> void:
 	# (the wallpaper from a colony only - its button on the bar: from the title page it put up the colony behind it, not
 	# the one the keeper means: the keeper, 2026-11-03)
 	_item(col, tr("title_quit"), func(): main.quit_game())
+	# (the developer's machine only: the playground's page, its word last - game/dev_machine.gd, ui/dev_panel.gd)
+	var dev_page = DevPanel.title_page(main, _root)
+	if dev_page != null:
+		_item(col, tr("dev_title"), func(): dev_page.visible = not dev_page.visible)
+	if DevPlay.active():
+		_dev_panel = DevPanel.new()
+		_dev_panel.setup(main)                # (in the playground: its panel on the HUD; the menu button shows it)
 	var ver: Label = h._label("v%s" % ProjectSettings.get_setting("application/config/version", "dev"), 12, h.MUTED)
 	ver.anchor_top = 1.0
 	ver.anchor_bottom = 1.0
@@ -210,6 +220,9 @@ class Page extends Control:
 
 ## Shows the title screen over the colony (`can_go_on`: false for the colony shown before any is started).
 func open(can_go_on := true) -> void:
+	if _dev_panel != null:
+		_dev_panel.visible = not _dev_panel.visible     # (the playground has no title page: nothing in it is the keeper's)
+		return
 	is_open = true
 	visible = true
 	main.hud.visible = false
